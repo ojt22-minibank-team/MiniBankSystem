@@ -2,12 +2,15 @@ package com.corebanking.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.math.BigDecimal;
+
 import java.time.*;
 
 @Entity
 @Table(name = "roles")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter 
+@Setter 
+@NoArgsConstructor 
+@AllArgsConstructor
 public class Roles {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

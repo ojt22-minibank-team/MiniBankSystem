@@ -2,29 +2,26 @@ package com.corebanking.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.math.BigDecimal;
-import java.time.*;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "role_permissions")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter 
+@Setter 
+@NoArgsConstructor 
+@AllArgsConstructor
 public class RolePermissions {
 	
-	@Id
-    @Column(nullable = false)
-    private Integer role_id;
+    @EmbeddedId
+    private RolePermissionId id;
 
-    @Column(nullable = false)
-    private Integer permission_id;
+    @Column(name = "updated_by_type")
+    private String updatedByType;
 
-    @Column
-    // Enum values: NULL
-    private String updated_by_type;
+    @Column(name = "updated_by_id")
+    private Long updatedById;
 
-    @Column
-    private Long updated_by_id;
-
-    @Column(nullable = false)
-    private LocalDateTime updated_at;
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
 }
