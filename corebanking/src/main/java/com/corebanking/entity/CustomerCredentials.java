@@ -1,69 +1,96 @@
 package com.corebanking.entity;
 
+import com.corebanking.entity.enums.MfaMethod;
+import com.corebanking.entity.enums.UpdatedByType;
 import jakarta.persistence.*;
 import lombok.*;
-import java.math.BigDecimal;
-import java.time.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "customer_credentials")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class CustomerCredentials {
-	@Id
-    @Column(nullable = false)
-    private Long customer_id;
 
-    @Column(nullable = false)
-    private String password_hash;
+    @Id
+    @Column(name = "customer_id", columnDefinition = "BINARY(16)", nullable = false)
+    private UUID customerId;
 
-    @Column
-    private String transaction_pin_hash;
+    @OneToOne(fetch = FetchType.LAZY)
+    @MapsId
+    @JoinColumn(name = "customer_id",
+            foreignKey = @ForeignKey(name = "fk_customer_credentials_customer"))
+    private Customers customer;
 
-    @Column(nullable = false)
-    private Boolean mfa_enabled;
+    @Column(name = "password_hash", length = 255, nullable = false)
+    private String passwordHash;
 
-    @Column(nullable = false)
-    // Enum values: 'EMAIL'
-    private String mfa_method;
+    @Column(name = "transaction_pin_hash", length = 255)
+    private String transactionPinHash;
 
-    @Column(nullable = false)
-    private Boolean must_change_password;
+    @Column(name = "mfa_enabled", nullable = false)
+    private boolean mfaEnabled = false;
 
-    @Column
-    private LocalDateTime password_changed_at;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "mfa_method", nullable = false, length = 10)
+    private MfaMethod mfaMethod = MfaMethod.NONE;
 
-    @Column
-    private LocalDateTime pin_changed_at;
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword = true;
 
-    @Column(nullable = false)
-    private Integer failed_login_count;
+    @Column(name = "password_changed_at")
+    private LocalDateTime passwordChangedAt;
 
-    @Column
-    private LocalDateTime locked_until;
+    @Column(name = "pin_changed_at")
+    private LocalDateTime pinChangedAt;
 
-    @Column(nullable = false)
-    private Integer failed_pin_attempt_count;
+    @Column(name = "failed_login_count", nullable = false)
+    private int failedLoginCount = 0;
 
-    @Column
-    private LocalDateTime pin_locked_until;
+    @Column(name = "locked_until")
+    private LocalDateTime lockedUntil;
 
-    @Column
-    private LocalDateTime last_login_at;
+    @Column(name = "failed_pin_attempt_count", nullable = false)
+    private int failedPinAttemptCount = 0;
 
-    @Column(nullable = false)
-    private Integer token_version;
+    @Column(name = "pin_locked_until")
+    private LocalDateTime pinLockedUntil;
 
-    @Column(nullable = false)
-    private LocalDateTime created_at;
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
 
-    @Column
-    // Enum values: NULL
-    private String updated_by_type;
+    @Column(name = "token_version", nullable = false)
+    private long tokenVersion = 1L;
 
-    @Column
-    private Long updated_by_id;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-    @Column(nullable = false)
-    private LocalDateTime updated_at;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "updated_by_type", length = 10)
+    private UpdatedByType updatedByType;
 
+    @Column(name = "updated_by_id", columnDefinition = "BINARY(16)")
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID updatedById;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (updatedAt == null) updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

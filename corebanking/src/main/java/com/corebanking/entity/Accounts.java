@@ -1,75 +1,111 @@
 package com.corebanking.entity;
 
+import com.corebanking.entity.enums.AccountCategory;
+import com.corebanking.entity.enums.AccountStatus;
+import com.corebanking.entity.enums.AccountType;
+import com.corebanking.entity.enums.UpdatedByType;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.math.BigDecimal;
-import java.time.*;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "accounts")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Accounts {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false)
-    private Long account_id;
+    @Column(name = "account_id", columnDefinition = "BINARY(16)", nullable = false)
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID accountId;
 
-    @Column(nullable = false)
-    private Long customer_id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_accounts_customer"))
+    private Customers customer;
 
-    @Column(nullable = false)
-    // Enum values: 
-    private String account_category;
+    @Column(name = "account_number", length = 34, nullable = false, unique = true)
+    private String accountNumber;
 
-    @Column(nullable = false)
-    // Enum values: 
-    private String account_type;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "account_category", nullable = false, length = 15)
+    private AccountCategory accountCategory = AccountCategory.RETAIL;
 
-    @Column(nullable = false)
-    private String account_number;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "account_type", nullable = false, length = 15)
+    private AccountType accountType = AccountType.SAVINGS;
 
-    @Column(nullable = false)
-    private String currency;
+    @Column(name = "is_joint_account", nullable = false)
+    private boolean isJointAccount = false;
 
-    @Column(nullable = false)
-    private BigDecimal current_balance;
+    @Column(name = "required_approvals", nullable = false)
+    private short requiredApprovals = 1;
 
-    @Column(nullable = false)
-    private BigDecimal available_balance;
+    @Column(name = "currency", length = 3, nullable = false)
+    private String currency = "MMK";
 
-    @Column(nullable = false)
-    private BigDecimal minimum_balance;
+    @Column(name = "current_balance", precision = 18, scale = 4, nullable = false)
+    private BigDecimal currentBalance = BigDecimal.ZERO;
 
-    @Column
-    private BigDecimal daily_transfer_limit;
+    @Column(name = "available_balance", precision = 18, scale = 4, nullable = false)
+    private BigDecimal availableBalance = BigDecimal.ZERO;
 
-    @Column(nullable = false)
-    // Enum values: 'ACTIVE'
-    private String status;
+    @Column(name = "minimum_balance", precision = 18, scale = 4, nullable = false)
+    private BigDecimal minimumBalance = BigDecimal.ZERO;
 
-    @Column(nullable = false)
-    private LocalDateTime opened_at;
+    @Column(name = "daily_transfer_limit", precision = 18, scale = 4)
+    private BigDecimal dailyTransferLimit;
 
-    @Column
-    private LocalDateTime closed_at;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 10)
+    private AccountStatus status = AccountStatus.ACTIVE;
 
-    @Column(nullable = false)
-    private Long created_by_staff_id;
+    @Column(name = "opened_at", nullable = false)
+    private LocalDateTime openedAt;
 
-    @Column(nullable = false)
-    private LocalDateTime created_at;
+    @Column(name = "closed_at")
+    private LocalDateTime closedAt;
 
-    @Column
-    // Enum values: NULL
-    private String updated_by_type;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_staff_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_accounts_created_by_staff"))
+    private StaffUsers createdByStaff;
 
-    @Column
-    private Long updated_by_id;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-    @Column(nullable = false)
-    private LocalDateTime updated_at;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "updated_by_type", length = 10)
+    private UpdatedByType updatedByType;
 
-    @Column
-    private LocalDateTime deleted_at;
+    @Column(name = "updated_by_id", columnDefinition = "BINARY(16)")
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID updatedById;
 
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (accountId == null) accountId = UUID.randomUUID();
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (openedAt == null) openedAt = LocalDateTime.now();
+        if (updatedAt == null) updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

@@ -10,18 +10,18 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "audit_logs")
+@Table(name = "activity_logs")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AuditLogs {
+public class ActivityLogs {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "audit_id", nullable = false)
-    private Long auditId;
+    @Column(name = "activity_id", nullable = false)
+    private Long activityId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "actor_type", nullable = false, length = 10)
@@ -29,42 +29,31 @@ public class AuditLogs {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "actor_customer_id",
-            foreignKey = @ForeignKey(name = "fk_audit_customer"))
+            foreignKey = @ForeignKey(name = "fk_activity_customer"))
     private Customers actorCustomer;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "actor_staff_id",
-            foreignKey = @ForeignKey(name = "fk_audit_staff"))
+            foreignKey = @ForeignKey(name = "fk_activity_staff"))
     private StaffUsers actorStaff;
 
-    @Column(name = "action_type", length = 100, nullable = false)
-    private String actionType;
+    @Column(name = "action_category", length = 50, nullable = false)
+    private String actionCategory;
 
-    @Column(name = "entity_type", length = 64, nullable = false)
-    private String entityType;
+    @Column(name = "action_name", length = 100, nullable = false)
+    private String actionName;
 
-    @Column(name = "entity_id", length = 64)
-    private String entityId;
+    @Column(name = "description", length = 500)
+    private String description;
 
-    @Column(name = "old_values", columnDefinition = "JSON")
-    private String oldValues;
+    @Column(name = "request_url", length = 255)
+    private String requestUrl;
 
-    @Column(name = "new_values", columnDefinition = "JSON")
-    private String newValues;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "transaction_id",
-            foreignKey = @ForeignKey(name = "fk_audit_transaction"))
-    private BankTransactions transaction;
-
-    @Column(name = "ip_address", length = 45)
+    @Column(name = "ip_address", length = 45, nullable = false)
     private String ipAddress;
 
     @Column(name = "user_agent", length = 255)
     private String userAgent;
-
-    @Column(name = "request_id", length = 64)
-    private String requestId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

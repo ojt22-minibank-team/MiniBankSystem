@@ -1,40 +1,81 @@
 package com.corebanking.entity;
 
+import com.corebanking.entity.enums.CustomerStatus;
+import com.corebanking.entity.enums.CustomerType;
+import com.corebanking.entity.enums.UpdatedByType;
 import jakarta.persistence.*;
 import lombok.*;
-import java.math.BigDecimal;
-import java.time.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "customers")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Customers {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false)
-    private Long customer_id;
+    @Column(name = "customer_id", columnDefinition = "BINARY(16)", nullable = false)
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID customerId;
 
-    @Column(nullable = false)
-    // Enum values: 
-    private String customer_type;
+    @Column(name = "customer_code", length = 32, nullable = false, unique = true)
+    private String customerCode;
 
-    @Column(nullable = false)
-    // Enum values: 'ACTIVE'
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "customer_type", nullable = false, length = 10)
+    private CustomerType customerType;
 
-    @Column
-    private Long created_by;
+    @Column(name = "full_name", length = 150, nullable = false)
+    private String fullName;
 
-    @Column(nullable = false)
-    private LocalDateTime created_at;
+    @Column(name = "email", length = 191)
+    private String email;
 
-    @Column
-    private Long updated_by;
+    @Column(name = "phone", length = 32)
+    private String phone;
 
-    @Column(nullable = false)
-    private LocalDateTime updated_at;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 10)
+    private CustomerStatus status = CustomerStatus.ACTIVE;
 
-    @Column
-    private LocalDateTime deleted_at;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by", referencedColumnName = "staff_id",
+            foreignKey = @ForeignKey(name = "fk_customers_created_by_staff"))
+    private StaffUsers createdBy;
 
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "updated_by_type", length = 10)
+    private UpdatedByType updatedByType;
+
+    @Column(name = "updated_by_id", columnDefinition = "BINARY(16)")
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID updatedById;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (updatedAt == null) updatedAt = LocalDateTime.now();
+        if (customerId == null) customerId = UUID.randomUUID();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

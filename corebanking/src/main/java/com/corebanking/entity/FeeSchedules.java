@@ -1,65 +1,90 @@
 package com.corebanking.entity;
 
+import com.corebanking.entity.enums.FeeType;
+import com.corebanking.entity.enums.TransactionType;
+import com.corebanking.entity.enums.UpdatedByType;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.math.BigDecimal;
-import java.time.*;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "fee_schedules")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class FeeSchedules {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false)
-    private Long fee_schedule_id;
+    @Column(name = "fee_schedule_id", nullable = false)
+    private Integer feeScheduleId;
 
-    @Column(nullable = false)
-    private String fee_code;
+    @Column(name = "fee_code", length = 32, nullable = false, unique = true)
+    private String feeCode;
 
-    @Column(nullable = false)
-    // Enum values: 
-    private String transaction_type;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "transaction_type", nullable = false, length = 25)
+    private TransactionType transactionType;
 
-    @Column(nullable = false)
-    // Enum values: 
-    private String fee_type;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "fee_type", nullable = false, length = 15)
+    private FeeType feeType;
 
-    @Column(nullable = false)
-    private BigDecimal fee_value;
+    @Column(name = "fee_value", precision = 18, scale = 4, nullable = false)
+    private BigDecimal feeValue;
 
-    @Column
-    private BigDecimal minimum_fee;
+    @Column(name = "minimum_fee", precision = 18, scale = 4)
+    private BigDecimal minimumFee;
 
-    @Column
-    private BigDecimal maximum_fee;
+    @Column(name = "maximum_fee", precision = 18, scale = 4)
+    private BigDecimal maximumFee;
 
-    @Column(nullable = false)
-    private String currency;
+    @Column(name = "currency", length = 3, nullable = false)
+    private String currency = "MMK";
 
-    @Column(nullable = false)
-    private LocalDateTime active_from;
+    @Column(name = "active_from", nullable = false)
+    private LocalDateTime activeFrom;
 
-    @Column
-    private LocalDateTime active_until;
+    @Column(name = "active_until")
+    private LocalDateTime activeUntil;
 
-    @Column(nullable = false)
-    private Boolean is_active;
+    @Column(name = "is_active", nullable = false)
+    private boolean isActive = true;
 
-    @Column
-    private Long created_by_staff_id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_staff_id",
+            foreignKey = @ForeignKey(name = "fk_fee_created_staff"))
+    private StaffUsers createdByStaff;
 
-    @Column(nullable = false)
-    private LocalDateTime created_at;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-    @Column
-    // Enum values: NULL
-    private String updated_by_type;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "updated_by_type", length = 10)
+    private UpdatedByType updatedByType;
 
-    @Column
-    private Long updated_by_id;
+    @Column(name = "updated_by_id", columnDefinition = "BINARY(16)")
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID updatedById;
 
-    @Column(nullable = false)
-    private LocalDateTime updated_at;
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (updatedAt == null) updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

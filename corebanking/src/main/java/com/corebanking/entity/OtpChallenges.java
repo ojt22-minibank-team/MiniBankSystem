@@ -1,78 +1,105 @@
 package com.corebanking.entity;
 
+import com.corebanking.entity.enums.DeliveryChannel;
+import com.corebanking.entity.enums.OtpPurpose;
+import com.corebanking.entity.enums.OtpStatus;
+import com.corebanking.entity.enums.UpdatedByType;
 import jakarta.persistence.*;
 import lombok.*;
-import java.math.BigDecimal;
-import java.time.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "otp_challenges")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class OtpChallenges {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false)
-    private Long otp_id;
+    @Column(name = "otp_id", nullable = false)
+    private Long otpId;
 
-    @Column(nullable = false)
-    private String challenge_group_id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_otp_customer"))
+    private Customers customer;
 
-    @Column(nullable = false)
-    private Long customer_id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "transaction_id",
+            foreignKey = @ForeignKey(name = "fk_otp_transaction"))
+    private BankTransactions transaction;
 
-    @Column
-    private Long transaction_id;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "purpose", nullable = false, length = 20)
+    private OtpPurpose purpose;
 
-    @Column(nullable = false)
-    // Enum values: 
-    private String purpose;
+    @Column(name = "otp_hash", length = 255, nullable = false)
+    private String otpHash;
 
-    @Column(nullable = false)
-    private String otp_hash;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "delivery_channel", nullable = false, length = 10)
+    private DeliveryChannel deliveryChannel;
 
-    @Column(nullable = false)
-    // Enum values: 'EMAIL'
-    private String delivery_channel;
+    @Column(name = "destination_masked", length = 100)
+    private String destinationMasked;
 
-    @Column
-    private String destination_masked;
+    @Column(name = "attempt_count", nullable = false)
+    private int attemptCount = 0;
 
-    @Column(nullable = false)
-    private Integer attempt_count;
+    @Column(name = "max_attempts", nullable = false)
+    private int maxAttempts = 3;
 
-    @Column(nullable = false)
-    private Integer max_attempts;
+    @Column(name = "expires_at", nullable = false)
+    private LocalDateTime expiresAt;
 
-    @Column(nullable = false)
-    private Integer resend_no;
+    @Column(name = "consumed_at")
+    private LocalDateTime consumedAt;
 
-    @Column(nullable = false)
-    private Integer max_resend_attempts;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 10)
+    private OtpStatus status = OtpStatus.ACTIVE;
 
-    @Column(nullable = false)
-    private LocalDateTime expires_at;
+    @Column(name = "challenge_group_id", length = 64, nullable = false)
+    private String challengeGroupId;
 
-    @Column
-    private LocalDateTime consumed_at;
+    @Column(name = "last_sent_at")
+    private LocalDateTime lastSentAt;
 
-    @Column(nullable = false)
-    // Enum values: 'PENDING'
-    private String status;
+    @Column(name = "max_resend_attempts", nullable = false)
+    private int maxResendAttempts = 3;
 
-    @Column(nullable = false)
-    private LocalDateTime created_at;
+    @Column(name = "resend_no", nullable = false)
+    private int resendNo = 0;
 
-    @Column
-    private LocalDateTime last_sent_at;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-    @Column
-    // Enum values: NULL
-    private String updated_by_type;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "updated_by_type", length = 10)
+    private UpdatedByType updatedByType;
 
-    @Column
-    private Long updated_by_id;
+    @Column(name = "updated_by_id", columnDefinition = "BINARY(16)")
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID updatedById;
 
-    @Column(nullable = false)
-    private LocalDateTime updated_at;
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (updatedAt == null) updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

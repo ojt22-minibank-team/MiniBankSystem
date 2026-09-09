@@ -1,70 +1,92 @@
 package com.corebanking.entity;
 
+import com.corebanking.entity.enums.StaffUserStatus;
+import com.corebanking.entity.enums.UpdatedByType;
 import jakarta.persistence.*;
 import lombok.*;
-import java.math.BigDecimal;
-import java.time.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "staff_users")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class StaffUsers {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false)
-    private Long staff_id;
+    @Column(name = "staff_id", columnDefinition = "BINARY(16)", nullable = false)
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID staffId;
 
-    @Column(nullable = false)
-    private String staff_no;
+    @Column(name = "staff_no", length = 32, nullable = false, unique = true)
+    private String staffNo;
 
-    @Column(nullable = false)
+    @Column(name = "username", length = 64, nullable = false, unique = true)
     private String username;
 
-    @Column(nullable = false)
-    private String full_name;
+    @Column(name = "full_name", length = 150, nullable = false)
+    private String fullName;
 
-    @Column
+    @Column(name = "email", length = 191)
     private String email;
 
-    @Column
+    @Column(name = "phone", length = 32)
     private String phone;
 
-    @Column(nullable = false)
-    private String password_hash;
+    @Column(name = "password_hash", length = 255, nullable = false)
+    private String passwordHash;
 
-    @Column(nullable = false)
-    private Boolean must_change_password;
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword = true;
 
-    @Column
-    private LocalDateTime password_changed_at;
+    @Column(name = "password_changed_at")
+    private LocalDateTime passwordChangedAt;
 
-    @Column(nullable = false)
-    // Enum values: 'ACTIVE'
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private StaffUserStatus status = StaffUserStatus.ACTIVE;
 
-    @Column(nullable = false)
-    private Integer failed_login_count;
+    @Column(name = "failed_login_count", nullable = false)
+    private int failedLoginCount = 0;
 
-    @Column
-    private LocalDateTime locked_until;
+    @Column(name = "locked_until")
+    private LocalDateTime lockedUntil;
 
-    @Column
-    private LocalDateTime last_login_at;
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
 
-    @Column(nullable = false)
-    private Integer token_version;
+    @Column(name = "token_version", nullable = false)
+    private long tokenVersion = 1L;
 
-    @Column(nullable = false)
-    private LocalDateTime created_at;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-    @Column
-    // Enum values: NULL
-    private String updated_by_type;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "updated_by_type", length = 10)
+    private UpdatedByType updatedByType;
 
-    @Column
-    private Long updated_by_id;
+    @Column(name = "updated_by_id", columnDefinition = "BINARY(16)")
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID updatedById;
 
-    @Column(nullable = false)
-    private LocalDateTime updated_at;
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (updatedAt == null) updatedAt = LocalDateTime.now();
+        if (staffId == null) staffId = UUID.randomUUID();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

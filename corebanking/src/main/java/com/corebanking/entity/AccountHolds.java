@@ -1,59 +1,87 @@
 package com.corebanking.entity;
 
+import com.corebanking.entity.enums.HoldStatus;
+import com.corebanking.entity.enums.HoldType;
+import com.corebanking.entity.enums.UpdatedByType;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.math.BigDecimal;
-import java.time.*;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "account_holds")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class AccountHolds {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false)
-    private Long hold_id;
+    @Column(name = "hold_id", columnDefinition = "BINARY(16)", nullable = false)
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID holdId;
 
-    @Column(nullable = false)
-    private String hold_ref;
+    @Column(name = "hold_ref", length = 64, nullable = false, unique = true)
+    private String holdRef;
 
-    @Column(nullable = false)
-    private Long account_id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "account_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_account_holds_account"))
+    private Accounts account;
 
-    @Column
-    private Long transaction_id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "transaction_id",
+            foreignKey = @ForeignKey(name = "fk_account_holds_transaction"))
+    private BankTransactions transaction;
 
-    @Column(nullable = false)
-    // Enum values: 
-    private String hold_type;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "hold_type", nullable = false, length = 20)
+    private HoldType holdType;
 
-    @Column(nullable = false)
+    @Column(name = "amount", precision = 18, scale = 4, nullable = false)
     private BigDecimal amount;
 
-    @Column(nullable = false)
-    // Enum values: 'ACTIVE'
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 10)
+    private HoldStatus status = HoldStatus.ACTIVE;
 
-    @Column
+    @Column(name = "reason", length = 255)
     private String reason;
 
-    @Column(nullable = false)
-    private LocalDateTime created_at;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-    @Column
-    private LocalDateTime expires_at;
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
 
-    @Column
-    private LocalDateTime released_at;
+    @Column(name = "released_at")
+    private LocalDateTime releasedAt;
 
-    @Column
-    // Enum values: NULL
-    private String updated_by_type;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "updated_by_type", length = 10)
+    private UpdatedByType updatedByType;
 
-    @Column
-    private Long updated_by_id;
+    @Column(name = "updated_by_id", columnDefinition = "BINARY(16)")
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID updatedById;
 
-    @Column(nullable = false)
-    private LocalDateTime updated_at;
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
+    @PrePersist
+    protected void onCreate() {
+        if (holdId == null) holdId = UUID.randomUUID();
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (updatedAt == null) updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
