@@ -23,8 +23,8 @@ public class StaffUserRoles {
     @Column(name = "staff_id", nullable = false)
     private Long staff_id;
 
-    @Column(name = "role_id", nullable = false,columnDefinition = "INT UNSIGNED")
-    private Integer role_id;
+    @Column(name = "role_id", nullable = false, columnDefinition = "INT UNSIGNED")
+    private Long role_id;
 
     @Column(name = "assigned_by_staff_id")
     private Long assigned_by_staff_id;

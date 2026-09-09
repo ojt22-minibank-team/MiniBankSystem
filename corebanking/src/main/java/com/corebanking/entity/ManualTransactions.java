@@ -6,22 +6,35 @@ import java.math.BigDecimal;
 import java.time.*;
 
 @Entity
-@Table(name = "permissions")
+@Table(name = "manual_transactions")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
-public class Permissions {
+public class ManualTransactions {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false, columnDefinition = "INT UNSIGNED")
-    private Long permission_id;
+    @Column(nullable = false)
+    private Long manual_transaction_id;
 
     @Column(nullable = false)
-    private String permission_code;
+    private Long transaction_id;
 
     @Column(nullable = false)
-    private String permission_name;
+    private Long account_id;
 
-    @Column
-    private String description;
+    @Column(nullable = false)
+    private Long staff_id;
+
+    @Column(nullable = false)
+    // Enum values: 
+    private String operation_type;
+
+    @Column(nullable = false)
+    private BigDecimal amount;
+
+    @Column(nullable = false)
+    private String reference_id;
+
+    @Column(nullable = false)
+    private String audit_note;
 
     @Column(nullable = false)
     private LocalDateTime created_at;

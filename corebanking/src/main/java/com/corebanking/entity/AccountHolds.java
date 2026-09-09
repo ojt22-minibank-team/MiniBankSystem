@@ -6,25 +6,45 @@ import java.math.BigDecimal;
 import java.time.*;
 
 @Entity
-@Table(name = "permissions")
+@Table(name = "account_holds")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
-public class Permissions {
+public class AccountHolds {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false, columnDefinition = "INT UNSIGNED")
-    private Long permission_id;
+    @Column(nullable = false)
+    private Long hold_id;
 
     @Column(nullable = false)
-    private String permission_code;
+    private String hold_ref;
 
     @Column(nullable = false)
-    private String permission_name;
+    private Long account_id;
 
     @Column
-    private String description;
+    private Long transaction_id;
+
+    @Column(nullable = false)
+    // Enum values: 
+    private String hold_type;
+
+    @Column(nullable = false)
+    private BigDecimal amount;
+
+    @Column(nullable = false)
+    // Enum values: 'ACTIVE'
+    private String status;
+
+    @Column
+    private String reason;
 
     @Column(nullable = false)
     private LocalDateTime created_at;
+
+    @Column
+    private LocalDateTime expires_at;
+
+    @Column
+    private LocalDateTime released_at;
 
     @Column
     // Enum values: NULL

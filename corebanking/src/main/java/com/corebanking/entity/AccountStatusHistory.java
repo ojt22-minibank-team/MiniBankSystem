@@ -2,35 +2,37 @@ package com.corebanking.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-
+import java.math.BigDecimal;
 import java.time.*;
 
 @Entity
-@Table(name = "roles")
-@Getter 
-@Setter 
-@NoArgsConstructor 
-@AllArgsConstructor
-public class Roles {
+@Table(name = "account_status_history")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+public class AccountStatusHistory {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false, columnDefinition = "INT UNSIGNED")
-    private Long role_id;
+    @Column(nullable = false)
+    private Long history_id;
 
     @Column(nullable = false)
-    private String role_code;
-
-    @Column(nullable = false)
-    private String role_name;
+    private Long account_id;
 
     @Column
-    private String description;
+    // Enum values: NULL
+    private String old_status;
 
     @Column(nullable = false)
-    private Boolean is_system_role;
+    // Enum values: 
+    private String new_status;
+
+    @Column
+    private String reason;
+
+    @Column
+    private Long changed_by_staff_id;
 
     @Column(nullable = false)
-    private LocalDateTime created_at;
+    private LocalDateTime changed_at;
 
     @Column
     // Enum values: NULL

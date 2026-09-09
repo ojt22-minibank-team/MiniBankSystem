@@ -2,32 +2,29 @@ package com.corebanking.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-
+import java.math.BigDecimal;
 import java.time.*;
 
 @Entity
-@Table(name = "roles")
-@Getter 
-@Setter 
-@NoArgsConstructor 
-@AllArgsConstructor
-public class Roles {
+@Table(name = "beneficiaries")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+public class Beneficiaries {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false, columnDefinition = "INT UNSIGNED")
-    private Long role_id;
+    @Column(nullable = false)
+    private Long beneficiary_id;
 
     @Column(nullable = false)
-    private String role_code;
+    private Long owner_account_id;
 
     @Column(nullable = false)
-    private String role_name;
+    private Long beneficiary_account_id;
 
     @Column
-    private String description;
+    private String nickname;
 
     @Column(nullable = false)
-    private Boolean is_system_role;
+    private Boolean is_active;
 
     @Column(nullable = false)
     private LocalDateTime created_at;

@@ -17,9 +17,9 @@ import java.io.Serializable;
 @EqualsAndHashCode
 public class RolePermissionId implements Serializable {
 	private static final long serialVersionUID = 1L;
-    @Column(name = "role_id", nullable = false,columnDefinition = "INT UNSIGNED")
-    private Integer roleId;
+    @Column(name = "role_id", nullable = false, columnDefinition = "INT UNSIGNED")
+    private Long roleId;
 
-    @Column(name = "permission_id", nullable = false,columnDefinition = "INT UNSIGNED")
-    private Integer permissionId;
+    @Column(name = "permission_id", nullable = false, columnDefinition = "INT UNSIGNED")
+    private Long permissionId;
 }

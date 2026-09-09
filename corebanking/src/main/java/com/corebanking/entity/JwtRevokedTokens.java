@@ -2,35 +2,39 @@ package com.corebanking.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-
+import java.math.BigDecimal;
 import java.time.*;
 
 @Entity
-@Table(name = "roles")
-@Getter 
-@Setter 
-@NoArgsConstructor 
-@AllArgsConstructor
-public class Roles {
+@Table(name = "jwt_revoked_tokens")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+public class JwtRevokedTokens {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false, columnDefinition = "INT UNSIGNED")
-    private Long role_id;
+    @Column(nullable = false)
+    private Long revocation_id;
 
     @Column(nullable = false)
-    private String role_code;
+    private String jti;
 
     @Column(nullable = false)
-    private String role_name;
+    // Enum values: 
+    private String subject_type;
 
     @Column
-    private String description;
+    private Long customer_id;
+
+    @Column
+    private Long staff_id;
 
     @Column(nullable = false)
-    private Boolean is_system_role;
+    private LocalDateTime token_expires_at;
 
     @Column(nullable = false)
-    private LocalDateTime created_at;
+    private LocalDateTime revoked_at;
+
+    @Column
+    private String reason;
 
     @Column
     // Enum values: NULL
