@@ -11,7 +11,7 @@ import java.time.*;
 public class Permissions {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false)
+    @Column(nullable = false,columnDefinition = "INT UNSIGNED")
     private Integer permission_id;
 
     @Column(nullable = false)
