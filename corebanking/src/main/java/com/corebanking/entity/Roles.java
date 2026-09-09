@@ -1,45 +1,62 @@
 package com.corebanking.entity;
 
+import com.corebanking.entity.enums.UpdatedByType;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
-import java.time.*;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "roles")
-@Getter 
-@Setter 
-@NoArgsConstructor 
+@Getter
+@Setter
+@NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Roles {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false, columnDefinition = "INT UNSIGNED")
-    private Long role_id;
+    @Column(name = "role_id", nullable = false)
+    private Integer roleId;
 
-    @Column(nullable = false)
-    private String role_code;
+    @Column(name = "role_code", length = 32, nullable = false, unique = true)
+    private String roleCode;
 
-    @Column(nullable = false)
-    private String role_name;
+    @Column(name = "role_name", length = 64, nullable = false)
+    private String roleName;
 
-    @Column
+    @Column(name = "description", length = 255)
     private String description;
 
-    @Column(nullable = false)
-    private Boolean is_system_role;
+    @Column(name = "is_system_role", nullable = false)
+    private boolean isSystemRole = true;
 
-    @Column(nullable = false)
-    private LocalDateTime created_at;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-    @Column
-    // Enum values: NULL
-    private String updated_by_type;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "updated_by_type", length = 10)
+    private UpdatedByType updatedByType;
 
-    @Column
-    private Long updated_by_id;
+    @Column(name = "updated_by_id", columnDefinition = "BINARY(16)")
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID updatedById;
 
-    @Column(nullable = false)
-    private LocalDateTime updated_at;
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (updatedAt == null) updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

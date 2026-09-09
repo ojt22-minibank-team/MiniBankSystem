@@ -1,43 +1,79 @@
 package com.corebanking.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import com.corebanking.entity.enums.UpdatedByType;
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "staff_user_roles")
+@IdClass(StaffUserRoles.StaffUserRoleId.class)
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class StaffUserRoles {
 
+    @lombok.Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class StaffUserRoleId implements Serializable {
+        private UUID staffId;
+        private Integer roleId;
+    }
+
     @Id
-    @Column(name = "staff_id", nullable = false)
-    private Long staff_id;
+    @Column(name = "staff_id", columnDefinition = "BINARY(16)", nullable = false)
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID staffId;
 
-    @Column(name = "role_id", nullable = false, columnDefinition = "INT UNSIGNED")
-    private Long role_id;
+    @Id
+    @Column(name = "role_id", nullable = false)
+    private Integer roleId;
 
-    @Column(name = "assigned_by_staff_id")
-    private Long assigned_by_staff_id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "staff_id", insertable = false, updatable = false,
+            foreignKey = @ForeignKey(name = "fk_staff_roles_staff"))
+    private StaffUsers staff;
 
-    @Column(name = "assigned_at", nullable = false)
-    private LocalDateTime assigned_at;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "role_id", insertable = false, updatable = false,
+            foreignKey = @ForeignKey(name = "fk_staff_roles_role"))
+    private Roles role;
 
-    @Column(name = "updated_by_type")
-    private String updated_by_type;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_by_staff_id",
+            foreignKey = @ForeignKey(name = "fk_staff_roles_assigned_by"))
+    private StaffUsers assignedByStaff;
 
-    @Column(name = "updated_by_id")
-    private Long updated_by_id;
+    @Column(name = "assigned_at", nullable = false, updatable = false)
+    private LocalDateTime assignedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "updated_by_type", length = 10)
+    private UpdatedByType updatedByType;
+
+    @Column(name = "updated_by_id", columnDefinition = "BINARY(16)")
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID updatedById;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updated_at;
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (assignedAt == null) assignedAt = LocalDateTime.now();
+        if (updatedAt == null) updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

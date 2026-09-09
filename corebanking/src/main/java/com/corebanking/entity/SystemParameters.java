@@ -1,39 +1,60 @@
 package com.corebanking.entity;
 
+import com.corebanking.entity.enums.UpdatedByType;
 import jakarta.persistence.*;
 import lombok.*;
-import java.math.BigDecimal;
-import java.time.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "system_parameters")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class SystemParameters {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false)
-    private Long parameter_id;
+    @Column(name = "parameter_id", nullable = false)
+    private Integer parameterId;
 
-    @Column(nullable = false)
-    private String parameter_key;
+    @Column(name = "parameter_key", length = 64, nullable = false, unique = true)
+    private String parameterKey;
 
-    @Column(nullable = false)
-    private String parameter_value;
+    @Column(name = "parameter_value", length = 255, nullable = false)
+    private String parameterValue;
 
-    @Column
+    @Column(name = "description", length = 255)
     private String description;
 
-    @Column
-    private Long updated_by_staff_id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by_staff_id",
+            foreignKey = @ForeignKey(name = "fk_system_parameter_staff"))
+    private StaffUsers updatedByStaff;
 
-    @Column
-    // Enum values: NULL
-    private String updated_by_type;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "updated_by_type", length = 10)
+    private UpdatedByType updatedByType;
 
-    @Column
-    private Long updated_by_id;
+    @Column(name = "updated_by_id", columnDefinition = "BINARY(16)")
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID updatedById;
 
-    @Column(nullable = false)
-    private LocalDateTime updated_at;
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
+    @PrePersist
+    protected void onCreate() {
+        if (updatedAt == null) updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

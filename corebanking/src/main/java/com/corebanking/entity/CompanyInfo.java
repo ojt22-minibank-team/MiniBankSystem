@@ -2,64 +2,76 @@ package com.corebanking.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.*;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "company_info")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class CompanyInfo {
 
     @Id
-    @Column(nullable = false)
-    private Long customer_id; // Primary Key အဖြစ် သတ်မှတ်လိုက်ပါပြီ
+    @Column(name = "customer_id", columnDefinition = "BINARY(16)", nullable = false)
+    private java.util.UUID customerId;
 
-    @Column(nullable = false)
-    private String company_name;
+    @OneToOne(fetch = FetchType.LAZY)
+    @MapsId
+    @JoinColumn(name = "customer_id",
+            foreignKey = @ForeignKey(name = "fk_company_info_customer"))
+    private Customers customer;
 
-    @Column(nullable = false)
-    private String registration_number;
+    @Column(name = "company_name", length = 200, nullable = false)
+    private String companyName;
 
-    // အောက်ဘက်တွင် ကျန်ရှိသော Variable များ အတိုင်း ဆက်ထားပါ...
-    @Column
-    private String tax_id;
+    @Column(name = "registration_number", length = 100, nullable = false, unique = true)
+    private String registrationNumber;
 
-    @Column
-    private String business_type;
+    @Column(name = "tax_id", length = 100, unique = true)
+    private String taxId;
 
-    @Column
-    private LocalDate incorporation_date;
+    @Column(name = "business_type", length = 100)
+    private String businessType;
 
-    @Column
-    private String company_phone;
+    @Column(name = "incorporation_date")
+    private LocalDate incorporationDate;
 
-    @Column
-    private String company_email;
+    @Column(name = "company_phone", length = 32)
+    private String companyPhone;
 
-    @Column
+    @Column(name = "company_email", length = 191)
+    private String companyEmail;
+
+    @Column(name = "address", length = 255)
     private String address;
 
-    @Column
+    @Column(name = "city", length = 100)
     private String city;
 
-    @Column
-    private String state_region;
+    @Column(name = "state_region", length = 100)
+    private String stateRegion;
 
-    @Column(nullable = false)
-    private String country;
+    @Column(name = "country", length = 64, nullable = false)
+    private String country = "Myanmar";
 
-    @Column
-    private String contact_person_name;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-    @Column
-    private String contact_person_phone;
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
-    @Column
-    private String contact_person_position;
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (updatedAt == null) updatedAt = LocalDateTime.now();
+    }
 
-    @Column(nullable = false)
-    private LocalDateTime created_at;
-
-    @Column(nullable = false)
-    private LocalDateTime updated_at;
-
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

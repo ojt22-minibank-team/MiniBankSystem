@@ -1,70 +1,97 @@
 package com.corebanking.entity;
 
+import com.corebanking.entity.enums.SessionSubjectType;
+import com.corebanking.entity.enums.UpdatedByType;
 import jakarta.persistence.*;
 import lombok.*;
-import java.math.BigDecimal;
-import java.time.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "auth_sessions")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class AuthSessions {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false)
-    private Long session_id;
+    @Column(name = "session_id", columnDefinition = "BINARY(16)", nullable = false)
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID sessionId;
 
-    @Column(nullable = false)
-    private String session_uuid;
+    @Column(name = "session_uuid", length = 36, nullable = false, unique = true)
+    private String sessionUuid;
 
-    @Column(nullable = false)
-    // Enum values: 
-    private String subject_type;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "subject_type", nullable = false, length = 10)
+    private SessionSubjectType subjectType;
 
-    @Column
-    private Long customer_id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id",
+            foreignKey = @ForeignKey(name = "fk_auth_sessions_customer"))
+    private Customers customer;
 
-    @Column
-    private Long staff_id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "staff_id",
+            foreignKey = @ForeignKey(name = "fk_auth_sessions_staff"))
+    private StaffUsers staff;
 
-    @Column(nullable = false)
-    private String refresh_token_hash;
+    @Column(name = "refresh_token_hash", length = 255, nullable = false, unique = true)
+    private String refreshTokenHash;
 
-    @Column(nullable = false)
-    private Integer token_version_at_issue;
+    @Column(name = "token_version_at_issue", nullable = false)
+    private long tokenVersionAtIssue;
 
-    @Column(nullable = false)
-    private LocalDateTime issued_at;
+    @Column(name = "issued_at", nullable = false)
+    private LocalDateTime issuedAt;
 
-    @Column(nullable = false)
-    private LocalDateTime last_seen_at;
+    @Column(name = "last_seen_at", nullable = false)
+    private LocalDateTime lastSeenAt;
 
-    @Column(nullable = false)
-    private LocalDateTime refresh_expires_at;
+    @Column(name = "refresh_expires_at", nullable = false)
+    private LocalDateTime refreshExpiresAt;
 
-    @Column(nullable = false)
-    private Integer idle_timeout_minutes;
+    @Column(name = "idle_timeout_minutes", nullable = false)
+    private int idleTimeoutMinutes = 15;
 
-    @Column
-    private LocalDateTime revoked_at;
+    @Column(name = "revoked_at")
+    private LocalDateTime revokedAt;
 
-    @Column
-    private String revoke_reason;
+    @Column(name = "revoke_reason", length = 255)
+    private String revokeReason;
 
-    @Column
-    private String ip_address;
+    @Column(name = "ip_address", length = 45)
+    private String ipAddress;
 
-    @Column
-    private String user_agent;
+    @Column(name = "user_agent", length = 255)
+    private String userAgent;
 
-    @Column
-    // Enum values: NULL
-    private String updated_by_type;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "updated_by_type", length = 10)
+    private UpdatedByType updatedByType;
 
-    @Column
-    private Long updated_by_id;
+    @Column(name = "updated_by_id", columnDefinition = "BINARY(16)")
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID updatedById;
 
-    @Column(nullable = false)
-    private LocalDateTime updated_at;
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
+    @PrePersist
+    protected void onCreate() {
+        if (sessionId == null) sessionId = UUID.randomUUID();
+        if (issuedAt == null) issuedAt = LocalDateTime.now();
+        if (lastSeenAt == null) lastSeenAt = LocalDateTime.now();
+        if (updatedAt == null) updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

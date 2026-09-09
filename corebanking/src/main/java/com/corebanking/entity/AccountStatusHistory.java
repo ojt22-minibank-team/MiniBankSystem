@@ -1,47 +1,69 @@
 package com.corebanking.entity;
 
+import com.corebanking.entity.enums.UpdatedByType;
 import jakarta.persistence.*;
 import lombok.*;
-import java.math.BigDecimal;
-import java.time.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "account_status_history")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class AccountStatusHistory {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false)
-    private Long history_id;
+    @Column(name = "history_id", nullable = false)
+    private Long historyId;
 
-    @Column(nullable = false)
-    private Long account_id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "account_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_account_status_history_account"))
+    private Accounts account;
 
-    @Column
-    // Enum values: NULL
-    private String old_status;
+    @Column(name = "old_status", length = 32)
+    private String oldStatus;
 
-    @Column(nullable = false)
-    // Enum values: 
-    private String new_status;
+    @Column(name = "new_status", length = 32, nullable = false)
+    private String newStatus;
 
-    @Column
+    @Column(name = "reason", length = 255)
     private String reason;
 
-    @Column
-    private Long changed_by_staff_id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "changed_by_staff_id",
+            foreignKey = @ForeignKey(name = "fk_account_status_history_staff"))
+    private StaffUsers changedByStaff;
 
-    @Column(nullable = false)
-    private LocalDateTime changed_at;
+    @Column(name = "changed_at", nullable = false, updatable = false)
+    private LocalDateTime changedAt;
 
-    @Column
-    // Enum values: NULL
-    private String updated_by_type;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "updated_by_type", length = 10)
+    private UpdatedByType updatedByType;
 
-    @Column
-    private Long updated_by_id;
+    @Column(name = "updated_by_id", columnDefinition = "BINARY(16)")
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID updatedById;
 
-    @Column(nullable = false)
-    private LocalDateTime updated_at;
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
+    @PrePersist
+    protected void onCreate() {
+        if (changedAt == null) changedAt = LocalDateTime.now();
+        if (updatedAt == null) updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

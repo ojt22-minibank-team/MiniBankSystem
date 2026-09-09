@@ -1,57 +1,82 @@
 package com.corebanking.entity;
 
+import com.corebanking.entity.enums.AccountClass;
+import com.corebanking.entity.enums.LedgerAccountStatus;
+import com.corebanking.entity.enums.LedgerScope;
+import com.corebanking.entity.enums.UpdatedByType;
 import jakarta.persistence.*;
 import lombok.*;
-import java.math.BigDecimal;
-import java.time.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "ledger_accounts")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class LedgerAccounts {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false)
-    private Long ledger_account_id;
+    @Column(name = "ledger_account_id", nullable = false)
+    private Integer ledgerAccountId;
 
-    @Column(nullable = false)
-    private String ledger_code;
+    @Column(name = "ledger_code", length = 32, nullable = false, unique = true)
+    private String ledgerCode;
 
-    @Column(nullable = false)
-    private String ledger_name;
+    @Column(name = "ledger_name", length = 150, nullable = false)
+    private String ledgerName;
 
-    @Column(nullable = false)
-    // Enum values: 
-    private String ledger_scope;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ledger_scope", nullable = false, length = 15)
+    private LedgerScope ledgerScope = LedgerScope.INTERNAL;
 
-    @Column(nullable = false)
-    // Enum values: 
-    private String account_class;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "account_class", nullable = false, length = 15)
+    private AccountClass accountClass;
 
-    @Column(nullable = false)
-    private String currency;
+    @Column(name = "currency", length = 3, nullable = false)
+    private String currency = "MMK";
 
-    @Column
-    private Long customer_account_id;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_account_id", unique = true,
+            foreignKey = @ForeignKey(name = "fk_ledger_customer_account"))
+    private Accounts customerAccount;
 
-    @Column
-    private String system_key;
+    @Column(name = "system_key", length = 64, unique = true)
+    private String systemKey;
 
-    @Column(nullable = false)
-    // Enum values: 'ACTIVE'
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 15)
+    private LedgerAccountStatus status = LedgerAccountStatus.ACTIVE;
 
-    @Column(nullable = false)
-    private LocalDateTime created_at;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-    @Column
-    // Enum values: NULL
-    private String updated_by_type;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "updated_by_type", length = 10)
+    private UpdatedByType updatedByType;
 
-    @Column
-    private Long updated_by_id;
+    @Column(name = "updated_by_id", columnDefinition = "BINARY(16)")
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID updatedById;
 
-    @Column(nullable = false)
-    private LocalDateTime updated_at;
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (updatedAt == null) updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
