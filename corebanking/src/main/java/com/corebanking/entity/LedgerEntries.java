@@ -1,48 +1,65 @@
 package com.corebanking.entity;
 
+import com.corebanking.entity.enums.EntryType;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.math.BigDecimal;
-import java.time.*;
+import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "ledger_entries")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Table(name = "ledger_entries",
+        uniqueConstraints = @UniqueConstraint(name = "uk_ledger_transaction_line",
+                columnNames = {"transaction_id", "line_no"}))
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class LedgerEntries {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false)
-    private Long ledger_entry_id;
+    @Column(name = "ledger_entry_id", nullable = false)
+    private Long ledgerEntryId;
 
-    @Column(nullable = false)
-    private Long transaction_id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "transaction_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_ledger_entries_transaction"))
+    private BankTransactions transaction;
 
-    @Column(nullable = false)
-    private Integer line_no;
+    @Column(name = "line_no", nullable = false)
+    private int lineNo;
 
-    @Column(nullable = false)
-    private Long ledger_account_id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ledger_account_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_ledger_entries_account"))
+    private LedgerAccounts ledgerAccount;
 
-    @Column(nullable = false)
-    // Enum values: 
-    private String entry_type;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "entry_type", nullable = false, length = 10)
+    private EntryType entryType;
 
-    @Column(nullable = false)
+    @Column(name = "amount", precision = 18, scale = 4, nullable = false)
     private BigDecimal amount;
 
-    @Column(nullable = false)
-    private String currency;
+    @Column(name = "currency", length = 3, nullable = false)
+    private String currency = "MMK";
 
-    @Column
-    private BigDecimal balance_before;
+    @Column(name = "balance_before", precision = 18, scale = 4)
+    private BigDecimal balanceBefore;
 
-    @Column
-    private BigDecimal balance_after;
+    @Column(name = "balance_after", precision = 18, scale = 4)
+    private BigDecimal balanceAfter;
 
-    @Column
+    @Column(name = "narration", length = 255)
     private String narration;
 
-    @Column(nullable = false)
-    private LocalDateTime created_at;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+    }
 }

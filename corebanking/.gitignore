@@ -31,3 +31,46 @@ build/
 
 ### VS Code ###
 .vscode/
+/.apt_generated_tests/
+
+# Build outputs
+/target/
+/build/
+/out/
+*.class
+
+# Package files
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Logs
+*.log
+
+# Environment & Config overrides
+application-local.properties
+application-local.yml
+application-local.yaml
+
+# Editor & OS settings
+.idea/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.settings/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Maven / Gradle wrappers (cache/temp files)
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+!mvnw
+!mvnw.cmd
+/bin/
