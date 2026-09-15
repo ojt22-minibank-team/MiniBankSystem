@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import com.corebanking.dto.PaymentReceiptResponse;
 
 @RestController
 @RequestMapping("/api/v1/merchant-payment")
@@ -33,22 +34,24 @@ public class MerchantPaymentController {
     }
 
     @PostMapping("/authorize")
-    public ResponseEntity<Map<String, Object>> authorizePayment(@Valid @RequestBody MerchantPaymentRequest request) {
-        
+    public ResponseEntity<PaymentReceiptResponse> authorizePayment(@Valid @RequestBody MerchantPaymentRequest request) {
         
         // Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         // UUID customerId = UUID.fromString(authentication.getName());
         // request.setCustomerId(customerId);
         // -----------------------------------------------------------------------------------
         
-
         String ledgerReference = authorizationEngine.processPaymentAuthorization(request);
 
-        Map<String, Object> receipt = new LinkedHashMap<>();
-        receipt.put("success", true);
-        receipt.put("message", "Payment authorized successfully");
-        receipt.put("coreLedgerReference", ledgerReference);
-        receipt.put("paymentToken", request.getPaymentToken());
+        PaymentReceiptResponse receipt = PaymentReceiptResponse.builder()
+                .success(true)
+                .message("Payment authorized successfully")
+                .paymentToken(request.getPaymentToken())
+                .coreLedgerReference(ledgerReference)
+                .merchantAccountId(request.getMerchantAccountId())
+                .amount(request.getAmount())
+                .timestamp(java.time.LocalDateTime.now())
+                .build();
 
         return ResponseEntity.ok(receipt);
     }
