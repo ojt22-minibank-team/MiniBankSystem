@@ -1,6 +1,10 @@
 package com.corebanking.entity;
 
-import com.corebanking.entity.enums.*;
+import com.corebanking.entity.enums.InitiatedByType;
+import com.corebanking.entity.enums.TransactionChannel;
+import com.corebanking.entity.enums.TransactionStatus;
+import com.corebanking.entity.enums.TransactionType;
+import com.corebanking.entity.enums.UpdatedByType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -24,25 +28,23 @@ public class BankTransactions {
     @JdbcTypeCode(SqlTypes.BINARY)
     private UUID transactionId;
 
-    @Column(name = "transaction_ref", length = 64, nullable = false, unique = true)
+    @Column(name = "transaction_ref", nullable = false, length = 64, unique = true)
     private String transactionRef;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "transaction_type", nullable = false, length = 25)
+    @Column(name = "transaction_type", nullable = false)
     private TransactionType transactionType;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 25)
-    private TransactionStatus status = TransactionStatus.INITIATED;
+    @Column(name = "status", nullable = false)
+    private TransactionStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "source_account_id",
-            foreignKey = @ForeignKey(name = "fk_transactions_source"))
+    @JoinColumn(name = "source_account_id", foreignKey = @ForeignKey(name = "fk_transactions_source"))
     private Accounts sourceAccount;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "destination_account_id",
-            foreignKey = @ForeignKey(name = "fk_transactions_destination"))
+    @JoinColumn(name = "destination_account_id", foreignKey = @ForeignKey(name = "fk_transactions_destination"))
     private Accounts destinationAccount;
 
     @Column(name = "amount", precision = 18, scale = 4, nullable = false)
@@ -55,21 +57,19 @@ public class BankTransactions {
     private String currency = "MMK";
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "initiated_by_type", nullable = false, length = 10)
+    @Column(name = "initiated_by_type", nullable = false)
     private InitiatedByType initiatedByType;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "initiated_by_customer_id",
-            foreignKey = @ForeignKey(name = "fk_transactions_customer_actor"))
+    @JoinColumn(name = "initiated_by_customer_id", foreignKey = @ForeignKey(name = "fk_transactions_customer_actor"))
     private Customers initiatedByCustomer;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "initiated_by_staff_id",
-            foreignKey = @ForeignKey(name = "fk_transactions_staff_actor"))
+    @JoinColumn(name = "initiated_by_staff_id", foreignKey = @ForeignKey(name = "fk_transactions_staff_actor"))
     private StaffUsers initiatedByStaff;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "channel", nullable = false, length = 20)
+    @Column(name = "channel", nullable = false)
     private TransactionChannel channel;
 
     @Column(name = "external_reference", length = 128)
@@ -90,7 +90,7 @@ public class BankTransactions {
     @Column(name = "failure_message", length = 255)
     private String failureMessage;
 
-    @Column(name = "initiated_at", nullable = false, updatable = false)
+    @Column(name = "initiated_at", nullable = false)
     private LocalDateTime initiatedAt;
 
     @Column(name = "authorized_at")
@@ -103,7 +103,7 @@ public class BankTransactions {
     private LocalDateTime expiresAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "updated_by_type", length = 10)
+    @Column(name = "updated_by_type")
     private UpdatedByType updatedByType;
 
     @Column(name = "updated_by_id", columnDefinition = "BINARY(16)")
@@ -113,9 +113,12 @@ public class BankTransactions {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private Integer version = 0;
+
     @PrePersist
     protected void onCreate() {
-        if (transactionId == null) transactionId = UUID.randomUUID();
         if (initiatedAt == null) initiatedAt = LocalDateTime.now();
         if (updatedAt == null) updatedAt = LocalDateTime.now();
     }

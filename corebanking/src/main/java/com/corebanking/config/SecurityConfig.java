@@ -25,6 +25,12 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login").permitAll()
+                        
+                        // TODO: TEMPORARY BYPASS FOR MEMBER 5 TESTING (Remove when JWT is fully integrated)
+                        .requestMatchers("/api/v1/merchant-payment/**").permitAll()
+
+                        .requestMatchers("/api/v1/gateway/**").authenticated()
+                        
                         // ဥပမာ Role ကန့်သတ်ခြင်း 
                         // .requestMatchers("/api/admin/**").hasRole("ADMIN") 
                         .anyRequest().authenticated()
