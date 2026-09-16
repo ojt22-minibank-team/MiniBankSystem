@@ -28,8 +28,8 @@ import java.util.concurrent.ThreadLocalRandom;
 @RequiredArgsConstructor
 public class P2PTransferService {
 
-    private static final BigDecimal DEFAULT_MINIMUM_BALANCE = new BigDecimal("50000.00"); // ၅ သောင်း MMK Minimum Balance
-    private static final BigDecimal MIN_TRANSFER_AMOUNT = new BigDecimal("10000.00");      // အနည်းဆုံး ၁၀၀ MMK လွှဲရမည်
+    private static final BigDecimal DEFAULT_MINIMUM_BALANCE = new BigDecimal("50000.00"); 
+    private static final BigDecimal MIN_TRANSFER_AMOUNT = new BigDecimal("10000.00");
 
     private final AccountRepository accountRepository;
     private final BankTransactionRepository bankTransactionRepository;
@@ -224,33 +224,27 @@ public class P2PTransferService {
     }
 
     private void verifyTransactionPin(UUID customerId, String rawPin) {
-        // Testing Bypass: "123456" PIN ဖြင့် စမ်းသပ်နိုင်ရန်
-        if ("123456".equals(rawPin)) {
-            log.info("Testing PIN '123456' accepted for Customer ID: {}", customerId);
-            return;
-        }
-
         CustomerCredentials credentials = customerCredentialsRepository.findByCustomerId(customerId)
                 .orElseThrow(() -> new InvalidPinException("Customer credentials record not found."));
 
-        // ၁။ Lock ကျနေခြင်း ရှိ/မရှိ စစ်ဆေးခြင်း
+      
         if (credentials.getPinLockedUntil() != null && credentials.getPinLockedUntil().isAfter(LocalDateTime.now())) {
             throw new InvalidPinException("Transaction PIN is temporarily locked due to multiple invalid attempts.");
         }
-
-        // ၂။ PIN မှန်/မမှန် စစ်ဆေးခြင်း
         boolean pinValid = credentials.getTransactionPinHash() != null &&
-                (passwordEncoder.matches(rawPin, credentials.getTransactionPinHash()) || rawPin.equals(credentials.getTransactionPinHash()));
+                passwordEncoder.matches(rawPin, credentials.getTransactionPinHash());
 
         if (!pinValid) {
-            // သီးခြား REQUIRES_NEW ဖြင့် DB ထဲ အမှားအကြိမ်ရေ တန်းသွားမှတ်စေမည်
             customerSecurityService.recordFailedPinAttemptAndCheckLock(customerId);
+
+            if (credentials.getFailedPinAttemptCount() + 1 >= 5) {
+                throw new InvalidPinException("Transaction PIN is temporarily locked due to multiple invalid attempts.");
+            }
             throw new InvalidPinException("Invalid Transaction PIN.");
         }
-
-        // PIN မှန်ကန်ပါက အမှား count ကို 0 ပြန်ချမည်
         customerSecurityService.resetFailedPinCount(customerId);
     }
+
     /**
      * Calculates transfer fee solely from active FeeSchedules in the database.
      * Returns BigDecimal.ZERO if no active schedule exists.
@@ -272,7 +266,7 @@ public class P2PTransferService {
                     }
                     return fee;
                 })
-                .orElse(BigDecimal.ZERO); // Hardcoded Default Fee မပါတော့ဘဲ DB တွင် မရှိပါက 0.00 ဖြစ်ပါမည်
+                .orElse(BigDecimal.ZERO); 
     }
 
     private void createLedgerEntries(BankTransactions txn, Accounts source, Accounts dest, BigDecimal amount, BigDecimal fee, BigDecimal sourceBalBefore, BigDecimal destBalBefore) {
