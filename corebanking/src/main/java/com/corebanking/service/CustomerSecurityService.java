@@ -19,11 +19,6 @@ public class CustomerSecurityService {
 
     private final CustomerCredentialsRepository customerCredentialsRepository;
    
-
-    /**
-     * PIN မှားယွင်းမှု count ကို သီးခြား Transaction ဖြင့် ချက်ချင်း commit လုပ်မည်။
-     * Parent transaction rollback ဖြစ်သော်လည်း PIN count ပျောက်မသွားပါ။
-     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordFailedPinAttemptAndCheckLock(UUID customerId) {
         CustomerCredentials credentials = customerCredentialsRepository.findByCustomerId(customerId)
@@ -33,7 +28,7 @@ public class CustomerSecurityService {
         credentials.setFailedPinAttemptCount(attempts);
 
         if (attempts >= 5) {
-            credentials.setPinLockedUntil(LocalDateTime.now().plusMinutes(5)); // 5 မိနစ် Lockout
+            credentials.setPinLockedUntil(LocalDateTime.now().plusMinutes(5)); 
             log.warn("Customer {} PIN is locked out until {}", customerId, credentials.getPinLockedUntil());
         }
 
