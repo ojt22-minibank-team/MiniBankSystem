@@ -42,7 +42,13 @@ public class AuthService {
         List<String> permissions = permissionsRepository.findPermissionCodesByStaffId(staff.getStaff_id());
 
         // Token ထဲသို့ Roles နှင့် Permissions ထည့်၍ Generate လုပ်ခြင်း
-        String token = jwtService.generateToken(staff.getUsername(), roles, permissions);
+        String token = jwtService.generateToken(
+                staff.getStaff_id(),
+                staff.getUsername(),
+                staff.getToken_version(),
+                roles,
+                permissions
+        );
 
         return new LoginResponse(token, staff.getUsername(), roles, permissions);
     }

@@ -10,9 +10,23 @@ import java.util.Optional;
 
 public interface RolesRepository extends JpaRepository<Roles, Integer> {
 
-    @Query("SELECT r FROM Roles r WHERE r.role_code = :roleCode")
-    Optional<Roles> findByRole_code(@Param("roleCode") String roleCode);
+    @Query("""
+            SELECT r
+            FROM Roles r
+            WHERE r.role_code = :roleCode
+            """)
+    Optional<Roles> findByRoleCode(
+            @Param("roleCode") String roleCode
+    );
 
-    @Query(value = "SELECT r.role_code FROM roles r JOIN staff_user_roles sur ON r.role_id = sur.role_id WHERE sur.staff_id = :staffId", nativeQuery = true)
-    List<String> findRoleCodesByStaffId(@Param("staffId") Long staffId);
+    @Query("""
+            SELECT r.role_code
+            FROM Roles r
+            JOIN StaffUserRoles sur
+            ON r.role_id = sur.role_id
+            WHERE sur.staff_id = :staffId
+            """)
+    List<String> findRoleCodesByStaffId(
+            @Param("staffId") Long staffId
+    );
 }

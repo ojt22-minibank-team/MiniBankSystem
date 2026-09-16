@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -16,56 +17,181 @@ import java.util.Map;
 @Service
 public class JwtService {
 
-    private static final String SECRET_KEY = "my-core-banking-secret-key-must-be-at-least-32-characters";
-    private static final long EXPIRATION_TIME = 15 * 60 * 1000;
+    private static final String SECRET_KEY =
+            "my-core-banking-secret-key-must-be-at-least-32-characters";
+
+    private static final long EXPIRATION_TIME =
+            15 * 60 * 1000;
+
+
+    // =====================================================
+    // Signing Key
+    // =====================================================
 
     private Key getSigningKey() {
-        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
+
+        return Keys.hmacShaKeyFor(
+                SECRET_KEY.getBytes(StandardCharsets.UTF_8)
+        );
     }
 
-    public String generateToken(String username, List<String> roles, List<String> permissions) {
-        Date now = new Date();
-        Date expiry = new Date(now.getTime() + EXPIRATION_TIME);
 
-        Map<String, Object> claims = new HashMap<>();
+    // =====================================================
+    // Generate JWT
+    // =====================================================
+
+    public String generateToken(
+            Long staffId,
+            String username,
+            Integer tokenVersion,
+            List<String> roles,
+            List<String> permissions
+    ) {
+
+        Date now = new Date();
+
+        Date expiry = new Date(
+                now.getTime() + EXPIRATION_TIME
+        );
+
+
+        Map<String, Object> claims =
+                new HashMap<>();
+
+        claims.put("staff_id", staffId);
+        claims.put("token_version", tokenVersion);
         claims.put("roles", roles);
         claims.put("permissions", permissions);
 
+
         return Jwts.builder()
+
                 .setClaims(claims)
+
                 .setSubject(username)
+
                 .setIssuedAt(now)
+
                 .setExpiration(expiry)
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+
+                .signWith(
+                        getSigningKey(),
+                        SignatureAlgorithm.HS256
+                )
+
                 .compact();
     }
 
-    public Claims extractAllClaims(String token) {
+
+    // =====================================================
+    // Extract All Claims
+    // =====================================================
+
+    public Claims extractAllClaims(
+            String token
+    ) {
+
         return Jwts.parserBuilder()
+
                 .setSigningKey(getSigningKey())
+
                 .build()
+
                 .parseClaimsJws(token)
+
                 .getBody();
     }
 
-    public String extractUsername(String token) {
-        return extractAllClaims(token).getSubject();
+
+    // =====================================================
+    // Extract Username
+    // =====================================================
+
+    public String extractUsername(
+            String token
+    ) {
+
+        return extractAllClaims(token)
+                .getSubject();
     }
+
+
+    // =====================================================
+    // Extract Staff ID
+    // =====================================================
+
+    public Long extractStaffId(
+            String token
+    ) {
+
+        Number staffId =
+                extractAllClaims(token)
+                        .get("staff_id", Number.class);
+
+        return staffId.longValue();
+    }
+
+
+    // =====================================================
+    // Extract Token Version
+    // =====================================================
+
+    public Integer extractTokenVersion(
+            String token
+    ) {
+
+        Number tokenVersion =
+                extractAllClaims(token)
+                        .get("token_version", Number.class);
+
+        return tokenVersion.intValue();
+    }
+
+
+    // =====================================================
+    // Extract Roles
+    // =====================================================
 
     @SuppressWarnings("unchecked")
-    public List<String> extractRoles(String token) {
-        return extractAllClaims(token).get("roles", List.class);
+    public List<String> extractRoles(
+            String token
+    ) {
+
+        return extractAllClaims(token)
+                .get("roles", List.class);
     }
+
+
+    // =====================================================
+    // Extract Permissions
+    // =====================================================
 
     @SuppressWarnings("unchecked")
-    public List<String> extractPermissions(String token) {
-        return extractAllClaims(token).get("permissions", List.class);
+    public List<String> extractPermissions(
+            String token
+    ) {
+
+        return extractAllClaims(token)
+                .get("permissions", List.class);
     }
 
-    public boolean isTokenValid(String token) {
+
+    // =====================================================
+    // Validate JWT
+    // =====================================================
+
+    public boolean isTokenValid(
+            String token
+    ) {
+
         try {
-            return !extractAllClaims(token).getExpiration().before(new Date());
+
+            return !extractAllClaims(token)
+                    .getExpiration()
+                    .before(new Date());
+
         } catch (Exception e) {
+
             return false;
         }
     }
