@@ -30,16 +30,15 @@ public class TransactionFailureAspect {
         if (args.length >= 3 && args[1] instanceof P2PTransferRequestDto request) {
             String idempotencyKey = (String) args[2];
             
-            // သိမ်းဆည်းရန် သတ်မှတ်ထားသော Case ၃ ခု ဟုတ်/မဟုတ် စစ်ထုတ်ခြင်း
+            
             String failureCode = resolveEligibleFailureCode(ex);
             if (failureCode == null) {
-                // PIN မှားခြင်း၊ Input မှားခြင်း စသည်တို့ဖြစ်ပါက Transaction table ထဲ မသိမ်းဘဲ ကျော်ပါမည်
                 return;
             }
 
             String failureMessage = ex.getMessage();
 
-            // Row-lock များနှင့် Rollback အပြီးမှသာ DB ထဲ သိမ်းဆည်းရန် စောင့်ဆိုင်းခြင်း (Deadlock ကာကွယ်ရန်)
+           
             if (TransactionSynchronizationManager.isActualTransactionActive()) {
                 TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                     @Override
@@ -66,7 +65,7 @@ public class TransactionFailureAspect {
                 return "ACCOUNT_NOT_ACTIVE";
             }
         }
-        // အခြား Exception များကို Transaction table ထဲ မသိမ်းပါ
+        
         return null;
     }
 }
