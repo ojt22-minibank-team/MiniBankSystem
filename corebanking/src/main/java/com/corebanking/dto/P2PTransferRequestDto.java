@@ -28,7 +28,7 @@ public class P2PTransferRequestDto {
 
    
     @NotNull(message = "Transfer amount is required")
-    @DecimalMin(value = "10000.00", message = "Minimum transfer amount is 10000 MMK") // သို့မဟုတ် 1000.00
+    @DecimalMin(value = "10000.00", message = "Minimum transfer amount is 10000 MMK") 
     @Digits(integer = 14, fraction = 4, message = "Invalid amount format")
     private BigDecimal amount;
    

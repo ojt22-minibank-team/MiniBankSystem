@@ -1,4 +1,4 @@
-package com.corebanking.contoller;
+package com.corebanking.controller;
 
 import com.corebanking.dto.P2PTransferRequestDto;
 import com.corebanking.dto.P2PTransferResponseDto;
@@ -22,16 +22,13 @@ public class P2PTransferController {
             @AuthenticationPrincipal UserDetails authenticatedUser,
             @RequestHeader(value = "Idempotency-Key", required = false) String headerIdempotencyKey,
             @Valid @RequestBody P2PTransferRequestDto request) {
-
-        // Login မဝင်ထားပါက (authenticatedUser == null) Default CUST-001 အဖြစ် သတ်မှတ်ပေးခြင်း
-        String username = (authenticatedUser != null) ? authenticatedUser.getUsername() : "CUST-002";
-
+    	
         String idempotencyKey = (headerIdempotencyKey != null && !headerIdempotencyKey.isBlank()) 
                 ? headerIdempotencyKey 
                 : request.getIdempotencyKey();
 
         P2PTransferResponseDto response = p2pTransferService.processP2PTransfer(
-                username,
+        		authenticatedUser.getUsername(),
                 request, 
                 idempotencyKey
         );
