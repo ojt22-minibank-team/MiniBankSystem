@@ -2,6 +2,8 @@ package com.corebanking.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -27,6 +29,7 @@ public class CompanyContactPersons {
 
     @Id
     @Column(name = "customer_id", columnDefinition = "BINARY(16)", nullable = false)
+    @JdbcTypeCode(SqlTypes.BINARY)
     private UUID customerId;
 
     @Id
