@@ -17,9 +17,18 @@ public class MerchantAuthorizationEngine {
     private final LedgerFacadePort ledgerFacadePort;
     private final GatewayOutboundPort gatewayOutboundPort;
 
+    public com.corebanking.dto.PaymentDetailsResponse getPaymentDetails(String paymentToken) {
+        return gatewayOutboundPort.fetchPaymentDetails(paymentToken);
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public String processPaymentAuthorization(MerchantPaymentRequest request) {
         
+        // FR-5.9: Defensive Validation (Block Negative Amounts)
+        if (request.getAmount() == null || request.getAmount().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("Payment amount must be greater than zero");
+        }
+
         // FR-5.8: Duplicate-Payment Prevention
         if (ledgerFacadePort.isDuplicatePayment(request.getPaymentToken())) {
             throw new IllegalStateException("Duplicate payment request for token: " + request.getPaymentToken());

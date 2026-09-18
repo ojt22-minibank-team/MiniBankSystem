@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -39,12 +40,19 @@ public class CoreBankingLedgerAdapter implements LedgerFacadePort {
             throw new IllegalStateException("No active account found for customer");
         }
 
-        // 2. Check Balance
-        String checkBalanceSql = "SELECT available_balance FROM accounts WHERE account_id = ? FOR UPDATE";
-        BigDecimal availableBalance = jdbcTemplate.queryForObject(checkBalanceSql, BigDecimal.class, sourceAccountId);
+        // 2. Check Balance and Daily Limit
+        String checkBalanceSql = "SELECT available_balance, daily_transfer_limit FROM accounts WHERE account_id = ? FOR UPDATE";
+        Map<String, Object> accountData = jdbcTemplate.queryForMap(checkBalanceSql, sourceAccountId);
         
+        BigDecimal availableBalance = (BigDecimal) accountData.get("available_balance");
+        BigDecimal dailyLimit = (BigDecimal) accountData.get("daily_transfer_limit");
+
         if (availableBalance == null || availableBalance.compareTo(amount) < 0) {
             throw new IllegalStateException("Insufficient available balance");
+        }
+        
+        if (dailyLimit != null && amount.compareTo(dailyLimit) > 0) {
+            throw new IllegalStateException("Transaction exceeds your daily transfer limit");
         }
 
         // 3. Deduct from Source
@@ -60,10 +68,10 @@ public class CoreBankingLedgerAdapter implements LedgerFacadePort {
         String transactionRef = "TXN-" + System.currentTimeMillis();
         
         String insertTxnSql = "INSERT INTO bank_transactions " +
-                "(transaction_id, transaction_ref, transaction_type, status, source_account_id, destination_account_id, amount, currency, initiated_by_type, channel, external_reference, initiated_at, service_fee, updated_at, version) " +
-                "VALUES (?, ?, 'EXTERNAL_PAYMENT', 'COMPLETED', ?, ?, ?, 'MMK', 'CUSTOMER', 'PAYMENT_GATEWAY', ?, NOW(), 0.00, NOW(), 0)";
+                "(transaction_id, transaction_ref, transaction_type, status, source_account_id, destination_account_id, amount, currency, initiated_by_type, channel, external_reference, idempotency_key, initiated_at, service_fee, updated_at, version) " +
+                "VALUES (?, ?, 'EXTERNAL_PAYMENT', 'COMPLETED', ?, ?, ?, 'MMK', 'CUSTOMER', 'PAYMENT_GATEWAY', ?, ?, NOW(), 0.00, NOW(), 0)";
         
-        jdbcTemplate.update(insertTxnSql, transactionId, transactionRef, sourceAccountId, merchantBytes, amount, paymentToken);
+        jdbcTemplate.update(insertTxnSql, transactionId, transactionRef, sourceAccountId, merchantBytes, amount, paymentToken, paymentToken);
 
         log.info("Successfully executed atomic transfer for payment token {}. Txn Ref: {}", paymentToken, transactionRef);
         return transactionRef;

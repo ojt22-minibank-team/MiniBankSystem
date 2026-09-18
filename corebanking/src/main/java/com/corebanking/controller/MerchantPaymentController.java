@@ -1,6 +1,7 @@
 package com.corebanking.controller;
 
 import com.corebanking.dto.MerchantPaymentRequest;
+import com.corebanking.dto.PaymentDetailsResponse;
 import com.corebanking.service.MerchantAuthorizationEngine;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -13,15 +14,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.UUID;
+
 import com.corebanking.dto.PaymentReceiptResponse;
+
+import org.springframework.web.bind.annotation.CrossOrigin;
 
 @RestController
 @RequestMapping("/api/v1/merchant-payment")
 @RequiredArgsConstructor
-@lombok.extern.slf4j.Slf4j
+@CrossOrigin(origins = "*")
 public class MerchantPaymentController {
 
     private final MerchantAuthorizationEngine authorizationEngine;
@@ -31,6 +32,11 @@ public class MerchantPaymentController {
     @GetMapping("/generate-hash")
     public String generateHash(@RequestParam String pin) {
         return passwordEncoder.encode(pin);
+    }
+
+    @GetMapping("/request/{token}")
+    public ResponseEntity<PaymentDetailsResponse> getPaymentDetails(@org.springframework.web.bind.annotation.PathVariable String token) {
+        return ResponseEntity.ok(authorizationEngine.getPaymentDetails(token));
     }
 
     @PostMapping("/authorize")
@@ -50,6 +56,7 @@ public class MerchantPaymentController {
                 .coreLedgerReference(ledgerReference)
                 .merchantAccountId(request.getMerchantAccountId())
                 .amount(request.getAmount())
+                .currency("MMK")
                 .timestamp(java.time.LocalDateTime.now())
                 .build();
 
