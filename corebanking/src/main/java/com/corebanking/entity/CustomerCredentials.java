@@ -21,6 +21,7 @@ public class CustomerCredentials {
 
     @Id
     @Column(name = "customer_id", columnDefinition = "BINARY(16)", nullable = false)
+    @JdbcTypeCode(SqlTypes.BINARY)
     private UUID customerId;
 
     @OneToOne(fetch = FetchType.LAZY)

@@ -1,11 +1,13 @@
 package com.corebanking.dto;
 
+import com.corebanking.entity.enums.StaffUserStatus;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -13,15 +15,15 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class StaffResponse {
 
-    private Long staff_id;
-    private String staff_no;
+    private UUID staffId;
+    private String staffNo;
     private String username;
-    private String full_name;
+    private String fullName;
     private String email;
     private String phone;
-    private Boolean must_change_password;
-    private String status;
-    private LocalDateTime last_login_at;
-    private LocalDateTime created_at;
-    private LocalDateTime updated_at;
+    private boolean mustChangePassword;
+    private StaffUserStatus status;
+    private LocalDateTime lastLoginAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }
