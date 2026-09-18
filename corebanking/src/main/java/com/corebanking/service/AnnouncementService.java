@@ -5,6 +5,8 @@ import com.corebanking.dto.AnnouncementResponse;
 import com.corebanking.dto.AnnouncementUpdateRequest;
 import com.corebanking.entity.Announcements;
 import com.corebanking.entity.StaffUsers;
+import com.corebanking.entity.enums.AnnouncementAudience;
+import com.corebanking.entity.enums.UpdatedByType;
 import com.corebanking.repository.AnnouncementsRepository;
 import com.corebanking.repository.StaffUsersRepository;
 
@@ -64,36 +66,34 @@ public class AnnouncementService {
                 request.getAudience()
         );
 
-        announcement.setIs_active(true);
+        announcement.setActive(true);
 
-        announcement.setStarts_at(
-                request.getStarts_at()
+        announcement.setStartsAt(
+                request.getStartsAt()
         );
 
-        announcement.setEnds_at(
-                request.getEnds_at()
+        announcement.setEndsAt(
+                request.getEndsAt()
         );
 
 
-        // Get creator from logged-in user
-        announcement.setCreated_by_staff_id(
-                admin.getStaff_id()
-        );
+        // Set creator from logged-in user (ManyToOne relation)
+        announcement.setCreatedByStaff(admin);
 
 
         LocalDateTime now =
                 LocalDateTime.now();
 
-        announcement.setCreated_at(now);
+        announcement.setCreatedAt(now);
 
-        announcement.setUpdated_at(now);
+        announcement.setUpdatedAt(now);
 
 
         // Audit information
-        announcement.setUpdated_by_type("STAFF");
+        announcement.setUpdatedByType(UpdatedByType.STAFF);
 
-        announcement.setUpdated_by_id(
-                admin.getStaff_id()
+        announcement.setUpdatedById(
+                admin.getStaffId()
         );
 
 
@@ -125,7 +125,7 @@ public class AnnouncementService {
     // =====================================================
 
     public AnnouncementResponse getAnnouncementById(
-            Long announcementId
+            Integer announcementId
     ) {
 
         Announcements announcement =
@@ -147,7 +147,7 @@ public class AnnouncementService {
     // =====================================================
 
     public AnnouncementResponse updateAnnouncement(
-            Long announcementId,
+            Integer announcementId,
             AnnouncementUpdateRequest request,
             String username
     ) {
@@ -189,25 +189,25 @@ public class AnnouncementService {
                 request.getAudience()
         );
 
-        announcement.setStarts_at(
-                request.getStarts_at()
+        announcement.setStartsAt(
+                request.getStartsAt()
         );
 
-        announcement.setEnds_at(
-                request.getEnds_at()
+        announcement.setEndsAt(
+                request.getEndsAt()
         );
 
 
-        announcement.setUpdated_at(
+        announcement.setUpdatedAt(
                 LocalDateTime.now()
         );
 
-        announcement.setUpdated_by_type(
-                "STAFF"
+        announcement.setUpdatedByType(
+                UpdatedByType.STAFF
         );
 
-        announcement.setUpdated_by_id(
-                admin.getStaff_id()
+        announcement.setUpdatedById(
+                admin.getStaffId()
         );
 
 
@@ -226,7 +226,7 @@ public class AnnouncementService {
     // =====================================================
 
     public void deleteAnnouncement(
-            Long announcementId
+            Integer announcementId
     ) {
 
         Announcements announcement =
@@ -250,7 +250,7 @@ public class AnnouncementService {
     // =====================================================
 
     public AnnouncementResponse deactivateAnnouncement(
-            Long announcementId,
+            Integer announcementId,
             String username
     ) {
 
@@ -274,7 +274,7 @@ public class AnnouncementService {
                         );
 
 
-        if (!announcement.getIs_active()) {
+        if (!announcement.isActive()) {
 
             throw new RuntimeException(
                     "Announcement is already inactive"
@@ -282,18 +282,18 @@ public class AnnouncementService {
         }
 
 
-        announcement.setIs_active(false);
+        announcement.setActive(false);
 
-        announcement.setUpdated_at(
+        announcement.setUpdatedAt(
                 LocalDateTime.now()
         );
 
-        announcement.setUpdated_by_type(
-                "STAFF"
+        announcement.setUpdatedByType(
+                UpdatedByType.STAFF
         );
 
-        announcement.setUpdated_by_id(
-                admin.getStaff_id()
+        announcement.setUpdatedById(
+                admin.getStaffId()
         );
 
 
@@ -322,19 +322,19 @@ public class AnnouncementService {
         return announcementsRepository.findAll()
                 .stream()
 
-                .filter(Announcements::getIs_active)
+                .filter(Announcements::isActive)
 
                 .filter(announcement ->
-                        announcement.getStarts_at() == null
+                        announcement.getStartsAt() == null
                                 ||
-                        !announcement.getStarts_at()
+                        !announcement.getStartsAt()
                                 .isAfter(now)
                 )
 
                 .filter(announcement ->
-                        announcement.getEnds_at() == null
+                        announcement.getEndsAt() == null
                                 ||
-                        announcement.getEnds_at()
+                        announcement.getEndsAt()
                                 .isAfter(now)
                 )
 
@@ -349,14 +349,13 @@ public class AnnouncementService {
     // =====================================================
 
     private void validateAudience(
-            String audience
+            AnnouncementAudience audience
     ) {
 
-        if (audience == null ||
-                !"ALL".equalsIgnoreCase(audience)) {
+        if (audience == null) {
 
             throw new RuntimeException(
-                    "Audience must be ALL"
+                    "Audience must not be null"
             );
         }
     }
@@ -372,7 +371,7 @@ public class AnnouncementService {
 
         return new AnnouncementResponse(
 
-                announcement.getAnnouncement_id(),
+                announcement.getAnnouncementId(),
 
                 announcement.getTitle(),
 
@@ -380,17 +379,19 @@ public class AnnouncementService {
 
                 announcement.getAudience(),
 
-                announcement.getIs_active(),
+                announcement.isActive(),
 
-                announcement.getStarts_at(),
+                announcement.getStartsAt(),
 
-                announcement.getEnds_at(),
+                announcement.getEndsAt(),
 
-                announcement.getCreated_by_staff_id(),
+                announcement.getCreatedByStaff() != null
+                        ? announcement.getCreatedByStaff().getStaffId()
+                        : null,
 
-                announcement.getCreated_at(),
+                announcement.getCreatedAt(),
 
-                announcement.getUpdated_at()
+                announcement.getUpdatedAt()
         );
     }
 }

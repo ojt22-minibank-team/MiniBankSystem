@@ -1,6 +1,7 @@
 package com.corebanking.security;
 
 import com.corebanking.entity.StaffUsers;
+import com.corebanking.entity.enums.StaffUserStatus;
 import com.corebanking.repository.StaffUsersRepository;
 
 import jakarta.servlet.FilterChain;
@@ -21,6 +22,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -90,10 +92,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String username =
                     jwtService.extractUsername(jwt);
 
-            Long staffId =
+            UUID staffId =
                     jwtService.extractStaffId(jwt);
 
-            Integer tokenVersion =
+            long tokenVersion =
                     jwtService.extractTokenVersion(jwt);
 
             List<String> roles =
@@ -127,9 +129,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             // Check Account Status
             // =================================================
 
-            if (!"ACTIVE".equals(
-                    staff.getStatus()
-            )) {
+            if (staff.getStatus() != StaffUserStatus.ACTIVE) {
 
                 response.setStatus(
                         HttpServletResponse.SC_UNAUTHORIZED
@@ -143,9 +143,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             // Check Token Version
             // =================================================
 
-            if (!tokenVersion.equals(
-                    staff.getToken_version()
-            )) {
+            if (tokenVersion != staff.getTokenVersion()) {
 
                 response.setStatus(
                         HttpServletResponse.SC_UNAUTHORIZED

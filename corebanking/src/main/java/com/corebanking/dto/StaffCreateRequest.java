@@ -7,13 +7,13 @@ import lombok.Setter;
 @Setter
 public class StaffCreateRequest {
 
-    private String staff_no;
+    private String staffNo;
     private String username;
-    private String full_name;
+    private String fullName;
     private String email;
     private String phone;
 
     private String password;
 
-    private Integer role_id;
+    private Integer roleId;
 }

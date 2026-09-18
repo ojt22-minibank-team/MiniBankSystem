@@ -1,5 +1,6 @@
 package com.corebanking.dto;
 
+import com.corebanking.entity.enums.AnnouncementAudience;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,9 +18,9 @@ public class AnnouncementUpdateRequest {
 
     private String message;
 
-    private String audience;
+    private AnnouncementAudience audience;
 
-    private LocalDateTime starts_at;
+    private LocalDateTime startsAt;
 
-    private LocalDateTime ends_at;
+    private LocalDateTime endsAt;
 }

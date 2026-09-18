@@ -13,7 +13,7 @@ public interface RolesRepository extends JpaRepository<Roles, Integer> {
     @Query("""
             SELECT r 
             FROM Roles r 
-            WHERE r.role_code = :roleCode
+            WHERE r.roleCode = :roleCode
             """)
     Optional<Roles> findByRoleCode(@Param("roleCode") String roleCode);
 
@@ -23,5 +23,5 @@ public interface RolesRepository extends JpaRepository<Roles, Integer> {
             JOIN staff_user_roles sur ON r.role_id = sur.role_id 
             WHERE sur.staff_id = :staffId
             """, nativeQuery = true)
-    List<String> findRoleCodesByStaffId(@Param("staffId") Long staffId);
+    List<String> findRoleCodesByStaffId(@Param("staffId") byte[] staffId);
 }

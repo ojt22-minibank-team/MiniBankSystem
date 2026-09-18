@@ -8,6 +8,7 @@ import com.corebanking.dto.StaffUpdateRequest;
 import com.corebanking.entity.Roles;
 import com.corebanking.entity.StaffUserRoles;
 import com.corebanking.entity.StaffUsers;
+import com.corebanking.entity.enums.StaffUserStatus;
 import com.corebanking.repository.RolesRepository;
 import com.corebanking.repository.StaffUserRolesRepository;
 import com.corebanking.repository.StaffUsersRepository;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -47,7 +49,7 @@ public class StaffManagementService {
 
         // Check staff number
         if (staffUsersRepository
-                .existsByStaffNo(request.getStaff_no())) {
+                .existsByStaffNo(request.getStaffNo())) {
 
             throw new RuntimeException(
                     "Staff number already exists"
@@ -56,7 +58,7 @@ public class StaffManagementService {
 
         // Check role
         Roles role = rolesRepository
-                .findById(request.getRole_id())
+                .findById(request.getRoleId())
                 .orElseThrow(() ->
                         new RuntimeException("Role not found")
                 );
@@ -68,38 +70,38 @@ public class StaffManagementService {
 
         StaffUsers staff = new StaffUsers();
 
-        staff.setStaff_no(request.getStaff_no());
+        staff.setStaffNo(request.getStaffNo());
         staff.setUsername(request.getUsername());
-        staff.setFull_name(request.getFull_name());
+        staff.setFullName(request.getFullName());
         staff.setEmail(request.getEmail());
         staff.setPhone(request.getPhone());
 
         // Hash password
-        staff.setPassword_hash(
+        staff.setPasswordHash(
                 passwordEncoder.encode(
                         request.getPassword()
                 )
         );
 
         // New staff must change temporary password
-        staff.setMust_change_password(true);
-        staff.setPassword_changed_at(null);
+        staff.setMustChangePassword(true);
+        staff.setPasswordChangedAt(null);
 
         // Default status
-        staff.setStatus("ACTIVE");
+        staff.setStatus(StaffUserStatus.ACTIVE);
 
         // Login security fields
-        staff.setFailed_login_count(0);
-        staff.setLocked_until(null);
-        staff.setLast_login_at(null);
+        staff.setFailedLoginCount(0);
+        staff.setLockedUntil(null);
+        staff.setLastLoginAt(null);
 
         // JWT token version
-        staff.setToken_version(0);
+        staff.setTokenVersion(1L);
 
         LocalDateTime now = LocalDateTime.now();
 
-        staff.setCreated_at(now);
-        staff.setUpdated_at(now);
+        staff.setCreatedAt(now);
+        staff.setUpdatedAt(now);
 
 
         // Save Staff first
@@ -114,16 +116,16 @@ public class StaffManagementService {
         StaffUserRoles staffRole =
                 new StaffUserRoles();
 
-        staffRole.setStaff_id(
-                savedStaff.getStaff_id()
+        staffRole.setStaffId(
+                savedStaff.getStaffId()
         );
 
-        staffRole.setRole_id(
-                role.getRole_id()
+        staffRole.setRoleId(
+                role.getRoleId()
         );
 
-        staffRole.setAssigned_at(now);
-        staffRole.setUpdated_at(now);
+        staffRole.setAssignedAt(now);
+        staffRole.setUpdatedAt(now);
 
         staffUserRolesRepository.save(staffRole);
 
@@ -150,7 +152,7 @@ public class StaffManagementService {
     // 3. GET STAFF BY ID
     // =====================================================
 
-    public StaffResponse getStaffById(Long staffId) {
+    public StaffResponse getStaffById(UUID staffId) {
 
         StaffUsers staff =
                 staffUsersRepository.findById(staffId)
@@ -169,7 +171,7 @@ public class StaffManagementService {
     // =====================================================
 
     public StaffResponse updateStaff(
-            Long staffId,
+            UUID staffId,
             StaffUpdateRequest request
     ) {
 
@@ -182,8 +184,8 @@ public class StaffManagementService {
                         );
 
 
-        staff.setFull_name(
-                request.getFull_name()
+        staff.setFullName(
+                request.getFullName()
         );
 
         staff.setEmail(
@@ -194,7 +196,7 @@ public class StaffManagementService {
                 request.getPhone()
         );
 
-        staff.setUpdated_at(
+        staff.setUpdatedAt(
                 LocalDateTime.now()
         );
 
@@ -212,7 +214,7 @@ public class StaffManagementService {
     // =====================================================
 
     public StaffResponse changeRole(
-            Long staffId,
+            UUID staffId,
             ChangeStaffRoleRequest request
     ) {
 
@@ -229,7 +231,7 @@ public class StaffManagementService {
         // Check new role
         Roles role =
                 rolesRepository.findById(
-                        request.getRole_id()
+                        request.getRoleId()
                 )
                 .orElseThrow(() ->
                         new RuntimeException(
@@ -250,11 +252,11 @@ public class StaffManagementService {
 
 
         // Change role
-        staffRole.setRole_id(
-                role.getRole_id()
+        staffRole.setRoleId(
+                role.getRoleId()
         );
 
-        staffRole.setUpdated_at(
+        staffRole.setUpdatedAt(
                 LocalDateTime.now()
         );
 
@@ -271,7 +273,7 @@ public class StaffManagementService {
     // =====================================================
 
     public StaffResponse deactivateStaff(
-            Long staffId
+            UUID staffId
     ) {
 
         StaffUsers staff =
@@ -283,7 +285,7 @@ public class StaffManagementService {
                         );
 
 
-        if ("INACTIVE".equals(staff.getStatus())) {
+        if (staff.getStatus() == StaffUserStatus.DEACTIVATED) {
 
             throw new RuntimeException(
                     "Staff account is already inactive"
@@ -292,16 +294,16 @@ public class StaffManagementService {
 
 
         // Deactivate
-        staff.setStatus("INACTIVE");
+        staff.setStatus(StaffUserStatus.DEACTIVATED);
 
 
         // Invalidate existing JWT tokens
-        staff.setToken_version(
-                staff.getToken_version() + 1
+        staff.setTokenVersion(
+                staff.getTokenVersion() + 1
         );
 
 
-        staff.setUpdated_at(
+        staff.setUpdatedAt(
                 LocalDateTime.now()
         );
 
@@ -319,7 +321,7 @@ public class StaffManagementService {
     // =====================================================
 
     public void resetPassword(
-            Long staffId,
+            UUID staffId,
             PasswordResetRequest request
     ) {
 
@@ -332,7 +334,7 @@ public class StaffManagementService {
                         );
 
 
-        if ("INACTIVE".equals(staff.getStatus())) {
+        if (staff.getStatus() == StaffUserStatus.DEACTIVATED) {
 
             throw new RuntimeException(
                     "Cannot reset password for inactive staff"
@@ -341,32 +343,32 @@ public class StaffManagementService {
 
 
         // Hash new password
-        staff.setPassword_hash(
+        staff.setPasswordHash(
                 passwordEncoder.encode(
-                        request.getNew_password()
+                        request.getNewPassword()
                 )
         );
 
 
         // Force password change on next login
-        staff.setMust_change_password(true);
+        staff.setMustChangePassword(true);
 
-        staff.setPassword_changed_at(null);
+        staff.setPasswordChangedAt(null);
 
 
         // Reset login failure counter
-        staff.setFailed_login_count(0);
+        staff.setFailedLoginCount(0);
 
-        staff.setLocked_until(null);
+        staff.setLockedUntil(null);
 
 
         // Invalidate old JWT tokens
-        staff.setToken_version(
-                staff.getToken_version() + 1
+        staff.setTokenVersion(
+                staff.getTokenVersion() + 1
         );
 
 
-        staff.setUpdated_at(
+        staff.setUpdatedAt(
                 LocalDateTime.now()
         );
 
@@ -385,27 +387,27 @@ public class StaffManagementService {
 
         return new StaffResponse(
 
-                staff.getStaff_id(),
+                staff.getStaffId(),
 
-                staff.getStaff_no(),
+                staff.getStaffNo(),
 
                 staff.getUsername(),
 
-                staff.getFull_name(),
+                staff.getFullName(),
 
                 staff.getEmail(),
 
                 staff.getPhone(),
 
-                staff.getMust_change_password(),
+                staff.isMustChangePassword(),
 
                 staff.getStatus(),
 
-                staff.getLast_login_at(),
+                staff.getLastLoginAt(),
 
-                staff.getCreated_at(),
+                staff.getCreatedAt(),
 
-                staff.getUpdated_at()
+                staff.getUpdatedAt()
         );
     }
 }

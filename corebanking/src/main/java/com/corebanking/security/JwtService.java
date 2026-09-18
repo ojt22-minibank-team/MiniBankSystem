@@ -13,6 +13,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class JwtService {
@@ -41,9 +42,9 @@ public class JwtService {
     // =====================================================
 
     public String generateToken(
-            Long staffId,
+            UUID staffId,
             String username,
-            Integer tokenVersion,
+            long tokenVersion,
             List<String> roles,
             List<String> permissions
     ) {
@@ -58,7 +59,7 @@ public class JwtService {
         Map<String, Object> claims =
                 new HashMap<>();
 
-        claims.put("staff_id", staffId);
+        claims.put("staff_id", staffId.toString());
         claims.put("token_version", tokenVersion);
         claims.put("roles", roles);
         claims.put("permissions", permissions);
@@ -120,15 +121,15 @@ public class JwtService {
     // Extract Staff ID
     // =====================================================
 
-    public Long extractStaffId(
+    public UUID extractStaffId(
             String token
     ) {
 
-        Number staffId =
+        String staffId =
                 extractAllClaims(token)
-                        .get("staff_id", Number.class);
+                        .get("staff_id", String.class);
 
-        return staffId.longValue();
+        return UUID.fromString(staffId);
     }
 
 
@@ -136,7 +137,7 @@ public class JwtService {
     // Extract Token Version
     // =====================================================
 
-    public Integer extractTokenVersion(
+    public long extractTokenVersion(
             String token
     ) {
 
@@ -144,7 +145,7 @@ public class JwtService {
                 extractAllClaims(token)
                         .get("token_version", Number.class);
 
-        return tokenVersion.intValue();
+        return tokenVersion.longValue();
     }
 
 
