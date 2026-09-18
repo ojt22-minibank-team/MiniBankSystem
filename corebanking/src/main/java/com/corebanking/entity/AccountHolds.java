@@ -6,6 +6,7 @@ import com.corebanking.entity.enums.UpdatedByType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
@@ -22,6 +23,7 @@ import java.util.UUID;
 public class AccountHolds {
 
     @Id
+    @UuidGenerator(style = UuidGenerator.Style.TIME)
     @Column(name = "hold_id", columnDefinition = "BINARY(16)", nullable = false)
     @JdbcTypeCode(SqlTypes.BINARY)
     private UUID holdId;
@@ -75,7 +77,6 @@ public class AccountHolds {
 
     @PrePersist
     protected void onCreate() {
-        if (holdId == null) holdId = UUID.randomUUID();
         if (createdAt == null) createdAt = LocalDateTime.now();
         if (updatedAt == null) updatedAt = LocalDateTime.now();
     }

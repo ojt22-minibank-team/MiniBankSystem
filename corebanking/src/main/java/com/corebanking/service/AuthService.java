@@ -3,6 +3,7 @@ package com.corebanking.service;
 import com.corebanking.dto.LoginRequest;
 import com.corebanking.dto.LoginResponse;
 import com.corebanking.entity.StaffUsers;
+import com.corebanking.entity.enums.StaffUserStatus;
 import com.corebanking.repository.PermissionsRepository;
 import com.corebanking.repository.RolesRepository;
 import com.corebanking.repository.StaffUsersRepository;
@@ -12,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -29,27 +31,41 @@ public class AuthService {
                 .findByUsername(request.getUsername())
                 .orElseThrow(() -> new RuntimeException("Invalid username or password"));
 
-        if (!passwordEncoder.matches(request.getPassword(), staff.getPassword_hash())) {
+        if (!passwordEncoder.matches(request.getPassword(), staff.getPasswordHash())) {
             throw new RuntimeException("Invalid username or password");
         }
 
-        if (!"ACTIVE".equals(staff.getStatus())) {
+        if (staff.getStatus() != StaffUserStatus.ACTIVE) {
             throw new RuntimeException("Account is not active");
         }
 
-        // Database မှ Roles နှင့် Permissions များကို ဆွဲထုတ်ခြင်း
-        List<String> roles = rolesRepository.findRoleCodesByStaffId(staff.getStaff_id());
-        List<String> permissions = permissionsRepository.findPermissionCodesByStaffId(staff.getStaff_id());
+        UUID staffId = staff.getStaffId();
 
-        // Token ထဲသို့ Roles နှင့် Permissions ထည့်၍ Generate လုပ်ခြင်း
+        // Fetch Roles and Permissions from database using UUID as bytes
+        List<String> roles = rolesRepository.findRoleCodesByStaffId(uuidToBytes(staffId));
+        List<String> permissions = permissionsRepository.findPermissionCodesByStaffId(uuidToBytes(staffId));
+
+        // Generate Token with Roles and Permissions
         String token = jwtService.generateToken(
-                staff.getStaff_id(),
+                staffId,
                 staff.getUsername(),
-                staff.getToken_version(),
+                staff.getTokenVersion(),
                 roles,
                 permissions
         );
 
         return new LoginResponse(token, staff.getUsername(), roles, permissions);
+    }
+
+    // Convert UUID to byte[] for native queries (BINARY(16) storage)
+    private byte[] uuidToBytes(UUID uuid) {
+        long msb = uuid.getMostSignificantBits();
+        long lsb = uuid.getLeastSignificantBits();
+        byte[] bytes = new byte[16];
+        for (int i = 0; i < 8; i++) {
+            bytes[i]     = (byte) (msb >>> (56 - 8 * i));
+            bytes[i + 8] = (byte) (lsb >>> (56 - 8 * i));
+        }
+        return bytes;
     }
 }

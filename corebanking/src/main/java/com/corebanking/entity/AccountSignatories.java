@@ -5,6 +5,7 @@ import com.corebanking.entity.enums.SignatoryStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
@@ -23,6 +24,7 @@ import java.util.UUID;
 public class AccountSignatories {
 
     @Id
+    @UuidGenerator(style = UuidGenerator.Style.TIME)
     @Column(name = "signatory_id", columnDefinition = "BINARY(16)", nullable = false)
     @JdbcTypeCode(SqlTypes.BINARY)
     private UUID signatoryId;
@@ -62,7 +64,6 @@ public class AccountSignatories {
 
     @PrePersist
     protected void onCreate() {
-        if (signatoryId == null) signatoryId = UUID.randomUUID();
         if (createdAt == null) createdAt = LocalDateTime.now();
         if (updatedAt == null) updatedAt = LocalDateTime.now();
     }

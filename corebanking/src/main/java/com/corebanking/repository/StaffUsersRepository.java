@@ -6,8 +6,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.util.UUID;
 
-public interface StaffUsersRepository extends JpaRepository<StaffUsers, Long> {
+public interface StaffUsersRepository extends JpaRepository<StaffUsers, UUID> {
 
     Optional<StaffUsers> findByUsername(String username);
 
@@ -23,7 +24,7 @@ public interface StaffUsersRepository extends JpaRepository<StaffUsers, Long> {
     @Query("""
             SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END
             FROM StaffUsers s
-            WHERE s.staff_no = :staffNo
+            WHERE s.staffNo = :staffNo
             """)
     boolean existsByStaffNo(
             @Param("staffNo") String staffNo

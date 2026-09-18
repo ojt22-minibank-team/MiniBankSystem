@@ -7,7 +7,7 @@ import lombok.Setter;
 @Setter
 public class StaffUpdateRequest {
 
-    private String full_name;
+    private String fullName;
     private String email;
     private String phone;
 }
