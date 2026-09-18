@@ -3,6 +3,8 @@ package com.corebanking.entity;
 import com.corebanking.entity.enums.GenderType;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,6 +21,7 @@ public class PersonalInfo {
 
     @Id
     @Column(name = "customer_id", columnDefinition = "BINARY(16)", nullable = false)
+    @JdbcTypeCode(SqlTypes.BINARY)
     private UUID customerId;
 
     @OneToOne(fetch = FetchType.LAZY)
