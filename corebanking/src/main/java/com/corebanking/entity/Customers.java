@@ -43,11 +43,11 @@ public class Customers {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 10)
+    @Builder.Default
     private CustomerStatus status = CustomerStatus.ACTIVE;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by", referencedColumnName = "staff_id",
-            foreignKey = @ForeignKey(name = "fk_customers_created_by_staff"))
+    @JoinColumn(name = "created_by", referencedColumnName = "staff_id")
     private StaffUsers createdBy;
 
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -67,11 +67,34 @@ public class Customers {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    // PersonalInfo ချိတ်ဆက်မှု
+    @OneToOne(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private PersonalInfo personalInfo;
+
+    // CompanyInfo ချိတ်ဆက်မှု
+    @OneToOne(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private CompanyInfo companyInfo;
+
+    public void setPersonalInfo(PersonalInfo personalInfo) {
+        this.personalInfo = personalInfo;
+        if (personalInfo != null) {
+            personalInfo.setCustomer(this);
+        }
+    }
+
+    public void setCompanyInfo(CompanyInfo companyInfo) {
+        this.companyInfo = companyInfo;
+        if (companyInfo != null) {
+            companyInfo.setCustomer(this);
+        }
+    }
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) createdAt = LocalDateTime.now();
         if (updatedAt == null) updatedAt = LocalDateTime.now();
         if (customerId == null) customerId = UUID.randomUUID();
+        if (status == null) status = CustomerStatus.ACTIVE;
     }
 
     @PreUpdate
