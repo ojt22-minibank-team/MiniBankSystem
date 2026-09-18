@@ -1,11 +1,13 @@
 package com.corebanking.dto;
 
+import com.corebanking.entity.enums.AnnouncementAudience;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -13,23 +15,23 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class AnnouncementResponse {
 
-    private Long announcement_id;
+    private Integer announcementId;
 
     private String title;
 
     private String message;
 
-    private String audience;
+    private AnnouncementAudience audience;
 
-    private Boolean is_active;
+    private boolean isActive;
 
-    private LocalDateTime starts_at;
+    private LocalDateTime startsAt;
 
-    private LocalDateTime ends_at;
+    private LocalDateTime endsAt;
 
-    private Long created_by_staff_id;
+    private UUID createdByStaffId;
 
-    private LocalDateTime created_at;
+    private LocalDateTime createdAt;
 
-    private LocalDateTime updated_at;
+    private LocalDateTime updatedAt;
 }

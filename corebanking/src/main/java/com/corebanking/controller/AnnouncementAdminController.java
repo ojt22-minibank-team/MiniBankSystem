@@ -71,7 +71,7 @@ public class AnnouncementAdminController {
     @GetMapping("/{id}")
     public ResponseEntity<AnnouncementResponse>
     getAnnouncementById(
-            @PathVariable Long id
+            @PathVariable Integer id
     ) {
 
         return ResponseEntity.ok(
@@ -88,7 +88,7 @@ public class AnnouncementAdminController {
     @PutMapping("/{id}")
     public ResponseEntity<AnnouncementResponse>
     updateAnnouncement(
-            @PathVariable Long id,
+            @PathVariable Integer id,
             @RequestBody AnnouncementUpdateRequest request,
             Authentication authentication
     ) {
@@ -115,7 +115,7 @@ public class AnnouncementAdminController {
     @DeleteMapping("/{id}")
     public ResponseEntity<String>
     deleteAnnouncement(
-            @PathVariable Long id
+            @PathVariable Integer id
     ) {
 
         announcementService.deleteAnnouncement(id);
@@ -134,7 +134,7 @@ public class AnnouncementAdminController {
     @PatchMapping("/{id}/deactivate")
     public ResponseEntity<AnnouncementResponse>
     deactivateAnnouncement(
-            @PathVariable Long id,
+            @PathVariable Integer id,
             Authentication authentication
     ) {
 

@@ -7,5 +7,5 @@ import lombok.Setter;
 @Setter
 public class ChangeStaffRoleRequest {
 
-    private Integer role_id;
+    private Integer roleId;
 }

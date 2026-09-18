@@ -14,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/admin/staff")
@@ -62,7 +63,7 @@ public class StaffManagementController {
 
     @GetMapping("/{staffId}")
     public ResponseEntity<StaffResponse> getStaffById(
-            @PathVariable Long staffId
+            @PathVariable UUID staffId
     ) {
 
         return ResponseEntity.ok(
@@ -78,7 +79,7 @@ public class StaffManagementController {
 
     @PutMapping("/{staffId}")
     public ResponseEntity<StaffResponse> updateStaff(
-            @PathVariable Long staffId,
+            @PathVariable UUID staffId,
             @RequestBody StaffUpdateRequest request
     ) {
 
@@ -98,7 +99,7 @@ public class StaffManagementController {
 
     @PutMapping("/{staffId}/role")
     public ResponseEntity<StaffResponse> changeRole(
-            @PathVariable Long staffId,
+            @PathVariable UUID staffId,
             @RequestBody ChangeStaffRoleRequest request
     ) {
 
@@ -118,7 +119,7 @@ public class StaffManagementController {
 
     @PatchMapping("/{staffId}/deactivate")
     public ResponseEntity<StaffResponse> deactivateStaff(
-            @PathVariable Long staffId
+            @PathVariable UUID staffId
     ) {
 
         return ResponseEntity.ok(
@@ -136,7 +137,7 @@ public class StaffManagementController {
 
     @PostMapping("/{staffId}/reset-password")
     public ResponseEntity<String> resetPassword(
-            @PathVariable Long staffId,
+            @PathVariable UUID staffId,
             @RequestBody PasswordResetRequest request
     ) {
 
