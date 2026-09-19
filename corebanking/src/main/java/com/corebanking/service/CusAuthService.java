@@ -1,13 +1,16 @@
 package com.corebanking.service;
 
-import com.corebanking.dto.LoginRequest;
+import com.corebanking.dto.CusLoginRequest;
 import com.corebanking.entity.Accounts;
 import com.corebanking.entity.CustomerCredentials;
 import com.corebanking.entity.Customers;
+import com.corebanking.entity.LoginAttempts;
 import com.corebanking.entity.enums.CustomerStatus;
-import com.corebanking.repository.AccountsRepository;
-import com.corebanking.repository.CustomerCredentialsRepository;
-import com.corebanking.repository.CustomerRepository;
+import com.corebanking.entity.enums.SessionSubjectType;
+import com.corebanking.repository.CusAccountsRepository;
+import com.corebanking.repository.CusCredentialsRepository;
+import com.corebanking.repository.CusCustomerRepository;
+import com.corebanking.repository.CusLoginAttemptsRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -18,22 +21,23 @@ import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
-public class AuthService {
+public class CusAuthService {
 
-    private final CustomerRepository customerRepository;
-    private final AccountsRepository accountsRepository;
-    private final CustomerCredentialsRepository credentialsRepository;
+    private final CusCustomerRepository customerRepository;
+    private final CusAccountsRepository accountsRepository;
+    private final CusCredentialsRepository credentialsRepository;
+    private final CusLoginAttemptsRepository loginAttemptsRepository;
     private final PasswordEncoder passwordEncoder;
 
     private static final int MAX_FAILED_ATTEMPTS = 5;
     private static final int LOCK_MINUTES = 15;
 
 
-    public Customers authenticateCredentials(LoginRequest request) {
+    public Customers authenticateCredentials(CusLoginRequest request) {
 
         String identifier = request.getLoginIdentifier();
 
-        // 1. Customer ID OR Account Number ဖြင့် customer ရှာ
+        // 1. Customer ID OR Account Number နဲ့ customer ရှာ
         Customers customer = findCustomer(identifier);
 
         // 2. Customer status စစ်
@@ -49,7 +53,7 @@ public class AuthService {
                                 )
                         );
 
-        // 4. Login account locked ဖြစ်/မဖြစ် စစ်
+        // 4. Login lock စစ်
         checkLoginLock(credentials);
 
         // 5. Password စစ်
@@ -59,34 +63,50 @@ public class AuthService {
                         credentials.getPasswordHash()
                 );
 
+        // 6. Password မှားရင်
         if (!passwordMatches) {
 
             handleFailedPassword(credentials);
+
+            saveLoginAttempt(
+                    identifier,
+                    customer,
+                    false,
+                    "INVALID_PASSWORD"
+            );
 
             throw new RuntimeException(
                     "Invalid login credentials."
             );
         }
 
-        // 6. Password မှန်ပြီဆို failed attempts reset
+        // 7. Password မှန်ရင် failed count reset
         credentials.setFailedLoginCount(0);
         credentials.setLockedUntil(null);
 
         credentialsRepository.save(credentials);
 
-        // ဒီအဆင့်မှာ login complete မဖြစ်သေးဘူး
-        // နောက် step မှာ Email OTP ပို့မယ်
+        // Credential authentication success history
+        saveLoginAttempt(
+                identifier,
+                customer,
+                true,
+                null
+        );
+
+        // ဒီမှာ login complete မဖြစ်သေးဘူး
+        // နောက်တစ်ဆင့် Email OTP verify လုပ်ရမယ်
         return customer;
     }
 
 
     private Customers findCustomer(String identifier) {
 
-        // Customer ID (customer_code) နဲ့အရင်ရှာ
+        // Customer ID / Customer Code နဲ့အရင်ရှာ
         return customerRepository
                 .findByCustomerCode(identifier)
 
-                // Customer ID နဲ့မတွေ့ရင် Account Number နဲ့ရှာ
+                // မတွေ့ရင် Account Number နဲ့ရှာ
                 .orElseGet(() ->
                         accountsRepository
                                 .findByAccountNumber(identifier)
@@ -116,12 +136,12 @@ public class AuthService {
 
         LocalDateTime now = LocalDateTime.now();
 
-        // locked_until မှာ value မရှိဘူးဆို lock မဖြစ်ဘူး
+        // locked_until = null ဆို lock မဖြစ်ထားဘူး
         if (credentials.getLockedUntil() == null) {
             return;
         }
 
-        // Lock time မကုန်သေးရင် login မပေးဘူး
+        // Lock time မကုန်သေးရင် login reject
         if (credentials.getLockedUntil().isAfter(now)) {
 
             throw new RuntimeException(
@@ -129,8 +149,7 @@ public class AuthService {
             );
         }
 
-        // Lock 15 minutes ပြည့်သွားပြီ
-        // failed count နဲ့ lock time reset
+        // Lock period 15 minutes ပြည့်သွားပြီ
         credentials.setFailedLoginCount(0);
         credentials.setLockedUntil(null);
 
@@ -141,13 +160,12 @@ public class AuthService {
     private void handleFailedPassword(
             CustomerCredentials credentials) {
 
-        // Current failed count ကို 1 တိုး
         int failedCount =
                 credentials.getFailedLoginCount() + 1;
 
         credentials.setFailedLoginCount(failedCount);
 
-        // Password 5 ကြိမ်ဆက်တိုက်မှားပြီဆို
+        // Password 5 ကြိမ်ဆက်တိုက်မှား
         if (failedCount >= MAX_FAILED_ATTEMPTS) {
 
             credentials.setLockedUntil(
@@ -157,5 +175,24 @@ public class AuthService {
         }
 
         credentialsRepository.save(credentials);
+    }
+
+
+    private void saveLoginAttempt(
+            String identifier,
+            Customers customer,
+            boolean success,
+            String failureReason) {
+
+        LoginAttempts attempt =
+                LoginAttempts.builder()
+                        .actorType(SessionSubjectType.CUSTOMER)
+                        .loginIdentifier(identifier)
+                        .customer(customer)
+                        .success(success)
+                        .failureReason(failureReason)
+                        .build();
+
+        loginAttemptsRepository.save(attempt);
     }
 }

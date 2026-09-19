@@ -5,7 +5,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class OtpVerifyRequest {
+public class CusOtpVerifyRequest {
 
     private String challengeGroupId;
 
