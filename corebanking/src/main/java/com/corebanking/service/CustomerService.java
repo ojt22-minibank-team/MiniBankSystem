@@ -42,7 +42,7 @@ public class CustomerService {
                 ? CustomerStatus.valueOf(dto.getStatus().toUpperCase())
                 : CustomerStatus.ACTIVE;
 
-        // full_name, email, phone တွက်ချက်ခြင်း
+        // Full Name သတ်မှတ်ခြင်း
         String fullName;
         String email = dto.getEmail();
         String phone = dto.getPhone();
@@ -54,6 +54,8 @@ public class CustomerService {
             fullName = dto.getCompanyName();
         }
 
+        // Customers Entity တည်ဆောက်ခြင်း (customerId ကို manual မထည့်ဘဲ version ကို 0L ပေးထားပါသည်)
+     // Customers Entity တည်ဆောက်ခြင်း
         Customers customer = Customers.builder()
                 .customerId(UUID.randomUUID())
                 .customerCode(customerCode)
@@ -64,11 +66,12 @@ public class CustomerService {
                 .status(initialStatus)
                 .createdAt(now)
                 .updatedAt(now)
+                .isNew(true) // Entity အသစ်ဖြစ်ကြောင်း သတ်မှတ်ခြင်း
                 .build();
 
+        // Personal Customer ဖြစ်ပါက PersonalInfo ထည့်သွင်းခြင်း
         if (customerType == CustomerType.PERSONAL) {
             PersonalInfo personalInfo = new PersonalInfo();
-            personalInfo.setCustomer(customer);
             personalInfo.setFirstName(dto.getFirstName());
             personalInfo.setLastName(dto.getLastName());
 
@@ -83,11 +86,12 @@ public class CustomerService {
             personalInfo.setAddress(dto.getAddress());
             personalInfo.setOccupation(dto.getOccupation());
 
+            // Helper method မှတစ်ဆင့် နှစ်ဖက်ချိတ်ဆက်ပေးပါသည်
             customer.setPersonalInfo(personalInfo);
 
+        // Company Customer ဖြစ်ပါက CompanyInfo ထည့်သွင်းခြင်း
         } else if (customerType == CustomerType.COMPANY) {
             CompanyInfo companyInfo = new CompanyInfo();
-            companyInfo.setCustomer(customer);
             companyInfo.setCompanyName(dto.getCompanyName());
             companyInfo.setRegistrationNumber(dto.getRegistrationNumber());
             companyInfo.setTaxId(dto.getTaxId());
@@ -97,16 +101,15 @@ public class CustomerService {
             companyInfo.setAddress(dto.getAddress());
             companyInfo.setCountry("Myanmar");
 
+            // Helper method မှတစ်ဆင့် နှစ်ဖက်ချိတ်ဆက်ပေးပါသည်
             customer.setCompanyInfo(companyInfo);
         }
 
+        // Entity အသစ်အဖြစ် Database ထဲသို့ SQL INSERT ချောမွေ့စွာ ဝင်ရောက်သွားပါမည်
         customerRepository.save(customer);
         return customerCode;
     }
-    
-    /**
-     * Customer List တစ်ခုလုံးကို ဆွဲယူခြင်း
-     */
+
     @Transactional(readOnly = true)
     public List<CustomerResponseDTO> getAllCustomers() {
         return customerRepository.findAll().stream()
@@ -121,19 +124,14 @@ public class CustomerService {
                         .build())
                 .collect(Collectors.toList());
     }
-    
-    /**
-     * Customer Profile Update ပြုလုပ်ခြင်း
-     */
+
     @Transactional
     public void updateCustomer(String customerCode, CustomerUpdateDTO dto, Long staffId) {
-        // ၁။ Customer ရှိမရှိ စစ်ဆေးခြင်း
         Customers customer = customerRepository.findByCustomerCode(customerCode)
                 .orElseThrow(() -> new RuntimeException("Customer not found with code: " + customerCode));
 
         LocalDateTime now = LocalDateTime.now();
 
-        // ၂။ Parent Customer fields များ ပြင်ဆင်ခြင်း
         if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
             customer.setEmail(dto.getEmail());
         }
@@ -142,10 +140,8 @@ public class CustomerService {
         }
         customer.setUpdatedAt(now);
 
-        // ၃။ Type ပေါ်မူတည်၍ Child Entity အချက်အလက်များ ပြင်ဆင်ခြင်း
         if (customer.getCustomerType() == CustomerType.PERSONAL && customer.getPersonalInfo() != null) {
             PersonalInfo personalInfo = customer.getPersonalInfo();
-            
             if (dto.getPhone() != null) personalInfo.setPhone(dto.getPhone());
             if (dto.getEmail() != null) personalInfo.setEmail(dto.getEmail());
             if (dto.getAddress() != null) personalInfo.setAddress(dto.getAddress());
@@ -153,20 +149,15 @@ public class CustomerService {
 
         } else if (customer.getCustomerType() == CustomerType.COMPANY && customer.getCompanyInfo() != null) {
             CompanyInfo companyInfo = customer.getCompanyInfo();
-            
             if (dto.getPhone() != null) companyInfo.setCompanyPhone(dto.getPhone());
             if (dto.getEmail() != null) companyInfo.setCompanyEmail(dto.getEmail());
             if (dto.getAddress() != null) companyInfo.setAddress(dto.getAddress());
             if (dto.getBusinessType() != null) companyInfo.setBusinessType(dto.getBusinessType());
         }
 
-        // ၄။ Database ထဲသို့ Update အပြောင်းအလဲများ သိမ်းဆည်းခြင်း
         customerRepository.save(customer);
     }
-    
-    /**
-     * Customer Code ဖြင့် Customer အသေးစိတ် ရှာဖွေခြင်း (Search Customer)
-     */
+
     @Transactional(readOnly = true)
     public CustomerDetailResponseDTO getCustomerByCode(String customerCode) {
         Customers customer = customerRepository.findByCustomerCode(customerCode)
@@ -182,7 +173,6 @@ public class CustomerService {
                 .createdAt(customer.getCreatedAt())
                 .updatedAt(customer.getUpdatedAt());
 
-        // Personal Customer ဖြစ်ပါက PersonalInfo ထည့်သွင်းခြင်း
         if (customer.getCustomerType() == CustomerType.PERSONAL && customer.getPersonalInfo() != null) {
             PersonalInfo p = customer.getPersonalInfo();
             builder.firstName(p.getFirstName())
@@ -193,7 +183,6 @@ public class CustomerService {
                    .address(p.getAddress())
                    .occupation(p.getOccupation());
 
-        // Company Customer ဖြစ်ပါက CompanyInfo ထည့်သွင်းခြင်း
         } else if (customer.getCustomerType() == CustomerType.COMPANY && customer.getCompanyInfo() != null) {
             CompanyInfo c = customer.getCompanyInfo();
             builder.companyName(c.getCompanyName())

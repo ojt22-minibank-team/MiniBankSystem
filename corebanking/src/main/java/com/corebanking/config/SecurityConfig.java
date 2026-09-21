@@ -1,5 +1,7 @@
 package com.corebanking.config;
 
+import com.corebanking.security.JwtAuthFilter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -8,10 +10,14 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final JwtAuthFilter jwtAuthFilter; // Member 1 ၏ Filter ကို Inject လုပ်ခြင်း
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -21,23 +27,18 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // REST API (Postman) အတွက် CSRF ကို ပိတ်ထားပါသည်
             .csrf(csrf -> csrf.disable())
-            
-            // Session မသိမ်းဆည်းဘဲ Stateless အဖြစ် သတ်မှတ်ပါသည်
             .sessionManagement(session -> 
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
-            
-            // Endpoint များ၏ ခွင့်ပြုချက် သတ်မှတ်ခြင်း
             .authorizeHttpRequests(auth -> auth
-                // Member 2 ၏ Customer API ကို Token မပါဘဲ စမ်းသပ်နိုင်ရန် လမ်းဖွင့်ပေးခြင်း
-                .requestMatchers("/api/customers/**").permitAll()
-                // Auth endpoint များကိုလည်း ခွင့်ပြုထားခြင်း
-                .requestMatchers("/api/auth/**").permitAll()
-                // ကျန်ရှိသော အခြား API များကိုသာ Login တောင်းဆိုခြင်း
+                .requestMatchers("/api/auth/**").permitAll() // Login endpoint ကို ခွင့်ပြုခြင်း
+                .requestMatchers("/api/customers/**").authenticated() // Customer APIs များသည် Token မဖြစ်မနေ လိုအပ်သည်
+                .requestMatchers("/api/accounts/**").authenticated() // Add this line
                 .anyRequest().authenticated()
-            );
+            )
+            // Member 1 ၏ JwtAuthFilter ကို Filter Chain တွင် ထည့်သွင်းခြင်း
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
