@@ -29,7 +29,8 @@ import org.springframework.stereotype.Service;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.UUID;
-
+import com.corebanking.dto.CusOtpVerifyRequest;
+import com.corebanking.dto.CusOtpVerifyResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -167,6 +168,7 @@ public class CusAuthService {
 
         OtpChallenges otpChallenge =
                 createLoginOtp(customer);
+        
 
 
         // =====================================================
@@ -322,6 +324,7 @@ public class CusAuthService {
 
         loginAttemptsRepository.save(attempt);
     }
+    
     private void saveInvalidLoginAttempt(
             String identifier,
             String failureReason) {
@@ -467,6 +470,241 @@ public class CusAuthService {
         return savedOtp;
     }
 
+    public CusOtpVerifyResponse verifyLoginOtp(
+            CusOtpVerifyRequest request) {
+
+        // =====================================================
+        // 1. REQUEST VALIDATION
+        // =====================================================
+
+        if (request == null
+                || request.getChallengeGroupId() == null
+                || request.getChallengeGroupId().isBlank()
+                || request.getOtp() == null
+                || request.getOtp().isBlank()) {
+
+            throw new RuntimeException(
+                    "OTP verification information is required."
+            );
+        }
+
+
+        String challengeGroupId =
+                request.getChallengeGroupId().trim();
+
+        String enteredOtp =
+                request.getOtp().trim();
+
+
+        // =====================================================
+        // 2. OTP CHALLENGE ရှာ
+        // =====================================================
+
+        OtpChallenges otpChallenge =
+                otpChallengesRepository
+                        .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
+                                challengeGroupId,
+                                OtpPurpose.LOGIN
+                        )
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Invalid OTP challenge."
+                                )
+                        );
+
+
+        // =====================================================
+        // 3. OTP STATUS စစ်
+        // =====================================================
+
+        if (otpChallenge.getStatus() == OtpStatus.CONSUMED) {
+
+            throw new RuntimeException(
+                    "This OTP has already been used."
+            );
+        }
+
+
+        if (otpChallenge.getStatus() == OtpStatus.EXPIRED) {
+
+            throw new RuntimeException(
+                    "OTP has expired."
+            );
+        }
+
+
+        if (otpChallenge.getStatus() == OtpStatus.BLOCKED) {
+
+            throw new RuntimeException(
+                    "OTP verification has been blocked."
+            );
+        }
+
+
+        // ACTIVE မဟုတ်ရင် reject
+        if (otpChallenge.getStatus() != OtpStatus.ACTIVE) {
+
+            throw new RuntimeException(
+                    "OTP is not active."
+            );
+        }
+
+
+        LocalDateTime now =
+                LocalDateTime.now();
+
+
+        // =====================================================
+        // 4. OTP EXPIRY စစ်
+        // =====================================================
+
+        if (otpChallenge.getExpiresAt() == null
+                || !otpChallenge.getExpiresAt().isAfter(now)) {
+
+            otpChallenge.setStatus(
+                    OtpStatus.EXPIRED
+            );
+
+            otpChallengesRepository.save(
+                    otpChallenge
+            );
+
+            throw new RuntimeException(
+                    "OTP has expired."
+            );
+        }
+
+
+        // =====================================================
+        // 5. MAX ATTEMPTS စစ်
+        // =====================================================
+
+        if (otpChallenge.getAttemptCount()
+                >= otpChallenge.getMaxAttempts()) {
+
+            otpChallenge.setStatus(
+                    OtpStatus.BLOCKED
+            );
+
+            otpChallengesRepository.save(
+                    otpChallenge
+            );
+
+            throw new RuntimeException(
+                    "OTP verification has been blocked."
+            );
+        }
+
+
+        // =====================================================
+        // 6. OTP 6-DIGIT FORMAT + HASH VERIFY
+        // =====================================================
+
+        boolean validOtpFormat =
+                enteredOtp.matches("\\d{6}");
+
+        boolean otpMatches =
+                validOtpFormat
+                        && passwordEncoder.matches(
+                                enteredOtp,
+                                otpChallenge.getOtpHash()
+                        );
+
+
+        // =====================================================
+        // 7. OTP မှားရင်
+        // =====================================================
+
+        if (!otpMatches) {
+
+            handleFailedOtpAttempt(
+                    otpChallenge
+            );
+
+            throw new RuntimeException(
+                    "Invalid OTP."
+            );
+        }
+
+
+        // =====================================================
+        // 8. OTP မှန်ရင် CONSUMED
+        // =====================================================
+
+        otpChallenge.setStatus(
+                OtpStatus.CONSUMED
+        );
+
+        otpChallenge.setConsumedAt(now);
+
+        otpChallengesRepository.save(
+                otpChallenge
+        );
+
+
+        // =====================================================
+        // 9. CUSTOMER + CREDENTIALS
+        // =====================================================
+
+        Customers customer =
+                otpChallenge.getCustomer();
+
+        CustomerCredentials credentials =
+                credentialsRepository
+                        .findById(
+                                customer.getCustomerId()
+                        )
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Customer credentials not found."
+                                )
+                        );
+
+
+        
+
+        // =====================================================
+        // 10. FIRST LOGIN SETUP လို/မလို
+        // =====================================================
+
+        boolean passwordChangeRequired =
+                credentials.isMustChangePassword();
+
+        boolean pinSetupRequired =
+                credentials.getTransactionPinHash() == null
+                        || credentials
+                                .getTransactionPinHash()
+                                .isBlank();
+
+        boolean firstLoginSetupRequired =
+                passwordChangeRequired
+                        || pinSetupRequired;
+
+
+        // =====================================================
+        // 11. RESPONSE
+        // =====================================================
+
+        if (firstLoginSetupRequired) {
+
+            return new CusOtpVerifyResponse(
+                    true,
+                    "OTP verified. Please complete first-time setup.",
+                    true,
+                    passwordChangeRequired,
+                    pinSetupRequired
+            );
+        }
+
+
+        return new CusOtpVerifyResponse(
+                true,
+                "OTP verified successfully.",
+                false,
+                false,
+                false
+        );
+    }
 
     // =========================================================
     // 9. MASK CUSTOMER EMAIL
@@ -516,5 +754,30 @@ public class CusAuthService {
         }
 
         otpChallengesRepository.saveAll(activeOtps);
+    }
+    private void handleFailedOtpAttempt(
+            OtpChallenges otpChallenge) {
+
+        int failedAttempts =
+                otpChallenge.getAttemptCount() + 1;
+
+        otpChallenge.setAttemptCount(
+                failedAttempts
+        );
+
+
+        // 5 ကြိမ်မှားသွားရင် OTP block
+        if (failedAttempts
+                >= otpChallenge.getMaxAttempts()) {
+
+            otpChallenge.setStatus(
+                    OtpStatus.BLOCKED
+            );
+        }
+
+
+        otpChallengesRepository.save(
+                otpChallenge
+        );
     }
 }

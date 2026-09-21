@@ -1,7 +1,9 @@
 package com.corebanking.repository;
 
 import java.util.List;
+import java.util.Optional;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.corebanking.entity.Customers;
@@ -16,4 +18,10 @@ public interface CusOtpChallengesRepository
             OtpPurpose purpose,
             OtpStatus status
     );
+	@EntityGraph(attributePaths = "customer")
+	Optional<OtpChallenges>
+	findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
+	        String challengeGroupId,
+	        OtpPurpose purpose
+	);
 }

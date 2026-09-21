@@ -11,3 +11,7 @@ public class CusOtpVerifyRequest {
 
     private String otp;
 }
+//{
+//"challengeGroupId": "0ec12345-abcd-4567-8910-abc123456789",
+//"otp": "482193"
+//}
