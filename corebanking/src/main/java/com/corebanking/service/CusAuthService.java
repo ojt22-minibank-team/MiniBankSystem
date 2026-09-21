@@ -1,31 +1,35 @@
 package com.corebanking.service;
 
 import com.corebanking.dto.CusLoginRequest;
+import com.corebanking.dto.CusLoginResponse;
+
 import com.corebanking.entity.Accounts;
 import com.corebanking.entity.CustomerCredentials;
 import com.corebanking.entity.Customers;
 import com.corebanking.entity.LoginAttempts;
+import com.corebanking.entity.OtpChallenges;
+
 import com.corebanking.entity.enums.CustomerStatus;
+import com.corebanking.entity.enums.DeliveryChannel;
+import com.corebanking.entity.enums.OtpPurpose;
+import com.corebanking.entity.enums.OtpStatus;
 import com.corebanking.entity.enums.SessionSubjectType;
+
 import com.corebanking.repository.CusAccountsRepository;
 import com.corebanking.repository.CusCredentialsRepository;
 import com.corebanking.repository.CusCustomerRepository;
 import com.corebanking.repository.CusLoginAttemptsRepository;
+import com.corebanking.repository.CusOtpChallengesRepository;
 
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import com.corebanking.entity.OtpChallenges;
-import com.corebanking.entity.enums.DeliveryChannel;
-import com.corebanking.entity.enums.OtpPurpose;
-import com.corebanking.entity.enums.OtpStatus;
-import com.corebanking.repository.CusOtpChallengesRepository;
-
 import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.UUID;
+
 
 @Service
 @RequiredArgsConstructor
@@ -35,22 +39,59 @@ public class CusAuthService {
     private final CusAccountsRepository accountsRepository;
     private final CusCredentialsRepository credentialsRepository;
     private final CusLoginAttemptsRepository loginAttemptsRepository;
-    private final PasswordEncoder passwordEncoder;
     private final CusOtpChallengesRepository otpChallengesRepository;
+    private final PasswordEncoder passwordEncoder;
 
+
+    // Login password rules
     private static final int MAX_FAILED_ATTEMPTS = 5;
     private static final int LOCK_MINUTES = 15;
+
+    // OTP rules
     private static final int OTP_EXPIRY_MINUTES = 5;
     private static final int MAX_OTP_ATTEMPTS = 5;
     private static final int MAX_OTP_RESENDS = 5;
 
+    private static final SecureRandom SECURE_RANDOM =
+            new SecureRandom();
 
-    public Customers authenticateCredentials(CusLoginRequest request) {
 
-        String identifier = request.getLoginIdentifier();
+    // =========================================================
+    // 1. CUSTOMER LOGIN - PASSWORD AUTHENTICATION
+    // =========================================================
 
-        // 1. Customer ID OR Account Number နဲ့ customer ရှာ
-        Customers customer = findCustomer(identifier);
+    public CusLoginResponse authenticateCredentials(
+            CusLoginRequest request) {
+
+        if (request == null
+                || request.getLoginIdentifier() == null
+                || request.getLoginIdentifier().isBlank()
+                || request.getPassword() == null
+                || request.getPassword().isBlank()) {
+
+            throw new RuntimeException(
+                    "Login identifier and password are required."
+            );
+        }
+
+        String identifier =
+                request.getLoginIdentifier().trim();
+
+        Customers customer;
+
+        try {
+
+            customer = findCustomer(identifier);
+
+        } catch (RuntimeException ex) {
+
+            saveInvalidLoginAttempt(
+                    identifier,
+                    "INVALID_IDENTIFIER"
+            );
+
+            throw ex;
+        }
 
         // 2. Customer status စစ်
         validateCustomerStatus(customer);
@@ -65,8 +106,12 @@ public class CusAuthService {
                                 )
                         );
 
-        // 4. Login lock စစ်
-        checkLoginLock(credentials);
+        // 4. Login account lock ဖြစ်/မဖြစ် စစ်
+        checkLoginLock(
+                credentials,
+                identifier,
+                customer
+        );
 
         // 5. Password စစ်
         boolean passwordMatches =
@@ -75,11 +120,18 @@ public class CusAuthService {
                         credentials.getPasswordHash()
                 );
 
-        // 6. Password မှားရင်
+
+        // =====================================================
+        // PASSWORD မှားရင်
+        // =====================================================
+
         if (!passwordMatches) {
 
+            // failed login count + 1
+            // 5 ကြိမ်ရောက်ရင် 15 minutes lock
             handleFailedPassword(credentials);
 
+            // login attempt history save
             saveLoginAttempt(
                     identifier,
                     customer,
@@ -92,82 +144,64 @@ public class CusAuthService {
             );
         }
 
-        // 7. Password မှန်ရင် failed count reset
+
+        // =====================================================
+        // PASSWORD မှန်ရင်
+        // =====================================================
+
+        // Failed login count reset
         credentials.setFailedLoginCount(0);
+
+        // Previous lock ရှိခဲ့ရင် clear
         credentials.setLockedUntil(null);
 
         credentialsRepository.save(credentials);
 
-        // Credential authentication success history
-        saveLoginAttempt(
-                identifier,
-                customer,
-                true,
-                null
-        );
+        
+ 
 
-        // ဒီမှာ login complete မဖြစ်သေးဘူး
-        // နောက်တစ်ဆင့် Email OTP verify လုပ်ရမယ်
-        createLoginOtp(customer);
-     // Password authentication success ဖြစ်ပြီးနောက်
-     // Login MFA OTP create
-        return customer;
-    }
-    private OtpChallenges createLoginOtp(Customers customer) {
 
-        // 1. 6-digit OTP generate
-        String rawOtp = generateOtp();
+        // =====================================================
+        // EMAIL OTP CREATE
+        // =====================================================
 
-        // 2. OTP ကို hash လုပ်
-        String otpHash = passwordEncoder.encode(rawOtp);
-
-        // 3. Challenge group id create
-        String challengeGroupId = UUID.randomUUID().toString();
-
-        LocalDateTime now = LocalDateTime.now();
-
-        // 4. OTP entity create
         OtpChallenges otpChallenge =
-                OtpChallenges.builder()
-                        .customer(customer)
-                        .purpose(OtpPurpose.LOGIN)
-                        .otpHash(otpHash)
-                        .deliveryChannel(DeliveryChannel.EMAIL)
-                        .destinationMasked(
-                                maskEmail(customer.getEmail())
-                        )
-                        .attemptCount(0)
-                        .maxAttempts(MAX_OTP_ATTEMPTS)
-                        .expiresAt(
-                                now.plusMinutes(OTP_EXPIRY_MINUTES)
-                        )
-                        .status(OtpStatus.ACTIVE)
-                        .challengeGroupId(challengeGroupId)
-                        .lastSentAt(now)
-                        .maxResendAttempts(MAX_OTP_RESENDS)
-                        .resendNo(0)
-                        .build();
+                createLoginOtp(customer);
 
-        // 5. Database save
-        otpChallengesRepository.save(otpChallenge);
 
-        // TEMPORARY testing only
-        System.out.println("Generated OTP: " + rawOtp);
+        // =====================================================
+        // RESPONSE TO FRONTEND
+        // =====================================================
 
-        return otpChallenge;
+        return new CusLoginResponse(
+                true,
+                "OTP has been sent to your registered email.",
+                true,
+                otpChallenge.getChallengeGroupId(),
+                otpChallenge.getDestinationMasked()
+        );
     }
+
+
+    // =========================================================
+    // 2. FIND CUSTOMER
+    // Customer ID OR Account Number
+    // =========================================================
 
     private Customers findCustomer(String identifier) {
 
-        // Customer ID / Customer Code နဲ့အရင်ရှာ
         return customerRepository
                 .findByCustomerCode(identifier)
 
-                // မတွေ့ရင် Account Number နဲ့ရှာ
+                // Customer Code မတွေ့ရင်
+                // Account Number နဲ့ရှာ
                 .orElseGet(() ->
                         accountsRepository
                                 .findByAccountNumber(identifier)
+
+                                // Account ကနေ Customer ယူ
                                 .map(Accounts::getCustomer)
+
                                 .orElseThrow(() ->
                                         new RuntimeException(
                                                 "Invalid login credentials."
@@ -177,7 +211,12 @@ public class CusAuthService {
     }
 
 
-    private void validateCustomerStatus(Customers customer) {
+    // =========================================================
+    // 3. CUSTOMER STATUS CHECK
+    // =========================================================
+
+    private void validateCustomerStatus(
+            Customers customer) {
 
         if (customer.getStatus() != CustomerStatus.ACTIVE) {
 
@@ -188,31 +227,47 @@ public class CusAuthService {
     }
 
 
+    // =========================================================
+    // 4. LOGIN LOCK CHECK
+    // =========================================================
+
+    
     private void checkLoginLock(
-            CustomerCredentials credentials) {
+            CustomerCredentials credentials,
+            String identifier,
+            Customers customer) {
 
         LocalDateTime now = LocalDateTime.now();
 
-        // locked_until = null ဆို lock မဖြစ်ထားဘူး
         if (credentials.getLockedUntil() == null) {
             return;
         }
 
-        // Lock time မကုန်သေးရင် login reject
         if (credentials.getLockedUntil().isAfter(now)) {
 
+            saveLoginAttempt(
+                    identifier,
+                    customer,
+                    false,
+                    "ACCOUNT_LOCKED"
+            );
+
             throw new RuntimeException(
-                    "Account is temporarily locked. Please try again later."
+                    "Account is temporarily locked. "
+                            + "Please try again later."
             );
         }
 
-        // Lock period 15 minutes ပြည့်သွားပြီ
+        // Lock time expired
         credentials.setFailedLoginCount(0);
         credentials.setLockedUntil(null);
 
         credentialsRepository.save(credentials);
     }
 
+    // =========================================================
+    // 5. FAILED PASSWORD MANAGEMENT
+    // =========================================================
 
     private void handleFailedPassword(
             CustomerCredentials credentials) {
@@ -222,7 +277,8 @@ public class CusAuthService {
 
         credentials.setFailedLoginCount(failedCount);
 
-        // Password 5 ကြိမ်ဆက်တိုက်မှား
+
+        // Password 5 ကြိမ်မှားရင်
         if (failedCount >= MAX_FAILED_ATTEMPTS) {
 
             credentials.setLockedUntil(
@@ -231,9 +287,14 @@ public class CusAuthService {
             );
         }
 
+
         credentialsRepository.save(credentials);
     }
 
+
+    // =========================================================
+    // 6. LOGIN ATTEMPT HISTORY
+    // =========================================================
 
     private void saveLoginAttempt(
             String identifier,
@@ -243,41 +304,217 @@ public class CusAuthService {
 
         LoginAttempts attempt =
                 LoginAttempts.builder()
-                        .actorType(SessionSubjectType.CUSTOMER)
+
+                        .actorType(
+                                SessionSubjectType.CUSTOMER
+                        )
+
                         .loginIdentifier(identifier)
+
                         .customer(customer)
+
                         .success(success)
+
+                        .failureReason(failureReason)
+
+                        .build();
+
+
+        loginAttemptsRepository.save(attempt);
+    }
+    private void saveInvalidLoginAttempt(
+            String identifier,
+            String failureReason) {
+
+        LoginAttempts attempt =
+                LoginAttempts.builder()
+                        .actorType(
+                                SessionSubjectType.CUSTOMER
+                        )
+                        .loginIdentifier(identifier)
+                        .success(false)
                         .failureReason(failureReason)
                         .build();
 
         loginAttemptsRepository.save(attempt);
     }
-    
+
+
+    // =========================================================
+    // 7. GENERATE 6-DIGIT OTP
+    // =========================================================
+
     private String generateOtp() {
 
-        SecureRandom random = new SecureRandom();
-
-        int otpNumber = 100000 + random.nextInt(900000);
+        int otpNumber =
+                100000
+                        + SECURE_RANDOM.nextInt(900000);
 
         return String.valueOf(otpNumber);
     }
+
+
+    // =========================================================
+    // 8. CREATE LOGIN OTP
+    // =========================================================
+
+    private OtpChallenges createLoginOtp(
+            Customers customer) {
+
+
+        // Registered email ရှိရမယ်
+        if (customer.getEmail() == null
+                || customer.getEmail().isBlank()) {
+
+            throw new RuntimeException(
+                    "No registered email address is available for MFA."
+            );
+        }
+// previous ACTIVE login otp ‌ေတွ expire လုပ်
+        invalidateOldLoginOtps(customer);
+        // 1. 6-digit OTP generate
+        String rawOtp = generateOtp();
+
+
+        // 2. OTP Hash
+        String otpHash =
+                passwordEncoder.encode(rawOtp);
+
+
+        // 3. Challenge Group ID
+        String challengeGroupId =
+                UUID.randomUUID().toString();
+
+
+        LocalDateTime now =
+                LocalDateTime.now();
+
+
+        // 4. OTP Challenge create
+        OtpChallenges otpChallenge =
+                OtpChallenges.builder()
+
+                        .customer(customer)
+
+                        .purpose(
+                                OtpPurpose.LOGIN
+                        )
+
+                        .otpHash(otpHash)
+
+                        .deliveryChannel(
+                                DeliveryChannel.EMAIL
+                        )
+
+                        .destinationMasked(
+                                maskEmail(
+                                        customer.getEmail()
+                                )
+                        )
+
+                        .attemptCount(0)
+
+                        .maxAttempts(
+                                MAX_OTP_ATTEMPTS
+                        )
+
+                        .expiresAt(
+                                now.plusMinutes(
+                                        OTP_EXPIRY_MINUTES
+                                )
+                        )
+
+                        .status(
+                                OtpStatus.ACTIVE
+                        )
+
+                        .challengeGroupId(
+                                challengeGroupId
+                        )
+
+                        .lastSentAt(now)
+
+                        .maxResendAttempts(
+                                MAX_OTP_RESENDS
+                        )
+
+                        .resendNo(0)
+
+                        .build();
+
+
+        // 5. Database save
+        OtpChallenges savedOtp =
+                otpChallengesRepository.save(
+                        otpChallenge
+                );
+
+
+        /*
+         * TEMPORARY FOR DEVELOPMENT ONLY
+         *
+         * Email sending မရေးရသေးလို့
+         * OTP ကို console မှာ ယာယီကြည့်မယ်။
+         *
+         * Email service အလုပ်လုပ်ပြီဆို
+         * ဒီ line ကို ဖျက်ရမယ်။
+         */
+        System.out.println(
+                "Generated OTP: " + rawOtp
+        );
+
+
+        return savedOtp;
+    }
+
+
+    // =========================================================
+    // 9. MASK CUSTOMER EMAIL
+    // =========================================================
+
     private String maskEmail(String email) {
 
-        if (email == null || !email.contains("@")) {
+        if (email == null
+                || !email.contains("@")) {
+
             return "******";
         }
 
-        String[] parts = email.split("@");
+
+        String[] parts =
+                email.split("@", 2);
 
         String name = parts[0];
         String domain = parts[1];
 
+
         if (name.length() <= 2) {
+
             return "**@" + domain;
         }
+
 
         return name.substring(0, 2)
                 + "****@"
                 + domain;
+    }
+    
+    private void invalidateOldLoginOtps(
+            Customers customer) {
+
+        var activeOtps =
+                otpChallengesRepository
+                        .findByCustomerAndPurposeAndStatus(
+                                customer,
+                                OtpPurpose.LOGIN,
+                                OtpStatus.ACTIVE
+                        );
+
+        for (OtpChallenges otp : activeOtps) {
+
+            otp.setStatus(OtpStatus.EXPIRED);
+        }
+
+        otpChallengesRepository.saveAll(activeOtps);
     }
 }

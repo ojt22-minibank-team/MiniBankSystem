@@ -14,4 +14,6 @@ public class CusLoginResponse {
     private String message;
 
     private boolean otpRequired;
+    private String challengeGroupId;
+    private String maskedEmail;
 }
