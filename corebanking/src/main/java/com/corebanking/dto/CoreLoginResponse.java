@@ -7,7 +7,7 @@ import java.util.List;
 
 @Getter
 @AllArgsConstructor
-public class LoginResponse {
+public class CoreLoginResponse {
 
     private String token;
 
