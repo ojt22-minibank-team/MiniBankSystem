@@ -43,7 +43,6 @@ public class CusAuthService {
     private final CusOtpChallengesRepository otpChallengesRepository;
     private final PasswordEncoder passwordEncoder;
 
-
     // Login password rules
     private static final int MAX_FAILED_ATTEMPTS = 5;
     private static final int LOCK_MINUTES = 15;
