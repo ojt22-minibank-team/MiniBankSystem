@@ -9,7 +9,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class CusOtpVerifyResponse {
 
-    private boolean success;
+	private boolean success;
 
     private String message;
 
@@ -18,6 +18,11 @@ public class CusOtpVerifyResponse {
     private boolean passwordChangeRequired;
 
     private boolean pinSetupRequired;
+
+    private String accessToken;
+
+    private String refreshToken;
+    
 }
 
 //{

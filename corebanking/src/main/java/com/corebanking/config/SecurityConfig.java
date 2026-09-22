@@ -12,7 +12,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
+import org.springframework.core.annotation.Order;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity // (၁) Controller က @PreAuthorize တွေ အလုပ်လုပ်စေရန်
@@ -26,8 +26,13 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
+    
+    
+    
     @Bean
+    @Order(2)
+   
+  
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             // REST API (Postman) အတွက် CSRF ကို ပိတ်ထားပါသည်
@@ -40,6 +45,12 @@ public class SecurityConfig {
             
             // Endpoint များ၏ ခွင့်ပြုချက် သတ်မှတ်ခြင်း
             .authorizeHttpRequests(auth -> auth
+            		
+            		.requestMatchers(
+                            "/swagger-ui/**",
+                            "/swagger-ui.html",
+                            "/v3/api-docs/**"
+                    ).permitAll()
                 // Member 2 ၏ Customer API ကို Token မပါဘဲ စမ်းသပ်နိုင်ရန် လမ်းဖွင့်ပေးခြင်း
                 .requestMatchers("/api/customers/**").permitAll()
                 // Auth endpoint များကိုလည်း ခွင့်ပြုထားခြင်း
