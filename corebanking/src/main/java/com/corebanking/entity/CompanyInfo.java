@@ -2,9 +2,12 @@ package com.corebanking.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "company_info")
@@ -17,7 +20,8 @@ public class CompanyInfo {
 
     @Id
     @Column(name = "customer_id", columnDefinition = "BINARY(16)", nullable = false)
-    private java.util.UUID customerId;
+    @JdbcTypeCode(SqlTypes.BINARY)
+    private UUID customerId;
 
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId

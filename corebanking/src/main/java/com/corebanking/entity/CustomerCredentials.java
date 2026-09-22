@@ -21,6 +21,7 @@ public class CustomerCredentials {
 
     @Id
     @Column(name = "customer_id", columnDefinition = "BINARY(16)", nullable = false)
+    @JdbcTypeCode(SqlTypes.BINARY)
     private UUID customerId;
 
     @OneToOne(fetch = FetchType.LAZY)
@@ -36,11 +37,11 @@ public class CustomerCredentials {
     private String transactionPinHash;
 
     @Column(name = "mfa_enabled", nullable = false)
-    private boolean mfaEnabled = false;
+    private boolean mfaEnabled = true;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "mfa_method", nullable = false, length = 10)
-    private MfaMethod mfaMethod = MfaMethod.NONE;
+    private MfaMethod mfaMethod = MfaMethod.EMAIL;
 
     @Column(name = "must_change_password", nullable = false)
     private boolean mustChangePassword = true;

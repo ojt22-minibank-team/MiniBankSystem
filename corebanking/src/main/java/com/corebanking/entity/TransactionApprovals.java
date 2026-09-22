@@ -4,6 +4,7 @@ import com.corebanking.entity.enums.ApprovalStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
@@ -21,6 +22,7 @@ import java.util.UUID;
 public class TransactionApprovals {
 
     @Id
+    @UuidGenerator(style = UuidGenerator.Style.TIME)
     @Column(name = "approval_id", columnDefinition = "BINARY(16)", nullable = false)
     @JdbcTypeCode(SqlTypes.BINARY)
     private UUID approvalId;
@@ -53,7 +55,6 @@ public class TransactionApprovals {
 
     @PrePersist
     protected void onCreate() {
-        if (approvalId == null) approvalId = UUID.randomUUID();
         if (createdAt == null) createdAt = LocalDateTime.now();
     }
 }

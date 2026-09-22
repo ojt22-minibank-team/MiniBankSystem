@@ -5,6 +5,7 @@ import com.corebanking.entity.enums.UpdatedByType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class AuthSessions {
 
     @Id
+    @UuidGenerator(style = UuidGenerator.Style.TIME)
     @Column(name = "session_id", columnDefinition = "BINARY(16)", nullable = false)
     @JdbcTypeCode(SqlTypes.BINARY)
     private UUID sessionId;
@@ -57,7 +59,7 @@ public class AuthSessions {
     private LocalDateTime refreshExpiresAt;
 
     @Column(name = "idle_timeout_minutes", nullable = false)
-    private int idleTimeoutMinutes = 15;
+    private int idleTimeoutMinutes = 5;
 
     @Column(name = "revoked_at")
     private LocalDateTime revokedAt;
@@ -84,7 +86,6 @@ public class AuthSessions {
 
     @PrePersist
     protected void onCreate() {
-        if (sessionId == null) sessionId = UUID.randomUUID();
         if (issuedAt == null) issuedAt = LocalDateTime.now();
         if (lastSeenAt == null) lastSeenAt = LocalDateTime.now();
         if (updatedAt == null) updatedAt = LocalDateTime.now();
