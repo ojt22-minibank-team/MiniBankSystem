@@ -18,6 +18,7 @@ import com.corebanking.repository.StaffUsersRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,7 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private final CustomerRepository customerRepository;
     private final StaffUsersRepository staffUsersRepository;
+    private final PasswordEncoder passwordEncoder; // Group 1 Password Hash အတွက် ထည့်သွင်းခြင်း
 
     @Transactional
     public AccountResponseDTO createAccount(AccountCreateDTO dto) {
@@ -76,6 +78,12 @@ public class AccountService {
             approvals = (dto.getRequiredApprovals() != null) ? dto.getRequiredApprovals() : (short) 1;
         }
 
+        // Group 1 အတွက် Account Password ကို BCrypt ဖြင့် Hash ပြုလုပ်ခြင်း
+        String rawAccountPassword = (dto.getAccountPassword() != null && !dto.getAccountPassword().isBlank())
+                ? dto.getAccountPassword()
+                : "123456"; // Password မပါလာပါက Default အဖြစ် 123456 သတ်မှတ်ခြင်း
+        String encodedAccountPassword = passwordEncoder.encode(rawAccountPassword);
+
         // 5. Build and save the Account entity
         Accounts account = Accounts.builder()
                 .customer(customer)
@@ -89,6 +97,7 @@ public class AccountService {
                 .availableBalance(initialDeposit)
                 .minimumBalance(BigDecimal.ZERO)
                 .dailyTransferLimit(dailyTransferLimit)
+                .accountPasswordHash(encodedAccountPassword) // Hashed Password သိမ်းဆည်းခြင်း
                 .status(AccountStatus.ACTIVE)
                 .openedAt(LocalDateTime.now())
                 .createdByStaff(staff)
@@ -96,7 +105,7 @@ public class AccountService {
 
         Accounts saved = accountRepository.save(account);
 
-        // 6. Return response DTO
+        // 6. Return response DTO (လုံခြုံရေးအရ Password Hash ကို Response တွင် မပြပါ)
         return AccountResponseDTO.builder()
                 .accountNumber(saved.getAccountNumber())
                 .accountType(saved.getAccountType().name())
@@ -128,7 +137,7 @@ public class AccountService {
 
         return accNum;
     }
-    
+
     /**
      * Account Number ဖြင့် အကောင့်အသေးစိတ်နှင့် လက်ကျန်ငွေ စစ်ဆေးခြင်း
      */
@@ -153,20 +162,17 @@ public class AccountService {
                 .openedAt(account.getOpenedAt())
                 .build();
     }
-    
+
     /**
      * Customer Code ဖြင့် သက်ဆိုင်ရာ ဖောက်သည် ပိုင်ဆိုင်သမျှ အကောင့်များအားလုံးကို ဆွဲထုတ်ခြင်း
      */
     @Transactional(readOnly = true)
     public java.util.List<AccountResponseDTO> getAccountsByCustomerCode(String customerCode) {
-        // ၁။ Customer အမှန်တကယ် ရှိမရှိ အရင် စစ်ဆေးပါမည်
         Customers customer = customerRepository.findByCustomerCode(customerCode)
                 .orElseThrow(() -> new RuntimeException("Customer not found with code: " + customerCode));
 
-        // ၂။ ထို Customer ပိုင်ဆိုင်သည့် အကောင့်များအားလုံးကို ဆွဲယူပါမည်
         java.util.List<Accounts> accounts = accountRepository.findByCustomerCustomerCode(customerCode);
 
-        // ၃။ Accounts List ကို Response DTO List အဖြစ် ပြောင်းလဲပေးပါမည်
         return accounts.stream()
                 .map(acc -> AccountResponseDTO.builder()
                         .accountNumber(acc.getAccountNumber())
@@ -183,17 +189,15 @@ public class AccountService {
                         .build())
                 .toList();
     }
-    
+
     /**
      * Account Status ပြင်ဆင်ပြောင်းလဲခြင်း (ACTIVE / FROZEN / SUSPENDED / CLOSED)
      */
     @Transactional
     public AccountResponseDTO updateAccountStatus(String accountNumber, AccountStatusUpdateDTO dto) {
-        // ၁။ အကောင့် ရှိမရှိ ရှာဖွေခြင်း
         Accounts account = accountRepository.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new RuntimeException("Account not found with number: " + accountNumber));
 
-        // ၂။ အကယ်၍ CLOSED လုပ်မည်ဆိုပါက လက်ကျန်ငွေ ကျန်မကျန် စစ်ဆေးခြင်း (Banking Rule)
         if (dto.getStatus() == AccountStatus.CLOSED) {
             if (account.getCurrentBalance().compareTo(BigDecimal.ZERO) > 0) {
                 throw new IllegalStateException("Cannot close account with remaining balance. Balance must be zero.");
@@ -201,15 +205,12 @@ public class AccountService {
             account.setClosedAt(LocalDateTime.now());
         }
 
-        // ၃။ Status ပြောင်းလဲခြင်းနှင့် အချိန်မှတ်တမ်းတင်ခြင်း
         account.setStatus(dto.getStatus());
         account.setUpdatedAt(LocalDateTime.now());
 
         Accounts updatedAccount = accountRepository.save(account);
-
         Customers customer = updatedAccount.getCustomer();
 
-        // ၄။ Response ပြန်လည်ပေးပို့ခြင်း
         return AccountResponseDTO.builder()
                 .accountNumber(updatedAccount.getAccountNumber())
                 .accountType(updatedAccount.getAccountType().name())
@@ -224,13 +225,12 @@ public class AccountService {
                 .openedAt(updatedAccount.getOpenedAt())
                 .build();
     }
-    
+
     /**
      * အကောင့်တစ်ခုသို့ ပူးတွဲပိုင်ရှင် (Joint Holder) ထည့်သွင်းခြင်း
      */
     @Transactional
     public AccountResponseDTO addJointHolder(String accountNumber, JointHolderAddDTO dto) {
-        // ၁။ အကောင့် ရှာဖွေခြင်းနှင့် Status စစ်ဆေးခြင်း
         Accounts account = accountRepository.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new RuntimeException("Account not found with number: " + accountNumber));
 
@@ -238,7 +238,6 @@ public class AccountService {
             throw new IllegalStateException("Cannot add joint holder to a non-active or frozen account");
         }
 
-        // ၂။ ထည့်သွင်းမည့် Joint Customer တည်ရှိမှု စစ်ဆေးခြင်း
         Customers jointCustomer = customerRepository.findByCustomerCode(dto.getJointCustomerCode())
                 .orElseThrow(() -> new RuntimeException("Customer not found with code: " + dto.getJointCustomerCode()));
 
@@ -246,12 +245,10 @@ public class AccountService {
             throw new IllegalStateException("Joint customer is not active");
         }
 
-        // ၃။ Primary Customer နှင့် ထပ်တူဖြစ်နေခြင်း ရှိမရှိ စစ်ဆေးခြင်း
         if (account.getCustomer().getCustomerCode().equals(dto.getJointCustomerCode())) {
             throw new IllegalArgumentException("Primary account holder cannot be added as a joint holder");
         }
 
-        // ၄။ Account ၏ Joint Flag နှင့် Approvals တိုးမြှင့်ခြင်း
         account.setJointAccount(true);
         if (account.getRequiredApprovals() < 2) {
             account.setRequiredApprovals((short) 2);
