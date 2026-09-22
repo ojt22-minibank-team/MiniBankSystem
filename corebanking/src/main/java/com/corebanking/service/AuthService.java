@@ -1,7 +1,7 @@
 package com.corebanking.service;
 
-import com.corebanking.dto.LoginRequest;
-import com.corebanking.dto.LoginResponse;
+import com.corebanking.dto.CoreLoginRequest;
+import com.corebanking.dto.CoreLoginResponse;
 import com.corebanking.entity.StaffUsers;
 import com.corebanking.entity.enums.StaffUserStatus;
 import com.corebanking.repository.PermissionsRepository;
@@ -25,7 +25,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
-    public LoginResponse login(LoginRequest request) {
+    public CoreLoginResponse login(CoreLoginRequest request) {
 
         StaffUsers staff = staffUsersRepository
                 .findByUsername(request.getUsername())
@@ -54,7 +54,7 @@ public class AuthService {
                 permissions
         );
 
-        return new LoginResponse(token, staff.getUsername(), roles, permissions);
+        return new CoreLoginResponse(token, staff.getUsername(), roles, permissions);
     }
 
     // Convert UUID to byte[] for native queries (BINARY(16) storage)

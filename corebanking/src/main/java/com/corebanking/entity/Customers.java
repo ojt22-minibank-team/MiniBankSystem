@@ -6,8 +6,8 @@ import com.corebanking.entity.enums.UpdatedByType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
+import org.springframework.data.domain.Persistable;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -19,13 +19,14 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Customers {
+public class Customers implements Persistable<UUID> {
 
     @Id
-    @UuidGenerator(style = UuidGenerator.Style.TIME)
-    @Column(name = "customer_id", columnDefinition = "BINARY(16)", nullable = false)
+    @Column(name = "customer_id", columnDefinition = "BINARY(16)", nullable = false, updatable = false)
     @JdbcTypeCode(SqlTypes.BINARY)
     private UUID customerId;
+
+    // Database ထဲတွင် မရှိသောကြောင့် @Version field ကို ဖယ်ရှားလိုက်ပါသည်
 
     @Column(name = "customer_code", length = 32, nullable = false, unique = true)
     private String customerCode;
@@ -69,13 +70,26 @@ public class Customers {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    // PersonalInfo ချိတ်ဆက်မှု
     @OneToOne(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private PersonalInfo personalInfo;
 
-    // CompanyInfo ချိတ်ဆက်မှု
     @OneToOne(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private CompanyInfo companyInfo;
+
+    // Persistable Interface အတွက် New Entity ဟုတ်မဟုတ် စစ်ဆေးရန် Transient flag
+    @Transient
+    @Builder.Default
+    private boolean isNew = true;
+
+    @Override
+    public UUID getId() {
+        return this.customerId;
+    }
+
+    @Override
+    public boolean isNew() {
+        return this.isNew;
+    }
 
     public void setPersonalInfo(PersonalInfo personalInfo) {
         this.personalInfo = personalInfo;
@@ -93,14 +107,28 @@ public class Customers {
 
     @PrePersist
     protected void onCreate() {
-        if (createdAt == null) createdAt = LocalDateTime.now();
-        if (updatedAt == null) updatedAt = LocalDateTime.now();
-        if (customerId == null) customerId = UUID.randomUUID();
-        if (status == null) status = CustomerStatus.ACTIVE;
+        if (this.customerId == null) {
+            this.customerId = UUID.randomUUID();
+        }
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = LocalDateTime.now();
+        }
+        if (this.status == null) {
+            this.status = CustomerStatus.ACTIVE;
+        }
+    }
+
+    @PostPersist
+    @PostLoad
+    protected void markNotNew() {
+        this.isNew = false;
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 }

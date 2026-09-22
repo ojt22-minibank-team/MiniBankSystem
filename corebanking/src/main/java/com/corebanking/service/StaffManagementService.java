@@ -209,63 +209,53 @@ public class StaffManagementService {
     }
 
 
-    // =====================================================
-    // 5. CHANGE STAFF ROLE
-    // =====================================================
+ // =====================================================
+ // 5. CHANGE STAFF ROLE
+ // =====================================================
 
-    public StaffResponse changeRole(
-            UUID staffId,
-            ChangeStaffRoleRequest request
-    ) {
+ public StaffResponse changeRole(
+         UUID staffId,
+         ChangeStaffRoleRequest request
+ ) {
+     // Check staff
+     StaffUsers staff =
+             staffUsersRepository.findById(staffId)
+                     .orElseThrow(() ->
+                             new RuntimeException("Staff not found")
+                     );
 
-        // Check staff
-        StaffUsers staff =
-                staffUsersRepository.findById(staffId)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Staff not found"
-                                )
-                        );
+     // Check new role
+     Roles role =
+             rolesRepository.findById(
+                     request.getRoleId()
+             )
+             .orElseThrow(() ->
+                     new RuntimeException("Role not found")
+             );
 
+     // Find current role association
+     StaffUserRoles staffRole =
+             staffUserRolesRepository
+                     .findByStaffId(staffId)
+                     .orElseThrow(() ->
+                             new RuntimeException("Staff role not found")
+                     );
 
-        // Check new role
-        Roles role =
-                rolesRepository.findById(
-                        request.getRoleId()
-                )
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Role not found"
-                        )
-                );
+     // Primary Key ပြောင်းလို့မရတဲ့အတွက် အဟောင်းကို ဖျက်ပါ
+     staffUserRolesRepository.delete(staffRole);
+     staffUserRolesRepository.flush(); // Database ထဲသို့ ချက်ချင်းသက်ရောက်စေရန်
 
+     // Role အသစ်ဖြင့် အသစ်ပြန်ဆောက်ပါ
+     StaffUserRoles newStaffRole = new StaffUserRoles();
+     newStaffRole.setStaffId(staffId);
+     newStaffRole.setRoleId(role.getRoleId());
+     newStaffRole.setAssignedAt(LocalDateTime.now());
+     newStaffRole.setUpdatedAt(LocalDateTime.now());
 
-        // Find current role
-        StaffUserRoles staffRole =
-                staffUserRolesRepository
-                        .findByStaffId(staffId)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Staff role not found"
-                                )
-                        );
+     staffUserRolesRepository.save(newStaffRole);
 
-
-        // Change role
-        staffRole.setRoleId(
-                role.getRoleId()
-        );
-
-        staffRole.setUpdatedAt(
-                LocalDateTime.now()
-        );
-
-
-        staffUserRolesRepository.save(staffRole);
-
-
-        return toResponse(staff);
-    }
+     return toResponse(staff);
+ }
 
 
     // =====================================================
