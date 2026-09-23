@@ -31,4 +31,6 @@ public class AccountCreateDTO {
 
     // Number of approvals needed for transactions (defaults to 1)
     private Short requiredApprovals;
+    
+    private String accountPassword;
 }
