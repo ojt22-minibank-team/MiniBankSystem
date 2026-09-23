@@ -38,10 +38,10 @@ import com.corebanking.repository.CusJwtRevokedTokensRepository;
 import io.jsonwebtoken.Claims;
 
 import java.time.ZoneId;
-import io.jsonwebtoken.Claims;
+
 import lombok.RequiredArgsConstructor;
 
-
+import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class CusAuthService {
@@ -634,7 +634,7 @@ public class CusAuthService {
     // =========================================================
     // 10. VERIFY LOGIN OTP
     // =========================================================
-
+    @Transactional
     public CusOtpVerifyResponse verifyLoginOtp(
             CusOtpVerifyRequest request) {
 
@@ -889,9 +889,6 @@ public class CusAuthService {
         	);
         }
 
-
-        // Normal login
-        // JWT / Session ကို later create မယ်
         CusTokenResponse tokenResponse =
                 createAuthenticatedSession(
                         customer,
@@ -1216,6 +1213,7 @@ public class CusAuthService {
     // =========================================================
     // 13. FIRST LOGIN - CREATE TRANSACTION PIN
     // =========================================================
+    @Transactional
     public CusTokenResponse setupTransactionPin(
             String challengeGroupId,
             String pin,
@@ -1400,10 +1398,9 @@ public class CusAuthService {
 
      // 4. Refresh Token Hash
      String refreshTokenHash =
-             passwordEncoder.encode(
-                     refreshToken
-             );
-
+    	        cusSessionService.hashRefreshToken(
+    	                refreshToken
+    	        );
 
      // 5. Auth Session
      AuthSessions authSession =
@@ -1484,6 +1481,8 @@ public class CusAuthService {
              refreshToken
      );
  }
+ 
+ @Transactional
  public CusTokenResponse refreshToken(
 	        CusRefreshTokenRequest request) {
 
@@ -1554,7 +1553,7 @@ public class CusAuthService {
 
 	    // 5. Store NEW refresh hash
 	    session.setRefreshTokenHash(
-	            passwordEncoder.encode(
+	            cusSessionService.hashRefreshToken(
 	                    newRefreshToken
 	            )
 	    );
@@ -1696,13 +1695,24 @@ public class CusAuthService {
             );
         }
 
+
+        if (otpChallenge.getConsumedAt() == null
+                || otpChallenge.getConsumedAt()
+                        .plusMinutes(10)
+                        .isBefore(LocalDateTime.now())) {
+
+            throw new RuntimeException(
+                    "First-login setup session has expired. Please login again."
+            );
+        }
+
         return otpChallenge.getCustomer();
     }
     
  // =========================================================
  // CUSTOMER LOGOUT
  // =========================================================
-
+    @Transactional
  public void logout(
          String authorizationHeader) {
 
@@ -1847,4 +1857,5 @@ public class CusAuthService {
              "USER_LOGOUT"
      );
  }
+ 
 }

@@ -11,11 +11,16 @@ import io.jsonwebtoken.Claims;
 
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.HexFormat;
 import java.util.UUID;
+
 
 @Service
 @RequiredArgsConstructor
@@ -25,13 +30,12 @@ public class CusSessionService {
 
     private final CusCredentialsRepository credentialsRepository;
 
-    private final PasswordEncoder passwordEncoder;
-
 
     // =========================================================
-    // VALIDATE ACCESS TOKEN SESSION
+    // 1. VALIDATE ACCESS TOKEN SESSION
     // =========================================================
 
+    @Transactional
     public AuthSessions validateAccessSession(
             Claims claims) {
 
@@ -41,11 +45,13 @@ public class CusSessionService {
                         "ACCESS"
                 );
 
-        // Valid request ဖြစ်လို့
-        // last activity time update
+
+        // Valid request ဖြစ်တဲ့အတွက်
+        // user activity time update
         session.setLastSeenAt(
                 LocalDateTime.now()
         );
+
 
         return authSessionsRepository.save(
                 session
@@ -54,12 +60,30 @@ public class CusSessionService {
 
 
     // =========================================================
-    // VALIDATE REFRESH TOKEN SESSION
+    // 2. VALIDATE REFRESH TOKEN SESSION
     // =========================================================
 
+    @Transactional
     public AuthSessions validateRefreshSession(
             Claims claims,
             String rawRefreshToken) {
+
+        // -----------------------------------------
+        // Refresh Token required
+        // -----------------------------------------
+
+        if (rawRefreshToken == null
+                || rawRefreshToken.isBlank()) {
+
+            throw new RuntimeException(
+                    "Refresh token is required."
+            );
+        }
+
+
+        // -----------------------------------------
+        // Common session validation
+        // -----------------------------------------
 
         AuthSessions session =
                 validateBaseSession(
@@ -68,10 +92,45 @@ public class CusSessionService {
                 );
 
 
-        // Refresh Token DB hash နဲ့တိုက်စစ်
-        if (!passwordEncoder.matches(
-                rawRefreshToken,
-                session.getRefreshTokenHash())) {
+        // -----------------------------------------
+        // Raw Refresh Token ကို SHA-256 hash
+        // -----------------------------------------
+
+        String incomingHash =
+                hashRefreshToken(
+                        rawRefreshToken
+                );
+
+
+        String storedHash =
+                session.getRefreshTokenHash();
+
+
+        if (storedHash == null
+                || storedHash.isBlank()) {
+
+            throw new RuntimeException(
+                    "Stored refresh token is invalid."
+            );
+        }
+
+
+        // -----------------------------------------
+        // SHA-256 hash compare
+        // -----------------------------------------
+
+        boolean refreshTokenMatches =
+                MessageDigest.isEqual(
+                        incomingHash.getBytes(
+                                StandardCharsets.UTF_8
+                        ),
+                        storedHash.getBytes(
+                                StandardCharsets.UTF_8
+                        )
+                );
+
+
+        if (!refreshTokenMatches) {
 
             throw new RuntimeException(
                     "Invalid refresh token."
@@ -79,9 +138,15 @@ public class CusSessionService {
         }
 
 
+        // -----------------------------------------
+        // Refresh request က valid activity ဖြစ်လို့
+        // lastSeenAt update
+        // -----------------------------------------
+
         session.setLastSeenAt(
                 LocalDateTime.now()
         );
+
 
         return authSessionsRepository.save(
                 session
@@ -90,23 +155,32 @@ public class CusSessionService {
 
 
     // =========================================================
-    // COMMON SESSION VALIDATION
+    // 3. COMMON SESSION VALIDATION
     // =========================================================
 
     private AuthSessions validateBaseSession(
             Claims claims,
             String expectedTokenType) {
 
+        if (claims == null) {
+
+            throw new RuntimeException(
+                    "Token claims are required."
+            );
+        }
+
+
         LocalDateTime now =
                 LocalDateTime.now();
 
 
-        // -----------------------------------------
-        // 1. JWT Subject = Customer UUID
-        // -----------------------------------------
+        // =====================================================
+        // 1. JWT SUBJECT = CUSTOMER UUID
+        // =====================================================
 
         String subject =
                 claims.getSubject();
+
 
         if (subject == null
                 || subject.isBlank()) {
@@ -134,15 +208,16 @@ public class CusSessionService {
         }
 
 
-        // -----------------------------------------
-        // 2. Session ID from JWT
-        // -----------------------------------------
+        // =====================================================
+        // 2. SESSION UUID FROM JWT
+        // =====================================================
 
         String sessionUuid =
                 claims.get(
                         "sid",
                         String.class
                 );
+
 
         if (sessionUuid == null
                 || sessionUuid.isBlank()) {
@@ -153,15 +228,16 @@ public class CusSessionService {
         }
 
 
-        // -----------------------------------------
-        // 3. CUSTOMER token only
-        // -----------------------------------------
+        // =====================================================
+        // 3. SUBJECT TYPE MUST BE CUSTOMER
+        // =====================================================
 
         String subjectType =
                 claims.get(
                         "subjectType",
                         String.class
                 );
+
 
         if (!"CUSTOMER".equals(
                 subjectType)) {
@@ -172,15 +248,16 @@ public class CusSessionService {
         }
 
 
-        // -----------------------------------------
-        // 4. ACCESS / REFRESH check
-        // -----------------------------------------
+        // =====================================================
+        // 4. ACCESS OR REFRESH TOKEN TYPE
+        // =====================================================
 
         String tokenType =
                 claims.get(
                         "tokenType",
                         String.class
                 );
+
 
         if (!expectedTokenType.equals(
                 tokenType)) {
@@ -191,14 +268,15 @@ public class CusSessionService {
         }
 
 
-        // -----------------------------------------
-        // 5. Token version claim
-        // -----------------------------------------
+        // =====================================================
+        // 5. TOKEN VERSION FROM JWT
+        // =====================================================
 
         Object tokenVersionObject =
                 claims.get(
                         "tokenVersion"
                 );
+
 
         if (!(tokenVersionObject
                 instanceof Number)) {
@@ -208,14 +286,15 @@ public class CusSessionService {
             );
         }
 
+
         long tokenVersion =
                 ((Number) tokenVersionObject)
                         .longValue();
 
 
-        // -----------------------------------------
-        // 6. Auth Session DB ရှာ
-        // -----------------------------------------
+        // =====================================================
+        // 6. AUTH SESSION FROM DATABASE
+        // =====================================================
 
         AuthSessions session =
                 authSessionsRepository
@@ -229,9 +308,9 @@ public class CusSessionService {
                         );
 
 
-        // -----------------------------------------
-        // 7. Customer Session လား?
-        // -----------------------------------------
+        // =====================================================
+        // 7. SESSION SUBJECT TYPE
+        // =====================================================
 
         if (session.getSubjectType()
                 != SessionSubjectType.CUSTOMER) {
@@ -242,7 +321,14 @@ public class CusSessionService {
         }
 
 
+        // =====================================================
+        // 8. SESSION CUSTOMER = JWT CUSTOMER ?
+        // =====================================================
+
         if (session.getCustomer() == null
+                || session
+                        .getCustomer()
+                        .getCustomerId() == null
                 || !session
                         .getCustomer()
                         .getCustomerId()
@@ -254,9 +340,9 @@ public class CusSessionService {
         }
 
 
-        // -----------------------------------------
-        // 8. Customer ACTIVE လား?
-        // -----------------------------------------
+        // =====================================================
+        // 9. CUSTOMER STATUS ACTIVE ?
+        // =====================================================
 
         if (session
                 .getCustomer()
@@ -269,9 +355,9 @@ public class CusSessionService {
         }
 
 
-        // -----------------------------------------
-        // 9. Session revoked?
-        // -----------------------------------------
+        // =====================================================
+        // 10. SESSION ALREADY REVOKED ?
+        // =====================================================
 
         if (session.getRevokedAt()
                 != null) {
@@ -282,9 +368,9 @@ public class CusSessionService {
         }
 
 
-        // -----------------------------------------
-        // 10. Refresh session expiry
-        // -----------------------------------------
+        // =====================================================
+        // 11. REFRESH SESSION EXPIRY CHECK
+        // =====================================================
 
         if (session.getRefreshExpiresAt() == null
                 || !session
@@ -296,28 +382,35 @@ public class CusSessionService {
                     "SESSION_EXPIRED"
             );
 
+
             throw new RuntimeException(
                     "Authentication session has expired."
             );
         }
 
 
-        // -----------------------------------------
-        // 11. 5-minute inactivity check
-        // -----------------------------------------
+        // =====================================================
+        // 12. LAST ACTIVITY MUST EXIST
+        // =====================================================
 
-        if (session.getLastSeenAt() == null) {
+        if (session.getLastSeenAt()
+                == null) {
 
             revokeSession(
                     session,
                     "INVALID_SESSION_ACTIVITY"
             );
 
+
             throw new RuntimeException(
                     "Authentication session is invalid."
             );
         }
 
+
+        // =====================================================
+        // 13. SESSION IDLE TIMEOUT
+        // =====================================================
 
         LocalDateTime idleExpiry =
                 session
@@ -335,15 +428,16 @@ public class CusSessionService {
                     "IDLE_TIMEOUT"
             );
 
+
             throw new RuntimeException(
                     "Session expired due to inactivity."
             );
         }
 
 
-        // -----------------------------------------
-        // 12. Session token version check
-        // -----------------------------------------
+        // =====================================================
+        // 14. SESSION TOKEN VERSION CHECK
+        // =====================================================
 
         if (session.getTokenVersionAtIssue()
                 != tokenVersion) {
@@ -354,9 +448,9 @@ public class CusSessionService {
         }
 
 
-        // -----------------------------------------
-        // 13. Current credentials tokenVersion
-        // -----------------------------------------
+        // =====================================================
+        // 15. CURRENT CREDENTIALS TOKEN VERSION
+        // =====================================================
 
         CustomerCredentials credentials =
                 credentialsRepository
@@ -378,6 +472,7 @@ public class CusSessionService {
                     "TOKEN_VERSION_CHANGED"
             );
 
+
             throw new RuntimeException(
                     "Authentication token is no longer valid."
             );
@@ -389,26 +484,89 @@ public class CusSessionService {
 
 
     // =========================================================
-    // REVOKE SESSION
+    // 4. REVOKE SESSION
     // =========================================================
 
+    @Transactional
     public void revokeSession(
             AuthSessions session,
             String reason) {
 
+        if (session == null) {
+
+            return;
+        }
+
+
+        // Already revoked ဖြစ်နေရင်
+        // ထပ် update မလုပ်တော့ဘူး
         if (session.getRevokedAt()
-                == null) {
+                != null) {
 
-            session.setRevokedAt(
-                    LocalDateTime.now()
+            return;
+        }
+
+
+        session.setRevokedAt(
+                LocalDateTime.now()
+        );
+
+
+        session.setRevokeReason(
+                reason
+        );
+
+
+        authSessionsRepository.save(
+                session
+        );
+    }
+
+
+    // =========================================================
+    // 5. SHA-256 REFRESH TOKEN HASH
+    // =========================================================
+
+    public String hashRefreshToken(
+            String refreshToken) {
+
+        if (refreshToken == null
+                || refreshToken.isBlank()) {
+
+            throw new RuntimeException(
+                    "Refresh token cannot be empty."
             );
+        }
 
-            session.setRevokeReason(
-                    reason
-            );
 
-            authSessionsRepository.save(
-                    session
+        try {
+
+            MessageDigest digest =
+                    MessageDigest.getInstance(
+                            "SHA-256"
+                    );
+
+
+            byte[] hashBytes =
+                    digest.digest(
+                            refreshToken.getBytes(
+                                    StandardCharsets.UTF_8
+                            )
+                    );
+
+
+            return HexFormat
+                    .of()
+                    .formatHex(
+                            hashBytes
+                    );
+
+
+        } catch (NoSuchAlgorithmException ex) {
+
+            throw new RuntimeException(
+                    "Unable to hash refresh token.",
+                    ex
             );
         }
     }
