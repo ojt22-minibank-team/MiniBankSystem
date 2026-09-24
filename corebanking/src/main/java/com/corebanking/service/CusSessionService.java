@@ -1,25 +1,25 @@
 package com.corebanking.service;
 
-import com.corebanking.entity.AuthSessions;
-import com.corebanking.entity.CustomerCredentials;
-import com.corebanking.entity.enums.CustomerStatus;
-import com.corebanking.entity.enums.SessionSubjectType;
-import com.corebanking.repository.CusAuthSessionsRepository;
-import com.corebanking.repository.CusCredentialsRepository;
-
-import io.jsonwebtoken.Claims;
-
-import lombok.RequiredArgsConstructor;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.corebanking.entity.AuthSessions;
+import com.corebanking.entity.CustomerCredentials;
+import com.corebanking.entity.enums.CustomerStatus;
+import com.corebanking.entity.enums.SessionSubjectType;
+import com.corebanking.exception.CusAuthenticationException;
+import com.corebanking.repository.CusAuthSessionsRepository;
+import com.corebanking.repository.CusCredentialsRepository;
+
+import io.jsonwebtoken.Claims;
+import lombok.RequiredArgsConstructor;
 
 
 @Service
@@ -132,9 +132,9 @@ public class CusSessionService {
 
         if (!refreshTokenMatches) {
 
-            throw new RuntimeException(
-                    "Invalid refresh token."
-            );
+        	throw new CusAuthenticationException(
+        	        "Invalid refresh token."
+        	);
         }
 
 
