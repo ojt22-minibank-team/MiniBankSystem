@@ -1,6 +1,11 @@
 package com.corebanking.exception;
 
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
@@ -9,12 +14,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -91,4 +90,38 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(status).body(errorBody);
     }
+}
+
+@ExceptionHandler(CusAuthenticationException.class)
+public ResponseEntity<Map<String, Object>>
+        handleCusAuthenticationException(
+                CusAuthenticationException ex) {
+
+    Map<String, Object> response =
+            new LinkedHashMap<>();
+
+    response.put(
+            "code",
+            "UNAUTHORIZED"
+    );
+
+    response.put(
+            "message",
+            ex.getMessage()
+    );
+
+    response.put(
+            "timestamp",
+            LocalDateTime.now()
+    );
+
+    response.put(
+            "status",
+            HttpStatus.UNAUTHORIZED.value()
+    );
+
+    return ResponseEntity
+            .status(HttpStatus.UNAUTHORIZED)
+            .body(response);
+}
 }

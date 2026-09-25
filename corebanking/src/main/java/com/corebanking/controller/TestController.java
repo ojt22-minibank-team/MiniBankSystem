@@ -10,24 +10,44 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/test")
 public class TestController {
 
-    // Admin Role ရှိသူသာ ဝင်ခွင့်ရမည်
-	// ADMIN Role ရထားသော မည်သူမဆို (admin, super_admin, admin02 စသည်ဖြင့်) ဝင်ခွင့်ရမည်
+    // =====================================================
+    // ADMIN TEST
+    // =====================================================
+
     @GetMapping("/admin")
-    @PreAuthorize("hasRole('ADMIN')") 
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> adminAccess() {
-        return ResponseEntity.ok("Admin Access Granted");
+
+        return ResponseEntity.ok(
+                "Admin Access Granted"
+        );
     }
 
-    // TELLER Role ရထားသော မည်သူမဆို (teller01, teller02, teller03 အားလုံး) ဝင်ခွင့်ရမည်
+
+    // =====================================================
+    // TELLER TEST
+    // =====================================================
+
     @GetMapping("/teller")
-    @PreAuthorize("hasRole('TELLER')") 
+    @PreAuthorize("hasRole('TELLER')")
     public ResponseEntity<String> tellerAccess() {
-        return ResponseEntity.ok("Teller Access Granted");
+
+        return ResponseEntity.ok(
+                "Teller Access Granted"
+        );
     }
-    
+
+
+    // =====================================================
+    // AUDITOR TEST
+    // =====================================================
+
     @GetMapping("/auditor")
-    @PreAuthorize("hasRole('AUDITOR')") 
+    @PreAuthorize("hasRole('AUDITOR')")
     public ResponseEntity<String> auditorAccess() {
-        return ResponseEntity.ok("Auditor Access Granted");
+
+        return ResponseEntity.ok(
+                "Auditor Access Granted"
+        );
     }
 }

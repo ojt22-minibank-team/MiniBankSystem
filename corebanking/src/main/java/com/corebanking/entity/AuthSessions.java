@@ -59,7 +59,7 @@ public class AuthSessions {
     private LocalDateTime refreshExpiresAt;
 
     @Column(name = "idle_timeout_minutes", nullable = false)
-    private int idleTimeoutMinutes = 15;
+    private int idleTimeoutMinutes = 5;
 
     @Column(name = "revoked_at")
     private LocalDateTime revokedAt;

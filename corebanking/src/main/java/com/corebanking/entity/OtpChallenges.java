@@ -54,7 +54,7 @@ public class OtpChallenges {
     private int attemptCount = 0;
 
     @Column(name = "max_attempts", nullable = false)
-    private int maxAttempts = 3;
+    private int maxAttempts = 5;
 
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
@@ -73,7 +73,7 @@ public class OtpChallenges {
     private LocalDateTime lastSentAt;
 
     @Column(name = "max_resend_attempts", nullable = false)
-    private int maxResendAttempts = 3;
+    private int maxResendAttempts = 5;
 
     @Column(name = "resend_no", nullable = false)
     private int resendNo = 0;
