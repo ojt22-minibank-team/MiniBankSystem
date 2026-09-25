@@ -1,6 +1,17 @@
 package com.corebanking.security;
 
+import java.io.IOException;
+import java.util.List;
+
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
 import com.corebanking.entity.AuthSessions;
+import com.corebanking.repository.CusJwtRevokedTokensRepository;
 import com.corebanking.service.CusJwtService;
 import com.corebanking.service.CusSessionService;
 
@@ -15,25 +26,24 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
-import com.corebanking.repository.CusJwtRevokedTokensRepository;
-import java.io.IOException;
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor
 public class CusJwtAuthenticationFilter
         extends OncePerRequestFilter {
 
+
     private final CusJwtService cusJwtService;
 
     private final CusSessionService cusSessionService;
-    private final CusJwtRevokedTokensRepository jwtRevokedTokensRepository;
+
+    private final CusJwtRevokedTokensRepository
+            jwtRevokedTokensRepository;
+
+
+    // =========================================================
+    // JWT FILTER
+    // =========================================================
 
     @Override
     protected void doFilterInternal(
@@ -42,6 +52,16 @@ public class CusJwtAuthenticationFilter
             FilterChain filterChain)
             throws ServletException, IOException {
 
+
+        System.out.println(
+                "CUS JWT FILTER RUNNING: "
+                        + request.getRequestURI()
+        );
+
+
+        // =====================================================
+        // 1. AUTHORIZATION HEADER
+        // =====================================================
 
         String authorizationHeader =
                 request.getHeader(
@@ -62,6 +82,10 @@ public class CusJwtAuthenticationFilter
         }
 
 
+        // =====================================================
+        // 2. EXTRACT TOKEN
+        // =====================================================
+
         String token =
                 authorizationHeader
                         .substring(7)
@@ -70,50 +94,117 @@ public class CusJwtAuthenticationFilter
 
         try {
 
-            // JWT signature + expiration verify
+
+            // =================================================
+            // 3. JWT SIGNATURE + EXPIRATION VERIFY
+            // =================================================
+
             Claims claims =
                     cusJwtService.getClaims(
                             token
                     );
-            
-         // =====================================================
-         // JWT REVOKED / BLACKLIST CHECK
-         // =====================================================
-
-         String jti =
-                 claims.getId();
-
-         if (jti == null
-                 || jti.isBlank()) {
-
-             unauthorized(
-                     response,
-                     "Invalid authentication token."
-             );
-
-             return;
-         }
 
 
-         if (jwtRevokedTokensRepository
-                 .existsByJti(jti)) {
+            // Temporary Debug
+            System.out.println(
+                    "JWT SUBJECT = "
+                            + claims.getSubject()
+            );
 
-             unauthorized(
-                     response,
-                     "Authentication token has been revoked."
-             );
+            System.out.println(
+                    "JWT SID = "
+                            + claims.get("sid")
+            );
 
-             return;
-         }
+            System.out.println(
+                    "JWT TOKEN TYPE = "
+                            + claims.get("tokenType")
+            );
+
+            System.out.println(
+                    "JWT TOKEN VERSION = "
+                            + claims.get("tokenVersion")
+            );
+
+            System.out.println(
+                    "JWT JTI = "
+                            + claims.getId()
+            );
 
 
-            // DB session + timeout + revoke check
+            // =================================================
+            // 4. TOKEN TYPE MUST BE ACCESS
+            // =================================================
+
+            String tokenType =
+                    claims.get(
+                            "tokenType",
+                            String.class
+                    );
+
+
+            if (!"ACCESS".equals(
+                    tokenType)) {
+
+                unauthorized(
+                        response,
+                        "Access token is required."
+                );
+
+                return;
+            }
+
+
+            // =================================================
+            // 5. JTI CHECK
+            // =================================================
+
+            String jti =
+                    claims.getId();
+
+
+            if (jti == null
+                    || jti.isBlank()) {
+
+                unauthorized(
+                        response,
+                        "Invalid authentication token."
+                );
+
+                return;
+            }
+
+
+            // =================================================
+            // 6. REVOKED TOKEN CHECK
+            // =================================================
+
+            if (jwtRevokedTokensRepository
+                    .existsByJti(jti)) {
+
+                unauthorized(
+                        response,
+                        "Authentication token has been revoked."
+                );
+
+                return;
+            }
+
+
+            // =================================================
+            // 7. VALIDATE DB SESSION
+            // =================================================
+
             AuthSessions session =
                     cusSessionService
                             .validateAccessSession(
                                     claims
                             );
 
+
+            // =================================================
+            // 8. CUSTOMER ID
+            // =================================================
 
             String customerId =
                     session
@@ -122,11 +213,17 @@ public class CusJwtAuthenticationFilter
                             .toString();
 
 
-            // Spring Security Authentication
+            // =================================================
+            // 9. CREATE SPRING AUTHENTICATION
+            // =================================================
+
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
+
                             customerId,
+
                             null,
+
                             List.of(
                                     new SimpleGrantedAuthority(
                                             "ROLE_CUSTOMER"
@@ -143,12 +240,20 @@ public class CusJwtAuthenticationFilter
             );
 
 
+            // =================================================
+            // 10. SAVE AUTHENTICATION
+            // =================================================
+
             SecurityContextHolder
                     .getContext()
                     .setAuthentication(
                             authentication
                     );
 
+
+            // =================================================
+            // 11. CONTINUE REQUEST
+            // =================================================
 
             filterChain.doFilter(
                     request,
@@ -157,6 +262,7 @@ public class CusJwtAuthenticationFilter
 
 
         } catch (ExpiredJwtException ex) {
+
 
             unauthorized(
                     response,
@@ -167,6 +273,13 @@ public class CusJwtAuthenticationFilter
         } catch (JwtException
                  | IllegalArgumentException ex) {
 
+
+            System.out.println(
+                    "JWT ERROR: "
+                            + ex.getMessage()
+            );
+
+
             unauthorized(
                     response,
                     "Invalid authentication token."
@@ -175,34 +288,57 @@ public class CusJwtAuthenticationFilter
 
         } catch (RuntimeException ex) {
 
+
+            System.out.println(
+                    "JWT FILTER ERROR: "
+                            + ex.getMessage()
+            );
+
+
+            ex.printStackTrace();
+
+
             unauthorized(
                     response,
-                    "Authentication session is invalid or expired."
+                    ex.getMessage()
             );
         }
     }
 
 
     // =========================================================
-    // PUBLIC CUSTOMER AUTH URLs → FILTER မစစ်
+    // WHICH URLs SHOULD SKIP THIS FILTER?
     // =========================================================
 
     @Override
     protected boolean shouldNotFilter(
             HttpServletRequest request) {
 
+
         String uri =
                 request.getRequestURI();
 
 
-        // Customer API မဟုတ်ရင်
-        // ဒီ customer filter မသုံး
+        // =====================================================
+        // 1. CUSTOMER API မဟုတ်ရင်
+        // JWT Filter မစစ်ဘူး
+        //
+        // Swagger UI
+        // v3 api docs
+        // staff APIs
+        // other APIs
+        // =====================================================
+
         if (!uri.startsWith(
                 "/api/customer/")) {
 
             return true;
         }
 
+
+        // =====================================================
+        // 2. PUBLIC CUSTOMER AUTH APIs
+        // =====================================================
 
         return uri.equals(
                     "/api/customer/auth/login"
@@ -230,18 +366,25 @@ public class CusJwtAuthenticationFilter
     }
 
 
+    // =========================================================
+    // UNAUTHORIZED RESPONSE
+    // =========================================================
+
     private void unauthorized(
             HttpServletResponse response,
             String message)
             throws IOException {
 
+
         response.setStatus(
                 HttpServletResponse.SC_UNAUTHORIZED
         );
 
+
         response.setContentType(
                 "application/json"
         );
+
 
         response.getWriter().write(
                 "{\"success\":false,"
