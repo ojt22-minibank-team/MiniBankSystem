@@ -43,6 +43,8 @@ public class Customers implements Persistable<UUID> {
 
     @Column(name = "phone", length = 32)
     private String phone;
+    
+    private String address;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 10)
