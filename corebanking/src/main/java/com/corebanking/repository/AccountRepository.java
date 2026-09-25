@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,4 +24,8 @@ public interface AccountRepository extends JpaRepository<Accounts, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT a FROM Accounts a WHERE a.accountId = :accountId")
     Optional<Accounts> findByAccountIdForUpdate(@Param("accountId") UUID accountId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM Accounts a WHERE a.customer.customerId = :customerId AND a.accountStatus = 'ACTIVE'")
+    List<Accounts> findByCustomerIdForUpdate(@Param("customerId") UUID customerId);
 }

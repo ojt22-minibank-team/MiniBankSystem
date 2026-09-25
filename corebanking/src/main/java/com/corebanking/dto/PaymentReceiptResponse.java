@@ -4,10 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Data
 @Builder
@@ -18,7 +16,6 @@ public class PaymentReceiptResponse {
     private String message;
     private String paymentToken;
     private String coreLedgerReference;
-    private UUID merchantAccountId;
     private BigDecimal amount;
     private String currency;
     private LocalDateTime timestamp;

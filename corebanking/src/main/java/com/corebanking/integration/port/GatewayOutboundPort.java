@@ -1,10 +1,11 @@
 package com.corebanking.integration.port;
 
 import com.corebanking.dto.PaymentDetailsResponse;
+import java.util.UUID;
 
 public interface GatewayOutboundPort {
-    void dispatchAuthorizationOutcome(String paymentToken, String transactionStatus);
-    
-    // Future integration with Group 3 to fetch order amount before payment
     PaymentDetailsResponse fetchPaymentDetails(String paymentToken);
+    
+    // Updated to include customerId so Group 3 knows who to debit
+    void dispatchAuthorizationOutcome(String paymentToken, String transactionStatus, UUID customerId);
 }

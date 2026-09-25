@@ -4,9 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 import java.math.BigDecimal;
-import java.util.UUID;
 
 @Data
 @Builder
@@ -14,8 +12,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class PaymentDetailsResponse {
     private String merchantName;
-    private UUID merchantAccountId;
+    private String orderId; 
     private BigDecimal amount;
     private String currency;
-    private String orderReference;
-}
+    private String status; }

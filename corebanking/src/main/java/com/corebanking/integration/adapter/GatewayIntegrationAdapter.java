@@ -1,12 +1,17 @@
 package com.corebanking.integration.adapter;
 
 import com.corebanking.dto.PaymentDetailsResponse;
-import com.corebanking.dto.PaymentStatusUpdateRequest;
+import com.corebanking.exception.TransactionException;
 import com.corebanking.integration.port.GatewayOutboundPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @Component
@@ -14,68 +19,52 @@ import org.springframework.web.client.RestTemplate;
 public class GatewayIntegrationAdapter implements GatewayOutboundPort {
 
     private final RestTemplate restTemplate;
+    
+    private final String gatewayBaseUrl = "http://localhost:8081"; 
 
     @Override
     public PaymentDetailsResponse fetchPaymentDetails(String paymentToken) {
-        log.info("Mock fetching details from Gateway for token: {}", paymentToken);
+        log.info("Fetching real payment details from Group 3 Gateway for token: {}", paymentToken);
         
-        // Dynamic Mocking based on Token
-        switch (paymentToken) {
-            case "PAY-TOK-COFFEE":
-                return PaymentDetailsResponse.builder()
-                        .merchantName("Starbucks (Mock)")
-                        .merchantAccountId(java.util.UUID.fromString("22222222-2222-2222-2222-222222222222"))
-                        .amount(new java.math.BigDecimal("5500.00"))
-                        .currency("MMK")
-                        .orderReference("ORD-COFFEE-001")
-                        .build();
-            case "PAY-TOK-IPHONE":
-                return PaymentDetailsResponse.builder()
-                        .merchantName("Apple Store (Mock)")
-                        .merchantAccountId(java.util.UUID.fromString("22222222-2222-2222-2222-222222222222"))
-                        .amount(new java.math.BigDecimal("2500000.00")) // 2.5 Million MMK
-                        .currency("MMK")
-                        .orderReference("ORD-IPHONE-004")
-                        .build();
-            case "PAY-TOK-LAPTOP":
-                return PaymentDetailsResponse.builder()
-                        .merchantName("Dell Store (Mock)")
-                        .merchantAccountId(java.util.UUID.fromString("22222222-2222-2222-2222-222222222222"))
-                        .amount(new java.math.BigDecimal("4500000.00"))
-                        .currency("MMK")
-                        .orderReference("ORD-LAPTOP-002")
-                        .build();
-            default: // Default case (PAY-TOK-123)
-                return PaymentDetailsResponse.builder()
-                        .merchantName("Apple Store (Mock)")
-                        .merchantAccountId(java.util.UUID.fromString("22222222-2222-2222-2222-222222222222"))
-                        .amount(new java.math.BigDecimal("3200000.00"))
-                        .currency("MMK")
-                        .orderReference("ORD-MOCK-123")
-                        .build();
+        try {
+            String url = gatewayBaseUrl + "/api/v1/payments/checkout-info/" + paymentToken;
+            ResponseEntity<PaymentDetailsResponse> response = restTemplate.getForEntity(url, PaymentDetailsResponse.class);
+            
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                return response.getBody();
+            } else {
+                throw new TransactionException("Failed to fetch payment details from Group 3.");
+            }
+        } catch (Exception e) {
+            log.error("Could not reach Group 3 checkout-info API: {}", e.getMessage());
+            throw new TransactionException("Gateway is offline or Token is invalid.");
         }
     }
 
     @Override
-    @org.springframework.scheduling.annotation.Async
-    public void dispatchAuthorizationOutcome(String paymentToken, String transactionStatus) {
-        log.info("Dispatching webhook for token {} with status {}", paymentToken, transactionStatus);
+    public void dispatchAuthorizationOutcome(String paymentToken, String transactionStatus, UUID customerId) {
+        log.info("Sending Authorization to Group 3 Gateway for token: {} with status: {}", paymentToken, transactionStatus);
+        
         try {
-            PaymentStatusUpdateRequest request = PaymentStatusUpdateRequest.builder()
-                    .paymentToken(paymentToken)
-                    .status(transactionStatus)
-                    .build();
-
-            String url = "http://localhost:8081/api/v1/gateway/payments/status/update";
-            try {
-                restTemplate.postForEntity(url, request, Void.class);
-                
-                log.info("Successfully dispatched authorization outcome for paymentToken: {}", paymentToken);
-            } catch (Exception e) {
-                log.warn("Could not reach Group 3 Webhook (Server offline?). Payment succeeded locally. Error: {}", e.getMessage());
+            String url = gatewayBaseUrl + "/api/v1/payments/authorize";
+            
+            Map<String, String> request = new HashMap<>();
+            request.put("paymentToken", paymentToken);
+            request.put("status", transactionStatus);
+            if (customerId != null) {
+                request.put("customerId", customerId.toString());
             }
+
+            ResponseEntity<Void> response = restTemplate.postForEntity(url, request, Void.class);
+            
+            if (response.getStatusCode() != HttpStatus.OK) {
+                throw new TransactionException("Payment Authorization rejected by Gateway.");
+            }
+            
         } catch (Exception e) {
-            log.error("Failed to dispatch authorization outcome for paymentToken: {}. Error: {}", paymentToken, e.getMessage(), e);
+            log.warn("Could not reach Group 3 Gateway Server. Error: {}", e.getMessage());
+            
+            throw new TransactionException("Gateway is offline. Payment could not be authorized.");
         }
     }
 }

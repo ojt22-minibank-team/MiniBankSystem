@@ -6,7 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -21,9 +20,6 @@ public class MerchantPaymentRequest {
 
     @NotNull(message = "Customer ID is mandatory")
     private UUID customerId;
-
-    @NotNull(message = "Merchant Account ID is mandatory")
-    private UUID merchantAccountId;
 
     @NotNull(message = "Amount is mandatory")
     private BigDecimal amount;

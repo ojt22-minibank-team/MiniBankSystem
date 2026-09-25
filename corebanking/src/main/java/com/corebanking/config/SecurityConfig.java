@@ -6,49 +6,20 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
-@Configuration
-@EnableMethodSecurity // Method Level တွင် @PreAuthorize သုံးနိုင်ရန်
-@RequiredArgsConstructor
-public class SecurityConfig {
-
-    private final JwtAuthFilter jwtAuthFilter;
-
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-
-        http
-                .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login").permitAll()
-                        
-                        // TODO: TEMPORARY BYPASS FOR MEMBER 5 TESTING (Remove when JWT is fully integrated)
-                        .requestMatchers("/api/v1/merchant-payment/**").permitAll()
-
-                        .requestMatchers("/api/v1/gateway/**").authenticated()
-                        
-                        // ဥပမာ Role ကန့်သတ်ခြင်း 
-                        // .requestMatchers("/api/admin/**").hasRole("ADMIN") 
-                        .anyRequest().authenticated()
-                )
-                // Filter ကို UsernamePasswordAuthenticationFilter အရှေ့တွင် ထည့်ခြင်း
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final JwtAuthFilter jwtAuthFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -58,24 +29,17 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // REST API (Postman) အတွက် CSRF ကို ပိတ်ထားပါသည်
-            .csrf(csrf -> csrf.disable())
-            
-            // Session မသိမ်းဆည်းဘဲ Stateless အဖြစ် သတ်မှတ်ပါသည်
-            .sessionManagement(session -> 
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-            
-            // Endpoint များ၏ ခွင့်ပြုချက် သတ်မှတ်ခြင်း
-            .authorizeHttpRequests(auth -> auth
-                // Member 2 ၏ Customer API ကို Token မပါဘဲ စမ်းသပ်နိုင်ရန် လမ်းဖွင့်ပေးခြင်း
-                .requestMatchers("/api/customers/**").permitAll()
-                // Auth endpoint များကိုလည်း ခွင့်ပြုထားခြင်း
-                .requestMatchers("/api/auth/**").permitAll()
-                // ကျန်ရှိသော အခြား API များကိုသာ Login တောင်းဆိုခြင်း
-                .anyRequest().authenticated()
-            );
-
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/customers/**").permitAll()
+                        .requestMatchers("/api/v1/merchant-payment/**").permitAll()
+                        .requestMatchers("/api/v1/gateway/**").authenticated()
+                        .anyRequest().authenticated()
+                )
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                
         return http.build();
     }
 }

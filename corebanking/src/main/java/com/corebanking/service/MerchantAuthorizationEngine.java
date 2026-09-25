@@ -1,12 +1,14 @@
 package com.corebanking.service;
 
 import com.corebanking.dto.MerchantPaymentRequest;
+import com.corebanking.dto.PaymentDetailsResponse;
+import com.corebanking.exception.TransactionException;
+import com.corebanking.exception.DuplicateTransactionException;
 import com.corebanking.integration.port.GatewayOutboundPort;
 import com.corebanking.integration.port.LedgerFacadePort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -14,42 +16,43 @@ import org.springframework.transaction.annotation.Transactional;
 public class MerchantAuthorizationEngine {
 
     private final SecurityValidationService securityValidationService;
-    private final LedgerFacadePort ledgerFacadePort;
+    private final LedgerFacadePort ledgerFacadePort; 
     private final GatewayOutboundPort gatewayOutboundPort;
 
-    public com.corebanking.dto.PaymentDetailsResponse getPaymentDetails(String paymentToken) {
+    public PaymentDetailsResponse getPaymentDetails(String paymentToken) {
         return gatewayOutboundPort.fetchPaymentDetails(paymentToken);
     }
 
-    @Transactional(rollbackFor = Exception.class)
     public String processPaymentAuthorization(MerchantPaymentRequest request) {
         
-        // FR-5.9: Defensive Validation (Block Negative Amounts)
-        if (request.getAmount() == null || request.getAmount().compareTo(java.math.BigDecimal.ZERO) <= 0) {
-            throw new IllegalStateException("Payment amount must be greater than zero");
-        }
-
-        // FR-5.8: Duplicate-Payment Prevention
-        if (ledgerFacadePort.isDuplicatePayment(request.getPaymentToken())) {
-            throw new IllegalStateException("Duplicate payment request for token: " + request.getPaymentToken());
-        }
-        
         try {
+            // Defensive Validation (Block Negative Amounts)
+            if (request.getAmount() == null || request.getAmount().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+                throw new TransactionException("Payment amount must be greater than zero");
+            }
+
+            // Check for Duplicate Payment early to save processing
+            if (ledgerFacadePort.isDuplicatePayment(request.getPaymentToken())) {
+                throw new DuplicateTransactionException("This payment token has already been processed.");
+            }
+
+            // 1. Security: PIN Validation (Group 1's main job)
             securityValidationService.validateTransactionPin(request.getCustomerId(), request.getTransactionPin());
-        } catch (SecurityException e) {
-            gatewayOutboundPort.dispatchAuthorizationOutcome(request.getPaymentToken(), "FAILED");
-            throw e;
+
+            // 2. UX Pre-Check: Read-only balance check to prevent "Lying to Customer"
+            ledgerFacadePort.validateSufficientFundsAndLimits(request.getCustomerId(), request.getAmount());
+
+            // 3. Webhook: Server-to-Server Handoff (Group 3 moves the money)
+            // Added customerId to payload so Group 3 can execute the debit
+            gatewayOutboundPort.dispatchAuthorizationOutcome(request.getPaymentToken(), "AUTHORIZED", request.getCustomerId());
+
+            return "AUTH-SUCCESS-" + request.getPaymentToken();
+            
+        } catch (Exception e) {
+            log.error("Payment authorization failed for token {}. Reason: {}", request.getPaymentToken(), e.getMessage());
+            // If PIN fails or UX check fails, we tell Group 3
+            gatewayOutboundPort.dispatchAuthorizationOutcome(request.getPaymentToken(), "FAILED", request.getCustomerId());
+            throw e; 
         }
-
-        String ledgerReference = ledgerFacadePort.executeAtomicTransfer(
-                request.getCustomerId(), 
-                request.getMerchantAccountId(), 
-                request.getAmount(),
-                request.getPaymentToken()
-        );
-
-        gatewayOutboundPort.dispatchAuthorizationOutcome(request.getPaymentToken(), "COMPLETED");
-
-        return ledgerReference;
     }
 }
