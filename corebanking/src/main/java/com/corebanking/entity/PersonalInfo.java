@@ -55,6 +55,9 @@ public class PersonalInfo {
     @Column(name = "phone", length = 32, nullable = false)
     private String phone;
 
+    @Column(name = "profile_image_url",length=500)
+    private String profileImageUrl;
+    
     @Column(name = "occupation", length = 100)
     private String occupation;
 

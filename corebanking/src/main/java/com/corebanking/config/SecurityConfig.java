@@ -1,5 +1,6 @@
 package com.corebanking.config;
 
+
 import com.corebanking.security.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -22,6 +23,7 @@ public class SecurityConfig {
     // (၃) မင်းရေးထားတဲ့ JwtAuthFilter ကို လှမ်းခေါ်ပါ
     private final JwtAuthFilter jwtAuthFilter;
 
+    
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -51,6 +53,9 @@ public class SecurityConfig {
                             "/swagger-ui.html",
                             "/v3/api-docs/**"
                     ).permitAll()
+            		
+            
+            		
                 // Member 2 ၏ Customer API ကို Token မပါဘဲ စမ်းသပ်နိုင်ရန် လမ်းဖွင့်ပေးခြင်း
                 .requestMatchers("/api/customers/**").permitAll()
                 // Auth endpoint များကိုလည်း ခွင့်ပြုထားခြင်း
@@ -58,6 +63,8 @@ public class SecurityConfig {
                 // ကျန်ရှိသော အခြား API များကိုသာ Login တောင်းဆိုခြင်း
                 .anyRequest().authenticated()
             )
+            
+    
             // (၄) UsernamePasswordAuthenticationFilter ရဲ့ အရှေ့မှာ JwtAuthFilter ကို အလုပ်လုပ်ခိုင်းခြင်း
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
