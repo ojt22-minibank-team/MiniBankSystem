@@ -30,7 +30,19 @@
 		<java.version>21</java.version>
 	</properties>
 	<dependencies>
+<!-- JasperReports Core Engine -->
+<dependency>
+    <groupId>net.sf.jasperreports</groupId>
+    <artifactId>jasperreports</artifactId>
+    <version>6.21.3</version>
+</dependency>
 
+<!-- Font rendering အတွက် (PDF export လုပ်ရာတွင် font error မတက်စေရန် လိုအပ်ပါသည်) -->
+<dependency>
+    <groupId>net.sf.jasperreports</groupId>
+    <artifactId>jasperreports-fonts</artifactId>
+    <version>6.21.3</version>
+</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-devtools</artifactId>
