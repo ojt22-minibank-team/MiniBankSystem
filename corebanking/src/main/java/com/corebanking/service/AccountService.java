@@ -125,8 +125,7 @@ public class AccountService {
         String prefix = switch (type) {
             case SAVINGS -> "100";
             case CURRENT -> "200";
-            case FIXED_DEPOSIT -> "300";
-            case SALARY -> "400";
+           
         };
 
         String accNum;
