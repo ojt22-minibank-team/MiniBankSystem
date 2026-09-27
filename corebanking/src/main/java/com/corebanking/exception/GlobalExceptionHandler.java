@@ -105,4 +105,41 @@ public ResponseEntity<Map<String, Object>>
             .status(HttpStatus.UNAUTHORIZED)
             .body(response);
 }
+@ExceptionHandler(CusAccountLockedException.class)
+public ResponseEntity<Map<String, Object>> handleAccountLocked(
+        CusAccountLockedException ex) {
+
+    Map<String, Object> body = new HashMap<>();
+
+    body.put("code", "ACCOUNT_LOCKED");
+    body.put("message", ex.getMessage());
+    body.put("timestamp", LocalDateTime.now());
+    body.put("status", 423);
+
+    return ResponseEntity
+            .status(HttpStatus.LOCKED)
+            .body(body);
+}
+
+@ExceptionHandler(CusOtpException.class)
+public ResponseEntity<Map<String, Object>> handleOtpException(
+        CusOtpException ex) {
+
+    return buildErrorResponse(
+            HttpStatus.BAD_REQUEST,
+            "OTP_ERROR",
+            ex.getMessage()
+    );
+}
+@ExceptionHandler(CusSessionExpiredException.class)
+public ResponseEntity<Map<String, Object>>
+        handleSessionExpired(
+                CusSessionExpiredException ex) {
+
+    return buildErrorResponse(
+            HttpStatus.UNAUTHORIZED,
+            "SESSION_EXPIRED",
+            ex.getMessage()
+    );
+}
 }
