@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { verifyOtp } from "../../../services/authService";
 import { useNavigate } from "react-router-dom";
+
+import { verifyOtp } from "../../../services/authService";
 import { saveTokens } from "../../../utils/tokenStorage";
 
 function OtpPage() {
   const [otp, setOtp] = useState("");
+
   const navigate = useNavigate();
 
   const handleVerifyOtp = async () => {
@@ -24,6 +26,23 @@ function OtpPage() {
 
       console.log(response);
 
+      // First login
+      if (response.firstLoginSetupRequired) {
+
+        // Temporary password must be changed first
+        if (response.passwordChangeRequired) {
+          navigate("/first-login/change-password");
+          return;
+        }
+
+        // Password already changed, PIN setup required
+        if (response.pinSetupRequired) {
+          navigate("/first-login/setup-pin");
+          return;
+        }
+      }
+
+      // Normal login
       if (
         response.accessToken &&
         response.refreshToken
@@ -37,7 +56,9 @@ function OtpPage() {
           "challengeGroupId"
         );
 
-        console.log("Login security flow completed successfully.");
+        console.log(
+          "Login security flow completed successfully."
+        );
       }
 
     } catch (error) {
@@ -58,7 +79,9 @@ function OtpPage() {
         maxLength={6}
         value={otp}
         onChange={(e) =>
-          setOtp(e.target.value)
+          setOtp(
+            e.target.value.replace(/\D/g, "")
+          )
         }
         placeholder="Enter OTP"
       />

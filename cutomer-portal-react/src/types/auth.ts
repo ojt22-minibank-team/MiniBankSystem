@@ -27,7 +27,17 @@ export interface OtpVerifyResponse {
   accessToken: string | null;
   refreshToken: string | null;
 }
+export interface ChangePasswordRequest {
+  challengeGroupId: string;
+  newPassword: string;
+  confirmPassword: string;
+}
 
+export interface SetupPinRequest {
+  challengeGroupId: string;
+  pin: string;
+  confirmPin: string;
+}
 export interface TokenResponse {
   success: boolean;
   message: string;
