@@ -56,7 +56,7 @@ function SetupPinPage() {
           confirmPin: confirmPin,
         });
 
-      console.log(response);
+      
 
       if (
         response.accessToken &&
