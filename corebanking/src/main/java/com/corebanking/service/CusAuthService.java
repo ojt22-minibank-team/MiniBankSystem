@@ -39,7 +39,7 @@ import com.corebanking.repository.CusCustomerRepository;
 import com.corebanking.repository.CusJwtRevokedTokensRepository;
 import com.corebanking.repository.CusLoginAttemptsRepository;
 import com.corebanking.repository.CusOtpChallengesRepository;
-
+import com.corebanking.exception.CusOtpResendLimitException;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 @Service
@@ -1172,7 +1172,7 @@ public class CusAuthService {
         if (latestOtp.getResendNo()
                 >= latestOtp.getMaxResendAttempts()) {
 
-            throw new RuntimeException(
+            throw new CusOtpResendLimitException(
                     "Maximum OTP resend attempts reached."
             );
         }

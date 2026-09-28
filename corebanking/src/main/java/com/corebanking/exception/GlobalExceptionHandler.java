@@ -142,4 +142,19 @@ public ResponseEntity<Map<String, Object>>
             ex.getMessage()
     );
 }
+@ExceptionHandler(CusOtpResendLimitException.class)
+public ResponseEntity<Map<String, Object>> handleOtpResendLimit(
+        CusOtpResendLimitException ex) {
+
+    Map<String, Object> body = new HashMap<>();
+
+    body.put("code", "OTP_RESEND_LIMIT_REACHED");
+    body.put("message", ex.getMessage());
+    body.put("timestamp", LocalDateTime.now());
+    body.put("status", 429);
+
+    return ResponseEntity
+            .status(HttpStatus.TOO_MANY_REQUESTS)
+            .body(body);
+}
 }
