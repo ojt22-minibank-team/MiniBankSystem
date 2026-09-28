@@ -157,4 +157,40 @@ public ResponseEntity<Map<String, Object>> handleOtpResendLimit(
             .status(HttpStatus.TOO_MANY_REQUESTS)
             .body(body);
 }
+
+
+@ExceptionHandler(CusEmailException.class)
+public ResponseEntity<Map<String, Object>>
+        handleEmailException(
+                CusEmailException ex) {
+
+    Map<String, Object> body =
+            new HashMap<>();
+
+    body.put(
+            "code",
+            "EMAIL_SERVICE_UNAVAILABLE"
+    );
+
+    body.put(
+            "message",
+            ex.getMessage()
+    );
+
+    body.put(
+            "timestamp",
+            LocalDateTime.now()
+    );
+
+    body.put(
+            "status",
+            503
+    );
+
+    return ResponseEntity
+            .status(
+                    HttpStatus.SERVICE_UNAVAILABLE
+            )
+            .body(body);
+}
 }

@@ -32,6 +32,7 @@ import com.corebanking.entity.enums.SessionSubjectType;
 import com.corebanking.exception.CusAccountLockedException;
 import com.corebanking.exception.CusAuthenticationException;
 import com.corebanking.exception.CusOtpException;
+import com.corebanking.exception.CusOtpResendLimitException;
 import com.corebanking.repository.CusAccountsRepository;
 import com.corebanking.repository.CusAuthSessionsRepository;
 import com.corebanking.repository.CusCredentialsRepository;
@@ -39,7 +40,8 @@ import com.corebanking.repository.CusCustomerRepository;
 import com.corebanking.repository.CusJwtRevokedTokensRepository;
 import com.corebanking.repository.CusLoginAttemptsRepository;
 import com.corebanking.repository.CusOtpChallengesRepository;
-import com.corebanking.exception.CusOtpResendLimitException;
+import com.corebanking.exception.CusEmailException;
+import org.springframework.mail.MailException;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 @Service
@@ -56,6 +58,7 @@ public class CusAuthService {
     private final CusJwtService cusJwtService;
     private final CusSessionService cusSessionService;
     private final CusJwtRevokedTokensRepository jwtRevokedTokensRepository;
+    private final CusEmailService cusEmailService;
 
 
 
@@ -584,19 +587,32 @@ public class CusAuthService {
                         otpChallenge
                 );
 
+        try {
 
-        /*
-         * TEMPORARY DEVELOPMENT ONLY
-         *
-         * Email service ရေးပြီးသွားရင်
-         * ဒီ console print ကိုဖျက်ပါ။
-         */
-        System.out.println(
-                "Generated OTP: " + rawOtp
-        );
+            cusEmailService.sendLoginOtp(
+                    customer.getEmail(),
+                    rawOtp
+            );
 
+        } catch (MailException ex) {
+
+            // Email မရောက်တဲ့ OTP ကို usable မဖြစ်အောင်
+            savedOtp.setStatus(
+                    OtpStatus.EXPIRED
+            );
+
+            otpChallengesRepository.save(
+                    savedOtp
+            );
+
+            throw new CusEmailException(
+                    "Unable to send OTP email. Please try again.",
+                    ex
+            );
+        }
 
         return savedOtp;
+        
     }
 
 
@@ -631,270 +647,7 @@ public class CusAuthService {
     }
 
 
-//    // =========================================================
-// 10. VERIFY LOGIN OTP
-//    // =========================================================
-//    @Transactional(noRollbackFor = CusOtpException.class)
-//    public CusOtpVerifyResponse verifyLoginOtp(
-//            CusOtpVerifyRequest request) {
-//
-//
-//        // -----------------------------------------
-//        // Request validation
-//        // -----------------------------------------
-//
-//        if (request == null
-//                || request.getChallengeGroupId() == null
-//                || request.getChallengeGroupId().isBlank()
-//                || request.getOtp() == null
-//                || request.getOtp().isBlank()) {
-//
-//            throw new RuntimeException(
-//                    "OTP verification information is required."
-//            );
-//        }
-//
-//
-//        String challengeGroupId =
-//                request.getChallengeGroupId()
-//                        .trim();
-//
-//
-//        String enteredOtp =
-//                request.getOtp()
-//                        .trim();
-//
-//
-//        // -----------------------------------------
-//        // OTP Challenge ရှာ
-//        // -----------------------------------------
-//
-//        OtpChallenges otpChallenge =
-//                otpChallengesRepository
-//                        .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
-//                                challengeGroupId,
-//                                OtpPurpose.LOGIN
-//                        )
-//
-//                        .orElseThrow(() ->
-//                                new RuntimeException(
-//                                        "Invalid OTP challenge."
-//                                )
-//                        );
-//
-//
-//     // -----------------------------------------
-//     // Status checks
-//     // -----------------------------------------
-//
-//     if (otpChallenge.getStatus() == OtpStatus.CONSUMED) {
-//
-//         throw new CusOtpException(
-//                 "This OTP has already been used."
-//         );
-//     }
-//
-//     if (otpChallenge.getStatus() == OtpStatus.EXPIRED) {
-//
-//         throw new CusOtpException(
-//                 "OTP has expired."
-//         );
-//     }
-//
-//     if (otpChallenge.getStatus() == OtpStatus.BLOCKED) {
-//
-//         throw new CusOtpException(
-//                 "OTP verification has been blocked."
-//         );
-//     }
-//
-//     if (otpChallenge.getStatus() != OtpStatus.ACTIVE) {
-//
-//         throw new CusOtpException(
-//                 "OTP is not active."
-//         );
-//     }
-//
-//        LocalDateTime now =
-//                LocalDateTime.now();
-//
-//
-//        // -----------------------------------------
-//        // Expiry check
-//        // -----------------------------------------
-//
-//        if (otpChallenge.getExpiresAt() == null
-//                || !otpChallenge
-//                        .getExpiresAt()
-//                        .isAfter(now)) {
-//
-//            otpChallenge.setStatus(
-//                    OtpStatus.EXPIRED
-//            );
-//
-//
-//            otpChallengesRepository.save(
-//                    otpChallenge
-//            );
-//
-//
-//            throw new RuntimeException(
-//                    "OTP has expired."
-//            );
-//        }
-//
-//
-//        // -----------------------------------------
-//        // Max Attempts check
-//        // -----------------------------------------
-//
-//        if (otpChallenge.getAttemptCount()
-//                >= otpChallenge.getMaxAttempts()) {
-//
-//            otpChallenge.setStatus(
-//                    OtpStatus.BLOCKED
-//            );
-//
-//
-//            otpChallengesRepository.save(
-//                    otpChallenge
-//            );
-//
-//
-//            throw new RuntimeException(
-//                    "OTP verification has been blocked."
-//            );
-//        }
-//
-//
-//        // -----------------------------------------
-//        // 6-digit format check
-//        // -----------------------------------------
-//
-//        boolean validOtpFormat =
-//                enteredOtp.matches(
-//                        "\\d{6}"
-//                );
-//
-//
-//        // -----------------------------------------
-//        // OTP Hash verify
-//        // -----------------------------------------
-//
-//        boolean otpMatches =
-//                validOtpFormat
-//
-//                        && passwordEncoder.matches(
-//                                enteredOtp,
-//                                otpChallenge.getOtpHash()
-//                        );
-//
-//
-//        // -----------------------------------------
-//        // Wrong OTP
-//        // -----------------------------------------
-//        if (!otpMatches) {
-//
-//            handleFailedOtpAttempt(otpChallenge);
-//
-//            throw new CusOtpException(
-//                    "Invalid OTP."
-//            );
-//        }
-//
-//
-//         
-//
-//
-//        // -----------------------------------------
-//        // Correct OTP → CONSUMED
-//        // -----------------------------------------
-//
-//        otpChallenge.setStatus(
-//                OtpStatus.CONSUMED
-//        );
-//
-//
-//        otpChallenge.setConsumedAt(
-//                now
-//        );
-//
-//
-//        otpChallengesRepository.save(
-//                otpChallenge
-//        );
-//
-//
-//        // -----------------------------------------
-//        // Customer + Credentials
-//        // -----------------------------------------
-//
-//        Customers customer =
-//                otpChallenge.getCustomer();
-//
-//
-//        CustomerCredentials credentials =
-//                credentialsRepository
-//                        .findById(
-//                                customer.getCustomerId()
-//                        )
-//
-//                        .orElseThrow(() ->
-//                                new RuntimeException(
-//                                        "Customer credentials not found."
-//                                )
-//                        );
-//
-//
-//        // -----------------------------------------
-//        // First Login Setup requirement check
-//        // -----------------------------------------
-//
-//        boolean passwordChangeRequired =
-//                credentials.isMustChangePassword();
-//
-//
-//        boolean pinSetupRequired =
-//                credentials.getTransactionPinHash() == null
-//
-//                        || credentials
-//                                .getTransactionPinHash()
-//                                .isBlank();
-//
-//
-//        boolean firstLoginSetupRequired =
-//                passwordChangeRequired
-//                        || pinSetupRequired;
-//
-//
-//        if (firstLoginSetupRequired) {
-//
-//        	return new CusOtpVerifyResponse(
-//        	        true,
-//        	        "OTP verified. Please complete first-time setup.",
-//        	        true,
-//        	        passwordChangeRequired,
-//        	        pinSetupRequired,
-//        	        null,
-//        	        null
-//        	);
-//        }
-//
-//        CusTokenResponse tokenResponse =
-//                createAuthenticatedSession(
-//                        customer,
-//                        credentials
-//                );
-//        return new CusOtpVerifyResponse(
-//                true,
-//                "OTP verified successfully.",
-//                false,
-//                false,
-//                false,
-//                tokenResponse.getAccessToken(),
-//                tokenResponse.getRefreshToken()
-//        );
-//    }
+//verify login otp
     
     @Transactional(noRollbackFor = CusOtpException.class)
     public CusOtpVerifyResponse verifyLoginOtp(
@@ -1286,12 +1039,28 @@ public class CusAuthService {
                         newOtp
                 );
 
+        try {
 
-        // TEMPORARY development only
-        System.out.println(
-                "Resent OTP: " + rawOtp
-        );
+            cusEmailService.sendLoginOtp(
+                    customer.getEmail(),
+                    rawOtp
+            );
+//OTP don't reach to customer, email service unavailabel
+        } catch (MailException ex) {
 
+            savedOtp.setStatus(
+                    OtpStatus.EXPIRED
+            );
+
+            otpChallengesRepository.save(
+                    savedOtp
+            );
+
+            throw new CusEmailException(
+                    "Unable to resend OTP email. Please try again.",
+                    ex
+            );
+        }
 
         return new CusOtpResendResponse(
                 true,
