@@ -61,7 +61,7 @@ public class AccountService {
         AccountType accountType = (dto.getAccountType() != null) ? dto.getAccountType() : AccountType.SAVINGS;
         String accountNumber = generateUniqueAccountNumber(accountType);
 
-        // 4. Calculate initial balances and defaults
+        
         BigDecimal initialDeposit = (dto.getInitialDeposit() != null) ? dto.getInitialDeposit() : BigDecimal.ZERO;
         String currency = (dto.getCurrency() != null && !dto.getCurrency().isBlank()) ? dto.getCurrency().toUpperCase() : "MMK";
         boolean isJoint = (dto.getIsJointAccount() != null) && dto.getIsJointAccount();
