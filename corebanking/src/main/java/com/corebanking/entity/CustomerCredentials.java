@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import org.springframework.data.domain.Persistable;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -17,7 +18,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CustomerCredentials {
+public class CustomerCredentials implements Persistable<UUID> {
 
     @Id
     @Column(name = "customer_id", columnDefinition = "BINARY(16)", nullable = false)
@@ -25,7 +26,6 @@ public class CustomerCredentials {
     private UUID customerId;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @MapsId
     @JoinColumn(name = "customer_id",
             foreignKey = @ForeignKey(name = "fk_customer_credentials_customer"))
     private Customers customer;
@@ -46,6 +46,7 @@ public class CustomerCredentials {
     private MfaMethod mfaMethod = MfaMethod.EMAIL;
 
     @Column(name = "must_change_password", nullable = false)
+    @Builder.Default
     private boolean mustChangePassword = true;
 
     @Column(name = "password_changed_at")
@@ -55,12 +56,14 @@ public class CustomerCredentials {
     private LocalDateTime pinChangedAt;
 
     @Column(name = "failed_login_count", nullable = false)
+    @Builder.Default
     private int failedLoginCount = 0;
 
     @Column(name = "locked_until")
     private LocalDateTime lockedUntil;
 
     @Column(name = "failed_pin_attempt_count", nullable = false)
+    @Builder.Default
     private int failedPinAttemptCount = 0;
 
     @Column(name = "pin_locked_until")
@@ -70,6 +73,7 @@ public class CustomerCredentials {
     private LocalDateTime lastLoginAt;
 
     @Column(name = "token_version", nullable = false)
+    @Builder.Default
     private long tokenVersion = 1L;
 
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -86,10 +90,31 @@ public class CustomerCredentials {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    // Persistable Interface အတွက် New Entity ဟုတ်မဟုတ် စစ်ဆေးရန် Flag
+    @Transient
+    @Builder.Default
+    private boolean isNew = true;
+
+    @Override
+    public UUID getId() {
+        return this.customerId;
+    }
+
+    @Override
+    public boolean isNew() {
+        return this.isNew;
+    }
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) createdAt = LocalDateTime.now();
         if (updatedAt == null) updatedAt = LocalDateTime.now();
+    }
+
+    @PostPersist
+    @PostLoad
+    protected void markNotNew() {
+        this.isNew = false;
     }
 
     @PreUpdate
