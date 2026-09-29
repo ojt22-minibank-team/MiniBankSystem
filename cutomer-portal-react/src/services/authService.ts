@@ -6,9 +6,10 @@ import type {
   OtpVerifyRequest,
   OtpVerifyResponse,
   ChangePasswordRequest,
-   SetupPinRequest,
+  SetupPinRequest,
+  ResendOtpRequest,
+  ResendOtpResponse,
 } from "../types/auth";
-
 
 export const loginCustomer = async (
   data: LoginRequest
@@ -58,6 +59,19 @@ export const setupTransactionPin = async (
     "/first-login/setup-pin",
     data
   );
+
+  return response.data;
+};
+
+export const resendOtp = async (
+  data: ResendOtpRequest
+): Promise<ResendOtpResponse> => {
+
+  const response =
+    await api.post<ResendOtpResponse>(
+      "/resend-otp",
+      data
+    );
 
   return response.data;
 };

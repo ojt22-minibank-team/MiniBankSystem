@@ -89,6 +89,10 @@ public class CusAuthService {
     public CusLoginResponse authenticateCredentials(
             CusLoginRequest request) {
 
+        // TEMPORARY PERFORMANCE TIMING - remove after testing
+        long loginStartTime = System.currentTimeMillis();
+        System.out.println("\n========== LOGIN TIMING START ==========");
+
         // -----------------------------------------
         // Request validation
         // -----------------------------------------
@@ -116,6 +120,8 @@ public class CusAuthService {
         // Customer ID / Account Number နဲ့ရှာ
         // -----------------------------------------
 
+        long customerLookupStart = System.currentTimeMillis();
+
         try {
 
             customer = findCustomer(identifier);
@@ -130,6 +136,12 @@ public class CusAuthService {
             throw ex;
         }
 
+        System.out.println(
+                "[TIMING] Customer lookup: "
+                        + (System.currentTimeMillis() - customerLookupStart)
+                        + " ms"
+        );
+
 
         // -----------------------------------------
         // Customer status စစ်
@@ -142,6 +154,8 @@ public class CusAuthService {
         // Customer Credentials ရှာ
         // -----------------------------------------
 
+        long credentialsLookupStart = System.currentTimeMillis();
+
         CustomerCredentials credentials =
                 credentialsRepository
                         .findById(customer.getCustomerId())
@@ -150,6 +164,12 @@ public class CusAuthService {
                                         "Invalid login credentials."
                                 )
                         );
+
+        System.out.println(
+                "[TIMING] Credentials lookup: "
+                        + (System.currentTimeMillis() - credentialsLookupStart)
+                        + " ms"
+        );
 
 
         // -----------------------------------------
@@ -167,11 +187,19 @@ public class CusAuthService {
         // Password verify
         // -----------------------------------------
 
+        long passwordCheckStart = System.currentTimeMillis();
+
         boolean passwordMatches =
                 passwordEncoder.matches(
                         request.getPassword(),
                         credentials.getPasswordHash()
                 );
+
+        System.out.println(
+                "[TIMING] Password BCrypt check: "
+                        + (System.currentTimeMillis() - passwordCheckStart)
+                        + " ms"
+        );
 
 
         // =====================================================
@@ -184,7 +212,23 @@ public class CusAuthService {
                     credentials
             );
 
+            // 5th wrong password ဖြစ်ပြီး lock တက်သွားပြီလား စစ်
+            if (credentials.getFailedLoginCount()
+                    >= MAX_FAILED_ATTEMPTS) {
 
+                saveLoginAttempt(
+                        identifier,
+                        customer,
+                        false,
+                        "ACCOUNT_LOCKED"
+                );
+
+                throw new CusAccountLockedException(
+                        "Account is temporarily locked for 15 minutes."
+                );
+            }
+
+            // 1st - 4th wrong password
             saveLoginAttempt(
                     identifier,
                     customer,
@@ -192,11 +236,9 @@ public class CusAuthService {
                     "INVALID_PASSWORD"
             );
 
-
             throw new CusAuthenticationException(
-                    "Invalid login credentials."
+                    "Invalid Password."
             );
-
         }
 
 
@@ -217,8 +259,24 @@ public class CusAuthService {
         // EMAIL OTP CREATE
         // =====================================================
 
+        long createOtpStart = System.currentTimeMillis();
+
         OtpChallenges otpChallenge =
                 createLoginOtp(customer);
+
+        System.out.println(
+                "[TIMING] createLoginOtp() total: "
+                        + (System.currentTimeMillis() - createOtpStart)
+                        + " ms"
+        );
+
+        System.out.println(
+                "[TIMING] TOTAL LOGIN API: "
+                        + (System.currentTimeMillis() - loginStartTime)
+                        + " ms"
+        );
+
+        System.out.println("========== LOGIN TIMING END ==========\n");
 
 
         // =====================================================
@@ -365,6 +423,7 @@ public class CusAuthService {
         credentialsRepository.save(
                 credentials
         );
+        
     }
 
 
@@ -466,6 +525,9 @@ public class CusAuthService {
     private OtpChallenges createLoginOtp(
             Customers customer) {
 
+        // TEMPORARY PERFORMANCE TIMING - remove after testing
+        long otpMethodStart = System.currentTimeMillis();
+
 
         // -----------------------------------------
         // Registered Email ရှိရမယ်
@@ -484,8 +546,16 @@ public class CusAuthService {
         // Previous ACTIVE Login OTP တွေ expire
         // -----------------------------------------
 
+        long invalidateOtpStart = System.currentTimeMillis();
+
         invalidateOldLoginOtps(
                 customer
+        );
+
+        System.out.println(
+                "[TIMING] Invalidate old OTPs: "
+                        + (System.currentTimeMillis() - invalidateOtpStart)
+                        + " ms"
         );
 
 
@@ -501,10 +571,18 @@ public class CusAuthService {
         // OTP hash
         // -----------------------------------------
 
+        long otpHashStart = System.currentTimeMillis();
+
         String otpHash =
                 passwordEncoder.encode(
                         rawOtp
                 );
+
+        System.out.println(
+                "[TIMING] OTP BCrypt hash: "
+                        + (System.currentTimeMillis() - otpHashStart)
+                        + " ms"
+        );
 
 
         // -----------------------------------------
@@ -582,10 +660,20 @@ public class CusAuthService {
                         .build();
 
 
+        long otpDbSaveStart = System.currentTimeMillis();
+
         OtpChallenges savedOtp =
                 otpChallengesRepository.save(
                         otpChallenge
                 );
+
+        System.out.println(
+                "[TIMING] OTP DB save: "
+                        + (System.currentTimeMillis() - otpDbSaveStart)
+                        + " ms"
+        );
+
+        long emailSendStart = System.currentTimeMillis();
 
         try {
 
@@ -594,7 +682,19 @@ public class CusAuthService {
                     rawOtp
             );
 
+            System.out.println(
+                    "[TIMING] Gmail SMTP send: "
+                            + (System.currentTimeMillis() - emailSendStart)
+                            + " ms"
+            );
+
         } catch (MailException ex) {
+
+            System.out.println(
+                    "[TIMING] Gmail SMTP failed after: "
+                            + (System.currentTimeMillis() - emailSendStart)
+                            + " ms"
+            );
 
             // Email မရောက်တဲ့ OTP ကို usable မဖြစ်အောင်
             savedOtp.setStatus(
@@ -610,6 +710,12 @@ public class CusAuthService {
                     ex
             );
         }
+
+        System.out.println(
+                "[TIMING] createLoginOtp internal total: "
+                        + (System.currentTimeMillis() - otpMethodStart)
+                        + " ms"
+        );
 
         return savedOtp;
         

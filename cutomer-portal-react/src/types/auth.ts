@@ -27,6 +27,17 @@ export interface OtpVerifyResponse {
   accessToken: string | null;
   refreshToken: string | null;
 }
+
+export interface ResendOtpRequest {
+  challengeGroupId: string;
+}
+
+export interface ResendOtpResponse {
+  success: boolean;
+  message: string;
+  challengeGroupId: string;
+  maskedEmail: string;
+}
 export interface ChangePasswordRequest {
   challengeGroupId: string;
   newPassword: string;
