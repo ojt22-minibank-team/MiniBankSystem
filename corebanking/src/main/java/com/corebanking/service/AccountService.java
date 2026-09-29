@@ -5,7 +5,7 @@ import com.corebanking.dto.AccountResponseDTO;
 import com.corebanking.dto.AccountStatusUpdateDTO;
 import com.corebanking.dto.CorporateAccountCreateDTO;
 import com.corebanking.dto.JointHolderAddDTO;
-import com.corebanking.entity.AccountSignatory;
+import com.corebanking.entity.AccountSignatories;
 import com.corebanking.entity.Accounts;
 import com.corebanking.entity.Customers;
 import com.corebanking.entity.StaffUsers;
@@ -16,7 +16,7 @@ import com.corebanking.entity.enums.CustomerStatus;
 import com.corebanking.entity.enums.CustomerType;
 import com.corebanking.entity.enums.SignatoryRole;
 import com.corebanking.repository.AccountRepository;
-import com.corebanking.repository.AccountSignatoryRepository;
+import com.corebanking.repository.AccountSignatoriesRepository;
 import com.corebanking.repository.CustomerRepository;
 import com.corebanking.repository.StaffUsersRepository;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +38,7 @@ public class AccountService {
     private final CustomerRepository customerRepository;
     private final StaffUsersRepository staffUsersRepository;
     private final PasswordEncoder passwordEncoder;
-    private final AccountSignatoryRepository accountSignatoryRepository; // [Error 1 ဖြေရှင်းချက်: Missing Repository ထည့်သွင်းခြင်း]
+    private final AccountSignatoriesRepository accountSignatoriesRepository; // [Error 1 ဖြေရှင်းချက်: Missing Repository ထည့်သွင်းခြင်း]
 
     @Transactional
     public AccountResponseDTO createAccount(AccountCreateDTO dto) {
@@ -138,9 +138,12 @@ public class AccountService {
     /**
      * Company Account အား CEO (PRIMARY_HOLDER) နှင့် Accountant (JOINT_HOLDER) တို့ဖြင့် ဖွင့်လှစ်ခြင်း
      */
+    /**
+     * Company Account အား CEO (PRIMARY_HOLDER) နှင့် Accountant (JOINT_HOLDER) တို့ဖြင့် ဖွင့်လှစ်ခြင်း
+     */
     @Transactional
     public String createCorporateAccountWithExistingRoles(CorporateAccountCreateDTO dto) {
-        // ၁။ Company Customer စစ်ဆေးခြင်း
+        // ၁။ Company Customer ရှိမရှိ စစ်ဆေးခြင်း
         Customers company = customerRepository.findByCustomerCode(dto.getCompanyCustomerCode())
                 .orElseThrow(() -> new RuntimeException("Company record not found: " + dto.getCompanyCustomerCode()));
 
@@ -148,67 +151,78 @@ public class AccountService {
             throw new IllegalArgumentException("Customer must be of type COMPANY");
         }
 
-        // ၂။ CEO နှင့် Accountant ရှိမရှိ စစ်ဆေးခြင်း
-        customerRepository.findByCustomerCode(dto.getCeoCustomerCode())
+        // ၂။ CEO နှင့် Accountant Customers Entity များကို ရယူပါ
+        Customers ceoCustomer = customerRepository.findByCustomerCode(dto.getCeoCustomerCode())
                 .orElseThrow(() -> new RuntimeException("CEO record not found: " + dto.getCeoCustomerCode()));
 
-        customerRepository.findByCustomerCode(dto.getAccountantCustomerCode())
+        Customers accountantCustomer = customerRepository.findByCustomerCode(dto.getAccountantCustomerCode())
                 .orElseThrow(() -> new RuntimeException("Accountant record not found: " + dto.getAccountantCustomerCode()));
 
-        // Authenticated Staff ကို ရယူခြင်း
+        // ၃။ Current Staff အား ရယူခြင်း
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String currentStaffUsername = (auth != null) ? auth.getName() : "admin";
         StaffUsers staff = staffUsersRepository.findByUsername(currentStaffUsername)
                 .orElseThrow(() -> new RuntimeException("Authenticated staff record not found"));
 
-        // ၃။ Account Number ထုတ်ယူခြင်း (Corporate Current Account အတွက် Prefix 200)
-        String prefix = (dto.getAccountType() != null && dto.getAccountType().equalsIgnoreCase("CURRENT")) ? "200" : "100";
-        String accountNumber;
-        do {
-            accountNumber = prefix + String.valueOf(ThreadLocalRandom.current().nextInt(1000000, 9999999));
-        } while (accountRepository.existsByAccountNumber(accountNumber));
+        // ၄။ Account Number နှင့် Initial Balances များ တွက်ချက်ခြင်း
+        AccountType accountType = (dto.getAccountType() != null && dto.getAccountType().equalsIgnoreCase("CURRENT")) 
+                ? AccountType.CURRENT : AccountType.SAVINGS;
+        String accountNumber = generateUniqueAccountNumber(accountType);
+        BigDecimal initialDeposit = (dto.getInitialDeposit() != null) ? dto.getInitialDeposit() : BigDecimal.ZERO;
+        String currency = (dto.getCurrency() != null && !dto.getCurrency().isBlank()) ? dto.getCurrency().toUpperCase() : "MMK";
 
-        BigDecimal initialDeposit = dto.getInitialDeposit() != null ? dto.getInitialDeposit() : BigDecimal.ZERO;
+        String rawPassword = (dto.getAccountPassword() != null && !dto.getAccountPassword().isBlank()) 
+                ? dto.getAccountPassword() : "123456";
+        String encodedPassword = passwordEncoder.encode(rawPassword);
 
-        // ၄။ Accounts Table ထဲသို့ Entity Builder အမှန်ဖြင့် သိမ်းဆည်းခြင်း
+        // ၅။ Company အတွက် Accounts Record အား စတင်တည်ဆောက်ပြီး Save လုပ်ခြင်း
         Accounts account = Accounts.builder()
-                .accountNumber(accountNumber)
                 .customer(company)
+                .accountNumber(accountNumber)
                 .accountCategory(AccountCategory.CORPORATE)
-                .accountType(AccountType.valueOf(dto.getAccountType().toUpperCase()))
+                .accountType(accountType)
+                .isJointAccount(false)
+                .requiredApprovals((short) 2)
+                .currency(currency)
                 .currentBalance(initialDeposit)
                 .availableBalance(initialDeposit)
                 .minimumBalance(BigDecimal.ZERO)
                 .dailyTransferLimit(new BigDecimal("100000000.0000"))
-                .currency("MMK")
-                .isJointAccount(false)
-                .requiredApprovals((short) 2) // CEO Approve လုပ်ရန် Approvals 2 သတ်မှတ်ခြင်း
+                .accountPasswordHash(encodedPassword)
                 .status(AccountStatus.ACTIVE)
                 .openedAt(LocalDateTime.now())
                 .createdByStaff(staff)
                 .build();
 
-        accountRepository.save(account);
+        Accounts savedAccount = accountRepository.save(account);
 
-        // ၅။ CEO အား PRIMARY_HOLDER အဖြစ် စာရင်းသွင်းခြင်း
-        AccountSignatory ceoSignatory = AccountSignatory.builder()
-                .accountNumber(accountNumber)
-                .customerCode(dto.getCeoCustomerCode())
-                .role(SignatoryRole.PRIMARY_HOLDER) // CEO = PRIMARY_HOLDER
+        // ၆။ CEO အား PRIMARY_HOLDER (Approver) အဖြစ် စာရင်းသွင်းခြင်း
+        AccountSignatories ceoSignatory = AccountSignatories.builder()
+                .account(savedAccount)                        // သိမ်းဆည်းပြီးသော savedAccount ကို ထည့်သွင်းခြင်း
+                .customer(ceoCustomer)
+                .signatoryRole(SignatoryRole.PRIMARY_HOLDER)
+                .canInitiate(false)
+                .canApprove(true)
+                .status(com.corebanking.entity.enums.SignatoryStatus.ACTIVE)
                 .build();
 
-        // ၆။ Accountant အား JOINT_HOLDER အဖြစ် စာရင်းသွင်းခြင်း
-        AccountSignatory accountantSignatory = AccountSignatory.builder()
-                .accountNumber(accountNumber)
-                .customerCode(dto.getAccountantCustomerCode())
-                .role(SignatoryRole.JOINT_HOLDER) // Accountant = JOINT_HOLDER
+        // ၇။ Accountant အား JOINT_HOLDER (Initiator) အဖြစ် စာရင်းသွင်းခြင်း
+        AccountSignatories accountantSignatory = AccountSignatories.builder()
+                .account(savedAccount)                        // သိမ်းဆည်းပြီးသော savedAccount ကို ထည့်သွင်းခြင်း
+                .customer(accountantCustomer)
+                .signatoryRole(SignatoryRole.JOINT_HOLDER)
+                .canInitiate(true)
+                .canApprove(false)
+                .status(com.corebanking.entity.enums.SignatoryStatus.ACTIVE)
                 .build();
 
-        accountSignatoryRepository.save(ceoSignatory);
-        accountSignatoryRepository.save(accountantSignatory);
+        // ၈။ Database သို့ Signatories သိမ်းဆည်းခြင်း
+        accountSignatoriesRepository.save(ceoSignatory);
+        accountSignatoriesRepository.save(accountantSignatory);
 
         return accountNumber;
     }
+    
 
     @Transactional(readOnly = true)
     public AccountResponseDTO getAccountByNumber(String accountNumber) {
