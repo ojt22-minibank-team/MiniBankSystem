@@ -3,9 +3,15 @@ package com.corebanking.controller;
 import com.corebanking.dto.AccountCreateDTO;
 import com.corebanking.dto.AccountResponseDTO;
 import com.corebanking.dto.AccountStatusUpdateDTO;
+import com.corebanking.dto.CorporateAccountCreateDTO;
 import com.corebanking.dto.JointHolderAddDTO;
 import com.corebanking.service.AccountService;
+
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
+import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +27,20 @@ public class AccountController {
     public ResponseEntity<AccountResponseDTO> createAccount(@RequestBody AccountCreateDTO dto) {
         AccountResponseDTO response = accountService.createAccount(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+    
+ // ၂။ [အသစ်ထည့်သွင်းချက်] Company Account အား CEO နှင့် Accountant တို့ဖြင့် ဖွင့်လှစ်ခြင်း
+    @PostMapping("/corporate")
+    public ResponseEntity<Map<String, Object>> createCorporateAccount(
+            @Valid @RequestBody CorporateAccountCreateDTO dto) {
+        
+        String accountNumber = accountService.createCorporateAccountWithExistingRoles(dto);
+        
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                "status", "SUCCESS",
+                "message", "Corporate account created successfully with CEO and Accountant",
+                "accountNumber", accountNumber
+        ));
     }
     
  // Account Number ဖြင့် အသေးစိတ် ရှာဖွေခြင်း (Account Lookup)
