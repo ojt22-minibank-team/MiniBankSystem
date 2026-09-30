@@ -9,12 +9,13 @@ import java.util.List;
 @AllArgsConstructor
 public class CoreLoginResponse {
 
-    private String token;
+    private String accessToken;
+
+    private String refreshToken;
 
     private String username;
 
     private List<String> roles;
 
     private List<String> permissions;
-
 }

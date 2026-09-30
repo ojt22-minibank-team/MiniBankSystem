@@ -10,6 +10,7 @@ import java.util.UUID;
 
 public interface StaffUsersRepository extends JpaRepository<StaffUsers, UUID> {
 
+	
     Optional<StaffUsers> findByUsername(String username);
 
     @Query("""

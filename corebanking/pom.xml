@@ -43,13 +43,14 @@
     <version>3.3.2</version>
 </dependency>
 		
+		<!-- 2 Spring Security -->
 		<dependency>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-security</artifactId>
 </dependency>
 	
 
-    <!-- Spring Boot Web -->
+    <!-- 1 Spring Boot Web -->
     <dependency>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-web</artifactId>
@@ -72,10 +73,9 @@
    <dependency>
     <groupId>org.projectlombok</groupId>
     <artifactId>lombok</artifactId>
-  
     <scope>provided</scope>
 </dependency>
-<!-- JJWT API -->
+<!-- 3 JJWT API -->
 <dependency>
     <groupId>io.jsonwebtoken</groupId>
     <artifactId>jjwt-api</artifactId>

@@ -12,6 +12,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.config.Customizer; // ဤ import အသစ်ကို ထည့်ပါသည်
 
 @Configuration
 @EnableWebSecurity
@@ -30,6 +31,9 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            // CORS ကို ဖွင့်ပေးခြင်း (CorsConfig.java မှ သတ်မှတ်ချက်များကို ယူသုံးမည်)
+            .cors(Customizer.withDefaults()) 
+            
             // REST API (Postman) အတွက် CSRF ကို ပိတ်ထားပါသည်
             .csrf(csrf -> csrf.disable())
             

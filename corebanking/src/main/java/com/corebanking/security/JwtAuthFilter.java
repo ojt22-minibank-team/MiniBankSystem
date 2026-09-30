@@ -2,6 +2,7 @@ package com.corebanking.security;
 
 import com.corebanking.entity.StaffUsers;
 import com.corebanking.entity.enums.StaffUserStatus;
+import com.corebanking.repository.JWTRevokedTokensRepository;
 import com.corebanking.repository.StaffUsersRepository;
 
 import jakarta.servlet.FilterChain;
@@ -17,6 +18,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import org.springframework.stereotype.Component;
+
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -26,31 +28,40 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
-public class JwtAuthFilter extends OncePerRequestFilter {
+public class JwtAuthFilter
+        extends OncePerRequestFilter {
+
 
     private final JwtService jwtService;
 
     private final StaffUsersRepository staffUsersRepository;
 
+    private final JWTRevokedTokensRepository
+            jwtRevokedTokensRepository;
+
 
     @Override
     protected void doFilterInternal(
+
             HttpServletRequest request,
+
             HttpServletResponse response,
+
             FilterChain filterChain
+
     ) throws ServletException, IOException {
 
 
-        // =================================================
-        // Get Authorization Header
-        // =================================================
+        // =====================================================
+        // Authorization Header
+        // =====================================================
 
         final String authHeader =
                 request.getHeader("Authorization");
 
 
-        if (authHeader == null ||
-                !authHeader.startsWith("Bearer ")) {
+        if (authHeader == null
+                || !authHeader.startsWith("Bearer ")) {
 
             filterChain.doFilter(
                     request,
@@ -61,18 +72,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
 
-        // =================================================
-        // Extract JWT
-        // =================================================
-
         final String jwt =
-                authHeader.substring(7);
+                authHeader.substring(7).trim();
 
 
         try {
 
+
             // =================================================
-            // Check JWT
+            // JWT Signature + Expiration
             // =================================================
 
             if (!jwtService.isTokenValid(jwt)) {
@@ -86,27 +94,54 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
 
             // =================================================
-            // Extract JWT Data
+            // JTI
+            // =================================================
+
+            String jti =
+                    jwtService.extractJti(jwt);
+
+
+            // =================================================
+            // CHECK JWT REVOKED
+            // =================================================
+
+            if (jwtRevokedTokensRepository
+                    .existsByJti(jti)) {
+
+                response.setStatus(
+                        HttpServletResponse.SC_UNAUTHORIZED
+                );
+
+                return;
+            }
+
+
+            // =================================================
+            // JWT DATA
             // =================================================
 
             String username =
                     jwtService.extractUsername(jwt);
 
+
             UUID staffId =
                     jwtService.extractStaffId(jwt);
+
 
             long tokenVersion =
                     jwtService.extractTokenVersion(jwt);
 
+
             List<String> roles =
                     jwtService.extractRoles(jwt);
+
 
             List<String> permissions =
                     jwtService.extractPermissions(jwt);
 
 
             // =================================================
-            // Get Staff From Database
+            // STAFF
             // =================================================
 
             StaffUsers staff =
@@ -126,10 +161,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
 
             // =================================================
-            // Check Account Status
+            // ACCOUNT STATUS
             // =================================================
 
-            if (staff.getStatus() != StaffUserStatus.ACTIVE) {
+            if (staff.getStatus()
+                    != StaffUserStatus.ACTIVE) {
 
                 response.setStatus(
                         HttpServletResponse.SC_UNAUTHORIZED
@@ -140,10 +176,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
 
             // =================================================
-            // Check Token Version
+            // TOKEN VERSION
             // =================================================
 
-            if (tokenVersion != staff.getTokenVersion()) {
+            if (tokenVersion
+                    != staff.getTokenVersion()) {
 
                 response.setStatus(
                         HttpServletResponse.SC_UNAUTHORIZED
@@ -154,12 +191,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
 
             // =================================================
-            // Check Security Context
+            // SECURITY CONTEXT
             // =================================================
 
             if (SecurityContextHolder
                     .getContext()
-                    .getAuthentication() == null) {
+                    .getAuthentication()
+                    == null) {
 
 
                 List<GrantedAuthority> authorities =
@@ -182,34 +220,32 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
                 // Permissions
                 if (permissions != null) {
-
                     permissions.forEach(permission ->
-
                             authorities.add(
-                                    new SimpleGrantedAuthority(
-                                            permission
-                                    )
+                                    new SimpleGrantedAuthority(permission)
                             )
                     );
                 }
 
 
-                // =================================================
-                // Create Authentication
-                // =================================================
-
-                UsernamePasswordAuthenticationToken authToken =
+                UsernamePasswordAuthenticationToken
+                        authToken =
 
                         new UsernamePasswordAuthenticationToken(
+
                                 username,
+
                                 null,
+
                                 authorities
                         );
 
 
                 SecurityContextHolder
                         .getContext()
-                        .setAuthentication(authToken);
+                        .setAuthentication(
+                                authToken
+                        );
             }
 
 
