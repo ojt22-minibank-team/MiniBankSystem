@@ -285,7 +285,7 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        <AccountSummary />
+        <AccountSummary accounts={dashboard?.accounts ?? []} />
       </section>
 
       {/* =====================================================

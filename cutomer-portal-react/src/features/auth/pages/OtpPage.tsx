@@ -125,6 +125,8 @@ function OtpPage() {
           "Login completed successfully."
         );
 
+        navigate("/dashboard");
+
         return;
       }
 

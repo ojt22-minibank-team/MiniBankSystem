@@ -61,7 +61,13 @@ public class CusSecurityConfig {
             .securityMatcher(
                     "/api/customer/**"
             )
+            
+            // =================================================
+            // CORS
+            // =================================================
 
+            .cors(cors -> {})
+            
             // REST API + JWT
             .csrf(
                     csrf ->

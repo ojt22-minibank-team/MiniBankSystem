@@ -7,6 +7,9 @@ import LoginPage from "../../features/auth/pages/LoginPage";
 import OtpPage from "../../features/auth/pages/OtpPage";
 import ChangePasswordPage from "../../features/auth/pages/ChangePasswordPage";
 import SetupPinPage from "../../features/auth/pages/SetupPinPage";
+import DashboardPage from "../../features/customer-account/dashboard/DashboardPage";
+import MainLayout from "../../components/layout/MainLayout";
+import MyAccountsPage from "../../features/customer-account/accounts/MyaccountPage";
 
 const router = createBrowserRouter([
   {
@@ -29,6 +32,20 @@ const router = createBrowserRouter([
     path: "/first-login/setup-pin",
     element: <SetupPinPage />,
   },
+{
+    element: <MainLayout />,
+    children: [
+      {
+        path: "/dashboard",
+        element: <DashboardPage />,
+      },
+    ],
+  },
+
+  {
+  path: "/accounts",
+  element: <MyAccountsPage />,
+},
 ]);
 
 function AppRouterProvider() {

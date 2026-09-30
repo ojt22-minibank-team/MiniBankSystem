@@ -52,7 +52,21 @@ public class CusJwtAuthenticationFilter
             FilterChain filterChain)
             throws ServletException, IOException {
 
+        // =====================================================
+        // CORS PREFLIGHT REQUEST
+        // =====================================================
 
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+
+            filterChain.doFilter(
+                    request,
+                    response
+            );
+
+            return;
+        }
+
+    	
         System.out.println(
                 "CUS JWT FILTER RUNNING: "
                         + request.getRequestURI()

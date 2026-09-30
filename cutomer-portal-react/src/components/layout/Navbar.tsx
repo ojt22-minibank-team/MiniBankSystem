@@ -1,4 +1,3 @@
-
 import {
   Bell,
   Search,
@@ -6,8 +5,6 @@ import {
   HelpCircle,
   ShieldCheck,
 } from "lucide-react";
-
-import { customer } from "../../features/customer-account/data/mockData";
 
 export default function Navbar() {
   return (
@@ -59,7 +56,9 @@ export default function Navbar() {
       ====================================================== */}
       <div className="flex items-center gap-2">
 
-        {/* Help */}
+        {/* =================================================
+            HELP
+        ================================================== */}
         <button
           type="button"
           aria-label="Help and Support"
@@ -79,10 +78,15 @@ export default function Navbar() {
             focus:ring-blue-100
           "
         >
-          <HelpCircle size={19} strokeWidth={2} />
+          <HelpCircle
+            size={19}
+            strokeWidth={2}
+          />
         </button>
 
-        {/* Notifications */}
+        {/* =================================================
+            NOTIFICATIONS
+        ================================================== */}
         <button
           type="button"
           aria-label="Notifications"
@@ -103,7 +107,10 @@ export default function Navbar() {
             focus:ring-blue-100
           "
         >
-          <Bell size={19} strokeWidth={2} />
+          <Bell
+            size={19}
+            strokeWidth={2}
+          />
 
           {/* Notification Badge */}
           <span
@@ -121,7 +128,9 @@ export default function Navbar() {
           />
         </button>
 
-        {/* Divider */}
+        {/* =================================================
+            DIVIDER
+        ================================================== */}
         <div className="mx-3 h-8 w-px bg-slate-200" />
 
         {/* =================================================
@@ -129,7 +138,17 @@ export default function Navbar() {
         ================================================== */}
         <div className="hidden items-center gap-2 xl:flex">
 
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
+          <div
+            className="
+              flex
+              h-8
+              w-8
+              items-center
+              justify-center
+              rounded-lg
+              bg-emerald-50
+            "
+          >
             <ShieldCheck
               size={16}
               strokeWidth={2}
@@ -138,11 +157,25 @@ export default function Navbar() {
           </div>
 
           <div className="leading-tight">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+            <p
+              className="
+                text-[10px]
+                font-medium
+                uppercase
+                tracking-wide
+                text-slate-400
+              "
+            >
               Security
             </p>
 
-            <p className="text-xs font-semibold text-emerald-600">
+            <p
+              className="
+                text-xs
+                font-semibold
+                text-emerald-600
+              "
+            >
               Protected
             </p>
           </div>
@@ -171,21 +204,30 @@ export default function Navbar() {
           "
         >
 
-          {/* Avatar */}
+          {/* =================================================
+              AVATAR
+          ================================================== */}
           <div className="relative shrink-0">
 
-            <img
-              src={customer.profileImage}
-              alt={`${customer.fullName} profile`}
+            {/* No mock image */}
+            <div
               className="
+                flex
                 h-10
                 w-10
+                items-center
+                justify-center
                 rounded-full
-                object-cover
+                bg-[#08295C]
+                text-sm
+                font-bold
+                text-white
                 ring-2
                 ring-slate-100
               "
-            />
+            >
+              CU
+            </div>
 
             {/* Online Status */}
             <span
@@ -203,20 +245,39 @@ export default function Navbar() {
             />
           </div>
 
-          {/* Customer Info */}
+          {/* =================================================
+              CUSTOMER INFO
+          ================================================== */}
           <div className="hidden min-w-0 text-left sm:block">
 
-            <p className="max-w-[150px] truncate text-sm font-semibold text-slate-800">
-              {customer.fullName}
+            <p
+              className="
+                max-w-[150px]
+                truncate
+                text-sm
+                font-semibold
+                text-slate-800
+              "
+            >
+              Customer
             </p>
 
-            <p className="mt-0.5 text-[11px] font-medium text-slate-400">
-              {customer.role}
+            <p
+              className="
+                mt-0.5
+                text-[11px]
+                font-medium
+                text-slate-400
+              "
+            >
+              Retail Customer
             </p>
 
           </div>
 
-          {/* Dropdown */}
+          {/* =================================================
+              DROPDOWN ICON
+          ================================================== */}
           <ChevronDown
             size={16}
             strokeWidth={2}
@@ -227,9 +288,9 @@ export default function Navbar() {
               group-hover:text-slate-600
             "
           />
+
         </button>
       </div>
     </header>
   );
 }
-
