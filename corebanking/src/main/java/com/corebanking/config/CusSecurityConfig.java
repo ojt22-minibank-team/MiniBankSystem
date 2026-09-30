@@ -67,11 +67,7 @@ public class CusSecurityConfig {
                     "/api/customer/**"
             )
             
-            // =================================================
-            // CORS
-            // =================================================
-
-            .cors(cors -> {})
+           
             
             // REST API + JWT
             .csrf(

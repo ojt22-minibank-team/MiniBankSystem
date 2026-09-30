@@ -40,19 +40,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
     	
-        // =================================================
-        // Allow CORS Preflight Request
-        // =================================================
-
-        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
-
-            filterChain.doFilter(
-                    request,
-                    response
-            );
-
-            return;
-        }
+        
 
         // =================================================
         // Get Authorization Header

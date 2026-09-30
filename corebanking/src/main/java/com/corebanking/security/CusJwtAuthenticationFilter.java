@@ -26,7 +26,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpMethod;
+
 @Component
 @RequiredArgsConstructor
 public class CusJwtAuthenticationFilter
@@ -52,20 +52,7 @@ public class CusJwtAuthenticationFilter
             FilterChain filterChain)
             throws ServletException, IOException {
 
-        // =====================================================
-        // CORS PREFLIGHT REQUEST
-        // =====================================================
-
-        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
-
-            filterChain.doFilter(
-                    request,
-                    response
-            );
-
-            return;
-        }
-
+        
     	
         System.out.println(
                 "CUS JWT FILTER RUNNING: "
