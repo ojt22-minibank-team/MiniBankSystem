@@ -25,8 +25,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import lombok.RequiredArgsConstructor;
-
-
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpMethod;
 @Component
 @RequiredArgsConstructor
 public class CusJwtAuthenticationFilter
@@ -314,31 +314,15 @@ public class CusJwtAuthenticationFilter
     protected boolean shouldNotFilter(
             HttpServletRequest request) {
 
-
         String uri =
                 request.getRequestURI();
 
-
-        // =====================================================
-        // 1. CUSTOMER API မဟုတ်ရင်
-        // JWT Filter မစစ်ဘူး
-        //
-        // Swagger UI
-        // v3 api docs
-        // staff APIs
-        // other APIs
-        // =====================================================
-
-        if (!uri.startsWith(
-                "/api/customer/")) {
+        // CORS preflight request ကို JWT မစစ်ပါ
+        if (HttpMethod.OPTIONS.matches(
+                request.getMethod())) {
 
             return true;
         }
-
-
-        // =====================================================
-        // 2. PUBLIC CUSTOMER AUTH APIs
-        // =====================================================
 
         return uri.equals(
                     "/api/customer/auth/login"

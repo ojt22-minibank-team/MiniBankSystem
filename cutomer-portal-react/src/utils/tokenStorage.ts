@@ -1,14 +1,56 @@
+const ACCESS_TOKEN_KEY = "accessToken";
+const REFRESH_TOKEN_KEY = "refreshToken";
+
+
 export const saveTokens = (
   accessToken: string,
   refreshToken: string
 ) => {
-  localStorage.setItem(
-    "accessToken",
+
+  sessionStorage.setItem(
+    ACCESS_TOKEN_KEY,
     accessToken
   );
 
-  localStorage.setItem(
-    "refreshToken",
+  sessionStorage.setItem(
+    REFRESH_TOKEN_KEY,
     refreshToken
+  );
+};
+
+
+export const getAccessToken = () => {
+
+  return sessionStorage.getItem(
+    ACCESS_TOKEN_KEY
+  );
+};
+
+
+export const getRefreshToken = () => {
+
+  return sessionStorage.getItem(
+    REFRESH_TOKEN_KEY
+  );
+};
+
+
+export const clearTokens = () => {
+
+  sessionStorage.removeItem(
+    ACCESS_TOKEN_KEY
+  );
+
+  sessionStorage.removeItem(
+    REFRESH_TOKEN_KEY
+  );
+};
+
+
+export const hasTokens = () => {
+
+  return Boolean(
+    getAccessToken() &&
+    getRefreshToken()
   );
 };
