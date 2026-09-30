@@ -75,3 +75,36 @@ export const resendOtp = async (
 
   return response.data;
 };
+
+export interface RefreshTokenResponse {
+  success: boolean;
+  message: string;
+  accessToken: string;
+  refreshToken: string;
+}
+
+
+export const refreshCustomerToken = async (
+  refreshToken: string
+): Promise<RefreshTokenResponse> => {
+
+  const response =
+    await api.post<RefreshTokenResponse>(
+      "/refresh",
+      {
+        refreshToken: refreshToken,
+      }
+    );
+
+  return response.data;
+};
+
+// test protected API endpoint
+export const testProtectedApi = async () => {
+
+  const response = await api.get(
+    "/test"
+  );
+
+  return response.data;
+};
