@@ -11,26 +11,32 @@ import {
 } from "../utils/tokenStorage";
 
 
+// ======================================================
+// BASE URL
+// ======================================================
+
 const BASE_URL =
-  "http://localhost:8080/api/customer/auth";
+  "http://localhost:8080/api/customer";
 
 
-// =====================================
+// ======================================================
 // MAIN AXIOS INSTANCE
-// =====================================
+// ======================================================
 
 const api = axios.create({
+
   baseURL: BASE_URL,
 
   headers: {
     "Content-Type": "application/json",
   },
+
 });
 
 
-// =====================================
+// ======================================================
 // REFRESH RESPONSE TYPE
-// =====================================
+// ======================================================
 
 interface RefreshTokenResponse {
   accessToken: string;
@@ -38,9 +44,9 @@ interface RefreshTokenResponse {
 }
 
 
-// =====================================
+// ======================================================
 // RETRY REQUEST TYPE
-// =====================================
+// ======================================================
 
 interface RetryableRequestConfig
   extends InternalAxiosRequestConfig {
@@ -50,36 +56,37 @@ interface RetryableRequestConfig
 }
 
 
-// =====================================
+// ======================================================
 // PUBLIC ENDPOINT CHECK
-// =====================================
+// ======================================================
 
 const isPublicEndpoint = (
   url?: string
-) => {
+): boolean => {
 
   if (!url) {
     return false;
   }
 
   return (
-    url.includes("/login") ||
-    url.includes("/verify-otp") ||
-    url.includes("/resend-otp") ||
+    url.includes("/auth/login") ||
+    url.includes("/auth/verify-otp") ||
+    url.includes("/auth/resend-otp") ||
     url.includes(
-      "/first-login/change-password"
+      "/auth/first-login/change-password"
     ) ||
     url.includes(
-      "/first-login/setup-pin"
+      "/auth/first-login/setup-pin"
     ) ||
-    url.includes("/refresh")
+    url.includes("/auth/refresh")
   );
+
 };
 
 
-// =====================================
+// ======================================================
 // REQUEST INTERCEPTOR
-// =====================================
+// ======================================================
 
 api.interceptors.request.use(
 
@@ -89,8 +96,10 @@ api.interceptors.request.use(
       getAccessToken();
 
 
-    // Public API တွေမှာ
-    // Access Token မပို့ပါ
+    // ==================================================
+    // Protected API ဖြစ်မှ Access Token ပို့မယ်
+    // ==================================================
+
     if (
       accessToken &&
       !isPublicEndpoint(config.url)
@@ -116,11 +125,12 @@ api.interceptors.request.use(
 );
 
 
-// =====================================
-// SEPARATE CLIENT FOR REFRESH
-// =====================================
+// ======================================================
+// SEPARATE AXIOS CLIENT FOR REFRESH TOKEN
+// ======================================================
 
 // ဒီ client မှာ interceptor မရှိပါ
+// Refresh request က 401 ဖြစ်ရင်
 // infinite refresh loop မဖြစ်စေရန်
 
 const refreshClient =
@@ -135,13 +145,16 @@ const refreshClient =
   });
 
 
-// =====================================
+// ======================================================
 // RESPONSE INTERCEPTOR
-// =====================================
+// ======================================================
 
 api.interceptors.response.use(
 
-  // Request success
+  // ====================================================
+  // REQUEST SUCCESS
+  // ====================================================
+
   (response) => {
 
     return response;
@@ -149,7 +162,10 @@ api.interceptors.response.use(
   },
 
 
-  // Request error
+  // ====================================================
+  // REQUEST ERROR
+  // ====================================================
+
   async (
     error: AxiosError
   ) => {
@@ -170,9 +186,10 @@ api.interceptors.response.use(
       error.response?.status;
 
 
-    // =================================
-    // NOT 401
-    // =================================
+    // ==================================================
+    // ERROR က 401 မဟုတ်ရင်
+    // refresh မလုပ်ပါ
+    // ==================================================
 
     if (status !== 401) {
 
@@ -181,12 +198,15 @@ api.interceptors.response.use(
     }
 
 
-    // =================================
-    // PUBLIC ENDPOINT 401
-    // =================================
+    // ==================================================
+    // PUBLIC AUTH ENDPOINT 401
+    // ==================================================
 
+    // ဥပမာ:
     // Wrong password login → 401
-    // Wrong login ကို refresh မလုပ်ရပါ
+    //
+    // ဒီလို Login error ကို
+    // Refresh Token သုံးပြီး refresh မလုပ်ရပါ
 
     if (
       isPublicEndpoint(
@@ -199,9 +219,9 @@ api.interceptors.response.use(
     }
 
 
-    // =================================
-    // ALREADY RETRIED
-    // =================================
+    // ==================================================
+    // REQUEST ကို တစ်ခါ retry လုပ်ပြီးသားလား
+    // ==================================================
 
     if (originalRequest._retry) {
 
@@ -213,25 +233,20 @@ api.interceptors.response.use(
     originalRequest._retry = true;
 
 
-    // =================================
-    // GET REFRESH TOKEN
-    // =================================
+    // ==================================================
+    // GET CURRENT REFRESH TOKEN
+    // ==================================================
 
     const refreshToken =
       getRefreshToken();
 
 
+    // Refresh Token မရှိတော့ရင်
+    // Login Page ပြန်ပို့မယ်
+
     if (!refreshToken) {
 
-      clearTokens();
-
-      sessionStorage.removeItem(
-        "challengeGroupId"
-      );
-
-      sessionStorage.removeItem(
-        "maskedEmail"
-      );
+      clearAuthData();
 
       window.location.href = "/";
 
@@ -240,9 +255,9 @@ api.interceptors.response.use(
     }
 
 
-    // =================================
+    // ==================================================
     // REFRESH ACCESS TOKEN
-    // =================================
+    // ==================================================
 
     try {
 
@@ -250,7 +265,7 @@ api.interceptors.response.use(
         await refreshClient.post<
           RefreshTokenResponse
         >(
-          "/refresh",
+          "/auth/refresh",
           {
             refreshToken:
               refreshToken,
@@ -261,13 +276,22 @@ api.interceptors.response.use(
       const newAccessToken =
         response.data.accessToken;
 
+
       const newRefreshToken =
         response.data.refreshToken;
 
 
-      // =================================
+      // =================================================
       // REFRESH TOKEN ROTATION
-      // =================================
+      // =================================================
+
+      // Access A + Refresh A
+      //
+      // Refresh A သုံးပြီးနောက်
+      //
+      // Access B + Refresh B
+      //
+      // ကို sessionStorage ထဲ save
 
       saveTokens(
         newAccessToken,
@@ -275,17 +299,18 @@ api.interceptors.response.use(
       );
 
 
-      // =================================
-      // UPDATE FAILED REQUEST
-      // =================================
+      // =================================================
+      // FAILED REQUEST ထဲ
+      // NEW ACCESS TOKEN ထည့်
+      // =================================================
 
       originalRequest.headers.Authorization =
         `Bearer ${newAccessToken}`;
 
 
-      // =================================
-      // RETRY ORIGINAL REQUEST
-      // =================================
+      // =================================================
+      // ORIGINAL REQUEST ကို AUTO RETRY
+      // =================================================
 
       return api(
         originalRequest
@@ -295,21 +320,15 @@ api.interceptors.response.use(
     } catch (refreshError) {
 
 
-      // Refresh Token ကိုပါ
-      // backend က reject လုပ်လိုက်ပြီ
+      // =================================================
+      // REFRESH TOKEN INVALID / EXPIRED / REVOKED
+      // =================================================
 
-      clearTokens();
-
-      sessionStorage.removeItem(
-        "challengeGroupId"
-      );
-
-      sessionStorage.removeItem(
-        "maskedEmail"
-      );
+      clearAuthData();
 
 
       // Login Page ပြန်ပို့
+
       window.location.href = "/";
 
 
@@ -323,5 +342,28 @@ api.interceptors.response.use(
 
 );
 
+
+// ======================================================
+// CLEAR AUTH DATA
+// ======================================================
+
+const clearAuthData = () => {
+
+  clearTokens();
+
+  sessionStorage.removeItem(
+    "challengeGroupId"
+  );
+
+  sessionStorage.removeItem(
+    "maskedEmail"
+  );
+
+};
+
+
+// ======================================================
+// EXPORT
+// ======================================================
 
 export default api;
