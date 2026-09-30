@@ -1,35 +1,18 @@
+import api from "../../../config/api";
 import type { CustomerAccount } from "../types/accountTypes";
-import { apiClient } from "../../../services/apiClient";
 
 export async function getMyAccounts(): Promise<CustomerAccount[]> {
-  const response = await apiClient("/api/customer/accounts", {
-    method: "GET",
-  });
+  const response = await api.get<CustomerAccount[]>("/accounts");
 
-  if (!response.ok) {
-    throw new Error(
-      `Failed to load accounts: ${response.status}`
-    );
-  }
-
-  return response.json();
+  return response.data;
 }
 
 export async function getMyAccount(
   accountNumber: string
 ): Promise<CustomerAccount> {
-  const response = await apiClient(
-    `/api/customer/accounts/${accountNumber}`,
-    {
-      method: "GET",
-    }
+  const response = await api.get<CustomerAccount>(
+    `/accounts/${accountNumber}`
   );
 
-  if (!response.ok) {
-    throw new Error(
-      `Failed to load account: ${response.status}`
-    );
-  }
-
-  return response.json();
+  return response.data;
 }

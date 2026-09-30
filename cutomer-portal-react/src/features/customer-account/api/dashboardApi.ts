@@ -1,16 +1,8 @@
+import api from "../../../config/api";
 import type { DashboardResponse } from "../types/dashboardTypes";
-import { apiClient } from "../../../services/apiClient";
 
 export async function getCustomerDashboard(): Promise<DashboardResponse> {
-  const response = await apiClient("/api/customer/dashboard", {
-    method: "GET",
-  });
+  const response = await api.get<DashboardResponse>("/dashboard");
 
-  if (!response.ok) {
-    throw new Error(
-      `Dashboard request failed: ${response.status}`
-    );
-  }
-
-  return response.json();
+  return response.data;
 }

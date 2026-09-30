@@ -217,28 +217,6 @@ export default function Sidebar() {
       ====================================================== */}
       <div className="shrink-0 border-t border-slate-100 p-4">
 
-        {/* Customer Card */}
-        <div className="mb-3 rounded-xl bg-slate-50 p-3">
-
-          <div className="flex items-center gap-3">
-
-            {/* Avatar */}
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#08295C] text-xs font-bold text-white">
-              JD
-            </div>
-
-            {/* Customer Info */}
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-slate-800">
-                John Doe
-              </p>
-
-              <p className="truncate text-[11px] text-slate-400">
-                Personal Account
-              </p>
-            </div>
-          </div>
-        </div>
 
         {/* Logout */}
         <button

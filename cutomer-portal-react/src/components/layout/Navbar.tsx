@@ -5,20 +5,41 @@ import {
   HelpCircle,
   ShieldCheck,
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
+import { getMyAccounts } from "../../features/customer-account/api/customerAccountApi";
+import type { CustomerAccount } from "../../features/customer-account/types/accountTypes";
 
 export default function Navbar() {
+  const [account, setAccount] =
+    useState<CustomerAccount | null>(null);
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadAccount = async () => {
+      try {
+        const accounts = await getMyAccounts();
+
+        setAccount(accounts[0] ?? null);
+      } catch (error) {
+        console.error("Failed to load account:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAccount();
+  }, []);
+
   return (
     <header className="fixed left-64 right-0 top-0 z-20 flex h-20 items-center justify-between border-b border-slate-200 bg-white px-8">
 
-      {/* =====================================================
-          LEFT - SEARCH
-      ====================================================== */}
+      {/* SEARCH */}
       <div className="flex items-center">
         <div className="relative w-[360px]">
-
           <Search
             size={18}
-            strokeWidth={2}
             className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
           />
 
@@ -27,268 +48,151 @@ export default function Navbar() {
             placeholder="Search accounts or transactions"
             aria-label="Search accounts or transactions"
             className="
-              h-10
-              w-full
-              rounded-xl
-              border
-              border-slate-200
-              bg-slate-50
-              pl-10
-              pr-4
-              text-sm
-              text-slate-700
-              placeholder:text-slate-400
-              outline-none
-              transition-all
-              duration-200
+              h-10 w-full rounded-xl border border-slate-200
+              bg-slate-50 pl-10 pr-4 text-sm text-slate-700
+              placeholder:text-slate-400 outline-none
+              transition-all duration-200
               hover:border-slate-300
               focus:border-[#0878E8]
               focus:bg-white
-              focus:ring-4
-              focus:ring-blue-50
+              focus:ring-4 focus:ring-blue-50
             "
           />
         </div>
       </div>
 
-      {/* =====================================================
-          RIGHT SECTION
-      ====================================================== */}
+      {/* RIGHT */}
       <div className="flex items-center gap-2">
 
-        {/* =================================================
-            HELP
-        ================================================== */}
+        {/* HELP */}
         <button
           type="button"
           aria-label="Help and Support"
           className="
-            flex
-            h-10
-            w-10
-            items-center
-            justify-center
-            rounded-xl
-            text-slate-500
-            transition
-            hover:bg-slate-50
-            hover:text-[#08295C]
-            focus:outline-none
-            focus:ring-2
-            focus:ring-blue-100
+            flex h-10 w-10 items-center justify-center
+            rounded-xl text-slate-500 transition
+            hover:bg-slate-50 hover:text-[#08295C]
+            focus:outline-none focus:ring-2 focus:ring-blue-100
           "
         >
-          <HelpCircle
-            size={19}
-            strokeWidth={2}
-          />
+          <HelpCircle size={19} />
         </button>
 
-        {/* =================================================
-            NOTIFICATIONS
-        ================================================== */}
+        {/* NOTIFICATIONS */}
         <button
           type="button"
           aria-label="Notifications"
           className="
-            relative
-            flex
-            h-10
-            w-10
-            items-center
-            justify-center
-            rounded-xl
-            text-slate-500
-            transition
-            hover:bg-slate-50
-            hover:text-[#08295C]
-            focus:outline-none
-            focus:ring-2
-            focus:ring-blue-100
+            relative flex h-10 w-10 items-center justify-center
+            rounded-xl text-slate-500 transition
+            hover:bg-slate-50 hover:text-[#08295C]
+            focus:outline-none focus:ring-2 focus:ring-blue-100
           "
         >
-          <Bell
-            size={19}
-            strokeWidth={2}
-          />
+          <Bell size={19} />
 
-          {/* Notification Badge */}
           <span
             className="
-              absolute
-              right-2
-              top-2
-              h-2
-              w-2
-              rounded-full
-              bg-red-500
-              ring-2
-              ring-white
+              absolute right-2 top-2 h-2 w-2 rounded-full
+              bg-red-500 ring-2 ring-white
             "
           />
         </button>
 
-        {/* =================================================
-            DIVIDER
-        ================================================== */}
         <div className="mx-3 h-8 w-px bg-slate-200" />
 
-        {/* =================================================
-            SECURITY STATUS
-        ================================================== */}
+        {/* SECURITY */}
         <div className="hidden items-center gap-2 xl:flex">
-
           <div
             className="
-              flex
-              h-8
-              w-8
-              items-center
-              justify-center
-              rounded-lg
-              bg-emerald-50
+              flex h-8 w-8 items-center justify-center
+              rounded-lg bg-emerald-50
             "
           >
             <ShieldCheck
               size={16}
-              strokeWidth={2}
               className="text-emerald-600"
             />
           </div>
 
           <div className="leading-tight">
-            <p
-              className="
-                text-[10px]
-                font-medium
-                uppercase
-                tracking-wide
-                text-slate-400
-              "
-            >
+            <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
               Security
             </p>
 
-            <p
-              className="
-                text-xs
-                font-semibold
-                text-emerald-600
-              "
-            >
+            <p className="text-xs font-semibold text-emerald-600">
               Protected
             </p>
           </div>
         </div>
 
-        {/* =================================================
-            PROFILE
-        ================================================== */}
+        {/* ACCOUNT */}
         <button
           type="button"
-          aria-label="Open profile menu"
+          aria-label="Open account menu"
           className="
-            group
-            ml-3
-            flex
-            items-center
-            gap-3
-            rounded-xl
-            p-1.5
-            pr-2.5
-            transition
+            group ml-3 flex items-center gap-3
+            rounded-xl p-1.5 pr-2.5 transition
             hover:bg-slate-50
-            focus:outline-none
-            focus:ring-2
-            focus:ring-blue-100
+            focus:outline-none focus:ring-2 focus:ring-blue-100
           "
         >
-
-          {/* =================================================
-              AVATAR
-          ================================================== */}
+          {/* AVATAR */}
           <div className="relative shrink-0">
-
-            {/* No mock image */}
             <div
               className="
-                flex
-                h-10
-                w-10
-                items-center
-                justify-center
-                rounded-full
-                bg-[#08295C]
-                text-sm
-                font-bold
-                text-white
-                ring-2
-                ring-slate-100
+                flex h-10 w-10 items-center justify-center
+                rounded-full bg-[#08295C]
+                text-sm font-bold text-white
+                ring-2 ring-slate-100
               "
             >
-              CU
+              {loading
+                ? "..."
+                : account?.accountType
+                    ?.substring(0, 2)
+                    .toUpperCase() ?? "AC"}
             </div>
 
-            {/* Online Status */}
             <span
               className="
-                absolute
-                bottom-0
-                right-0
-                h-2.5
-                w-2.5
-                rounded-full
-                bg-emerald-500
-                ring-2
-                ring-white
+                absolute bottom-0 right-0 h-2.5 w-2.5
+                rounded-full bg-emerald-500
+                ring-2 ring-white
               "
             />
           </div>
 
-          {/* =================================================
-              CUSTOMER INFO
-          ================================================== */}
+          {/* ACCOUNT INFO */}
           <div className="hidden min-w-0 text-left sm:block">
-
             <p
               className="
-                max-w-[150px]
-                truncate
-                text-sm
-                font-semibold
-                text-slate-800
+                max-w-[150px] truncate
+                text-sm font-semibold text-slate-800
               "
             >
-              Customer
+              {loading
+                ? "Loading..."
+                : account?.accountType ?? "Account"}
             </p>
 
             <p
               className="
-                mt-0.5
-                text-[11px]
-                font-medium
-                text-slate-400
+                mt-0.5 max-w-[150px] truncate
+                text-[11px] font-medium text-slate-400
               "
             >
-              Retail Customer
+              {account?.accountNumber ?? "No account"}
             </p>
-
           </div>
 
-          {/* =================================================
-              DROPDOWN ICON
-          ================================================== */}
           <ChevronDown
             size={16}
-            strokeWidth={2}
             className="
-              text-slate-400
-              transition-transform
-              duration-200
+              text-slate-400 transition-transform duration-200
               group-hover:text-slate-600
             "
           />
-
         </button>
       </div>
     </header>
