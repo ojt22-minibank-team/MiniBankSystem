@@ -71,7 +71,7 @@ import SetupPinPage from "../../features/auth/pages/SetupPinPage";
 import DashboardPage from "../../features/customer-account/dashboard/DashboardPage";
 import MainLayout from "../../components/layout/MainLayout";
 import MyAccountsPage from "../../features/customer-account/accounts/MyaccountPage";
-
+import ProfilePage from "../../features/customer-account/profile/ProfilePage";
 
 const router = createBrowserRouter([
 
@@ -127,6 +127,11 @@ const router = createBrowserRouter([
           {
             path: "/accounts",
             element: <MyAccountsPage />,
+          },
+
+           {
+            path: "/profile",
+            element: <ProfilePage />,
           },
 
         ],
