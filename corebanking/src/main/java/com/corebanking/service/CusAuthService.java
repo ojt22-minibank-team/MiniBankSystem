@@ -44,6 +44,12 @@ import com.corebanking.exception.CusEmailException;
 import org.springframework.mail.MailException;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
+import com.corebanking.entity.AuditLogs;
+
+import com.corebanking.entity.enums.ActorType;
+import com.corebanking.entity.enums.UpdatedByType;
+
+import com.corebanking.repository.CusAuditLogsRepository;
 @Service
 @RequiredArgsConstructor
 public class CusAuthService {
@@ -59,6 +65,7 @@ public class CusAuthService {
     private final CusSessionService cusSessionService;
     private final CusJwtRevokedTokensRepository jwtRevokedTokensRepository;
     private final CusEmailService cusEmailService;
+    private final CusAuditLogsRepository auditLogsRepository;
 
 
 
@@ -1778,13 +1785,14 @@ public class CusAuthService {
  // =========================================================
  // CUSTOMER LOGOUT
  // =========================================================
-    @Transactional
+
+ @Transactional
  public void logout(
          String authorizationHeader) {
 
-     // -----------------------------------------
-     // 1. Authorization Header check
-     // -----------------------------------------
+     // =====================================================
+     // 1. AUTHORIZATION HEADER CHECK
+     // =====================================================
 
      if (authorizationHeader == null
              || !authorizationHeader
@@ -1796,9 +1804,9 @@ public class CusAuthService {
      }
 
 
-     // -----------------------------------------
-     // 2. Extract Access Token
-     // -----------------------------------------
+     // =====================================================
+     // 2. EXTRACT ACCESS TOKEN
+     // =====================================================
 
      String accessToken =
              authorizationHeader
@@ -1806,9 +1814,9 @@ public class CusAuthService {
                      .trim();
 
 
-     // -----------------------------------------
-     // 3. JWT validate + read claims
-     // -----------------------------------------
+     // =====================================================
+     // 3. JWT VALIDATE + READ CLAIMS
+     // =====================================================
 
      Claims claims =
              cusJwtService.getClaims(
@@ -1816,9 +1824,9 @@ public class CusAuthService {
              );
 
 
-     // -----------------------------------------
-     // 4. ACCESS token ဟုတ်လား
-     // -----------------------------------------
+     // =====================================================
+     // 4. ACCESS TOKEN TYPE CHECK
+     // =====================================================
 
      String tokenType =
              claims.get(
@@ -1836,9 +1844,9 @@ public class CusAuthService {
      }
 
 
-     // -----------------------------------------
-     // 5. jti ရယူ
-     // -----------------------------------------
+     // =====================================================
+     // 5. GET JTI
+     // =====================================================
 
      String jti =
              claims.getId();
@@ -1853,9 +1861,9 @@ public class CusAuthService {
      }
 
 
-     // -----------------------------------------
-     // 6. Session validate
-     // -----------------------------------------
+     // =====================================================
+     // 6. VALIDATE AUTH SESSION
+     // =====================================================
 
      AuthSessions session =
              cusSessionService
@@ -1864,9 +1872,22 @@ public class CusAuthService {
                      );
 
 
-     // -----------------------------------------
-     // 7. Access Token blacklist ထဲမရှိသေးရင် save
-     // -----------------------------------------
+     Customers customer =
+             session.getCustomer();
+
+
+     if (customer == null
+             || customer.getCustomerId() == null) {
+
+         throw new RuntimeException(
+                 "Customer session is invalid."
+         );
+     }
+
+
+     // =====================================================
+     // 7. ACCESS TOKEN BLACKLIST
+     // =====================================================
 
      if (!jwtRevokedTokensRepository
              .existsByJti(jti)) {
@@ -1884,7 +1905,7 @@ public class CusAuthService {
                          )
 
                          .customer(
-                                 session.getCustomer()
+                                 customer
                          )
 
                          .staff(
@@ -1905,6 +1926,19 @@ public class CusAuthService {
                                  "USER_LOGOUT"
                          )
 
+                         // ---------------------------------
+                         // AUDIT METADATA
+                         // Customer ကိုယ်တိုင် logout
+                         // ---------------------------------
+
+                         .updatedByType(
+                                 UpdatedByType.CUSTOMER
+                         )
+
+                         .updatedById(
+                                 customer.getCustomerId()
+                         )
+
                          .build();
 
 
@@ -1914,14 +1948,80 @@ public class CusAuthService {
      }
 
 
-     // -----------------------------------------
-     // 8. Entire Session revoke
-     // -----------------------------------------
+     // =====================================================
+     // 8. AUTH SESSION AUDIT METADATA
+     // =====================================================
+
+     session.setUpdatedByType(
+             UpdatedByType.CUSTOMER
+     );
+
+     session.setUpdatedById(
+             customer.getCustomerId()
+     );
+
+
+     // =====================================================
+     // 9. REVOKE ENTIRE SESSION
+     // =====================================================
 
      cusSessionService.revokeSession(
              session,
              "USER_LOGOUT"
      );
+
+
+     // =====================================================
+     // 10. SAVE AUDIT LOG
+     // =====================================================
+
+     AuditLogs auditLog =
+             AuditLogs.builder()
+
+                     // ဘယ်သူလုပ်တာလဲ
+                     .actorType(
+                             ActorType.CUSTOMER
+                     )
+
+                     .actorCustomer(
+                             customer
+                     )
+
+                     .actorStaff(
+                             null
+                     )
+
+                     // ဘာလုပ်တာလဲ
+                     .actionType(
+                             "CUSTOMER_LOGOUT"
+                     )
+
+                     // ဘယ် entity ကိုပြောင်းတာလဲ
+                     .entityType(
+                             "AUTH_SESSION"
+                     )
+
+                     // ဘယ် session လဲ
+                     .entityId(
+                             session.getSessionUuid()
+                     )
+
+                     // Logout မလုပ်ခင်
+                     .oldValues(
+                             "{\"status\":\"ACTIVE\"}"
+                     )
+
+                     // Logout လုပ်ပြီး
+                     .newValues(
+                             "{\"status\":\"REVOKED\","
+                             + "\"reason\":\"USER_LOGOUT\"}"
+                     )
+
+                     .build();
+
+
+     auditLogsRepository.save(
+             auditLog
+     );
  }
- 
 }
