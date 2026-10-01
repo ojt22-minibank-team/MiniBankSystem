@@ -96,10 +96,6 @@ api.interceptors.request.use(
       getAccessToken();
 
 
-    // ==================================================
-    // Protected API ဖြစ်မှ Access Token ပို့မယ်
-    // ==================================================
-
     if (
       accessToken &&
       !isPublicEndpoint(config.url)
@@ -129,10 +125,6 @@ api.interceptors.request.use(
 // SEPARATE AXIOS CLIENT FOR REFRESH TOKEN
 // ======================================================
 
-// ဒီ client မှာ interceptor မရှိပါ
-// Refresh request က 401 ဖြစ်ရင်
-// infinite refresh loop မဖြစ်စေရန်
-
 const refreshClient =
   axios.create({
 
@@ -143,6 +135,108 @@ const refreshClient =
     },
 
   });
+
+
+// ======================================================
+// SINGLE REFRESH LOCK
+// ======================================================
+
+// refresh request တစ်ခုပဲ run လုပ်စေဖို့
+// shared Promise သုံးထားတာပါ
+
+let refreshPromise:
+  Promise<string> | null = null;
+
+
+// ======================================================
+// GET NEW ACCESS TOKEN
+// ======================================================
+
+const refreshAccessToken =
+  async (): Promise<string> => {
+
+    // ----------------------------------------------
+    // Refresh request run နေပြီးသားဆို
+    // အသစ်ထပ်မခေါ်ဘဲ existing Promise ကို await
+    // ----------------------------------------------
+
+    if (refreshPromise) {
+
+      return refreshPromise;
+
+    }
+
+
+    // ----------------------------------------------
+    // Refresh request တစ်ခုပဲ create
+    // ----------------------------------------------
+
+    refreshPromise =
+      (async () => {
+
+        const refreshToken =
+          getRefreshToken();
+
+
+        if (!refreshToken) {
+
+          throw new Error(
+            "Refresh token is missing."
+          );
+
+        }
+
+
+        const response =
+          await refreshClient.post<
+            RefreshTokenResponse
+          >(
+            "/auth/refresh",
+            {
+              refreshToken:
+                refreshToken,
+            }
+          );
+
+
+        const newAccessToken =
+          response.data.accessToken;
+
+
+        const newRefreshToken =
+          response.data.refreshToken;
+
+
+        // ------------------------------------------
+        // REFRESH TOKEN ROTATION
+        // ------------------------------------------
+
+        saveTokens(
+          newAccessToken,
+          newRefreshToken
+        );
+
+
+        return newAccessToken;
+
+      })();
+
+
+    try {
+
+      return await refreshPromise;
+
+    } finally {
+
+      // --------------------------------------------
+      // Refresh ပြီးသွားရင် lock release
+      // --------------------------------------------
+
+      refreshPromise = null;
+
+    }
+
+  };
 
 
 // ======================================================
@@ -187,8 +281,7 @@ api.interceptors.response.use(
 
 
     // ==================================================
-    // ERROR က 401 မဟုတ်ရင်
-    // refresh မလုပ်ပါ
+    // 401 မဟုတ်ရင် refresh မလုပ်
     // ==================================================
 
     if (status !== 401) {
@@ -202,12 +295,6 @@ api.interceptors.response.use(
     // PUBLIC AUTH ENDPOINT 401
     // ==================================================
 
-    // ဥပမာ:
-    // Wrong password login → 401
-    //
-    // ဒီလို Login error ကို
-    // Refresh Token သုံးပြီး refresh မလုပ်ရပါ
-
     if (
       isPublicEndpoint(
         originalRequest.url
@@ -220,7 +307,7 @@ api.interceptors.response.use(
 
 
     // ==================================================
-    // REQUEST ကို တစ်ခါ retry လုပ်ပြီးသားလား
+    // REQUEST RETRY ALREADY DONE ?
     // ==================================================
 
     if (originalRequest._retry) {
@@ -234,15 +321,12 @@ api.interceptors.response.use(
 
 
     // ==================================================
-    // GET CURRENT REFRESH TOKEN
+    // REFRESH TOKEN ရှိလား
     // ==================================================
 
     const refreshToken =
       getRefreshToken();
 
-
-    // Refresh Token မရှိတော့ရင်
-    // Login Page ပြန်ပို့မယ်
 
     if (!refreshToken) {
 
@@ -256,51 +340,17 @@ api.interceptors.response.use(
 
 
     // ==================================================
-    // REFRESH ACCESS TOKEN
+    // SINGLE REFRESH FLOW
     // ==================================================
 
     try {
 
-      const response =
-        await refreshClient.post<
-          RefreshTokenResponse
-        >(
-          "/auth/refresh",
-          {
-            refreshToken:
-              refreshToken,
-          }
-        );
-
-
       const newAccessToken =
-        response.data.accessToken;
-
-
-      const newRefreshToken =
-        response.data.refreshToken;
+        await refreshAccessToken();
 
 
       // =================================================
-      // REFRESH TOKEN ROTATION
-      // =================================================
-
-      // Access A + Refresh A
-      //
-      // Refresh A သုံးပြီးနောက်
-      //
-      // Access B + Refresh B
-      //
-      // ကို sessionStorage ထဲ save
-
-      saveTokens(
-        newAccessToken,
-        newRefreshToken
-      );
-
-
-      // =================================================
-      // FAILED REQUEST ထဲ
+      // ORIGINAL FAILED REQUEST မှာ
       // NEW ACCESS TOKEN ထည့်
       // =================================================
 
@@ -309,7 +359,7 @@ api.interceptors.response.use(
 
 
       // =================================================
-      // ORIGINAL REQUEST ကို AUTO RETRY
+      // ORIGINAL REQUEST AUTO RETRY
       // =================================================
 
       return api(
@@ -320,14 +370,8 @@ api.interceptors.response.use(
     } catch (refreshError) {
 
 
-      // =================================================
-      // REFRESH TOKEN INVALID / EXPIRED / REVOKED
-      // =================================================
-
       clearAuthData();
 
-
-      // Login Page ပြန်ပို့
 
       window.location.href = "/";
 
