@@ -140,6 +140,16 @@ export const refreshCustomerToken = async (
 };
 
 
+export const logoutCustomer = async (): Promise<string> => {
+
+  const response =
+    await api.post<string>(
+      "/auth/logout"
+    );
+
+  return response.data;
+};
+
 // ======================================================
 // TEMPORARY PROTECTED API TEST
 // GET /api/customer/auth/test
