@@ -664,6 +664,14 @@ public class CusAuthService {
 
                         .resendNo(0)
 
+                        .updatedByType(
+                                UpdatedByType.CUSTOMER
+                        )
+
+                        .updatedById(
+                                customer.getCustomerId()
+                        )
+
                         .build();
 
 
@@ -695,6 +703,16 @@ public class CusAuthService {
                             + " ms"
             );
 
+            saveAuditLog(
+                    ActorType.CUSTOMER,
+                    customer,
+                    "OTP_SENT",
+                    "OTP_CHALLENGE",
+                    String.valueOf(savedOtp.getOtpId()),
+                    null,
+                    "{\"purpose\":\"LOGIN\",\"status\":\"ACTIVE\",\"resendNo\":0}"
+            );
+
         } catch (MailException ex) {
 
             System.out.println(
@@ -708,8 +726,22 @@ public class CusAuthService {
                     OtpStatus.EXPIRED
             );
 
+            markOtpUpdatedBySystem(
+                    savedOtp
+            );
+
             otpChallengesRepository.save(
                     savedOtp
+            );
+
+            saveAuditLog(
+                    ActorType.SYSTEM,
+                    null,
+                    "OTP_SEND_FAILED",
+                    "OTP_CHALLENGE",
+                    String.valueOf(savedOtp.getOtpId()),
+                    "{\"status\":\"ACTIVE\"}",
+                    "{\"status\":\"EXPIRED\",\"reason\":\"EMAIL_SEND_FAILED\"}"
             );
 
             throw new CusEmailException(
@@ -750,6 +782,10 @@ public class CusAuthService {
 
             otp.setStatus(
                     OtpStatus.EXPIRED
+            );
+
+            markOtpUpdatedByCustomer(
+                    otp
             );
         }
 
@@ -839,8 +875,22 @@ public class CusAuthService {
                     OtpStatus.EXPIRED
             );
 
+            markOtpUpdatedBySystem(
+                    otpChallenge
+            );
+
             otpChallengesRepository.save(
                     otpChallenge
+            );
+
+            saveAuditLog(
+                    ActorType.SYSTEM,
+                    null,
+                    "OTP_EXPIRED",
+                    "OTP_CHALLENGE",
+                    String.valueOf(otpChallenge.getOtpId()),
+                    "{\"status\":\"ACTIVE\"}",
+                    "{\"status\":\"EXPIRED\",\"reason\":\"TIME_EXPIRED\"}"
             );
 
             throw new CusOtpException(
@@ -856,8 +906,22 @@ public class CusAuthService {
                     OtpStatus.BLOCKED
             );
 
+            markOtpUpdatedBySystem(
+                    otpChallenge
+            );
+
             otpChallengesRepository.save(
                     otpChallenge
+            );
+
+            saveAuditLog(
+                    ActorType.SYSTEM,
+                    null,
+                    "OTP_BLOCKED",
+                    "OTP_CHALLENGE",
+                    String.valueOf(otpChallenge.getOtpId()),
+                    null,
+                    "{\"status\":\"BLOCKED\",\"reason\":\"MAX_ATTEMPTS_REACHED\"}"
             );
 
             throw new CusOtpException(
@@ -898,8 +962,22 @@ public class CusAuthService {
                 now
         );
 
+        markOtpUpdatedByCustomer(
+                otpChallenge
+        );
+
         otpChallengesRepository.save(
                 otpChallenge
+        );
+
+        saveAuditLog(
+                ActorType.CUSTOMER,
+                otpChallenge.getCustomer(),
+                "OTP_VERIFIED",
+                "OTP_CHALLENGE",
+                String.valueOf(otpChallenge.getOtpId()),
+                "{\"status\":\"ACTIVE\"}",
+                "{\"status\":\"CONSUMED\"}"
         );
 
         // 10. Customer
@@ -989,9 +1067,41 @@ public class CusAuthService {
         }
 
 
+        markOtpUpdatedByCustomer(
+                otpChallenge
+        );
+
+
         otpChallengesRepository.save(
                 otpChallenge
         );
+
+
+        saveAuditLog(
+                ActorType.CUSTOMER,
+                otpChallenge.getCustomer(),
+                "OTP_VERIFY_FAILED",
+                "OTP_CHALLENGE",
+                String.valueOf(otpChallenge.getOtpId()),
+                null,
+                "{\"attemptCount\":" + failedAttempts
+                        + ",\"status\":\"" + otpChallenge.getStatus().name() + "\"}"
+        );
+
+
+        if (otpChallenge.getStatus()
+                == OtpStatus.BLOCKED) {
+
+            saveAuditLog(
+                    ActorType.CUSTOMER,
+                    otpChallenge.getCustomer(),
+                    "OTP_BLOCKED",
+                    "OTP_CHALLENGE",
+                    String.valueOf(otpChallenge.getOtpId()),
+                    null,
+                    "{\"status\":\"BLOCKED\",\"reason\":\"MAX_ATTEMPTS_REACHED\"}"
+            );
+        }
     }
     public CusOtpResendResponse resendLoginOtp(
             CusOtpResendRequest request) {
@@ -1061,6 +1171,10 @@ public class CusAuthService {
         // 6. Previous OTP expire
         latestOtp.setStatus(
                 OtpStatus.EXPIRED
+        );
+
+        markOtpUpdatedByCustomer(
+                latestOtp
         );
 
         otpChallengesRepository.save(
@@ -1144,6 +1258,14 @@ public class CusAuthService {
                                 newResendNo
                         )
 
+                        .updatedByType(
+                                UpdatedByType.CUSTOMER
+                        )
+
+                        .updatedById(
+                                customer.getCustomerId()
+                        )
+
                         .build();
 
 
@@ -1158,6 +1280,18 @@ public class CusAuthService {
                     customer.getEmail(),
                     rawOtp
             );
+
+            saveAuditLog(
+                    ActorType.CUSTOMER,
+                    customer,
+                    "OTP_RESENT",
+                    "OTP_CHALLENGE",
+                    String.valueOf(savedOtp.getOtpId()),
+                    null,
+                    "{\"purpose\":\"LOGIN\",\"status\":\"ACTIVE\",\"resendNo\":"
+                            + savedOtp.getResendNo() + "}"
+            );
+
 //OTP don't reach to customer, email service unavailabel
         } catch (MailException ex) {
 
@@ -1165,8 +1299,22 @@ public class CusAuthService {
                     OtpStatus.EXPIRED
             );
 
+            markOtpUpdatedBySystem(
+                    savedOtp
+            );
+
             otpChallengesRepository.save(
                     savedOtp
+            );
+
+            saveAuditLog(
+                    ActorType.SYSTEM,
+                    null,
+                    "OTP_RESEND_FAILED",
+                    "OTP_CHALLENGE",
+                    String.valueOf(savedOtp.getOtpId()),
+                    "{\"status\":\"ACTIVE\"}",
+                    "{\"status\":\"EXPIRED\",\"reason\":\"EMAIL_SEND_FAILED\"}"
             );
 
             throw new CusEmailException(
@@ -1519,11 +1667,30 @@ public class CusAuthService {
                              5
                      )
 
+                     .updatedByType(
+                             UpdatedByType.CUSTOMER
+                     )
+
+                     .updatedById(
+                             customer.getCustomerId()
+                     )
+
                      .build();
 
 
      authSessionsRepository.save(
              authSession
+     );
+
+
+     saveAuditLog(
+             ActorType.CUSTOMER,
+             customer,
+             "AUTH_SESSION_CREATED",
+             "AUTH_SESSION",
+             authSession.getSessionUuid(),
+             null,
+             "{\"status\":\"ACTIVE\",\"idleTimeoutMinutes\":5}"
      );
 
 
@@ -1640,10 +1807,29 @@ public class CusAuthService {
 	            LocalDateTime.now()
 	    );
 
+        session.setUpdatedByType(
+                UpdatedByType.CUSTOMER
+        );
+
+        session.setUpdatedById(
+                customer.getCustomerId()
+        );
+
 
 	    authSessionsRepository.save(
 	            session
 	    );
+
+
+        saveAuditLog(
+                ActorType.CUSTOMER,
+                customer,
+                "TOKEN_REFRESHED",
+                "AUTH_SESSION",
+                session.getSessionUuid(),
+                null,
+                "{\"status\":\"ACTIVE\",\"refreshTokenRotated\":true}"
+        );
 
 
 	    return new CusTokenResponse(
@@ -1949,25 +2135,15 @@ public class CusAuthService {
 
 
      // =====================================================
-     // 8. AUTH SESSION AUDIT METADATA
-     // =====================================================
-
-     session.setUpdatedByType(
-             UpdatedByType.CUSTOMER
-     );
-
-     session.setUpdatedById(
-             customer.getCustomerId()
-     );
-
-
-     // =====================================================
-     // 9. REVOKE ENTIRE SESSION
+     // 8. REVOKE ENTIRE SESSION
+     // Customer initiated this state change
      // =====================================================
 
      cusSessionService.revokeSession(
              session,
-             "USER_LOGOUT"
+             "USER_LOGOUT",
+             UpdatedByType.CUSTOMER,
+             customer.getCustomerId()
      );
 
 
@@ -2015,6 +2191,106 @@ public class CusAuthService {
                      .newValues(
                              "{\"status\":\"REVOKED\","
                              + "\"reason\":\"USER_LOGOUT\"}"
+                     )
+
+                     .build();
+
+
+     auditLogsRepository.save(
+             auditLog
+     );
+ }
+
+
+ // =========================================================
+ // OTP AUDIT METADATA HELPERS
+ // =========================================================
+
+ private void markOtpUpdatedByCustomer(
+         OtpChallenges otpChallenge) {
+
+     if (otpChallenge == null
+             || otpChallenge.getCustomer() == null
+             || otpChallenge.getCustomer().getCustomerId() == null) {
+
+         return;
+     }
+
+     otpChallenge.setUpdatedByType(
+             UpdatedByType.CUSTOMER
+     );
+
+     otpChallenge.setUpdatedById(
+             otpChallenge
+                     .getCustomer()
+                     .getCustomerId()
+     );
+ }
+
+
+ private void markOtpUpdatedBySystem(
+         OtpChallenges otpChallenge) {
+
+     if (otpChallenge == null) {
+         return;
+     }
+
+     otpChallenge.setUpdatedByType(
+             UpdatedByType.SYSTEM
+     );
+
+     otpChallenge.setUpdatedById(
+             null
+     );
+ }
+
+
+ // =========================================================
+ // SECURITY AUDIT LOG HELPER
+ // =========================================================
+
+ private void saveAuditLog(
+         ActorType actorType,
+         Customers actorCustomer,
+         String actionType,
+         String entityType,
+         String entityId,
+         String oldValues,
+         String newValues) {
+
+     AuditLogs auditLog =
+             AuditLogs.builder()
+
+                     .actorType(
+                             actorType
+                     )
+
+                     .actorCustomer(
+                             actorCustomer
+                     )
+
+                     .actorStaff(
+                             null
+                     )
+
+                     .actionType(
+                             actionType
+                     )
+
+                     .entityType(
+                             entityType
+                     )
+
+                     .entityId(
+                             entityId
+                     )
+
+                     .oldValues(
+                             oldValues
+                     )
+
+                     .newValues(
+                             newValues
                      )
 
                      .build();
