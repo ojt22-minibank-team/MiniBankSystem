@@ -6,15 +6,29 @@ import { MerchantCheckout } from "./features/merchant-payment/MerchantCheckout";
 // import MyAccountsPage from "./features/customer-account/accounts/MyAccountsPage";
 // import AccountDetailPage from "./features/customer-account/accounts/AccountDetailPage";
 // import ProfilePage from "./features/customer-account/profile/ProfilePage";
+import LoginPage from "./features/auth/pages/LoginPage";
+
+import DashboardPage from "./features/customer-account/dashboard/DashboardPage";
+import MyAccountsPage from "./features/customer-account/accounts/MyaccountPage";
+//import AccountDetailPage from "./features/customer-account/accounts/AccountDetailPage";
+
+import MainLayout from "./components/layout/MainLayout";
 
 function App() {
   return (
     <Routes>
-      <Route
-        path="/"
-        element={<Navigate to="/dashboard" replace />}
-      />
-      <Route path="/" element={<MainLayout />}>
+      {/* =====================================================
+          PUBLIC ROUTES
+      ====================================================== */}
+
+      <Route path="/" element={<LoginPage />} />
+
+      {/* =====================================================
+          CUSTOMER PORTAL
+      ====================================================== */}
+
+      <Route element={<MainLayout />}>
+        {/* Dashboard */}
         <Route
           path="/dashboard"
           element={<DashboardPage />}
@@ -23,26 +37,27 @@ function App() {
           path="/checkout"
           element={<MerchantCheckout />}
         />
+
+        {/* My Accounts */}
+        <Route
+          path="/accounts"
+          element={<MyAccountsPage />}
+        />
+
+        {/* Account Details */}
+        {/* <Route
+          path="/accounts/:accountNumber"
+          element={<AccountDetailPage />}
+        /> */}
       </Route>
 
-      {/* <Route
-        path="/accounts"
-        element={<MyAccountsPage />}
-      /> */}
-
-      {/* <Route
-        path="/accounts/:accountId"
-        element={<AccountDetailPage />}
-      /> */}
-
-      {/* <Route
-        path="/profile"
-        element={<ProfilePage />}
-      /> */}
+      {/* =====================================================
+          FALLBACK
+      ====================================================== */}
 
       <Route
         path="*"
-        element={<Navigate to="/dashboard" replace />}
+        element={<Navigate to="/" replace />}
       />
     </Routes>
   );

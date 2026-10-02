@@ -77,6 +77,19 @@
 			<artifactId>mysql-connector-j</artifactId>
 			<scope>runtime</scope>
 		</dependency>
+<!-- JasperReports Core Engine -->
+<dependency>
+    <groupId>net.sf.jasperreports</groupId>
+    <artifactId>jasperreports</artifactId>
+    <version>6.21.3</version>
+</dependency>
+
+<!-- Font rendering အတွက် (PDF export လုပ်ရာတွင် font error မတက်စေရန် လိုအပ်ပါသည်) -->
+<dependency>
+    <groupId>net.sf.jasperreports</groupId>
+    <artifactId>jasperreports-fonts</artifactId>
+    <version>6.21.3</version>
+</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-devtools</artifactId>
@@ -157,6 +170,17 @@
         <artifactId>spring-boot-starter-test</artifactId>
         <scope>test</scope>
     </dependency>
+    
+    <dependency>
+    	<groupId>com.cloudinary</groupId>
+    	<artifactId>cloudinary-http44</artifactId>
+    	<version>1.39.0</version>
+	</dependency>
+   <!-- email-->
+    <dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-mail</artifactId>
+</dependency>
 
 <!-- Testing -->
 		<dependency>

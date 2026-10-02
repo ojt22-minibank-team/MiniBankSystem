@@ -5,14 +5,18 @@ export type AccountStatus =
   | "FROZEN"
   | "SUSPENDED";
 
-export interface Account {
-  id: string;
+export interface CustomerAccount {
   accountNumber: string;
-  accountType: AccountTypes;
-  accountName: string;
-  balance: number;
-  availableBalance: number;
+  accountCategory: string;
+  accountType: string;
   currency: string;
-  status: AccountStatus;
-  openDate: string;
+  currentBalance: number;
+  availableBalance: number;
+  minimumBalance: number;
+  dailyTransferLimit: number;
+  status: string;
+  jointAccount: boolean;
+  requiredApprovals: number;
+  openedAt: string;
+  closedAt: string | null;
 }

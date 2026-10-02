@@ -17,4 +17,5 @@ public class CustomerResponseDTO {
     private String phone;
     private String status;
     private LocalDateTime createdAt;
+    private String temporaryPassword;
 }

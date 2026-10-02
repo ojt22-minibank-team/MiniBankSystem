@@ -1,67 +1,197 @@
-
 import {
   Bell,
   Search,
   ChevronDown,
+  HelpCircle,
+  ShieldCheck,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
-import { customer } from "../../features/customer-account/data/mockData";
+import { getMyAccounts } from "../../features/customer-account/api/customerAccountApi";
+import type { CustomerAccount } from "../../features/customer-account/types/accountTypes";
 
 export default function Navbar() {
+  const [account, setAccount] =
+    useState<CustomerAccount | null>(null);
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadAccount = async () => {
+      try {
+        const accounts = await getMyAccounts();
+
+        setAccount(accounts[0] ?? null);
+      } catch (error) {
+        console.error("Failed to load account:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAccount();
+  }, []);
+
   return (
     <header className="fixed left-64 right-0 top-0 z-20 flex h-20 items-center justify-between border-b border-slate-200 bg-white px-8">
-      {/* Search */}
-      <div className="relative w-80">
-        <Search
-          size={18}
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-        />
 
-        <input
-          type="text"
-          placeholder="Search..."
-          className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
-        />
+      {/* SEARCH */}
+      <div className="flex items-center">
+        <div className="relative w-[360px]">
+          <Search
+            size={18}
+            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+          />
+
+          <input
+            type="search"
+            placeholder="Search accounts or transactions"
+            aria-label="Search accounts or transactions"
+            className="
+              h-10 w-full rounded-xl border border-slate-200
+              bg-slate-50 pl-10 pr-4 text-sm text-slate-700
+              placeholder:text-slate-400 outline-none
+              transition-all duration-200
+              hover:border-slate-300
+              focus:border-[#0878E8]
+              focus:bg-white
+              focus:ring-4 focus:ring-blue-50
+            "
+          />
+        </div>
       </div>
 
-      {/* Right Section */}
-      <div className="flex items-center gap-6">
-        {/* Notification */}
+      {/* RIGHT */}
+      <div className="flex items-center gap-2">
+
+        {/* HELP */}
+        <button
+          type="button"
+          aria-label="Help and Support"
+          className="
+            flex h-10 w-10 items-center justify-center
+            rounded-xl text-slate-500 transition
+            hover:bg-slate-50 hover:text-[#08295C]
+            focus:outline-none focus:ring-2 focus:ring-blue-100
+          "
+        >
+          <HelpCircle size={19} />
+        </button>
+
+        {/* NOTIFICATIONS */}
         <button
           type="button"
           aria-label="Notifications"
-          className="relative rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+          className="
+            relative flex h-10 w-10 items-center justify-center
+            rounded-xl text-slate-500 transition
+            hover:bg-slate-50 hover:text-[#08295C]
+            focus:outline-none focus:ring-2 focus:ring-blue-100
+          "
         >
-          <Bell size={20} />
+          <Bell size={19} />
 
-          {/* Notification Badge */}
-          <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
+          <span
+            className="
+              absolute right-2 top-2 h-2 w-2 rounded-full
+              bg-red-500 ring-2 ring-white
+            "
+          />
         </button>
 
-        {/* Profile */}
-        <button
-          type="button"
-          className="flex items-center gap-3 rounded-lg p-1.5 transition hover:bg-slate-50"
-        >
-          <img
-            src={customer.profileImage}
-            alt={`${customer.fullName} profile`}
-            className="h-10 w-10 rounded-full object-cover"
-          />
+        <div className="mx-3 h-8 w-px bg-slate-200" />
 
-          <div className="text-left">
-            <p className="text-sm font-semibold text-slate-800">
-              {customer.fullName}
+        {/* SECURITY */}
+        <div className="hidden items-center gap-2 xl:flex">
+          <div
+            className="
+              flex h-8 w-8 items-center justify-center
+              rounded-lg bg-emerald-50
+            "
+          >
+            <ShieldCheck
+              size={16}
+              className="text-emerald-600"
+            />
+          </div>
+
+          <div className="leading-tight">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+              Security
             </p>
 
-            <p className="text-xs text-slate-400">
-              {customer.role}
+            <p className="text-xs font-semibold text-emerald-600">
+              Protected
+            </p>
+          </div>
+        </div>
+
+        {/* ACCOUNT */}
+        <button
+          type="button"
+          aria-label="Open account menu"
+          className="
+            group ml-3 flex items-center gap-3
+            rounded-xl p-1.5 pr-2.5 transition
+            hover:bg-slate-50
+            focus:outline-none focus:ring-2 focus:ring-blue-100
+          "
+        >
+          {/* AVATAR */}
+          <div className="relative shrink-0">
+            <div
+              className="
+                flex h-10 w-10 items-center justify-center
+                rounded-full bg-[#08295C]
+                text-sm font-bold text-white
+                ring-2 ring-slate-100
+              "
+            >
+              {loading
+                ? "..."
+                : account?.accountType
+                    ?.substring(0, 2)
+                    .toUpperCase() ?? "AC"}
+            </div>
+
+            <span
+              className="
+                absolute bottom-0 right-0 h-2.5 w-2.5
+                rounded-full bg-emerald-500
+                ring-2 ring-white
+              "
+            />
+          </div>
+
+          {/* ACCOUNT INFO */}
+          <div className="hidden min-w-0 text-left sm:block">
+            <p
+              className="
+                max-w-[150px] truncate
+                text-sm font-semibold text-slate-800
+              "
+            >
+              {loading
+                ? "Loading..."
+                : account?.accountType ?? "Account"}
+            </p>
+
+            <p
+              className="
+                mt-0.5 max-w-[150px] truncate
+                text-[11px] font-medium text-slate-400
+              "
+            >
+              {account?.accountNumber ?? "No account"}
             </p>
           </div>
 
           <ChevronDown
             size={16}
-            className="text-slate-400"
+            className="
+              text-slate-400 transition-transform duration-200
+              group-hover:text-slate-600
+            "
           />
         </button>
       </div>

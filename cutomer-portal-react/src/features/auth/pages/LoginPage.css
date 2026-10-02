@@ -1,0 +1,666 @@
+/* =====================================
+   LOGIN PAGE
+===================================== */
+
+.login-page {
+  min-height: 100vh;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background: #eef4f8;
+
+  padding: 20px 30px;
+
+  box-sizing: border-box;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+}
+
+
+/* =====================================
+   MAIN CARD
+===================================== */
+
+.login-card {
+  width: 100%;
+  max-width: 1050px;
+
+  min-height: 620px;
+
+  display: flex;
+
+  background: #ffffff;
+
+  border-radius: 20px;
+
+  overflow: hidden;
+
+  box-shadow:
+    0 18px 45px
+    rgba(19, 55, 90, 0.18);
+}
+
+
+/* =====================================
+   LEFT BRAND PANEL
+===================================== */
+
+.login-brand-panel {
+  width: 46%;
+
+  background:
+    linear-gradient(
+      180deg,
+      #124b82 0%,
+      #07325d 100%
+    );
+
+  color: white;
+
+  display: flex;
+  flex-direction: column;
+
+  padding:
+    38px
+    32px
+    0;
+
+  box-sizing: border-box;
+}
+
+
+/* =====================================
+   BRAND TEXT
+===================================== */
+
+.brand-content {
+  text-align: center;
+
+  flex-shrink: 0;
+}
+
+
+.brand-content h1 {
+  margin: 0;
+
+  font-size: 38px;
+
+  font-weight: 600;
+
+  letter-spacing: 0.5px;
+}
+
+
+.brand-content h3 {
+  margin:
+    28px
+    0
+    12px;
+
+  font-size: 18px;
+
+  font-weight: 500;
+}
+
+
+.brand-content p {
+  margin: 0;
+
+  font-size: 14px;
+
+  opacity: 0.9;
+}
+
+
+/* =====================================
+   BUILDING IMAGE
+===================================== */
+
+.building-image {
+  width: 100%;
+
+  margin-top: 18px;
+
+  flex: 1;
+
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+
+  overflow: hidden;
+}
+
+
+.bank-building {
+  width: 92%;
+
+  height: auto;
+
+  max-height: 390px;
+
+  object-fit: contain;
+
+  object-position: top center;
+
+  display: block;
+
+  border-radius:
+    16px
+    16px
+    0
+    0;
+}
+
+
+/* =====================================
+   RIGHT FORM PANEL
+===================================== */
+
+.login-form-panel {
+  width: 54%;
+
+  display: flex;
+
+  justify-content: center;
+  align-items: center;
+
+  padding:
+    45px
+    55px;
+
+  box-sizing: border-box;
+}
+
+
+.login-form-wrapper {
+  width: 100%;
+
+  max-width: 400px;
+}
+
+
+/* =====================================
+   HEADING
+===================================== */
+
+.login-form-wrapper h2 {
+  margin:
+    0
+    0
+    10px;
+
+  color: #132b46;
+
+  font-size: 34px;
+
+  font-weight: 500;
+}
+
+
+.subtitle {
+  margin:
+    0
+    0
+    38px;
+
+  color: #7d8998;
+
+  font-size: 16px;
+}
+
+
+/* =====================================
+   FORM GROUP
+===================================== */
+
+.form-group {
+  margin-bottom: 24px;
+}
+
+
+.form-group label {
+  display: block;
+
+  margin-bottom: 9px;
+
+  color: #283c53;
+
+  font-size: 15px;
+
+  font-weight: 600;
+}
+
+
+.form-group input {
+  width: 100%;
+
+  box-sizing: border-box;
+
+  padding:
+    14px
+    15px;
+
+  border:
+    1px solid
+    #d6dde5;
+
+  border-radius: 8px;
+
+  background: #ffffff;
+
+  color: #162536;
+
+  font-size: 15px;
+
+  outline: none;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+
+.form-group input::placeholder {
+  color: #a0a9b3;
+}
+
+
+.form-group input:focus {
+  border-color: #1976d2;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(25, 118, 210, 0.12);
+}
+
+
+/* =====================================
+   PASSWORD SHOW / HIDE
+===================================== */
+
+.password-input-wrapper {
+  position: relative;
+
+  width: 100%;
+}
+
+
+.password-input-wrapper input {
+  width: 100%;
+
+  box-sizing: border-box;
+
+  padding-right: 52px;
+}
+
+
+.password-toggle {
+  position: absolute;
+
+  top: 50%;
+  right: 14px;
+
+  transform: translateY(-50%);
+
+  width: 32px;
+  height: 32px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  padding: 0;
+
+  border: none;
+
+  background: transparent;
+
+  color: #65758b;
+
+  cursor: pointer;
+
+  outline: none;
+}
+
+
+.password-toggle svg {
+  width: 21px;
+  height: 21px;
+
+  display: block;
+}
+
+
+.password-toggle:hover {
+  color: #1976d2;
+}
+
+
+.password-toggle:focus {
+  outline: none;
+}
+
+
+/* =====================================
+   LOGIN OPTIONS
+===================================== */
+
+.login-options {
+  width: 100%;
+
+  display: flex;
+
+  justify-content: space-between;
+  align-items: center;
+
+  gap: 18px;
+
+  margin:
+    5px
+    0
+    28px;
+
+  font-size: 13px;
+}
+
+
+.remember-me {
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  color: #36485a;
+
+  white-space: nowrap;
+
+  cursor: pointer;
+}
+
+
+.remember-me input {
+  width: 16px;
+  height: 16px;
+
+  margin: 0;
+
+  cursor: pointer;
+}
+
+
+.forgot-password {
+  padding: 0;
+
+  border: none;
+
+  background: transparent;
+
+  color: #1976d2;
+
+  font-size: 13px;
+
+  cursor: pointer;
+
+  white-space: nowrap;
+}
+
+
+.forgot-password:hover {
+  text-decoration: underline;
+}
+
+
+/* =====================================
+   ERROR MESSAGE
+===================================== */
+
+.error-message {
+  margin-bottom: 18px;
+
+  padding:
+    10px
+    12px;
+
+  background: #fff1f1;
+
+  border:
+    1px solid
+    #ffcaca;
+
+  border-radius: 7px;
+
+  color: #c62828;
+
+  font-size: 13px;
+}
+
+
+/* =====================================
+   LOGIN BUTTON
+===================================== */
+
+.login-button {
+  width: 100%;
+
+  padding: 14px;
+
+  border: none;
+
+  border-radius: 8px;
+
+  background: #1976d2;
+
+  color: white;
+
+  font-size: 16px;
+
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    transform 0.1s ease;
+}
+
+
+.login-button:hover:not(:disabled) {
+  background: #125fae;
+}
+
+
+.login-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+
+.login-button:disabled {
+  opacity: 0.65;
+
+  cursor: not-allowed;
+}
+
+
+/* =====================================
+   CONTACT BANK
+===================================== */
+
+.contact-bank {
+  margin-top: 30px;
+
+  text-align: center;
+
+  color: #7c8998;
+
+  font-size: 13px;
+}
+
+
+.contact-bank span {
+  margin-left: 5px;
+
+  color: #1976d2;
+
+  cursor: pointer;
+}
+
+
+/* =====================================
+   TABLET
+===================================== */
+
+@media (max-width: 900px) {
+
+  .login-card {
+    max-width: 760px;
+  }
+
+
+  .login-brand-panel {
+    width: 44%;
+
+    padding:
+      35px
+      22px
+      0;
+  }
+
+
+  .login-form-panel {
+    width: 56%;
+
+    padding:
+      40px
+      35px;
+  }
+
+
+  .brand-content h1 {
+    font-size: 32px;
+  }
+
+
+  .brand-content h3 {
+    margin-top: 24px;
+  }
+
+
+  .building-image {
+    margin-top: 15px;
+  }
+
+
+  .bank-building {
+    width: 95%;
+
+    max-height: 320px;
+  }
+}
+
+
+/* =====================================
+   MOBILE
+===================================== */
+
+@media (max-width: 700px) {
+
+  .login-page {
+    padding: 15px;
+
+    align-items: flex-start;
+  }
+
+
+  .login-card {
+    flex-direction: column;
+
+    min-height: auto;
+  }
+
+
+  .login-brand-panel {
+    width: 100%;
+
+    padding:
+      30px
+      25px
+      0;
+  }
+
+
+  .brand-content h1 {
+    font-size: 31px;
+  }
+
+
+  .brand-content h3 {
+    margin-top: 20px;
+
+    margin-bottom: 10px;
+  }
+
+
+  .building-image {
+    margin-top: 15px;
+  }
+
+
+  .bank-building {
+    width: 85%;
+
+    max-height: 270px;
+  }
+
+
+  .login-form-panel {
+    width: 100%;
+
+    padding:
+      38px
+      25px;
+  }
+
+
+  .login-form-wrapper h2 {
+    font-size: 29px;
+  }
+
+
+  .subtitle {
+    margin-bottom: 28px;
+  }
+}
+
+
+/* =====================================
+   SMALL MOBILE
+===================================== */
+
+@media (max-width: 420px) {
+
+  .login-options {
+    align-items: flex-start;
+
+    flex-direction: column;
+
+    gap: 12px;
+  }
+
+
+  .login-form-panel {
+    padding:
+      30px
+      20px;
+  }
+
+
+  .bank-building {
+    width: 100%;
+  }
+}

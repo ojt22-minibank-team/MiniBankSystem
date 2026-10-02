@@ -2,10 +2,12 @@ package com.corebanking.service;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.corebanking.dto.CusLoginRequest;
 import com.corebanking.dto.CusLoginResponse;
@@ -19,6 +21,7 @@ import com.corebanking.entity.Accounts;
 import com.corebanking.entity.AuthSessions;
 import com.corebanking.entity.CustomerCredentials;
 import com.corebanking.entity.Customers;
+import com.corebanking.entity.JwtRevokedTokens;
 import com.corebanking.entity.LoginAttempts;
 import com.corebanking.entity.OtpChallenges;
 import com.corebanking.entity.enums.CustomerStatus;
@@ -26,22 +29,27 @@ import com.corebanking.entity.enums.DeliveryChannel;
 import com.corebanking.entity.enums.OtpPurpose;
 import com.corebanking.entity.enums.OtpStatus;
 import com.corebanking.entity.enums.SessionSubjectType;
+import com.corebanking.exception.CusAccountLockedException;
+import com.corebanking.exception.CusAuthenticationException;
+import com.corebanking.exception.CusOtpException;
+import com.corebanking.exception.CusOtpResendLimitException;
 import com.corebanking.repository.CusAccountsRepository;
 import com.corebanking.repository.CusAuthSessionsRepository;
 import com.corebanking.repository.CusCredentialsRepository;
 import com.corebanking.repository.CusCustomerRepository;
+import com.corebanking.repository.CusJwtRevokedTokensRepository;
 import com.corebanking.repository.CusLoginAttemptsRepository;
 import com.corebanking.repository.CusOtpChallengesRepository;
-import com.corebanking.entity.JwtRevokedTokens;
-import com.corebanking.repository.CusJwtRevokedTokensRepository;
-
+import com.corebanking.exception.CusEmailException;
+import org.springframework.mail.MailException;
 import io.jsonwebtoken.Claims;
-
-import java.time.ZoneId;
-
 import lombok.RequiredArgsConstructor;
+import com.corebanking.entity.AuditLogs;
 
-import org.springframework.transaction.annotation.Transactional;
+import com.corebanking.entity.enums.ActorType;
+import com.corebanking.entity.enums.UpdatedByType;
+
+import com.corebanking.repository.CusAuditLogsRepository;
 @Service
 @RequiredArgsConstructor
 public class CusAuthService {
@@ -56,6 +64,8 @@ public class CusAuthService {
     private final CusJwtService cusJwtService;
     private final CusSessionService cusSessionService;
     private final CusJwtRevokedTokensRepository jwtRevokedTokensRepository;
+    private final CusEmailService cusEmailService;
+    private final CusAuditLogsRepository auditLogsRepository;
 
 
 
@@ -86,6 +96,10 @@ public class CusAuthService {
     public CusLoginResponse authenticateCredentials(
             CusLoginRequest request) {
 
+        // TEMPORARY PERFORMANCE TIMING - remove after testing
+        long loginStartTime = System.currentTimeMillis();
+        System.out.println("\n========== LOGIN TIMING START ==========");
+
         // -----------------------------------------
         // Request validation
         // -----------------------------------------
@@ -113,6 +127,8 @@ public class CusAuthService {
         // Customer ID / Account Number နဲ့ရှာ
         // -----------------------------------------
 
+        long customerLookupStart = System.currentTimeMillis();
+
         try {
 
             customer = findCustomer(identifier);
@@ -127,6 +143,12 @@ public class CusAuthService {
             throw ex;
         }
 
+        System.out.println(
+                "[TIMING] Customer lookup: "
+                        + (System.currentTimeMillis() - customerLookupStart)
+                        + " ms"
+        );
+
 
         // -----------------------------------------
         // Customer status စစ်
@@ -139,6 +161,8 @@ public class CusAuthService {
         // Customer Credentials ရှာ
         // -----------------------------------------
 
+        long credentialsLookupStart = System.currentTimeMillis();
+
         CustomerCredentials credentials =
                 credentialsRepository
                         .findById(customer.getCustomerId())
@@ -147,6 +171,12 @@ public class CusAuthService {
                                         "Invalid login credentials."
                                 )
                         );
+
+        System.out.println(
+                "[TIMING] Credentials lookup: "
+                        + (System.currentTimeMillis() - credentialsLookupStart)
+                        + " ms"
+        );
 
 
         // -----------------------------------------
@@ -164,11 +194,19 @@ public class CusAuthService {
         // Password verify
         // -----------------------------------------
 
+        long passwordCheckStart = System.currentTimeMillis();
+
         boolean passwordMatches =
                 passwordEncoder.matches(
                         request.getPassword(),
                         credentials.getPasswordHash()
                 );
+
+        System.out.println(
+                "[TIMING] Password BCrypt check: "
+                        + (System.currentTimeMillis() - passwordCheckStart)
+                        + " ms"
+        );
 
 
         // =====================================================
@@ -181,7 +219,23 @@ public class CusAuthService {
                     credentials
             );
 
+            // 5th wrong password ဖြစ်ပြီး lock တက်သွားပြီလား စစ်
+            if (credentials.getFailedLoginCount()
+                    >= MAX_FAILED_ATTEMPTS) {
 
+                saveLoginAttempt(
+                        identifier,
+                        customer,
+                        false,
+                        "ACCOUNT_LOCKED"
+                );
+
+                throw new CusAccountLockedException(
+                        "Account is temporarily locked for 15 minutes."
+                );
+            }
+
+            // 1st - 4th wrong password
             saveLoginAttempt(
                     identifier,
                     customer,
@@ -189,9 +243,8 @@ public class CusAuthService {
                     "INVALID_PASSWORD"
             );
 
-
-            throw new RuntimeException(
-                    "Invalid login credentials."
+            throw new CusAuthenticationException(
+                    "Invalid Password."
             );
         }
 
@@ -213,8 +266,24 @@ public class CusAuthService {
         // EMAIL OTP CREATE
         // =====================================================
 
+        long createOtpStart = System.currentTimeMillis();
+
         OtpChallenges otpChallenge =
                 createLoginOtp(customer);
+
+        System.out.println(
+                "[TIMING] createLoginOtp() total: "
+                        + (System.currentTimeMillis() - createOtpStart)
+                        + " ms"
+        );
+
+        System.out.println(
+                "[TIMING] TOTAL LOGIN API: "
+                        + (System.currentTimeMillis() - loginStartTime)
+                        + " ms"
+        );
+
+        System.out.println("========== LOGIN TIMING END ==========\n");
 
 
         // =====================================================
@@ -309,9 +378,8 @@ public class CusAuthService {
             );
 
 
-            throw new RuntimeException(
-                    "Account is temporarily locked. "
-                            + "Please try again later."
+            throw new CusAccountLockedException(
+                    "Account is temporarily locked. Please try again later."
             );
         }
 
@@ -362,6 +430,7 @@ public class CusAuthService {
         credentialsRepository.save(
                 credentials
         );
+        
     }
 
 
@@ -463,6 +532,9 @@ public class CusAuthService {
     private OtpChallenges createLoginOtp(
             Customers customer) {
 
+        // TEMPORARY PERFORMANCE TIMING - remove after testing
+        long otpMethodStart = System.currentTimeMillis();
+
 
         // -----------------------------------------
         // Registered Email ရှိရမယ်
@@ -481,8 +553,16 @@ public class CusAuthService {
         // Previous ACTIVE Login OTP တွေ expire
         // -----------------------------------------
 
+        long invalidateOtpStart = System.currentTimeMillis();
+
         invalidateOldLoginOtps(
                 customer
+        );
+
+        System.out.println(
+                "[TIMING] Invalidate old OTPs: "
+                        + (System.currentTimeMillis() - invalidateOtpStart)
+                        + " ms"
         );
 
 
@@ -498,10 +578,18 @@ public class CusAuthService {
         // OTP hash
         // -----------------------------------------
 
+        long otpHashStart = System.currentTimeMillis();
+
         String otpHash =
                 passwordEncoder.encode(
                         rawOtp
                 );
+
+        System.out.println(
+                "[TIMING] OTP BCrypt hash: "
+                        + (System.currentTimeMillis() - otpHashStart)
+                        + " ms"
+        );
 
 
         // -----------------------------------------
@@ -576,27 +664,100 @@ public class CusAuthService {
 
                         .resendNo(0)
 
+                        .updatedByType(
+                                UpdatedByType.CUSTOMER
+                        )
+
+                        .updatedById(
+                                customer.getCustomerId()
+                        )
+
                         .build();
 
+
+        long otpDbSaveStart = System.currentTimeMillis();
 
         OtpChallenges savedOtp =
                 otpChallengesRepository.save(
                         otpChallenge
                 );
 
-
-        /*
-         * TEMPORARY DEVELOPMENT ONLY
-         *
-         * Email service ရေးပြီးသွားရင်
-         * ဒီ console print ကိုဖျက်ပါ။
-         */
         System.out.println(
-                "Generated OTP: " + rawOtp
+                "[TIMING] OTP DB save: "
+                        + (System.currentTimeMillis() - otpDbSaveStart)
+                        + " ms"
         );
 
+        long emailSendStart = System.currentTimeMillis();
+
+        try {
+
+            cusEmailService.sendLoginOtp(
+                    customer.getEmail(),
+                    rawOtp
+            );
+
+            System.out.println(
+                    "[TIMING] Gmail SMTP send: "
+                            + (System.currentTimeMillis() - emailSendStart)
+                            + " ms"
+            );
+
+            saveAuditLog(
+                    ActorType.CUSTOMER,
+                    customer,
+                    "OTP_SENT",
+                    "OTP_CHALLENGE",
+                    String.valueOf(savedOtp.getOtpId()),
+                    null,
+                    "{\"purpose\":\"LOGIN\",\"status\":\"ACTIVE\",\"resendNo\":0}"
+            );
+
+        } catch (MailException ex) {
+
+            System.out.println(
+                    "[TIMING] Gmail SMTP failed after: "
+                            + (System.currentTimeMillis() - emailSendStart)
+                            + " ms"
+            );
+
+            // Email မရောက်တဲ့ OTP ကို usable မဖြစ်အောင်
+            savedOtp.setStatus(
+                    OtpStatus.EXPIRED
+            );
+
+            markOtpUpdatedBySystem(
+                    savedOtp
+            );
+
+            otpChallengesRepository.save(
+                    savedOtp
+            );
+
+            saveAuditLog(
+                    ActorType.SYSTEM,
+                    null,
+                    "OTP_SEND_FAILED",
+                    "OTP_CHALLENGE",
+                    String.valueOf(savedOtp.getOtpId()),
+                    "{\"status\":\"ACTIVE\"}",
+                    "{\"status\":\"EXPIRED\",\"reason\":\"EMAIL_SEND_FAILED\"}"
+            );
+
+            throw new CusEmailException(
+                    "Unable to send OTP email. Please try again.",
+                    ex
+            );
+        }
+
+        System.out.println(
+                "[TIMING] createLoginOtp internal total: "
+                        + (System.currentTimeMillis() - otpMethodStart)
+                        + " ms"
+        );
 
         return savedOtp;
+        
     }
 
 
@@ -622,6 +783,10 @@ public class CusAuthService {
             otp.setStatus(
                     OtpStatus.EXPIRED
             );
+
+            markOtpUpdatedByCustomer(
+                    otp
+            );
         }
 
 
@@ -631,106 +796,76 @@ public class CusAuthService {
     }
 
 
-    // =========================================================
-    // 10. VERIFY LOGIN OTP
-    // =========================================================
-    @Transactional
+//verify login otp
+    
+    @Transactional(noRollbackFor = CusOtpException.class)
     public CusOtpVerifyResponse verifyLoginOtp(
             CusOtpVerifyRequest request) {
 
-
-        // -----------------------------------------
-        // Request validation
-        // -----------------------------------------
-
+        // 1. Request validation
         if (request == null
                 || request.getChallengeGroupId() == null
                 || request.getChallengeGroupId().isBlank()
                 || request.getOtp() == null
                 || request.getOtp().isBlank()) {
 
-            throw new RuntimeException(
+            throw new CusOtpException(
                     "OTP verification information is required."
             );
         }
 
-
         String challengeGroupId =
-                request.getChallengeGroupId()
-                        .trim();
-
+                request.getChallengeGroupId().trim();
 
         String enteredOtp =
-                request.getOtp()
-                        .trim();
+                request.getOtp().trim();
 
-
-        // -----------------------------------------
-        // OTP Challenge ရှာ
-        // -----------------------------------------
-
+        // 2. OTP Challenge ရှာ
         OtpChallenges otpChallenge =
                 otpChallengesRepository
                         .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
                                 challengeGroupId,
                                 OtpPurpose.LOGIN
                         )
-
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new CusOtpException(
                                         "Invalid OTP challenge."
                                 )
                         );
 
+        // 3. Status checks
+        if (otpChallenge.getStatus() == OtpStatus.CONSUMED) {
 
-        // -----------------------------------------
-        // Status checks
-        // -----------------------------------------
-
-        if (otpChallenge.getStatus()
-                == OtpStatus.CONSUMED) {
-
-            throw new RuntimeException(
+            throw new CusOtpException(
                     "This OTP has already been used."
             );
         }
 
+        if (otpChallenge.getStatus() == OtpStatus.EXPIRED) {
 
-        if (otpChallenge.getStatus()
-                == OtpStatus.EXPIRED) {
-
-            throw new RuntimeException(
+            throw new CusOtpException(
                     "OTP has expired."
             );
         }
 
+        if (otpChallenge.getStatus() == OtpStatus.BLOCKED) {
 
-        if (otpChallenge.getStatus()
-                == OtpStatus.BLOCKED) {
-
-            throw new RuntimeException(
+            throw new CusOtpException(
                     "OTP verification has been blocked."
             );
         }
 
+        if (otpChallenge.getStatus() != OtpStatus.ACTIVE) {
 
-        if (otpChallenge.getStatus()
-                != OtpStatus.ACTIVE) {
-
-            throw new RuntimeException(
+            throw new CusOtpException(
                     "OTP is not active."
             );
         }
 
-
         LocalDateTime now =
                 LocalDateTime.now();
 
-
-        // -----------------------------------------
-        // Expiry check
-        // -----------------------------------------
-
+        // 4. Expiry check
         if (otpChallenge.getExpiresAt() == null
                 || !otpChallenge
                         .getExpiresAt()
@@ -740,22 +875,30 @@ public class CusAuthService {
                     OtpStatus.EXPIRED
             );
 
+            markOtpUpdatedBySystem(
+                    otpChallenge
+            );
 
             otpChallengesRepository.save(
                     otpChallenge
             );
 
+            saveAuditLog(
+                    ActorType.SYSTEM,
+                    null,
+                    "OTP_EXPIRED",
+                    "OTP_CHALLENGE",
+                    String.valueOf(otpChallenge.getOtpId()),
+                    "{\"status\":\"ACTIVE\"}",
+                    "{\"status\":\"EXPIRED\",\"reason\":\"TIME_EXPIRED\"}"
+            );
 
-            throw new RuntimeException(
+            throw new CusOtpException(
                     "OTP has expired."
             );
         }
 
-
-        // -----------------------------------------
-        // Max Attempts check
-        // -----------------------------------------
-
+        // 5. Max attempts check
         if (otpChallenge.getAttemptCount()
                 >= otpChallenge.getMaxAttempts()) {
 
@@ -763,137 +906,129 @@ public class CusAuthService {
                     OtpStatus.BLOCKED
             );
 
+            markOtpUpdatedBySystem(
+                    otpChallenge
+            );
 
             otpChallengesRepository.save(
                     otpChallenge
             );
 
+            saveAuditLog(
+                    ActorType.SYSTEM,
+                    null,
+                    "OTP_BLOCKED",
+                    "OTP_CHALLENGE",
+                    String.valueOf(otpChallenge.getOtpId()),
+                    null,
+                    "{\"status\":\"BLOCKED\",\"reason\":\"MAX_ATTEMPTS_REACHED\"}"
+            );
 
-            throw new RuntimeException(
+            throw new CusOtpException(
                     "OTP verification has been blocked."
             );
         }
 
-
-        // -----------------------------------------
-        // 6-digit format check
-        // -----------------------------------------
-
+        // 6. OTP format
         boolean validOtpFormat =
-                enteredOtp.matches(
-                        "\\d{6}"
-                );
+                enteredOtp.matches("\\d{6}");
 
-
-        // -----------------------------------------
-        // OTP Hash verify
-        // -----------------------------------------
-
+        // 7. OTP verify
         boolean otpMatches =
                 validOtpFormat
-
                         && passwordEncoder.matches(
                                 enteredOtp,
                                 otpChallenge.getOtpHash()
                         );
 
-
-        // -----------------------------------------
-        // Wrong OTP
-        // -----------------------------------------
-
+        // 8. Wrong OTP
         if (!otpMatches) {
 
             handleFailedOtpAttempt(
                     otpChallenge
             );
 
-
-            throw new RuntimeException(
+            throw new CusOtpException(
                     "Invalid OTP."
             );
         }
 
-
-        // -----------------------------------------
-        // Correct OTP → CONSUMED
-        // -----------------------------------------
-
+        // 9. Correct OTP
         otpChallenge.setStatus(
                 OtpStatus.CONSUMED
         );
-
 
         otpChallenge.setConsumedAt(
                 now
         );
 
+        markOtpUpdatedByCustomer(
+                otpChallenge
+        );
 
         otpChallengesRepository.save(
                 otpChallenge
         );
 
+        saveAuditLog(
+                ActorType.CUSTOMER,
+                otpChallenge.getCustomer(),
+                "OTP_VERIFIED",
+                "OTP_CHALLENGE",
+                String.valueOf(otpChallenge.getOtpId()),
+                "{\"status\":\"ACTIVE\"}",
+                "{\"status\":\"CONSUMED\"}"
+        );
 
-        // -----------------------------------------
-        // Customer + Credentials
-        // -----------------------------------------
-
+        // 10. Customer
         Customers customer =
                 otpChallenge.getCustomer();
-
 
         CustomerCredentials credentials =
                 credentialsRepository
                         .findById(
                                 customer.getCustomerId()
                         )
-
                         .orElseThrow(() ->
                                 new RuntimeException(
                                         "Customer credentials not found."
                                 )
                         );
 
-
-        // -----------------------------------------
-        // First Login Setup requirement check
-        // -----------------------------------------
-
+        // 11. First-login checks
         boolean passwordChangeRequired =
                 credentials.isMustChangePassword();
 
-
         boolean pinSetupRequired =
                 credentials.getTransactionPinHash() == null
-
                         || credentials
                                 .getTransactionPinHash()
                                 .isBlank();
-
 
         boolean firstLoginSetupRequired =
                 passwordChangeRequired
                         || pinSetupRequired;
 
-
         if (firstLoginSetupRequired) {
 
-        	return new CusOtpVerifyResponse(
-        	        true,
-        	        "OTP verified. Please complete first-time setup.",
-        	        true,
-        	        passwordChangeRequired,
-        	        pinSetupRequired,
-        	        null,
-        	        null
-        	);
+            return new CusOtpVerifyResponse(
+                    true,
+                    "OTP verified. Please complete first-time setup.",
+                    true,
+                    passwordChangeRequired,
+                    pinSetupRequired,
+                    null,
+                    null
+            );
         }
 
+        // 12. Normal returning customer
         CusTokenResponse tokenResponse =
                 createAuthenticatedSession(
                         customer,
                         credentials
                 );
+
         return new CusOtpVerifyResponse(
                 true,
                 "OTP verified successfully.",
@@ -932,9 +1067,41 @@ public class CusAuthService {
         }
 
 
+        markOtpUpdatedByCustomer(
+                otpChallenge
+        );
+
+
         otpChallengesRepository.save(
                 otpChallenge
         );
+
+
+        saveAuditLog(
+                ActorType.CUSTOMER,
+                otpChallenge.getCustomer(),
+                "OTP_VERIFY_FAILED",
+                "OTP_CHALLENGE",
+                String.valueOf(otpChallenge.getOtpId()),
+                null,
+                "{\"attemptCount\":" + failedAttempts
+                        + ",\"status\":\"" + otpChallenge.getStatus().name() + "\"}"
+        );
+
+
+        if (otpChallenge.getStatus()
+                == OtpStatus.BLOCKED) {
+
+            saveAuditLog(
+                    ActorType.CUSTOMER,
+                    otpChallenge.getCustomer(),
+                    "OTP_BLOCKED",
+                    "OTP_CHALLENGE",
+                    String.valueOf(otpChallenge.getOtpId()),
+                    null,
+                    "{\"status\":\"BLOCKED\",\"reason\":\"MAX_ATTEMPTS_REACHED\"}"
+            );
+        }
     }
     public CusOtpResendResponse resendLoginOtp(
             CusOtpResendRequest request) {
@@ -981,7 +1148,7 @@ public class CusAuthService {
         if (latestOtp.getResendNo()
                 >= latestOtp.getMaxResendAttempts()) {
 
-            throw new RuntimeException(
+            throw new CusOtpResendLimitException(
                     "Maximum OTP resend attempts reached."
             );
         }
@@ -1004,6 +1171,10 @@ public class CusAuthService {
         // 6. Previous OTP expire
         latestOtp.setStatus(
                 OtpStatus.EXPIRED
+        );
+
+        markOtpUpdatedByCustomer(
+                latestOtp
         );
 
         otpChallengesRepository.save(
@@ -1087,6 +1258,14 @@ public class CusAuthService {
                                 newResendNo
                         )
 
+                        .updatedByType(
+                                UpdatedByType.CUSTOMER
+                        )
+
+                        .updatedById(
+                                customer.getCustomerId()
+                        )
+
                         .build();
 
 
@@ -1095,12 +1274,54 @@ public class CusAuthService {
                         newOtp
                 );
 
+        try {
 
-        // TEMPORARY development only
-        System.out.println(
-                "Resent OTP: " + rawOtp
-        );
+            cusEmailService.sendLoginOtp(
+                    customer.getEmail(),
+                    rawOtp
+            );
 
+            saveAuditLog(
+                    ActorType.CUSTOMER,
+                    customer,
+                    "OTP_RESENT",
+                    "OTP_CHALLENGE",
+                    String.valueOf(savedOtp.getOtpId()),
+                    null,
+                    "{\"purpose\":\"LOGIN\",\"status\":\"ACTIVE\",\"resendNo\":"
+                            + savedOtp.getResendNo() + "}"
+            );
+
+//OTP don't reach to customer, email service unavailabel
+        } catch (MailException ex) {
+
+            savedOtp.setStatus(
+                    OtpStatus.EXPIRED
+            );
+
+            markOtpUpdatedBySystem(
+                    savedOtp
+            );
+
+            otpChallengesRepository.save(
+                    savedOtp
+            );
+
+            saveAuditLog(
+                    ActorType.SYSTEM,
+                    null,
+                    "OTP_RESEND_FAILED",
+                    "OTP_CHALLENGE",
+                    String.valueOf(savedOtp.getOtpId()),
+                    "{\"status\":\"ACTIVE\"}",
+                    "{\"status\":\"EXPIRED\",\"reason\":\"EMAIL_SEND_FAILED\"}"
+            );
+
+            throw new CusEmailException(
+                    "Unable to resend OTP email. Please try again.",
+                    ex
+            );
+        }
 
         return new CusOtpResendResponse(
                 true,
@@ -1446,11 +1667,30 @@ public class CusAuthService {
                              5
                      )
 
+                     .updatedByType(
+                             UpdatedByType.CUSTOMER
+                     )
+
+                     .updatedById(
+                             customer.getCustomerId()
+                     )
+
                      .build();
 
 
      authSessionsRepository.save(
              authSession
+     );
+
+
+     saveAuditLog(
+             ActorType.CUSTOMER,
+             customer,
+             "AUTH_SESSION_CREATED",
+             "AUTH_SESSION",
+             authSession.getSessionUuid(),
+             null,
+             "{\"status\":\"ACTIVE\",\"idleTimeoutMinutes\":5}"
      );
 
 
@@ -1567,10 +1807,29 @@ public class CusAuthService {
 	            LocalDateTime.now()
 	    );
 
+        session.setUpdatedByType(
+                UpdatedByType.CUSTOMER
+        );
+
+        session.setUpdatedById(
+                customer.getCustomerId()
+        );
+
 
 	    authSessionsRepository.save(
 	            session
 	    );
+
+
+        saveAuditLog(
+                ActorType.CUSTOMER,
+                customer,
+                "TOKEN_REFRESHED",
+                "AUTH_SESSION",
+                session.getSessionUuid(),
+                null,
+                "{\"status\":\"ACTIVE\",\"refreshTokenRotated\":true}"
+        );
 
 
 	    return new CusTokenResponse(
@@ -1712,13 +1971,14 @@ public class CusAuthService {
  // =========================================================
  // CUSTOMER LOGOUT
  // =========================================================
-    @Transactional
+
+ @Transactional
  public void logout(
          String authorizationHeader) {
 
-     // -----------------------------------------
-     // 1. Authorization Header check
-     // -----------------------------------------
+     // =====================================================
+     // 1. AUTHORIZATION HEADER CHECK
+     // =====================================================
 
      if (authorizationHeader == null
              || !authorizationHeader
@@ -1730,9 +1990,9 @@ public class CusAuthService {
      }
 
 
-     // -----------------------------------------
-     // 2. Extract Access Token
-     // -----------------------------------------
+     // =====================================================
+     // 2. EXTRACT ACCESS TOKEN
+     // =====================================================
 
      String accessToken =
              authorizationHeader
@@ -1740,9 +2000,9 @@ public class CusAuthService {
                      .trim();
 
 
-     // -----------------------------------------
-     // 3. JWT validate + read claims
-     // -----------------------------------------
+     // =====================================================
+     // 3. JWT VALIDATE + READ CLAIMS
+     // =====================================================
 
      Claims claims =
              cusJwtService.getClaims(
@@ -1750,9 +2010,9 @@ public class CusAuthService {
              );
 
 
-     // -----------------------------------------
-     // 4. ACCESS token ဟုတ်လား
-     // -----------------------------------------
+     // =====================================================
+     // 4. ACCESS TOKEN TYPE CHECK
+     // =====================================================
 
      String tokenType =
              claims.get(
@@ -1770,9 +2030,9 @@ public class CusAuthService {
      }
 
 
-     // -----------------------------------------
-     // 5. jti ရယူ
-     // -----------------------------------------
+     // =====================================================
+     // 5. GET JTI
+     // =====================================================
 
      String jti =
              claims.getId();
@@ -1787,9 +2047,9 @@ public class CusAuthService {
      }
 
 
-     // -----------------------------------------
-     // 6. Session validate
-     // -----------------------------------------
+     // =====================================================
+     // 6. VALIDATE AUTH SESSION
+     // =====================================================
 
      AuthSessions session =
              cusSessionService
@@ -1798,9 +2058,22 @@ public class CusAuthService {
                      );
 
 
-     // -----------------------------------------
-     // 7. Access Token blacklist ထဲမရှိသေးရင် save
-     // -----------------------------------------
+     Customers customer =
+             session.getCustomer();
+
+
+     if (customer == null
+             || customer.getCustomerId() == null) {
+
+         throw new RuntimeException(
+                 "Customer session is invalid."
+         );
+     }
+
+
+     // =====================================================
+     // 7. ACCESS TOKEN BLACKLIST
+     // =====================================================
 
      if (!jwtRevokedTokensRepository
              .existsByJti(jti)) {
@@ -1818,7 +2091,7 @@ public class CusAuthService {
                          )
 
                          .customer(
-                                 session.getCustomer()
+                                 customer
                          )
 
                          .staff(
@@ -1839,6 +2112,19 @@ public class CusAuthService {
                                  "USER_LOGOUT"
                          )
 
+                         // ---------------------------------
+                         // AUDIT METADATA
+                         // Customer ကိုယ်တိုင် logout
+                         // ---------------------------------
+
+                         .updatedByType(
+                                 UpdatedByType.CUSTOMER
+                         )
+
+                         .updatedById(
+                                 customer.getCustomerId()
+                         )
+
                          .build();
 
 
@@ -1848,14 +2134,170 @@ public class CusAuthService {
      }
 
 
-     // -----------------------------------------
-     // 8. Entire Session revoke
-     // -----------------------------------------
+     // =====================================================
+     // 8. REVOKE ENTIRE SESSION
+     // Customer initiated this state change
+     // =====================================================
 
      cusSessionService.revokeSession(
              session,
-             "USER_LOGOUT"
+             "USER_LOGOUT",
+             UpdatedByType.CUSTOMER,
+             customer.getCustomerId()
+     );
+
+
+     // =====================================================
+     // 10. SAVE AUDIT LOG
+     // =====================================================
+
+     AuditLogs auditLog =
+             AuditLogs.builder()
+
+                     // ဘယ်သူလုပ်တာလဲ
+                     .actorType(
+                             ActorType.CUSTOMER
+                     )
+
+                     .actorCustomer(
+                             customer
+                     )
+
+                     .actorStaff(
+                             null
+                     )
+
+                     // ဘာလုပ်တာလဲ
+                     .actionType(
+                             "CUSTOMER_LOGOUT"
+                     )
+
+                     // ဘယ် entity ကိုပြောင်းတာလဲ
+                     .entityType(
+                             "AUTH_SESSION"
+                     )
+
+                     // ဘယ် session လဲ
+                     .entityId(
+                             session.getSessionUuid()
+                     )
+
+                     // Logout မလုပ်ခင်
+                     .oldValues(
+                             "{\"status\":\"ACTIVE\"}"
+                     )
+
+                     // Logout လုပ်ပြီး
+                     .newValues(
+                             "{\"status\":\"REVOKED\","
+                             + "\"reason\":\"USER_LOGOUT\"}"
+                     )
+
+                     .build();
+
+
+     auditLogsRepository.save(
+             auditLog
      );
  }
- 
+
+
+ // =========================================================
+ // OTP AUDIT METADATA HELPERS
+ // =========================================================
+
+ private void markOtpUpdatedByCustomer(
+         OtpChallenges otpChallenge) {
+
+     if (otpChallenge == null
+             || otpChallenge.getCustomer() == null
+             || otpChallenge.getCustomer().getCustomerId() == null) {
+
+         return;
+     }
+
+     otpChallenge.setUpdatedByType(
+             UpdatedByType.CUSTOMER
+     );
+
+     otpChallenge.setUpdatedById(
+             otpChallenge
+                     .getCustomer()
+                     .getCustomerId()
+     );
+ }
+
+
+ private void markOtpUpdatedBySystem(
+         OtpChallenges otpChallenge) {
+
+     if (otpChallenge == null) {
+         return;
+     }
+
+     otpChallenge.setUpdatedByType(
+             UpdatedByType.SYSTEM
+     );
+
+     otpChallenge.setUpdatedById(
+             null
+     );
+ }
+
+
+ // =========================================================
+ // SECURITY AUDIT LOG HELPER
+ // =========================================================
+
+ private void saveAuditLog(
+         ActorType actorType,
+         Customers actorCustomer,
+         String actionType,
+         String entityType,
+         String entityId,
+         String oldValues,
+         String newValues) {
+
+     AuditLogs auditLog =
+             AuditLogs.builder()
+
+                     .actorType(
+                             actorType
+                     )
+
+                     .actorCustomer(
+                             actorCustomer
+                     )
+
+                     .actorStaff(
+                             null
+                     )
+
+                     .actionType(
+                             actionType
+                     )
+
+                     .entityType(
+                             entityType
+                     )
+
+                     .entityId(
+                             entityId
+                     )
+
+                     .oldValues(
+                             oldValues
+                     )
+
+                     .newValues(
+                             newValues
+                     )
+
+                     .build();
+
+
+     auditLogsRepository.save(
+             auditLog
+     );
+ }
 }
