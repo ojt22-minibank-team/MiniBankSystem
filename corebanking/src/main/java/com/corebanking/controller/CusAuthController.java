@@ -1,14 +1,16 @@
 package com.corebanking.controller;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
+import com.corebanking.dto.CusPasswordResetRequest;
+import com.corebanking.dto.CusPasswordResetStartResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
+import com.corebanking.dto.CusPasswordResetOtpVerifyRequest;
+import com.corebanking.dto.CusPasswordResetOtpVerifyResponse;
 import com.corebanking.dto.CusFirstLoginPasswordRequest;
 import com.corebanking.dto.CusLoginRequest;
 import com.corebanking.dto.CusLoginResponse;
@@ -22,10 +24,11 @@ import com.corebanking.dto.CusTokenResponse;
 import com.corebanking.service.CusAuthService;
 
 import lombok.RequiredArgsConstructor;
-
+import com.corebanking.dto.CusPasswordResetRequest;
+import com.corebanking.dto.CusPasswordResetStartResponse;
 @RestController
 @RequestMapping("/api/customer/auth")
-@CrossOrigin(origins = "http://localhost:5173")
+//@CrossOrigin(origins = "http://localhost:5173")
 
 @RequiredArgsConstructor
 public class CusAuthController {
@@ -108,6 +111,40 @@ public class CusAuthController {
                 response
         );
     }
+ // =========================================================
+ // PASSWORD RESET - REQUEST OTP
+ // =========================================================
+
+ @PostMapping("/password-reset/request")
+ public ResponseEntity<CusPasswordResetStartResponse>
+         requestPasswordReset(
+                 @RequestBody
+                 CusPasswordResetRequest request) {
+
+     CusPasswordResetStartResponse response =
+             cusAuthService.requestPasswordReset(
+                     request
+             );
+
+     return ResponseEntity.ok(
+             response
+     );
+ }
+ @PostMapping("/password-reset/verify-otp")
+ public ResponseEntity<CusPasswordResetOtpVerifyResponse>
+         verifyPasswordResetOtp(
+                 @RequestBody
+                 CusPasswordResetOtpVerifyRequest request) {
+
+     CusPasswordResetOtpVerifyResponse response =
+             cusAuthService.verifyPasswordResetOtp(
+                     request
+             );
+
+     return ResponseEntity.ok(
+             response
+     );
+ }
     
     @PostMapping("/refresh")
     public ResponseEntity<CusTokenResponse> refreshToken(
@@ -135,6 +172,9 @@ public class CusAuthController {
                 "Logged out successfully."
         );
     }
+    
+    
+
     @GetMapping("/test")
     public ResponseEntity<String> testProtectedApi() {
 

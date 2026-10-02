@@ -125,6 +125,12 @@ public class CusSecurityConfig {
                                 "/api/customer/auth/first-login/setup-pin"
                         )
                         .permitAll()
+                        
+                     // Password Reset - Request OTP
+                        .requestMatchers(
+                                "/api/customer/auth/password-reset/request"
+                        )
+                        .permitAll()
 
                         // Refresh token
                         .requestMatchers(

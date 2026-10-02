@@ -12,8 +12,10 @@ import org.springframework.data.repository.query.Param;
 import com.corebanking.entity.AuthSessions;
 import com.corebanking.entity.enums.UpdatedByType;
 
+
 public interface CusAuthSessionsRepository
         extends JpaRepository<AuthSessions, UUID> {
+
 
     Optional<AuthSessions> findBySessionUuid(
             String sessionUuid
@@ -21,17 +23,7 @@ public interface CusAuthSessionsRepository
 
 
     // =========================================================
-    // ATOMIC SESSION REVOKE
-    // =========================================================
-    //
-    // revoked_at IS NULL ဖြစ်တဲ့ session ကိုပဲ update လုပ်မယ်.
-    //
-    // Concurrent requests 4 ခုလာရင်:
-    //
-    // first request  -> updated rows = 1
-    // other requests -> updated rows = 0
-    //
-    // ဒါကြောင့် revoke + audit တစ်ခါပဲ ဖြစ်မယ်.
+    // 1. ATOMIC SINGLE SESSION REVOKE
     // =========================================================
 
     @Modifying(
@@ -49,6 +41,7 @@ public interface CusAuthSessionsRepository
                AND s.revokedAt IS NULL
             """)
     int revokeIfActive(
+
             @Param("sessionUuid")
             String sessionUuid,
 
@@ -67,7 +60,12 @@ public interface CusAuthSessionsRepository
             @Param("updatedAt")
             LocalDateTime updatedAt
     );
-    
+
+
+    // =========================================================
+    // 2. ATOMIC REFRESH TOKEN ROTATION
+    // =========================================================
+
     @Modifying(
             flushAutomatically = true,
             clearAutomatically = true
@@ -106,5 +104,55 @@ public interface CusAuthSessionsRepository
 
             @Param("updatedById")
             UUID updatedById
+    );
+
+
+    // =========================================================
+    // 3. ATOMIC REVOKE ALL ACTIVE CUSTOMER SESSIONS
+    // =========================================================
+    //
+    // Password Reset / Change Password success ဖြစ်တဲ့အခါ
+    // customer ရဲ့ active sessions အကုန် revoke လုပ်မယ်.
+    //
+    // WHERE revokedAt IS NULL ကြောင့်
+    // already revoked session ကို ထပ်မပြင်ဘူး.
+    //
+    // Return:
+    // 0  = active session မရှိ / already revoked
+    // >0 = revoke လုပ်ခဲ့တဲ့ session အရေအတွက်
+    // =========================================================
+
+    @Modifying(
+            flushAutomatically = true
+    )
+    @Query("""
+            UPDATE AuthSessions s
+               SET s.revokedAt = :revokedAt,
+                   s.revokeReason = :reason,
+                   s.updatedByType = :updatedByType,
+                   s.updatedById = :updatedById,
+                   s.updatedAt = :updatedAt
+             WHERE s.customer.customerId = :customerId
+               AND s.revokedAt IS NULL
+            """)
+    int revokeAllActiveCustomerSessions(
+
+            @Param("customerId")
+            UUID customerId,
+
+            @Param("reason")
+            String reason,
+
+            @Param("revokedAt")
+            LocalDateTime revokedAt,
+
+            @Param("updatedByType")
+            UpdatedByType updatedByType,
+
+            @Param("updatedById")
+            UUID updatedById,
+
+            @Param("updatedAt")
+            LocalDateTime updatedAt
     );
 }

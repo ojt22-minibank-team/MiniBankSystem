@@ -616,7 +616,54 @@ public class CusSessionService {
             );
         }
     }
+ // =========================================================
+ // REVOKE ALL ACTIVE CUSTOMER SESSIONS
+ // =========================================================
+ //
+ // Used for:
+ // - PASSWORD_RESET
+ // - PASSWORD_CHANGED
+ //
+ // Return value:
+ // 0  -> active session မရှိ / အခြား request က revoke လုပ်ပြီးသား
+ // >0 -> revoke လုပ်ခဲ့တဲ့ session အရေအတွက်
+ // =========================================================
 
+ @Transactional
+ public int revokeAllActiveCustomerSessions(
+         UUID customerId,
+         String reason,
+         UpdatedByType updatedByType,
+         UUID updatedById) {
+
+     if (customerId == null) {
+
+         throw new IllegalArgumentException(
+                 "Customer ID is required."
+         );
+     }
+
+
+     LocalDateTime now =
+             LocalDateTime.now();
+
+
+     return authSessionsRepository
+             .revokeAllActiveCustomerSessions(
+
+                     customerId,
+
+                     reason,
+
+                     now,
+
+                     updatedByType,
+
+                     updatedById,
+
+                     now
+             );
+ }
 
     // =========================================================
     // 4A. CUSTOMER / EXPLICIT ACTOR SESSION REVOKE

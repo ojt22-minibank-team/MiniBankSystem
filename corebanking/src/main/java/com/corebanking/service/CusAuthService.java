@@ -16,6 +16,10 @@ import com.corebanking.dto.CusOtpResendRequest;
 import com.corebanking.dto.CusOtpResendResponse;
 import com.corebanking.dto.CusOtpVerifyRequest;
 import com.corebanking.dto.CusOtpVerifyResponse;
+import com.corebanking.dto.CusPasswordResetOtpVerifyRequest;
+import com.corebanking.dto.CusPasswordResetOtpVerifyResponse;
+import com.corebanking.dto.CusPasswordResetRequest;
+import com.corebanking.dto.CusPasswordResetStartResponse;
 import com.corebanking.dto.CusRefreshTokenRequest;
 import com.corebanking.dto.CusTokenResponse;
 import com.corebanking.entity.Accounts;
@@ -84,6 +88,8 @@ public class CusAuthService {
     private static final int OTP_EXPIRY_MINUTES = 5;
     private static final int MAX_OTP_ATTEMPTS = 5;
     private static final int MAX_OTP_RESENDS = 5;
+    private static final int MIN_PASSWORD_LENGTH = 8;
+    private static final int MAX_PASSWORD_LENGTH = 10;
 
     private static final SecureRandom SECURE_RANDOM =
             new SecureRandom();
@@ -1332,9 +1338,293 @@ public class CusAuthService {
         );
     }
 
+ // =========================================================
+ // PASSWORD RESET - REQUEST OTP
+ // =========================================================
+
+ @Transactional(
+         noRollbackFor = CusEmailException.class
+ )
+ public CusPasswordResetStartResponse requestPasswordReset(
+         CusPasswordResetRequest request) {
+
+     // =====================================================
+     // 1. REQUEST VALIDATION
+     // =====================================================
+
+     if (request == null
+             || request.getLoginIdentifier() == null
+             || request.getLoginIdentifier().isBlank()) {
+
+         throw new RuntimeException(
+                 "Customer ID or Account Number is required."
+         );
+     }
+
+
+     String identifier =
+             request.getLoginIdentifier().trim();
+
+
+     // =====================================================
+     // 2. FIND CUSTOMER
+     // Customer Code OR Account Number
+     // =====================================================
+
+     Customers customer =
+             findCustomer(
+                     identifier
+             );
+
+
+     // =====================================================
+     // 3. CUSTOMER MUST BE ACTIVE
+     // =====================================================
+
+     validateCustomerStatus(
+             customer
+     );
+
+
+     // =====================================================
+     // 4. REGISTERED EMAIL REQUIRED
+     // =====================================================
+
+     if (customer.getEmail() == null
+             || customer.getEmail().isBlank()) {
+
+         throw new RuntimeException(
+                 "No registered email address is available for password reset."
+         );
+     }
+
+
+     // =====================================================
+     // 5. EXPIRE PREVIOUS ACTIVE PASSWORD RESET OTPs
+     // =====================================================
+
+     var activeResetOtps =
+             otpChallengesRepository
+                     .findByCustomerAndPurposeAndStatus(
+                             customer,
+                             OtpPurpose.PASSWORD_RESET,
+                             OtpStatus.ACTIVE
+                     );
+
+
+     for (OtpChallenges otp : activeResetOtps) {
+
+         otp.setStatus(
+                 OtpStatus.EXPIRED
+         );
+
+         markOtpUpdatedByCustomer(
+                 otp
+         );
+     }
+
+
+     otpChallengesRepository.saveAll(
+             activeResetOtps
+     );
+
+
+     // =====================================================
+     // 6. GENERATE 6-DIGIT OTP
+     // =====================================================
+
+     String rawOtp =
+             generateOtp();
+
+
+     // =====================================================
+     // 7. HASH OTP
+     // =====================================================
+
+     String otpHash =
+             passwordEncoder.encode(
+                     rawOtp
+             );
+
+
+     // =====================================================
+     // 8. CREATE CHALLENGE GROUP ID
+     // =====================================================
+
+     String challengeGroupId =
+             UUID.randomUUID()
+                     .toString();
+
+
+     LocalDateTime now =
+             LocalDateTime.now();
+
+
+     // =====================================================
+     // 9. CREATE PASSWORD RESET OTP CHALLENGE
+     // =====================================================
+
+     OtpChallenges otpChallenge =
+             OtpChallenges.builder()
+
+                     .customer(
+                             customer
+                     )
+
+                     .purpose(
+                             OtpPurpose.PASSWORD_RESET
+                     )
+
+                     .otpHash(
+                             otpHash
+                     )
+
+                     .deliveryChannel(
+                             DeliveryChannel.EMAIL
+                     )
+
+                     .destinationMasked(
+                             maskEmail(
+                                     customer.getEmail()
+                             )
+                     )
+
+                     .attemptCount(0)
+
+                     .maxAttempts(
+                             MAX_OTP_ATTEMPTS
+                     )
+
+                     .expiresAt(
+                             now.plusMinutes(
+                                     OTP_EXPIRY_MINUTES
+                             )
+                     )
+
+                     .status(
+                             OtpStatus.ACTIVE
+                     )
+
+                     .challengeGroupId(
+                             challengeGroupId
+                     )
+
+                     .lastSentAt(
+                             now
+                     )
+
+                     .maxResendAttempts(
+                             MAX_OTP_RESENDS
+                     )
+
+                     .resendNo(0)
+
+                     .updatedByType(
+                             UpdatedByType.CUSTOMER
+                     )
+
+                     .updatedById(
+                             customer.getCustomerId()
+                     )
+
+                     .build();
+
+
+     OtpChallenges savedOtp =
+             otpChallengesRepository.save(
+                     otpChallenge
+             );
+
+
+     // =====================================================
+     // 10. SEND OTP EMAIL
+     // =====================================================
+
+     try {
+
+         cusEmailService.sendPasswordResetOtp(
+                 customer.getEmail(),
+                 rawOtp
+         );
+
+
+         // =================================================
+         // AUDIT - OTP SENT
+         // =================================================
+
+         saveAuditLog(
+                 ActorType.CUSTOMER,
+                 customer,
+                 "PASSWORD_RESET_OTP_SENT",
+                 "OTP_CHALLENGE",
+                 String.valueOf(
+                         savedOtp.getOtpId()
+                 ),
+                 null,
+                 "{\"purpose\":\"PASSWORD_RESET\","
+                         + "\"status\":\"ACTIVE\","
+                         + "\"resendNo\":0}"
+         );
+
+
+     } catch (MailException ex) {
+
+         // =================================================
+         // EMAIL FAILED -> OTP MUST NOT REMAIN USABLE
+         // =================================================
+
+         savedOtp.setStatus(
+                 OtpStatus.EXPIRED
+         );
+
+
+         markOtpUpdatedBySystem(
+                 savedOtp
+         );
+
+
+         otpChallengesRepository.save(
+                 savedOtp
+         );
+
+
+         saveAuditLog(
+                 ActorType.SYSTEM,
+                 null,
+                 "PASSWORD_RESET_OTP_SEND_FAILED",
+                 "OTP_CHALLENGE",
+                 String.valueOf(
+                         savedOtp.getOtpId()
+                 ),
+                 "{\"status\":\"ACTIVE\"}",
+                 "{\"status\":\"EXPIRED\","
+                         + "\"reason\":\"EMAIL_SEND_FAILED\"}"
+         );
+
+
+         throw new CusEmailException(
+                 "Unable to send password reset OTP email. Please try again.",
+                 ex
+         );
+     }
+
+
+     // =====================================================
+     // 11. RESPONSE
+     // =====================================================
+
+     return new CusPasswordResetStartResponse(
+             true,
+             "Password reset OTP has been sent to your registered email.",
+             savedOtp.getChallengeGroupId(),
+             savedOtp.getDestinationMasked()
+     );
+ }
+    
     // =========================================================
     // 12. FIRST LOGIN - CHANGE TEMPORARY PASSWORD
     // =========================================================
+    @Transactional
     public void changeFirstLoginPassword(
             String challengeGroupId,
             String newPassword,
@@ -1400,11 +1690,13 @@ public class CusAuthService {
         // 7. Password policy
         if (!isValidPassword(newPassword)) {
 
-            throw new RuntimeException(
-                    "Password must contain at least 8 characters, "
-                            + "including uppercase, lowercase, number, "
-                            + "and special character."
-            );
+        	throw new RuntimeException(
+        	        "Password must contain between 8 and 10 characters, "
+        	                + "including at least one uppercase letter, "
+        	                + "one lowercase letter, one number, "
+        	                + "and one special character. "
+        	                + "Whitespace is not allowed."
+        	);
         }
 
         // 8. Hash new password
@@ -1429,7 +1721,22 @@ public class CusAuthService {
         credentialsRepository.save(
                 credentials
         );
+        
+     // =====================================================
+        // AUDIT LOG
+        // =====================================================
+
+        saveAuditLog(
+                ActorType.CUSTOMER,
+                customer,
+                "FIRST_LOGIN_PASSWORD_CHANGED",
+                "CUSTOMER_CREDENTIALS",
+                customer.getCustomerId().toString(),
+                null,
+                "{\"passwordChanged\":true}"
+        );
     }
+    
 
     // =========================================================
     // 13. FIRST LOGIN - CREATE TRANSACTION PIN
@@ -1948,45 +2255,75 @@ public CusTokenResponse refreshToken(
     // 14. PASSWORD POLICY HELPER
     // =========================================================
 
-    private boolean isValidPassword(
-            String password) {
+//=========================================================
+//PASSWORD POLICY
+//8 - 10 characters
+//At least 1 uppercase
+//At least 1 lowercase
+//At least 1 number
+//At least 1 special character
+//No whitespace
+//=========================================================
 
-        if (password == null
-                || password.length() < 8) {
+private boolean isValidPassword(
+      String password) {
 
-            return false;
-        }
-
-
-        boolean hasUppercase =
-                password.matches(
-                        ".*[A-Z].*"
-                );
-
-
-        boolean hasLowercase =
-                password.matches(
-                        ".*[a-z].*"
-                );
+  // 1. Null check
+  if (password == null) {
+      return false;
+  }
 
 
-        boolean hasNumber =
-                password.matches(
-                        ".*\\d.*"
-                );
+  // 2. Length must be between 8 and 10
+  if (password.length() < MIN_PASSWORD_LENGTH
+	        || password.length() > MAX_PASSWORD_LENGTH) {
+
+	    return false;
+	}
 
 
-        boolean hasSpecialCharacter =
-                password.matches(
-                        ".*[^A-Za-z0-9].*"
-                );
+  // 3. Whitespace not allowed
+  // space, tab, newline အကုန် reject
+  if (password.matches(".*\\s.*")) {
+
+      return false;
+  }
 
 
-        return hasUppercase
-                && hasLowercase
-                && hasNumber
-                && hasSpecialCharacter;
-    }
+  // 4. At least one uppercase letter
+  boolean hasUppercase =
+          password.matches(
+                  ".*[A-Z].*"
+          );
+
+
+  // 5. At least one lowercase letter
+  boolean hasLowercase =
+          password.matches(
+                  ".*[a-z].*"
+          );
+
+
+  // 6. At least one number
+  boolean hasNumber =
+          password.matches(
+                  ".*\\d.*"
+          );
+
+
+  // 7. At least one special character
+  boolean hasSpecialCharacter =
+          password.matches(
+                  ".*[^A-Za-z0-9\\s].*"
+          );
+
+
+  // 8. All rules must pass
+  return hasUppercase
+          && hasLowercase
+          && hasNumber
+          && hasSpecialCharacter;
+}
 
 
     // =========================================================
@@ -2336,8 +2673,346 @@ public CusTokenResponse refreshToken(
              null
      );
  }
+//=========================================================
+//PASSWORD RESET - VERIFY OTP
+//=========================================================
+
+@Transactional(
+      noRollbackFor = CusOtpException.class
+)
+public CusPasswordResetOtpVerifyResponse
+      verifyPasswordResetOtp(
+              CusPasswordResetOtpVerifyRequest request) {
+
+  // =====================================================
+  // 1. REQUEST VALIDATION
+  // =====================================================
+
+  if (request == null
+          || request.getChallengeGroupId() == null
+          || request.getChallengeGroupId().isBlank()
+          || request.getOtp() == null
+          || request.getOtp().isBlank()) {
+
+      throw new CusOtpException(
+              "OTP verification information is required."
+      );
+  }
 
 
+  String challengeGroupId =
+          request.getChallengeGroupId()
+                  .trim();
+
+
+  String enteredOtp =
+          request.getOtp()
+                  .trim();
+
+
+  // =====================================================
+  // 2. FIND PASSWORD RESET OTP
+  // =====================================================
+
+  OtpChallenges otpChallenge =
+          otpChallengesRepository
+                  .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
+                          challengeGroupId,
+                          OtpPurpose.PASSWORD_RESET
+                  )
+                  .orElseThrow(() ->
+                          new CusOtpException(
+                                  "Invalid password reset challenge."
+                          )
+                  );
+
+
+  // =====================================================
+  // 3. STATUS CHECK
+  // =====================================================
+
+  if (otpChallenge.getStatus()
+          == OtpStatus.CONSUMED) {
+
+      throw new CusOtpException(
+              "This OTP has already been used."
+      );
+  }
+
+
+  if (otpChallenge.getStatus()
+          == OtpStatus.EXPIRED) {
+
+      throw new CusOtpException(
+              "OTP has expired."
+      );
+  }
+
+
+  if (otpChallenge.getStatus()
+          == OtpStatus.BLOCKED) {
+
+      throw new CusOtpException(
+              "OTP verification has been blocked."
+      );
+  }
+
+
+  if (otpChallenge.getStatus()
+          != OtpStatus.ACTIVE) {
+
+      throw new CusOtpException(
+              "OTP is not active."
+      );
+  }
+
+
+  LocalDateTime now =
+          LocalDateTime.now();
+
+
+  // =====================================================
+  // 4. EXPIRY CHECK
+  // =====================================================
+
+  if (otpChallenge.getExpiresAt() == null
+          || !otpChallenge
+                  .getExpiresAt()
+                  .isAfter(now)) {
+
+      otpChallenge.setStatus(
+              OtpStatus.EXPIRED
+      );
+
+      markOtpUpdatedBySystem(
+              otpChallenge
+      );
+
+      otpChallengesRepository.save(
+              otpChallenge
+      );
+
+
+      saveAuditLog(
+              ActorType.SYSTEM,
+              null,
+              "PASSWORD_RESET_OTP_EXPIRED",
+              "OTP_CHALLENGE",
+              String.valueOf(
+                      otpChallenge.getOtpId()
+              ),
+              "{\"status\":\"ACTIVE\"}",
+              "{\"status\":\"EXPIRED\","
+                      + "\"reason\":\"TIME_EXPIRED\"}"
+      );
+
+
+      throw new CusOtpException(
+              "OTP has expired."
+      );
+  }
+
+
+  // =====================================================
+  // 5. MAX ATTEMPTS CHECK
+  // =====================================================
+
+  if (otpChallenge.getAttemptCount()
+          >= otpChallenge.getMaxAttempts()) {
+
+      otpChallenge.setStatus(
+              OtpStatus.BLOCKED
+      );
+
+      markOtpUpdatedBySystem(
+              otpChallenge
+      );
+
+      otpChallengesRepository.save(
+              otpChallenge
+      );
+
+
+      throw new CusOtpException(
+              "OTP verification has been blocked."
+      );
+  }
+
+
+  // =====================================================
+  // 6. OTP MUST BE EXACTLY 6 DIGITS
+  // =====================================================
+
+  boolean validOtpFormat =
+          enteredOtp.matches(
+                  "\\d{6}"
+          );
+
+
+  // =====================================================
+  // 7. VERIFY HASH
+  // =====================================================
+
+  boolean otpMatches =
+          validOtpFormat
+
+                  && passwordEncoder.matches(
+                          enteredOtp,
+                          otpChallenge.getOtpHash()
+                  );
+
+
+  // =====================================================
+  // 8. WRONG OTP
+  // =====================================================
+
+  if (!otpMatches) {
+
+      handleFailedPasswordResetOtpAttempt(
+              otpChallenge
+      );
+
+      throw new CusOtpException(
+              "Invalid OTP."
+      );
+  }
+
+
+  // =====================================================
+  // 9. CORRECT OTP
+  // Rotate challenge ID after verification
+  // =====================================================
+
+  String verifiedChallengeGroupId =
+          UUID.randomUUID()
+                  .toString();
+
+
+  int updatedRows =
+          otpChallengesRepository
+                  .consumePasswordResetOtpIfActive(
+
+                          otpChallenge.getOtpId(),
+
+                          challengeGroupId,
+
+                          OtpPurpose.PASSWORD_RESET,
+
+                          OtpStatus.ACTIVE,
+
+                          OtpStatus.CONSUMED,
+
+                          verifiedChallengeGroupId,
+
+                          now,
+
+                          now,
+
+                          UpdatedByType.CUSTOMER,
+
+                          otpChallenge
+                                  .getCustomer()
+                                  .getCustomerId(),
+
+                          now
+                  );
+
+
+  // Another concurrent request already consumed it
+  if (updatedRows != 1) {
+
+      throw new CusOtpException(
+              "OTP has already been used or is no longer valid."
+      );
+  }
+
+
+  // =====================================================
+  // 10. AUDIT
+  // =====================================================
+
+  saveAuditLog(
+          ActorType.CUSTOMER,
+          otpChallenge.getCustomer(),
+          "PASSWORD_RESET_OTP_VERIFIED",
+          "OTP_CHALLENGE",
+          String.valueOf(
+                  otpChallenge.getOtpId()
+          ),
+          "{\"status\":\"ACTIVE\"}",
+          "{\"status\":\"CONSUMED\","
+                  + "\"purpose\":\"PASSWORD_RESET\"}"
+  );
+
+
+  // =====================================================
+  // 11. RESPONSE
+  // =====================================================
+
+  return new CusPasswordResetOtpVerifyResponse(
+          true,
+          "OTP verified successfully. You may now reset your password.",
+          verifiedChallengeGroupId
+  );
+}
+private void handleFailedPasswordResetOtpAttempt(
+        OtpChallenges otpChallenge) {
+
+    int failedAttempts =
+            otpChallenge.getAttemptCount() + 1;
+
+    otpChallenge.setAttemptCount(
+            failedAttempts
+    );
+
+    if (failedAttempts
+            >= otpChallenge.getMaxAttempts()) {
+
+        otpChallenge.setStatus(
+                OtpStatus.BLOCKED
+        );
+    }
+
+    markOtpUpdatedByCustomer(
+            otpChallenge
+    );
+
+    otpChallengesRepository.save(
+            otpChallenge
+    );
+
+    saveAuditLog(
+            ActorType.CUSTOMER,
+            otpChallenge.getCustomer(),
+            "PASSWORD_RESET_OTP_VERIFY_FAILED",
+            "OTP_CHALLENGE",
+            String.valueOf(
+                    otpChallenge.getOtpId()
+            ),
+            null,
+            "{\"attemptCount\":" + failedAttempts
+                    + ",\"status\":\""
+                    + otpChallenge.getStatus().name()
+                    + "\"}"
+    );
+
+    if (otpChallenge.getStatus()
+            == OtpStatus.BLOCKED) {
+
+        saveAuditLog(
+                ActorType.CUSTOMER,
+                otpChallenge.getCustomer(),
+                "PASSWORD_RESET_OTP_BLOCKED",
+                "OTP_CHALLENGE",
+                String.valueOf(
+                        otpChallenge.getOtpId()
+                ),
+                null,
+                "{\"status\":\"BLOCKED\","
+                        + "\"reason\":\"MAX_ATTEMPTS_REACHED\"}"
+        );
+    }
+}
  // =========================================================
  // SECURITY AUDIT LOG HELPER
  // =========================================================
