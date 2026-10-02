@@ -1981,8 +1981,7 @@ public class CusAuthService {
      // =====================================================
 
      if (authorizationHeader == null
-             || !authorizationHeader
-                     .startsWith("Bearer ")) {
+             || !authorizationHeader.startsWith("Bearer ")) {
 
          throw new RuntimeException(
                  "Access token is required."
@@ -2001,7 +2000,7 @@ public class CusAuthService {
 
 
      // =====================================================
-     // 3. JWT VALIDATE + READ CLAIMS
+     // 3. VALIDATE JWT + READ CLAIMS
      // =====================================================
 
      Claims claims =
@@ -2011,7 +2010,7 @@ public class CusAuthService {
 
 
      // =====================================================
-     // 4. ACCESS TOKEN TYPE CHECK
+     // 4. TOKEN TYPE MUST BE ACCESS
      // =====================================================
 
      String tokenType =
@@ -2021,8 +2020,7 @@ public class CusAuthService {
              );
 
 
-     if (!"ACCESS".equals(
-             tokenType)) {
+     if (!"ACCESS".equals(tokenType)) {
 
          throw new RuntimeException(
                  "Invalid access token."
@@ -2031,7 +2029,7 @@ public class CusAuthService {
 
 
      // =====================================================
-     // 5. GET JTI
+     // 5. GET JWT ID (JTI)
      // =====================================================
 
      String jti =
@@ -2072,7 +2070,41 @@ public class CusAuthService {
 
 
      // =====================================================
-     // 7. ACCESS TOKEN BLACKLIST
+     // 7. ATOMIC SESSION REVOKE
+     // =====================================================
+     //
+     // revokeSession() က:
+     //
+     // true
+     // → ဒီ request က session ကို revoke လုပ်နိုင်ခဲ့တယ်
+     //
+     // false
+     // → အခြား concurrent request က revoke လုပ်ပြီးသား
+     //
+     // ဒီလိုလုပ်တာကြောင့် duplicate logout audit
+     // မဖြစ်တော့ဘူး.
+     // =====================================================
+
+     boolean revoked =
+             cusSessionService.revokeSession(
+                     session,
+                     "USER_LOGOUT",
+                     UpdatedByType.CUSTOMER,
+                     customer.getCustomerId()
+             );
+
+
+     // Already revoked ဖြစ်နေပြီဆို
+     // ထပ်ပြီး blacklist/audit မရေးတော့ဘူး
+
+     if (!revoked) {
+
+         return;
+     }
+
+
+     // =====================================================
+     // 8. ACCESS TOKEN BLACKLIST
      // =====================================================
 
      if (!jwtRevokedTokensRepository
@@ -2113,7 +2145,6 @@ public class CusAuthService {
                          )
 
                          // ---------------------------------
-                         // AUDIT METADATA
                          // Customer ကိုယ်တိုင် logout
                          // ---------------------------------
 
@@ -2135,69 +2166,24 @@ public class CusAuthService {
 
 
      // =====================================================
-     // 8. REVOKE ENTIRE SESSION
-     // Customer initiated this state change
+     // 9. SAVE CUSTOMER LOGOUT AUDIT
      // =====================================================
 
-     cusSessionService.revokeSession(
-             session,
-             "USER_LOGOUT",
-             UpdatedByType.CUSTOMER,
-             customer.getCustomerId()
-     );
+     saveAuditLog(
+             ActorType.CUSTOMER,
 
+             customer,
 
-     // =====================================================
-     // 10. SAVE AUDIT LOG
-     // =====================================================
+             "CUSTOMER_LOGOUT",
 
-     AuditLogs auditLog =
-             AuditLogs.builder()
+             "AUTH_SESSION",
 
-                     // ဘယ်သူလုပ်တာလဲ
-                     .actorType(
-                             ActorType.CUSTOMER
-                     )
+             session.getSessionUuid(),
 
-                     .actorCustomer(
-                             customer
-                     )
+             "{\"status\":\"ACTIVE\"}",
 
-                     .actorStaff(
-                             null
-                     )
-
-                     // ဘာလုပ်တာလဲ
-                     .actionType(
-                             "CUSTOMER_LOGOUT"
-                     )
-
-                     // ဘယ် entity ကိုပြောင်းတာလဲ
-                     .entityType(
-                             "AUTH_SESSION"
-                     )
-
-                     // ဘယ် session လဲ
-                     .entityId(
-                             session.getSessionUuid()
-                     )
-
-                     // Logout မလုပ်ခင်
-                     .oldValues(
-                             "{\"status\":\"ACTIVE\"}"
-                     )
-
-                     // Logout လုပ်ပြီး
-                     .newValues(
-                             "{\"status\":\"REVOKED\","
-                             + "\"reason\":\"USER_LOGOUT\"}"
-                     )
-
-                     .build();
-
-
-     auditLogsRepository.save(
-             auditLog
+             "{\"status\":\"REVOKED\","
+                     + "\"reason\":\"USER_LOGOUT\"}"
      );
  }
 
