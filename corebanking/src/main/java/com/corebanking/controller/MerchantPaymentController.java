@@ -9,23 +9,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/merchant-payment")
+@RequestMapping("/api/customer/merchant-payment")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class MerchantPaymentController {
 
     private final MerchantAuthorizationEngine authorizationEngine;
-    private final PasswordEncoder passwordEncoder;
-
-    @GetMapping("/generate-hash")
-    public String generateHash(@RequestParam String pin) {
-        return passwordEncoder.encode(pin);
-    }
 
     @GetMapping("/request/{token}")
     public ResponseEntity<PaymentDetailsResponse> getPaymentDetails(@PathVariable String token) {

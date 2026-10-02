@@ -32,6 +32,15 @@ export const MerchantCheckout: React.FC = () => {
 
   useEffect(() => {
     const loadDetails = async () => {
+      // 1. SECURITY GUARD: Check if customer is logged into MiniBank
+      const jwtToken = localStorage.getItem('token'); // Matches Member 1's standard
+      if (!jwtToken) {
+        // Not logged in! Route them to login and tell it to come back here afterwards
+        window.location.href = `/login?redirect=/checkout?token=${token}`;
+        return; 
+      }
+
+      // 2. If logged in, fetch the checkout details
       try {
         const data = await fetchPaymentDetails(token);
         setDetails(data);
@@ -51,8 +60,6 @@ export const MerchantCheckout: React.FC = () => {
     try {
       const receiptData = await authorizePayment({
         paymentToken: token,
-        customerId: "66666666-6666-6666-6666-666666666666", // Mock customer ID
-        merchantAccountId: details!.merchantAccountId,
         amount: details!.amount,
         transactionPin: data.transactionPin
       });

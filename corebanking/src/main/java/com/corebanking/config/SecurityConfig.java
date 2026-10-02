@@ -155,6 +155,13 @@ public class SecurityConfig {
                         .permitAll()
 
 
+                        // Member 5: Merchant Payment Checkout Info (Public so UI can show price)
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.GET,
+                                "/api/customer/merchant-payment/request/**"
+                        )
+                        .permitAll()
+
                         // Existing Auth APIs
                         .requestMatchers(
                                 "/api/auth/**"

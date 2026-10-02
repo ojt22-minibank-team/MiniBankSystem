@@ -18,7 +18,6 @@ public class MerchantPaymentRequest {
     @NotBlank(message = "Payment token is mandatory")
     private String paymentToken;
 
-    @NotNull(message = "Customer ID is mandatory")
     private UUID customerId;
 
     @NotNull(message = "Amount is mandatory")

@@ -17,6 +17,7 @@ public class SecurityValidationService {
 
     private final CustomerCredentialsRepository credentialsRepository;
     private final PasswordEncoder passwordEncoder;
+    private final CustomerSecurityService customerSecurityService; // Integrate with Member 1
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = SecurityException.class)
     public void validateTransactionPin(UUID customerId, String rawPin) {
@@ -28,19 +29,12 @@ public class SecurityValidationService {
         }
 
         if (credentials.getTransactionPinHash() == null || !passwordEncoder.matches(rawPin, credentials.getTransactionPinHash())) {
-            int failedAttempts = credentials.getFailedPinAttemptCount() + 1;
-            credentials.setFailedPinAttemptCount(failedAttempts);
-
-            if (failedAttempts >= 5) {
-                credentials.setPinLockedUntil(LocalDateTime.now().plusMinutes(15));
-            }
-            credentialsRepository.save(credentials);
+            // Delegate to Member 1's official lock logic!
+            customerSecurityService.recordFailedPinAttemptAndCheckLock(customerId);
             throw new SecurityException("Invalid PIN");
         }
 
-        // PIN is correct, reset failures
-        credentials.setFailedPinAttemptCount(0);
-        credentials.setPinLockedUntil(null);
-        credentialsRepository.save(credentials);
+        // PIN is correct, reset failures using Member 1's official reset logic!
+        customerSecurityService.resetFailedPinCount(customerId);
     }
 }

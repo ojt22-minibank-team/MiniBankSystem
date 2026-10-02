@@ -18,6 +18,12 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
     Optional<BankTransactions> findByIdempotencyKey(String idempotencyKey);
 
     boolean existsByIdempotencyKey(String idempotencyKey);
+    
+    // Member 5 Duplicate Prevention Check (Moved from duplicate repository)
+    boolean existsByExternalReferenceAndStatus(String externalReference, com.corebanking.entity.enums.TransactionStatus status);
+    
+    // Safer check that ignores status
+    boolean existsByExternalReference(String externalReference);
 
     /**
      * Calculates total transferred amount by account for the current day.

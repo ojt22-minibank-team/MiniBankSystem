@@ -61,9 +61,11 @@ public class GatewayIntegrationAdapter implements GatewayOutboundPort {
                 throw new TransactionException("Payment Authorization rejected by Gateway.");
             }
             
+        } catch (org.springframework.web.client.HttpStatusCodeException httpEx) {
+            log.warn("Gateway rejected the payment (Likely expired). Status: {}", httpEx.getStatusCode());
+            throw new TransactionException("Payment was rejected by Gateway. The payment link may have expired.");
         } catch (Exception e) {
             log.warn("Could not reach Group 3 Gateway Server. Error: {}", e.getMessage());
-            
             throw new TransactionException("Gateway is offline. Payment could not be authorized.");
         }
     }

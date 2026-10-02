@@ -3,17 +3,15 @@ import axios from 'axios';
 // Matches PaymentDetailsResponse.java
 export interface PaymentDetails {
   merchantName: string;
-  merchantAccountId: string;
+  orderId: string;
   amount: number;
   currency: string;
-  orderReference: string;
+  status: string;
 }
 
 // Matches MerchantPaymentRequest.java
 export interface PaymentRequest {
   paymentToken: string;
-  customerId: string;
-  merchantAccountId: string;
   amount: number;
   transactionPin: string;
 }
@@ -30,7 +28,7 @@ export interface PaymentReceipt {
   timestamp: string;
 }
 
-const API_BASE_URL = 'http://localhost:8080/api/v1/merchant-payment';
+const API_BASE_URL = 'http://localhost:8080/api/customer/merchant-payment';
 
 export const fetchPaymentDetails = async (token: string): Promise<PaymentDetails> => {
   const response = await axios.get<PaymentDetails>(`${API_BASE_URL}/request/${token}`);
@@ -38,6 +36,11 @@ export const fetchPaymentDetails = async (token: string): Promise<PaymentDetails
 };
 
 export const authorizePayment = async (request: PaymentRequest): Promise<PaymentReceipt> => {
-  const response = await axios.post<PaymentReceipt>(`${API_BASE_URL}/authorize`, request);
+  const token = localStorage.getItem('token');
+  const response = await axios.post<PaymentReceipt>(`${API_BASE_URL}/authorize`, request, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
   return response.data;
 };

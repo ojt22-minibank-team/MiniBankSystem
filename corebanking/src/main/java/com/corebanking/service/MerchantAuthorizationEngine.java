@@ -44,14 +44,18 @@ public class MerchantAuthorizationEngine {
 
             // 3. Webhook: Server-to-Server Handoff (Group 3 moves the money)
             // Added customerId to payload so Group 3 can execute the debit
-            gatewayOutboundPort.dispatchAuthorizationOutcome(request.getPaymentToken(), "AUTHORIZED", request.getCustomerId());
+            gatewayOutboundPort.dispatchAuthorizationOutcome(request.getPaymentToken(), com.corebanking.entity.enums.TransactionStatus.AUTHORIZED.name(), request.getCustomerId());
 
             return "AUTH-SUCCESS-" + request.getPaymentToken();
             
         } catch (Exception e) {
             log.error("Payment authorization failed for token {}. Reason: {}", request.getPaymentToken(), e.getMessage());
             // If PIN fails or UX check fails, we tell Group 3
-            gatewayOutboundPort.dispatchAuthorizationOutcome(request.getPaymentToken(), "FAILED", request.getCustomerId());
+            try {
+                gatewayOutboundPort.dispatchAuthorizationOutcome(request.getPaymentToken(), com.corebanking.entity.enums.TransactionStatus.FAILED.name(), request.getCustomerId());
+            } catch (Exception webhookEx) {
+                log.error("Also failed to notify Group 3 of the failure: {}", webhookEx.getMessage());
+            }
             throw e; 
         }
     }

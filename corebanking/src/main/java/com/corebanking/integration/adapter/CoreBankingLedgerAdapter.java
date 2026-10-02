@@ -26,7 +26,7 @@ public class CoreBankingLedgerAdapter implements LedgerFacadePort {
 
     @Override
     public boolean isDuplicatePayment(String paymentToken) {
-        return bankTransactionRepository.findByIdempotencyKey(paymentToken).isPresent();
+        return bankTransactionRepository.existsByExternalReference(paymentToken);
     }
 
     // READ-ONLY METHOD FOR PRE-CHECK UX
@@ -35,11 +35,16 @@ public class CoreBankingLedgerAdapter implements LedgerFacadePort {
     public void validateSufficientFundsAndLimits(UUID customerId, BigDecimal amount) {
         log.info("Performing read-only pre-check for customer {} for amount {}", customerId, amount);
 
-        List<Accounts> customerAccounts = accountRepository.findByCustomerIdForUpdate(customerId);
+        List<Accounts> customerAccounts = accountRepository.findByCustomerCustomerId(customerId);
         if (customerAccounts.isEmpty()) {
             throw new AccountNotFoundException("Customer has no active accounts");
         }
-        Accounts sourceAccount = customerAccounts.get(0); 
+        
+        Accounts sourceAccount = customerAccounts.stream()
+                .filter(acc -> com.corebanking.entity.enums.AccountType.CURRENT.equals(acc.getAccountType()))
+                .filter(acc -> com.corebanking.entity.enums.AccountStatus.ACTIVE.equals(acc.getStatus()))
+                .findFirst()
+                .orElseThrow(() -> new AccountNotFoundException("Customer has no active CURRENT account for payments"));
 
         BigDecimal availableBalance = sourceAccount.getAvailableBalance();
         BigDecimal dailyLimit = sourceAccount.getDailyTransferLimit();
@@ -55,3 +60,4 @@ public class CoreBankingLedgerAdapter implements LedgerFacadePort {
         log.info("Read-only pre-check passed for customer {}", customerId);
     }
 }
+

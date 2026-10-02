@@ -13,7 +13,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -90,38 +92,16 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(status).body(errorBody);
     }
+
+    @ExceptionHandler(com.corebanking.exception.CusAuthenticationException.class)
+    public ResponseEntity<Map<String, Object>> handleCusAuthenticationException(com.corebanking.exception.CusAuthenticationException ex) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("code", "UNAUTHORIZED");
+        response.put("message", ex.getMessage());
+        response.put("timestamp", LocalDateTime.now());
+        response.put("status", HttpStatus.UNAUTHORIZED.value());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+    }
 }
 
-@ExceptionHandler(CusAuthenticationException.class)
-public ResponseEntity<Map<String, Object>>
-        handleCusAuthenticationException(
-                CusAuthenticationException ex) {
 
-    Map<String, Object> response =
-            new LinkedHashMap<>();
-
-    response.put(
-            "code",
-            "UNAUTHORIZED"
-    );
-
-    response.put(
-            "message",
-            ex.getMessage()
-    );
-
-    response.put(
-            "timestamp",
-            LocalDateTime.now()
-    );
-
-    response.put(
-            "status",
-            HttpStatus.UNAUTHORIZED.value()
-    );
-
-    return ResponseEntity
-            .status(HttpStatus.UNAUTHORIZED)
-            .body(response);
-}
-}
