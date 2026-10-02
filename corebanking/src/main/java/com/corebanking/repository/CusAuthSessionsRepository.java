@@ -67,4 +67,44 @@ public interface CusAuthSessionsRepository
             @Param("updatedAt")
             LocalDateTime updatedAt
     );
+    
+    @Modifying(
+            flushAutomatically = true,
+            clearAutomatically = true
+    )
+    @Query("""
+            UPDATE AuthSessions s
+               SET s.refreshTokenHash = :newRefreshTokenHash,
+                   s.refreshExpiresAt = :newRefreshExpiresAt,
+                   s.lastSeenAt = :now,
+                   s.updatedByType = :updatedByType,
+                   s.updatedById = :updatedById,
+                   s.updatedAt = :now
+             WHERE s.sessionUuid = :sessionUuid
+               AND s.refreshTokenHash = :expectedOldRefreshTokenHash
+               AND s.revokedAt IS NULL
+            """)
+    int rotateRefreshTokenIfMatch(
+
+            @Param("sessionUuid")
+            String sessionUuid,
+
+            @Param("expectedOldRefreshTokenHash")
+            String expectedOldRefreshTokenHash,
+
+            @Param("newRefreshTokenHash")
+            String newRefreshTokenHash,
+
+            @Param("newRefreshExpiresAt")
+            LocalDateTime newRefreshExpiresAt,
+
+            @Param("now")
+            LocalDateTime now,
+
+            @Param("updatedByType")
+            UpdatedByType updatedByType,
+
+            @Param("updatedById")
+            UUID updatedById
+    );
 }

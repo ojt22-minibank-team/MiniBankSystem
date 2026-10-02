@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.UUID;
 
+import org.springframework.mail.MailException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,38 +19,37 @@ import com.corebanking.dto.CusOtpVerifyResponse;
 import com.corebanking.dto.CusRefreshTokenRequest;
 import com.corebanking.dto.CusTokenResponse;
 import com.corebanking.entity.Accounts;
+import com.corebanking.entity.AuditLogs;
 import com.corebanking.entity.AuthSessions;
 import com.corebanking.entity.CustomerCredentials;
 import com.corebanking.entity.Customers;
 import com.corebanking.entity.JwtRevokedTokens;
 import com.corebanking.entity.LoginAttempts;
 import com.corebanking.entity.OtpChallenges;
+import com.corebanking.entity.enums.ActorType;
 import com.corebanking.entity.enums.CustomerStatus;
 import com.corebanking.entity.enums.DeliveryChannel;
 import com.corebanking.entity.enums.OtpPurpose;
 import com.corebanking.entity.enums.OtpStatus;
 import com.corebanking.entity.enums.SessionSubjectType;
+import com.corebanking.entity.enums.UpdatedByType;
 import com.corebanking.exception.CusAccountLockedException;
 import com.corebanking.exception.CusAuthenticationException;
+import com.corebanking.exception.CusEmailException;
 import com.corebanking.exception.CusOtpException;
 import com.corebanking.exception.CusOtpResendLimitException;
+import com.corebanking.exception.CusSessionExpiredException;
 import com.corebanking.repository.CusAccountsRepository;
+import com.corebanking.repository.CusAuditLogsRepository;
 import com.corebanking.repository.CusAuthSessionsRepository;
 import com.corebanking.repository.CusCredentialsRepository;
 import com.corebanking.repository.CusCustomerRepository;
 import com.corebanking.repository.CusJwtRevokedTokensRepository;
 import com.corebanking.repository.CusLoginAttemptsRepository;
 import com.corebanking.repository.CusOtpChallengesRepository;
-import com.corebanking.exception.CusEmailException;
-import org.springframework.mail.MailException;
+
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
-import com.corebanking.entity.AuditLogs;
-
-import com.corebanking.entity.enums.ActorType;
-import com.corebanking.entity.enums.UpdatedByType;
-
-import com.corebanking.repository.CusAuditLogsRepository;
 @Service
 @RequiredArgsConstructor
 public class CusAuthService {
@@ -1722,123 +1722,228 @@ public class CusAuthService {
      );
  }
  
- @Transactional
- public CusTokenResponse refreshToken(
-	        CusRefreshTokenRequest request) {
+//=========================================================
+//REFRESH TOKEN - ATOMIC ROTATION
+//=========================================================
 
-	    if (request == null
-	            || request.getRefreshToken() == null
-	            || request.getRefreshToken().isBlank()) {
+ @Transactional(
+	        noRollbackFor = CusSessionExpiredException.class
+	)
+public CusTokenResponse refreshToken(
+      CusRefreshTokenRequest request) {
 
-	        throw new RuntimeException(
-	                "Refresh token is required."
-	        );
-	    }
+  // =====================================================
+  // 1. REQUEST VALIDATION
+  // =====================================================
 
+  if (request == null
+          || request.getRefreshToken() == null
+          || request.getRefreshToken().isBlank()) {
 
-	    String oldRefreshToken =
-	            request.getRefreshToken()
-	                    .trim();
-
-
-	    // 1. JWT verify
-	    Claims claims =
-	            cusJwtService.getClaims(
-	                    oldRefreshToken
-	            );
+      throw new CusAuthenticationException(
+              "Refresh token is required."
+      );
+  }
 
 
-	    // 2. Session + refresh hash verify
-	    AuthSessions session =
-	            cusSessionService
-	                    .validateRefreshSession(
-	                            claims,
-	                            oldRefreshToken
-	                    );
+  String oldRefreshToken =
+          request.getRefreshToken()
+                  .trim();
 
 
-	    Customers customer =
-	            session.getCustomer();
+  // =====================================================
+  // 2. VERIFY REFRESH JWT
+  // =====================================================
+
+  Claims claims =
+          cusJwtService.getClaims(
+                  oldRefreshToken
+          );
 
 
-	    CustomerCredentials credentials =
-	            credentialsRepository
-	                    .findById(
-	                            customer.getCustomerId()
-	                    )
-	                    .orElseThrow(() ->
-	                            new RuntimeException(
-	                                    "Customer credentials not found."
-	                            )
-	                    );
+  // =====================================================
+  // 3. VALIDATE SESSION + OLD REFRESH HASH
+  // =====================================================
+  //
+  // ဒီ method က validation ပဲလုပ်တယ်.
+  // DB refresh hash ကို ဒီနေရာမှာ မပြောင်းသေးဘူး.
+  // =====================================================
+
+  AuthSessions session =
+          cusSessionService
+                  .validateRefreshSession(
+                          claims,
+                          oldRefreshToken
+                  );
 
 
-	    // 3. New Access Token
-	    String newAccessToken =
-	            cusJwtService.generateAccessToken(
-	                    customer.getCustomerId(),
-	                    session.getSessionUuid(),
-	                    credentials.getTokenVersion()
-	            );
+  // =====================================================
+  // 4. GET CUSTOMER
+  // =====================================================
+
+  Customers customer =
+          session.getCustomer();
 
 
-	    // 4. Rotate Refresh Token
-	    String newRefreshToken =
-	            cusJwtService.generateRefreshToken(
-	                    customer.getCustomerId(),
-	                    session.getSessionUuid(),
-	                    credentials.getTokenVersion()
-	            );
+  if (customer == null
+          || customer.getCustomerId() == null) {
+
+      throw new CusAuthenticationException(
+              "Customer session is invalid."
+      );
+  }
 
 
-	    // 5. Store NEW refresh hash
-	    session.setRefreshTokenHash(
-	            cusSessionService.hashRefreshToken(
-	                    newRefreshToken
-	            )
-	    );
+  // =====================================================
+  // 5. GET CURRENT CUSTOMER CREDENTIALS
+  // =====================================================
 
-	    session.setRefreshExpiresAt(
-	            LocalDateTime.now()
-	                    .plusDays(7)
-	    );
-
-	    session.setLastSeenAt(
-	            LocalDateTime.now()
-	    );
-
-        session.setUpdatedByType(
-                UpdatedByType.CUSTOMER
-        );
-
-        session.setUpdatedById(
-                customer.getCustomerId()
-        );
+  CustomerCredentials credentials =
+          credentialsRepository
+                  .findById(
+                          customer.getCustomerId()
+                  )
+                  .orElseThrow(() ->
+                          new CusAuthenticationException(
+                                  "Customer credentials not found."
+                          )
+                  );
 
 
-	    authSessionsRepository.save(
-	            session
-	    );
+  // =====================================================
+  // 6. GENERATE NEW ACCESS TOKEN
+  // =====================================================
+
+  String newAccessToken =
+          cusJwtService.generateAccessToken(
+                  customer.getCustomerId(),
+                  session.getSessionUuid(),
+                  credentials.getTokenVersion()
+          );
 
 
-        saveAuditLog(
-                ActorType.CUSTOMER,
-                customer,
-                "TOKEN_REFRESHED",
-                "AUTH_SESSION",
-                session.getSessionUuid(),
-                null,
-                "{\"status\":\"ACTIVE\",\"refreshTokenRotated\":true}"
-        );
+  // =====================================================
+  // 7. GENERATE NEW REFRESH TOKEN
+  // =====================================================
+
+  String newRefreshToken =
+          cusJwtService.generateRefreshToken(
+                  customer.getCustomerId(),
+                  session.getSessionUuid(),
+                  credentials.getTokenVersion()
+          );
 
 
-	    return new CusTokenResponse(
-	            true,
-	            "Token refreshed successfully.",
-	            newAccessToken,
-	            newRefreshToken
-	    );
-	}
+  // =====================================================
+  // 8. HASH OLD REFRESH TOKEN
+  // =====================================================
+
+  String oldRefreshTokenHash =
+          cusSessionService.hashRefreshToken(
+                  oldRefreshToken
+          );
+
+
+  // =====================================================
+  // 9. HASH NEW REFRESH TOKEN
+  // =====================================================
+
+  String newRefreshTokenHash =
+          cusSessionService.hashRefreshToken(
+                  newRefreshToken
+          );
+
+
+  LocalDateTime now =
+          LocalDateTime.now();
+
+
+  LocalDateTime newRefreshExpiresAt =
+          now.plusDays(7);
+
+
+  // =====================================================
+  // 10. ATOMIC REFRESH TOKEN ROTATION
+  // =====================================================
+  //
+  // DB မှာ:
+  //
+  // WHERE sessionUuid = ?
+  // AND refreshTokenHash = oldHash
+  // AND revokedAt IS NULL
+  //
+  // ဖြစ်တဲ့ row ကိုပဲ update လုပ်မယ်.
+  //
+  // Concurrent requests ၂ ခုလာရင်:
+  //
+  // Request A -> updatedRows = 1
+  // Request B -> updatedRows = 0
+  //
+  // =====================================================
+
+  int updatedRows =
+          authSessionsRepository
+                  .rotateRefreshTokenIfMatch(
+
+                          session.getSessionUuid(),
+
+                          oldRefreshTokenHash,
+
+                          newRefreshTokenHash,
+
+                          newRefreshExpiresAt,
+
+                          now,
+
+                          UpdatedByType.CUSTOMER,
+
+                          customer.getCustomerId()
+                  );
+
+
+  // =====================================================
+  // 11. OLD REFRESH TOKEN ALREADY USED?
+  // =====================================================
+
+  if (updatedRows != 1) {
+
+      throw new CusAuthenticationException(
+              "Refresh token has already been used or is no longer valid."
+      );
+  }
+
+
+  // =====================================================
+  // 12. AUDIT SUCCESSFUL ROTATION
+  // =====================================================
+  //
+  // updatedRows == 1 ဖြစ်တဲ့ winner request တစ်ခုတည်း
+  // ဒီ audit ကိုရေးနိုင်မယ်.
+  // =====================================================
+
+  saveAuditLog(
+          ActorType.CUSTOMER,
+          customer,
+          "TOKEN_REFRESHED",
+          "AUTH_SESSION",
+          session.getSessionUuid(),
+          null,
+          "{\"status\":\"ACTIVE\","
+                  + "\"refreshTokenRotated\":true}"
+  );
+
+
+  // =====================================================
+  // 13. RETURN NEW TOKENS
+  // =====================================================
+
+  return new CusTokenResponse(
+          true,
+          "Token refreshed successfully.",
+          newAccessToken,
+          newRefreshToken
+  );
+}
     // =========================================================
     // 14. PASSWORD POLICY HELPER
     // =========================================================
@@ -1972,7 +2077,9 @@ public class CusAuthService {
  // CUSTOMER LOGOUT
  // =========================================================
 
- @Transactional
+    @Transactional(
+            noRollbackFor = CusSessionExpiredException.class
+    )
  public void logout(
          String authorizationHeader) {
 
@@ -2050,10 +2157,10 @@ public class CusAuthService {
      // =====================================================
 
      AuthSessions session =
-             cusSessionService
-                     .validateAccessSession(
-                             claims
-                     );
+    	        cusSessionService
+    	                .validateAccessSessionForLogout(
+    	                        claims
+    	                );
 
 
      Customers customer =

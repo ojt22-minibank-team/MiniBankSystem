@@ -46,13 +46,11 @@ public class CusSessionService {
     // =========================================================
     // 1. VALIDATE ACCESS TOKEN SESSION
     // =========================================================
-
     @Transactional(
             noRollbackFor = CusSessionExpiredException.class
     )
     public AuthSessions validateAccessSession(
             Claims claims) {
-
 
         AuthSessions session =
                 validateBaseSession(
@@ -61,20 +59,12 @@ public class CusSessionService {
                 );
 
 
-        // =====================================================
-        // VALID ACCESS REQUEST
-        // =====================================================
-        //
-        // Protected API ကို valid token နဲ့ခေါ်ထားတာဖြစ်လို့
-        // ဒီအချိန်ကို last activity အဖြစ် update လုပ်မယ်.
-        // =====================================================
-
+        // Valid protected API request
+        // => customer activity ဖြစ်လို့ lastSeenAt update
         session.setLastSeenAt(
                 LocalDateTime.now()
         );
 
-
-        // ဒီ change ကို Customer action လို့ mark လုပ်မယ်.
 
         markSessionUpdatedByCustomer(
                 session
@@ -171,23 +161,11 @@ public class CusSessionService {
         }
 
 
-        // =====================================================
-        // VALID REFRESH REQUEST = ACTIVITY
-        // =====================================================
+        // ဒီ method ရဲ့တာဝန်က validate ပဲ
+        // DB update / rotation ကို CusAuthService မှာ
+        // atomic update နဲ့လုပ်မယ်.
 
-        session.setLastSeenAt(
-                LocalDateTime.now()
-        );
-
-
-        markSessionUpdatedByCustomer(
-                session
-        );
-
-
-        return authSessionsRepository.save(
-                session
-        );
+        return session;
     }
 
 
@@ -869,5 +847,16 @@ public class CusSessionService {
                     ex
             );
         }
+    }
+    @Transactional(
+            noRollbackFor = CusSessionExpiredException.class
+    )
+    public AuthSessions validateAccessSessionForLogout(
+            Claims claims) {
+
+        return validateBaseSession(
+                claims,
+                "ACCESS"
+        );
     }
 }
