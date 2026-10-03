@@ -86,4 +86,31 @@ public class CusEmailService {
                 message
         );
     }
+    
+    public void sendPinResetOtp(
+            String toEmail,
+            String otp) {
+
+        SimpleMailMessage message =
+                new SimpleMailMessage();
+
+        message.setTo(
+                toEmail
+        );
+
+        message.setSubject(
+                "Online Banking Transaction PIN Reset OTP"
+        );
+
+        message.setText(
+                "Your Transaction PIN reset OTP code is: "
+                        + otp
+                        + "\n\nThis OTP will expire in 5 minutes."
+                        + "\n\nDo not share this OTP with anyone."
+        );
+
+        mailSender.send(
+                message
+        );
+    }
 }

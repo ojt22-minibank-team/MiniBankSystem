@@ -1,11 +1,12 @@
 package com.corebanking.service;
 
 import java.security.SecureRandom;
+import com.corebanking.exception.CusValidationException;
 import com.corebanking.dto.CusPasswordResetConfirmRequest;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.UUID;
-
+import com.corebanking.dto.CusPinResetStartResponse;
 import org.springframework.mail.MailException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -52,7 +53,7 @@ import com.corebanking.repository.CusCustomerRepository;
 import com.corebanking.repository.CusJwtRevokedTokensRepository;
 import com.corebanking.repository.CusLoginAttemptsRepository;
 import com.corebanking.repository.CusOtpChallengesRepository;
-import com.corebanking.dto.CusPasswordResetConfirmRequest;
+
 
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
@@ -118,7 +119,7 @@ public class CusAuthService {
                 || request.getPassword() == null
                 || request.getPassword().isBlank()) {
 
-            throw new RuntimeException(
+            throw new CusValidationException(
                     "Login identifier and password are required."
             );
         }
@@ -175,7 +176,7 @@ public class CusAuthService {
                 credentialsRepository
                         .findById(customer.getCustomerId())
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new CusAuthenticationException(
                                         "Invalid login credentials."
                                 )
                         );
@@ -328,7 +329,7 @@ public class CusAuthService {
                                 )
 
                                 .orElseThrow(() ->
-                                        new RuntimeException(
+                                        new CusAuthenticationException(
                                                 "Invalid login credentials."
                                         )
                                 )
@@ -346,7 +347,7 @@ public class CusAuthService {
         if (customer.getStatus()
                 != CustomerStatus.ACTIVE) {
 
-            throw new RuntimeException(
+            throw new CusAuthenticationException(
                     "Customer account is not active."
             );
         }
@@ -551,7 +552,7 @@ public class CusAuthService {
         if (customer.getEmail() == null
                 || customer.getEmail().isBlank()) {
 
-            throw new RuntimeException(
+            throw new CusAuthenticationException(
                     "No registered email address is available for MFA."
             );
         }
@@ -1119,7 +1120,7 @@ public class CusAuthService {
                 || request.getChallengeGroupId() == null
                 || request.getChallengeGroupId().isBlank()) {
 
-            throw new RuntimeException(
+            throw new CusOtpException(
                     "OTP challenge information is required."
             );
         }
@@ -1136,7 +1137,7 @@ public class CusAuthService {
                                 OtpPurpose.LOGIN
                         )
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new CusOtpException(
                                         "Invalid OTP challenge."
                                 )
                         );
@@ -1146,7 +1147,7 @@ public class CusAuthService {
         if (latestOtp.getStatus()
                 == OtpStatus.CONSUMED) {
 
-            throw new RuntimeException(
+            throw new CusOtpException(
                     "OTP has already been verified."
             );
         }
@@ -1170,7 +1171,7 @@ public class CusAuthService {
         if (customer.getEmail() == null
                 || customer.getEmail().isBlank()) {
 
-            throw new RuntimeException(
+            throw new CusAuthenticationException(
                     "No registered email address is available for MFA."
             );
         }
@@ -1358,7 +1359,7 @@ public class CusAuthService {
              || request.getLoginIdentifier() == null
              || request.getLoginIdentifier().isBlank()) {
 
-         throw new RuntimeException(
+         throw new CusValidationException(
                  "Customer ID or Account Number is required."
          );
      }
@@ -1395,7 +1396,7 @@ public class CusAuthService {
      if (customer.getEmail() == null
              || customer.getEmail().isBlank()) {
 
-         throw new RuntimeException(
+         throw new CusValidationException(
                  "No registered email address is available for password reset."
          );
      }
@@ -1623,6 +1624,698 @@ public class CusAuthService {
      );
  }
  
+//=========================================================
+//TRANSACTION PIN RESET - REQUEST OTP
+//=========================================================
+
+@Transactional(
+      noRollbackFor = CusEmailException.class
+)
+public CusPinResetStartResponse requestPinReset(
+      String authorizationHeader) {
+
+  // =====================================================
+  // 1. ACCESS TOKEN REQUIRED
+  // =====================================================
+
+  if (authorizationHeader == null
+          || !authorizationHeader.startsWith("Bearer ")) {
+
+      throw new CusAuthenticationException(
+              "Access token is required."
+      );
+  }
+
+
+  String accessToken =
+          authorizationHeader
+                  .substring(7)
+                  .trim();
+
+
+  // =====================================================
+  // 2. READ JWT
+  // =====================================================
+
+  Claims claims =
+          cusJwtService.getClaims(
+                  accessToken
+          );
+
+
+  // =====================================================
+  // 3. TOKEN TYPE MUST BE ACCESS
+  // =====================================================
+
+  String tokenType =
+          claims.get(
+                  "tokenType",
+                  String.class
+          );
+
+
+  if (!"ACCESS".equals(tokenType)) {
+
+      throw new CusAuthenticationException(
+              "Invalid access token."
+      );
+  }
+
+
+  // =====================================================
+  // 4. VALIDATE ACTIVE SESSION
+  // =====================================================
+
+  AuthSessions session =
+          cusSessionService
+                  .validateAccessSession(
+                          claims
+                  );
+
+
+  Customers customer =
+          session.getCustomer();
+
+
+  if (customer == null
+          || customer.getCustomerId() == null) {
+
+      throw new CusSessionExpiredException(
+              "Customer session is invalid."
+      );
+  }
+
+
+  // =====================================================
+  // 5. CUSTOMER MUST BE ACTIVE
+  // =====================================================
+
+  validateCustomerStatus(
+          customer
+  );
+
+
+  // =====================================================
+  // 6. REGISTERED EMAIL REQUIRED
+  // =====================================================
+
+  if (customer.getEmail() == null
+          || customer.getEmail().isBlank()) {
+
+      throw new CusEmailException(
+              "No registered email address is available for PIN reset."
+      );
+  }
+
+
+  // =====================================================
+  // 7. EXPIRE OLD ACTIVE PIN RESET OTPs
+  // =====================================================
+
+  var activePinResetOtps =
+          otpChallengesRepository
+                  .findByCustomerAndPurposeAndStatus(
+                          customer,
+                          OtpPurpose.PIN_RESET,
+                          OtpStatus.ACTIVE
+                  );
+
+
+  for (OtpChallenges otp : activePinResetOtps) {
+
+      otp.setStatus(
+              OtpStatus.EXPIRED
+      );
+
+      markOtpUpdatedByCustomer(
+              otp
+      );
+  }
+
+
+  otpChallengesRepository.saveAll(
+          activePinResetOtps
+  );
+
+
+  // =====================================================
+  // 8. GENERATE OTP
+  // =====================================================
+
+  String rawOtp =
+          generateOtp();
+
+
+  String otpHash =
+          passwordEncoder.encode(
+                  rawOtp
+          );
+
+
+  String challengeGroupId =
+          UUID.randomUUID()
+                  .toString();
+
+
+  LocalDateTime now =
+          LocalDateTime.now();
+
+
+  // =====================================================
+  // 9. CREATE PIN RESET OTP
+  // =====================================================
+
+  OtpChallenges otpChallenge =
+          OtpChallenges.builder()
+
+                  .customer(
+                          customer
+                  )
+
+                  .purpose(
+                          OtpPurpose.PIN_RESET
+                  )
+
+                  .otpHash(
+                          otpHash
+                  )
+
+                  .deliveryChannel(
+                          DeliveryChannel.EMAIL
+                  )
+
+                  .destinationMasked(
+                          maskEmail(
+                                  customer.getEmail()
+                          )
+                  )
+
+                  .attemptCount(0)
+
+                  .maxAttempts(
+                          MAX_OTP_ATTEMPTS
+                  )
+
+                  .expiresAt(
+                          now.plusMinutes(
+                                  OTP_EXPIRY_MINUTES
+                          )
+                  )
+
+                  .status(
+                          OtpStatus.ACTIVE
+                  )
+
+                  .challengeGroupId(
+                          challengeGroupId
+                  )
+
+                  .lastSentAt(
+                          now
+                  )
+
+                  .maxResendAttempts(
+                          MAX_OTP_RESENDS
+                  )
+
+                  .resendNo(0)
+
+                  .updatedByType(
+                          UpdatedByType.CUSTOMER
+                  )
+
+                  .updatedById(
+                          customer.getCustomerId()
+                  )
+
+                  .build();
+
+
+  OtpChallenges savedOtp =
+          otpChallengesRepository.save(
+                  otpChallenge
+          );
+
+
+  // =====================================================
+  // 10. SEND EMAIL
+  // =====================================================
+
+  try {
+
+      cusEmailService.sendPinResetOtp(
+              customer.getEmail(),
+              rawOtp
+      );
+
+
+      saveAuditLog(
+              ActorType.CUSTOMER,
+              customer,
+              "PIN_RESET_OTP_SENT",
+              "OTP_CHALLENGE",
+              String.valueOf(
+                      savedOtp.getOtpId()
+              ),
+              null,
+              "{\"purpose\":\"PIN_RESET\","
+                      + "\"status\":\"ACTIVE\","
+                      + "\"resendNo\":0}"
+      );
+
+
+  } catch (MailException ex) {
+
+      savedOtp.setStatus(
+              OtpStatus.EXPIRED
+      );
+
+
+      markOtpUpdatedBySystem(
+              savedOtp
+      );
+
+
+      otpChallengesRepository.save(
+              savedOtp
+      );
+
+
+      saveAuditLog(
+              ActorType.SYSTEM,
+              null,
+              "PIN_RESET_OTP_SEND_FAILED",
+              "OTP_CHALLENGE",
+              String.valueOf(
+                      savedOtp.getOtpId()
+              ),
+              "{\"status\":\"ACTIVE\"}",
+              "{\"status\":\"EXPIRED\","
+                      + "\"reason\":\"EMAIL_SEND_FAILED\"}"
+      );
+
+
+      throw new CusEmailException(
+              "Unable to send PIN reset OTP email. Please try again.",
+              ex
+      );
+  }
+
+
+  // =====================================================
+  // 11. RESPONSE
+  // =====================================================
+
+  return new CusPinResetStartResponse(
+          true,
+          "Transaction PIN reset OTP has been sent to your registered email.",
+          savedOtp.getChallengeGroupId(),
+          savedOtp.getDestinationMasked()
+  );
+}
+
+
+//=========================================================
+//TRANSACTION PIN RESET - RESEND OTP
+//=========================================================
+
+@Transactional(
+     noRollbackFor = CusEmailException.class
+)
+public CusOtpResendResponse resendPinResetOtp(
+     String authorizationHeader,
+     CusOtpResendRequest request) {
+
+ // =====================================================
+ // 1. ACCESS TOKEN REQUIRED
+ // =====================================================
+
+ if (authorizationHeader == null
+         || !authorizationHeader.startsWith("Bearer ")) {
+
+     throw new CusAuthenticationException(
+             "Access token is required."
+     );
+ }
+
+
+ String accessToken =
+         authorizationHeader
+                 .substring(7)
+                 .trim();
+
+
+ Claims claims =
+         cusJwtService.getClaims(
+                 accessToken
+         );
+
+
+ // =====================================================
+ // 2. TOKEN TYPE MUST BE ACCESS
+ // =====================================================
+
+ String tokenType =
+         claims.get(
+                 "tokenType",
+                 String.class
+         );
+
+
+ if (!"ACCESS".equals(tokenType)) {
+
+     throw new CusAuthenticationException(
+             "Invalid access token."
+     );
+ }
+
+
+ // =====================================================
+ // 3. VALIDATE CURRENT SESSION
+ // =====================================================
+
+ AuthSessions session =
+         cusSessionService
+                 .validateAccessSession(
+                         claims
+                 );
+
+
+ Customers authenticatedCustomer =
+         session.getCustomer();
+
+
+ if (authenticatedCustomer == null
+         || authenticatedCustomer.getCustomerId() == null) {
+
+     throw new CusSessionExpiredException(
+             "Customer session is invalid."
+     );
+ }
+
+
+ // =====================================================
+ // 4. REQUEST VALIDATION
+ // =====================================================
+
+ if (request == null
+         || request.getChallengeGroupId() == null
+         || request.getChallengeGroupId().isBlank()) {
+
+     throw new CusOtpException(
+             "PIN reset challenge is required."
+     );
+ }
+
+
+ String challengeGroupId =
+         request.getChallengeGroupId()
+                 .trim();
+
+
+ // =====================================================
+ // 5. FIND LATEST PIN RESET OTP
+ // =====================================================
+
+ OtpChallenges latestOtp =
+         otpChallengesRepository
+                 .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
+                         challengeGroupId,
+                         OtpPurpose.PIN_RESET
+                 )
+                 .orElseThrow(() ->
+                         new CusOtpException(
+                                 "Invalid PIN reset challenge."
+                         )
+                 );
+
+
+ // =====================================================
+ // 6. CHALLENGE MUST BELONG TO CURRENT CUSTOMER
+ // =====================================================
+
+ if (latestOtp.getCustomer() == null
+         || !latestOtp
+                 .getCustomer()
+                 .getCustomerId()
+                 .equals(
+                         authenticatedCustomer
+                                 .getCustomerId()
+                 )) {
+
+     throw new CusOtpException(
+             "Invalid PIN reset challenge."
+     );
+ }
+
+
+ // =====================================================
+ // 7. ALREADY VERIFIED?
+ // =====================================================
+
+ if (latestOtp.getStatus()
+         == OtpStatus.CONSUMED) {
+
+     throw new CusOtpException(
+             "PIN reset OTP has already been verified."
+     );
+ }
+
+
+ // =====================================================
+ // 8. RESEND LIMIT
+ // =====================================================
+
+ if (latestOtp.getResendNo()
+         >= latestOtp.getMaxResendAttempts()) {
+
+     throw new CusOtpResendLimitException(
+             "Maximum OTP resend attempts reached. "
+                     + "Please restart PIN reset."
+     );
+ }
+
+
+ Customers customer =
+         latestOtp.getCustomer();
+
+
+ validateCustomerStatus(
+         customer
+ );
+
+
+ // =====================================================
+ // 9. EMAIL REQUIRED
+ // =====================================================
+
+ if (customer.getEmail() == null
+         || customer.getEmail().isBlank()) {
+
+     throw new CusEmailException(
+             "No registered email address is available for PIN reset."
+     );
+ }
+
+
+ // =====================================================
+ // 10. EXPIRE PREVIOUS OTP
+ // =====================================================
+
+ if (latestOtp.getStatus()
+         == OtpStatus.ACTIVE) {
+
+     latestOtp.setStatus(
+             OtpStatus.EXPIRED
+     );
+
+     markOtpUpdatedByCustomer(
+             latestOtp
+     );
+
+     otpChallengesRepository.save(
+             latestOtp
+     );
+ }
+
+
+ // =====================================================
+ // 11. GENERATE NEW OTP
+ // =====================================================
+
+ String rawOtp =
+         generateOtp();
+
+
+ String otpHash =
+         passwordEncoder.encode(
+                 rawOtp
+         );
+
+
+ LocalDateTime now =
+         LocalDateTime.now();
+
+
+ int newResendNo =
+         latestOtp.getResendNo() + 1;
+
+
+ // =====================================================
+ // 12. CREATE NEW OTP
+ // Same challengeGroupId
+ // =====================================================
+
+ OtpChallenges newOtp =
+         OtpChallenges.builder()
+
+                 .customer(
+                         customer
+                 )
+
+                 .purpose(
+                         OtpPurpose.PIN_RESET
+                 )
+
+                 .otpHash(
+                         otpHash
+                 )
+
+                 .deliveryChannel(
+                         DeliveryChannel.EMAIL
+                 )
+
+                 .destinationMasked(
+                         maskEmail(
+                                 customer.getEmail()
+                         )
+                 )
+
+                 .attemptCount(0)
+
+                 .maxAttempts(
+                         MAX_OTP_ATTEMPTS
+                 )
+
+                 .expiresAt(
+                         now.plusMinutes(
+                                 OTP_EXPIRY_MINUTES
+                         )
+                 )
+
+                 .status(
+                         OtpStatus.ACTIVE
+                 )
+
+                 .challengeGroupId(
+                         challengeGroupId
+                 )
+
+                 .lastSentAt(
+                         now
+                 )
+
+                 .maxResendAttempts(
+                         MAX_OTP_RESENDS
+                 )
+
+                 .resendNo(
+                         newResendNo
+                 )
+
+                 .updatedByType(
+                         UpdatedByType.CUSTOMER
+                 )
+
+                 .updatedById(
+                         customer.getCustomerId()
+                 )
+
+                 .build();
+
+
+ OtpChallenges savedOtp =
+         otpChallengesRepository.save(
+                 newOtp
+         );
+
+
+ // =====================================================
+ // 13. SEND EMAIL
+ // =====================================================
+
+ try {
+
+     cusEmailService.sendPinResetOtp(
+             customer.getEmail(),
+             rawOtp
+     );
+
+
+     saveAuditLog(
+             ActorType.CUSTOMER,
+             customer,
+             "PIN_RESET_OTP_RESENT",
+             "OTP_CHALLENGE",
+             String.valueOf(
+                     savedOtp.getOtpId()
+             ),
+             null,
+             "{\"purpose\":\"PIN_RESET\","
+                     + "\"status\":\"ACTIVE\","
+                     + "\"resendNo\":"
+                     + savedOtp.getResendNo()
+                     + "}"
+     );
+
+
+ } catch (MailException ex) {
+
+     savedOtp.setStatus(
+             OtpStatus.EXPIRED
+     );
+
+
+     markOtpUpdatedBySystem(
+             savedOtp
+     );
+
+
+     otpChallengesRepository.save(
+             savedOtp
+     );
+
+
+     saveAuditLog(
+             ActorType.SYSTEM,
+             null,
+             "PIN_RESET_OTP_RESEND_FAILED",
+             "OTP_CHALLENGE",
+             String.valueOf(
+                     savedOtp.getOtpId()
+             ),
+             "{\"status\":\"ACTIVE\"}",
+             "{\"status\":\"EXPIRED\","
+                     + "\"reason\":\"EMAIL_SEND_FAILED\"}"
+     );
+
+
+     throw new CusEmailException(
+             "Unable to resend PIN reset OTP. Please try again.",
+             ex
+     );
+ }
+
+
+ return new CusOtpResendResponse(
+         true,
+         "A new Transaction PIN reset OTP has been sent "
+                 + "to your registered email.",
+         savedOtp.getChallengeGroupId(),
+         savedOtp.getDestinationMasked(),
+         savedOtp.getResendNo()
+ );
+}
 //=========================================================
 //PASSWORD RESET - RESEND OTP
 //=========================================================
@@ -2262,7 +2955,7 @@ public void resetPassword(
          || request.getConfirmPassword() == null
          || request.getConfirmPassword().isBlank()) {
 
-     throw new RuntimeException(
+     throw new CusValidationException(
              "All password reset fields are required."
      );
  }
@@ -2286,7 +2979,7 @@ public void resetPassword(
  if (!newPassword.equals(
          confirmPassword)) {
 
-     throw new RuntimeException(
+     throw new CusValidationException(
              "New password and confirm password do not match."
      );
  }
@@ -2299,7 +2992,7 @@ public void resetPassword(
  if (!isValidPassword(
          newPassword)) {
 
-     throw new RuntimeException(
+     throw new CusValidationException(
              "Password must be between 8 and 10 characters long, "
                      + "including at least one uppercase letter, "
                      + "one lowercase letter, one number, "
@@ -2393,7 +3086,7 @@ public void resetPassword(
          newPassword,
          credentials.getPasswordHash())) {
 
-     throw new RuntimeException(
+     throw new CusValidationException(
              "New password must be different from the current password."
      );
  }
@@ -2578,7 +3271,7 @@ public void resetPassword(
                 || confirmPassword == null
                 || confirmPassword.isBlank()) {
 
-            throw new RuntimeException(
+            throw new CusValidationException(
                     "All password setup fields are required."
             );
         }
@@ -2586,7 +3279,7 @@ public void resetPassword(
         // 2. New password = Confirm password ?
         if (!newPassword.equals(confirmPassword)) {
 
-            throw new RuntimeException(
+            throw new CusValidationException(
                     "New password and confirm password do not match."
             );
         }
@@ -2612,7 +3305,7 @@ public void resetPassword(
         // 5. First-login password change လိုသေးလား
         if (!credentials.isMustChangePassword()) {
 
-            throw new RuntimeException(
+            throw new CusValidationException(
                     "Password change is not required."
             );
         }
@@ -2622,7 +3315,7 @@ public void resetPassword(
                 newPassword,
                 credentials.getPasswordHash())) {
 
-            throw new RuntimeException(
+            throw new CusValidationException(
                     "New password must be different from the temporary password."
             );
         }
@@ -2630,7 +3323,7 @@ public void resetPassword(
         // 7. Password policy
         if (!isValidPassword(newPassword)) {
 
-        	throw new RuntimeException(
+        	throw new CusValidationException(
         	        "Password must contain between 8 and 10 characters, "
         	                + "including at least one uppercase letter, "
         	                + "one lowercase letter, one number, "
@@ -2698,7 +3391,7 @@ public void resetPassword(
                 || confirmPin == null
                 || confirmPin.isBlank()) {
 
-            throw new RuntimeException(
+            throw new CusValidationException(
                     "All PIN setup fields are required."
             );
         }
@@ -2710,7 +3403,7 @@ public void resetPassword(
 
         if (!pin.equals(confirmPin)) {
 
-            throw new RuntimeException(
+            throw new CusValidationException(
                     "PIN and confirm PIN do not match."
             );
         }
@@ -2722,7 +3415,7 @@ public void resetPassword(
 
         if (!pin.matches("\\d{6}")) {
 
-            throw new RuntimeException(
+            throw new CusValidationException(
                     "Transaction PIN must be exactly 6 digits."
             );
         }
@@ -2760,7 +3453,7 @@ public void resetPassword(
 
         if (credentials.isMustChangePassword()) {
 
-            throw new RuntimeException(
+            throw new CusValidationException(
                     "Please change the temporary password before setting the transaction PIN."
             );
         }
@@ -2775,7 +3468,7 @@ public void resetPassword(
                         .getTransactionPinHash()
                         .isBlank()) {
 
-            throw new RuntimeException(
+            throw new CusValidationException(
                     "Transaction PIN has already been set."
             );
         }
@@ -3311,7 +4004,7 @@ private boolean isValidPassword(
         if (challengeGroupId == null
                 || challengeGroupId.isBlank()) {
 
-            throw new RuntimeException(
+            throw new CusOtpException(
                     "OTP challenge information is required."
             );
         }
@@ -3323,7 +4016,7 @@ private boolean isValidPassword(
                                 OtpPurpose.LOGIN
                         )
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new CusOtpException(
                                         "Invalid OTP challenge."
                                 )
                         );
@@ -3331,7 +4024,7 @@ private boolean isValidPassword(
         if (otpChallenge.getStatus()
                 != OtpStatus.CONSUMED) {
 
-            throw new RuntimeException(
+            throw new CusOtpException(
                     "OTP verification is required."
             );
         }
@@ -3342,7 +4035,7 @@ private boolean isValidPassword(
                         .plusMinutes(10)
                         .isBefore(LocalDateTime.now())) {
 
-            throw new RuntimeException(
+            throw new CusSessionExpiredException(
                     "First-login setup session has expired. Please login again."
             );
         }
@@ -3367,7 +4060,7 @@ private boolean isValidPassword(
      if (authorizationHeader == null
              || !authorizationHeader.startsWith("Bearer ")) {
 
-         throw new RuntimeException(
+         throw new CusAuthenticationException(
                  "Access token is required."
          );
      }
@@ -3406,7 +4099,7 @@ private boolean isValidPassword(
 
      if (!"ACCESS".equals(tokenType)) {
 
-         throw new RuntimeException(
+         throw new CusAuthenticationException(
                  "Invalid access token."
          );
      }
@@ -3423,7 +4116,7 @@ private boolean isValidPassword(
      if (jti == null
              || jti.isBlank()) {
 
-         throw new RuntimeException(
+         throw new CusAuthenticationException(
                  "Invalid token ID."
          );
      }
@@ -3447,7 +4140,7 @@ private boolean isValidPassword(
      if (customer == null
              || customer.getCustomerId() == null) {
 
-         throw new RuntimeException(
+         throw new CusSessionExpiredException(
                  "Customer session is invalid."
          );
      }
