@@ -11,11 +11,6 @@ import lombok.Setter;
 @AllArgsConstructor
 public class CustomerProfileUpdateDTO {
 
-    private String email;
-
-    private String phone;
-
-    private String occupation;
 
     private String address;
 
@@ -25,7 +20,4 @@ public class CustomerProfileUpdateDTO {
 
     private String country;
 
-    private String companyPhone;
-
-    private String companyEmail;
 }
