@@ -1,60 +1,3 @@
-// import {
-//   createBrowserRouter,
-//   RouterProvider,
-// } from "react-router-dom";
-
-// import LoginPage from "../../features/auth/pages/LoginPage";
-// import OtpPage from "../../features/auth/pages/OtpPage";
-// import ChangePasswordPage from "../../features/auth/pages/ChangePasswordPage";
-// import SetupPinPage from "../../features/auth/pages/SetupPinPage";
-// import DashboardPage from "../../features/customer-account/dashboard/DashboardPage";
-// import MainLayout from "../../components/layout/MainLayout";
-// import MyAccountsPage from "../../features/customer-account/accounts/MyaccountPage";
-
-// const router = createBrowserRouter([
-//   {
-//     path: "/",
-//     element: <LoginPage />,
-//   },
-//   {
-//     path: "/login",
-//     element: <LoginPage />,
-//   },
-//   {
-//     path: "/otp",
-//     element: <OtpPage />,
-//   },
-//   {
-//     path: "/first-login/change-password",
-//     element: <ChangePasswordPage />,
-//   },
-//   {
-//     path: "/first-login/setup-pin",
-//     element: <SetupPinPage />,
-//   },
-// {
-//     element: <MainLayout />,
-//     children: [
-//       {
-//         path: "/dashboard",
-//         element: <DashboardPage />,
-//       },
-//     ],
-//   },
-
-//   {
-//   path: "/accounts",
-//   element: <MyAccountsPage />,
-// },
-// ]);
-
-// function AppRouterProvider() {
-//   return (
-//     <RouterProvider router={router} />
-//   );
-// }
-
-// export default AppRouterProvider;
 
 import {
   createBrowserRouter,
@@ -63,21 +6,39 @@ import {
 
 import ProtectedRoute from "../../features/auth/components/ProtectedRoute";
 
+// ======================================================
+// AUTH PAGES
+// ======================================================
+
 import LoginPage from "../../features/auth/pages/LoginPage";
 import OtpPage from "../../features/auth/pages/OtpPage";
 import ChangePasswordPage from "../../features/auth/pages/ChangePasswordPage";
 import SetupPinPage from "../../features/auth/pages/SetupPinPage";
+
+// Password Reset Pages
+import ForgotPasswordPage from "../../features/auth/pages/ForgotPasswordPage";
+import PasswordResetOtpPage from "../../features/auth/pages/PasswordResetOtpPage";
+import ResetPasswordPage from "../../features/auth/pages/ResetPasswordPage";
+
+
+// ======================================================
+// CUSTOMER PAGES
+// ======================================================
 
 import DashboardPage from "../../features/customer-account/dashboard/DashboardPage";
 import MainLayout from "../../components/layout/MainLayout";
 import MyAccountsPage from "../../features/customer-account/accounts/MyaccountPage";
 
 
+// ======================================================
+// ROUTER
+// ======================================================
+
 const router = createBrowserRouter([
 
-  // =========================================
+  // ====================================================
   // PUBLIC AUTH PAGES
-  // =========================================
+  // ====================================================
 
   {
     path: "/",
@@ -89,10 +50,20 @@ const router = createBrowserRouter([
     element: <LoginPage />,
   },
 
+
+  // ====================================================
+  // LOGIN OTP
+  // ====================================================
+
   {
     path: "/otp",
     element: <OtpPage />,
   },
+
+
+  // ====================================================
+  // FIRST LOGIN
+  // ====================================================
 
   {
     path: "/first-login/change-password",
@@ -105,9 +76,29 @@ const router = createBrowserRouter([
   },
 
 
-  // =========================================
+  // ====================================================
+  // FORGOT PASSWORD / PASSWORD RESET
+  // ====================================================
+
+  {
+    path: "/forgot-password",
+    element: <ForgotPasswordPage />,
+  },
+
+  {
+    path: "/password-reset/otp",
+    element: <PasswordResetOtpPage />,
+  },
+
+  {
+    path: "/password-reset/new-password",
+    element: <ResetPasswordPage />,
+  },
+
+
+  // ====================================================
   // PROTECTED CUSTOMER PAGES
-  // =========================================
+  // ====================================================
 
   {
     element: <ProtectedRoute />,
@@ -140,6 +131,10 @@ const router = createBrowserRouter([
 ]);
 
 
+// ======================================================
+// ROUTER PROVIDER
+// ======================================================
+
 function AppRouterProvider() {
 
   return (
@@ -147,6 +142,5 @@ function AppRouterProvider() {
   );
 
 }
-
 
 export default AppRouterProvider;
