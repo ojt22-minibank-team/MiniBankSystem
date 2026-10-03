@@ -94,19 +94,7 @@ export default function DashboardPage() {
     </p>
   </div>
 
-  {/* CTA Action */}
-  <div className="mt-2 sm:mt-0">
-    <Link
-      to="/transfer"
-      className="group inline-flex h-11 items-center justify-center gap-2.5 rounded-lg bg-[#0878E8] px-6 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-[#0668CB] hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0878E8]"
-    >
-      <Send 
-        size={16} 
-        className="transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" 
-      />
-      Transfer Money
-    </Link>
-  </div>
+
 
 </section>
       {/* =====================================================
@@ -177,14 +165,7 @@ export default function DashboardPage() {
 
   {/* QUICK ACTIONS */}
   <section>
-    <div className="mb-4">
-      <h2 className="text-lg font-bold tracking-tight text-slate-900">
-        Quick Actions
-      </h2>
-      <p className="text-xs text-slate-500">
-        Common everyday banking operations
-      </p>
-    </div>
+
 
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
 
@@ -266,27 +247,7 @@ export default function DashboardPage() {
     MY ACCOUNTS
 ====================================================== */}
 <section>
-  <div className="mb-5 flex items-end justify-between">
-    <div>
-      <h2 className="text-lg font-bold tracking-tight text-[#172033]">
-        My Accounts
-      </h2>
-      <p className="mt-0.5 text-xs font-medium text-slate-500">
-        Your active bank accounts
-      </p>
-    </div>
 
-    <Link
-      to="/accounts"
-      className="group inline-flex items-center gap-1.5 text-xs font-bold text-[#0878E8] transition-colors hover:text-[#0668CB]"
-    >
-      <span>View all</span>
-      <ArrowRight
-        size={14}
-        className="transition-transform duration-200 group-hover:translate-x-0.5"
-      />
-    </Link>
-  </div>
 
   <AccountSummary accounts={dashboard?.accounts ?? []} />
 </section>
@@ -296,26 +257,6 @@ export default function DashboardPage() {
       ====================================================== */}
       <section>
 
-        <div className="mb-4 flex items-end justify-between">
-
-          <div>
-            <h2 className="text-lg font-bold text-[#172033]">
-              Recent Transactions
-            </h2>
-
-            <p className="mt-1 text-sm text-slate-500">
-              Your latest account activity
-            </p>
-          </div>
-
-          <Link
-            to="/transaction"
-            className="hidden items-center gap-1.5 text-sm font-semibold text-[#0878E8] transition hover:text-[#0668CB] sm:inline-flex"
-          >
-            View history
-            <ArrowRight size={16} />
-          </Link>
-        </div>
 
         <RecentTransactions />
       </section>

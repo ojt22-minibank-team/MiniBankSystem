@@ -34,13 +34,8 @@ export interface CustomerProfile {
 }
 
 export interface CustomerProfileUpdate {
-  email: string;
-  phone: string;
-  occupation: string;
   address: string;
   city: string;
   stateRegion: string;
   country: string;
-  companyPhone: string;
-  companyEmail: string;
 }
