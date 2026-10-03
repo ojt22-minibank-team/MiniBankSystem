@@ -138,5 +138,108 @@ public interface CusOtpChallengesRepository
 	        @Param("now")
 	        LocalDateTime now
 	);
+	// =========================================================
+	// ATOMIC PIN RESET OTP CONSUME
+	// =========================================================
+
+	@Modifying(
+	        flushAutomatically = true
+	)
+	@Query("""
+	        UPDATE OtpChallenges o
+	           SET o.status = :consumedStatus,
+	               o.consumedAt = :consumedAt,
+	               o.challengeGroupId = :newChallengeGroupId,
+	               o.updatedByType = :updatedByType,
+	               o.updatedById = :updatedById,
+	               o.updatedAt = :updatedAt
+	         WHERE o.otpId = :otpId
+	           AND o.challengeGroupId = :expectedChallengeGroupId
+	           AND o.purpose = :purpose
+	           AND o.status = :activeStatus
+	           AND o.expiresAt > :now
+	           AND o.attemptCount < o.maxAttempts
+	        """)
+	int consumePinResetOtpIfActive(
+
+	        @Param("otpId")
+	        Long otpId,
+
+	        @Param("expectedChallengeGroupId")
+	        String expectedChallengeGroupId,
+
+	        @Param("purpose")
+	        OtpPurpose purpose,
+
+	        @Param("activeStatus")
+	        OtpStatus activeStatus,
+
+	        @Param("consumedStatus")
+	        OtpStatus consumedStatus,
+
+	        @Param("newChallengeGroupId")
+	        String newChallengeGroupId,
+
+	        @Param("consumedAt")
+	        LocalDateTime consumedAt,
+
+	        @Param("now")
+	        LocalDateTime now,
+
+	        @Param("updatedByType")
+	        UpdatedByType updatedByType,
+
+	        @Param("updatedById")
+	        UUID updatedById,
+
+	        @Param("updatedAt")
+	        LocalDateTime updatedAt
+	);
+	// =========================================================
+	// CLAIM VERIFIED PIN RESET CHALLENGE - ONE TIME USE
+	// =========================================================
+
+	@Modifying(
+	        flushAutomatically = true,
+	        clearAutomatically = true
+	)
+	@Query("""
+	        UPDATE OtpChallenges o
+	           SET o.challengeGroupId = :newChallengeGroupId,
+	               o.updatedByType = :updatedByType,
+	               o.updatedById = :updatedById,
+	               o.updatedAt = :now
+	         WHERE o.otpId = :otpId
+	           AND o.challengeGroupId = :expectedChallengeGroupId
+	           AND o.purpose = :purpose
+	           AND o.status = :status
+	           AND o.consumedAt IS NOT NULL
+	        """)
+	int claimVerifiedPinResetChallengeIfMatch(
+
+	        @Param("otpId")
+	        Long otpId,
+
+	        @Param("expectedChallengeGroupId")
+	        String expectedChallengeGroupId,
+
+	        @Param("newChallengeGroupId")
+	        String newChallengeGroupId,
+
+	        @Param("purpose")
+	        OtpPurpose purpose,
+
+	        @Param("status")
+	        OtpStatus status,
+
+	        @Param("updatedByType")
+	        UpdatedByType updatedByType,
+
+	        @Param("updatedById")
+	        UUID updatedById,
+
+	        @Param("now")
+	        LocalDateTime now
+	);
 	
 }

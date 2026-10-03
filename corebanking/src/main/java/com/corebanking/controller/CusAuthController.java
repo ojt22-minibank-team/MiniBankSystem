@@ -290,15 +290,16 @@ import com.corebanking.dto.CusPasswordResetOtpVerifyRequest;
 import com.corebanking.dto.CusPasswordResetOtpVerifyResponse;
 import com.corebanking.dto.CusPasswordResetRequest;
 import com.corebanking.dto.CusPasswordResetStartResponse;
+import com.corebanking.dto.CusPinResetConfirmRequest;
+import com.corebanking.dto.CusPinResetOtpVerifyRequest;
+import com.corebanking.dto.CusPinResetOtpVerifyResponse;
 import com.corebanking.dto.CusPinResetStartResponse;
 import com.corebanking.dto.CusPinSetupRequest;
 import com.corebanking.dto.CusRefreshTokenRequest;
 import com.corebanking.dto.CusTokenResponse;
-
 import com.corebanking.service.CusAuthService;
 
 import lombok.RequiredArgsConstructor;
-
 
 @RestController
 @RequestMapping("/api/customer/auth")
@@ -533,8 +534,53 @@ public class CusAuthController {
                 response
         );
     }
+ // =========================================================
+ // TRANSACTION PIN RESET - VERIFY OTP
+ // =========================================================
 
+ @PostMapping("/pin-reset/verify-otp")
+ public ResponseEntity<CusPinResetOtpVerifyResponse>
+         verifyPinResetOtp(
 
+                 @RequestHeader("Authorization")
+                 String authorizationHeader,
+
+                 @RequestBody
+                 CusPinResetOtpVerifyRequest request) {
+
+     CusPinResetOtpVerifyResponse response =
+             cusAuthService.verifyPinResetOtp(
+                     authorizationHeader,
+                     request
+             );
+
+     return ResponseEntity.ok(
+             response
+     );
+ }
+//=========================================================
+//TRANSACTION PIN RESET - CONFIRM NEW PIN
+//=========================================================
+
+@PostMapping("/pin-reset/confirm")
+public ResponseEntity<String>
+      confirmPinReset(
+
+              @RequestHeader("Authorization")
+              String authorizationHeader,
+
+              @RequestBody
+              CusPinResetConfirmRequest request) {
+
+  cusAuthService.resetTransactionPin(
+          authorizationHeader,
+          request
+  );
+
+  return ResponseEntity.ok(
+          "Transaction PIN reset successfully."
+  );
+}
     // =========================================================
     // 12. REFRESH TOKEN
     // =========================================================

@@ -11,7 +11,7 @@ import org.springframework.mail.MailException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import com.corebanking.dto.CusPinResetConfirmRequest;
 import com.corebanking.dto.CusLoginRequest;
 import com.corebanking.dto.CusLoginResponse;
 import com.corebanking.dto.CusOtpResendRequest;
@@ -53,7 +53,8 @@ import com.corebanking.repository.CusCustomerRepository;
 import com.corebanking.repository.CusJwtRevokedTokensRepository;
 import com.corebanking.repository.CusLoginAttemptsRepository;
 import com.corebanking.repository.CusOtpChallengesRepository;
-
+import com.corebanking.dto.CusPinResetOtpVerifyRequest;
+import com.corebanking.dto.CusPinResetOtpVerifyResponse;
 
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
@@ -1340,6 +1341,9 @@ public class CusAuthService {
                 savedOtp.getResendNo()
         );
     }
+    
+    
+    
 
  // =========================================================
  // PASSWORD RESET - REQUEST OTP
@@ -2314,6 +2318,783 @@ public CusOtpResendResponse resendPinResetOtp(
          savedOtp.getChallengeGroupId(),
          savedOtp.getDestinationMasked(),
          savedOtp.getResendNo()
+ );
+}
+
+
+//=========================================================
+//TRANSACTION PIN RESET - VERIFY OTP
+//=========================================================
+
+@Transactional(
+     noRollbackFor = CusOtpException.class
+)
+public CusPinResetOtpVerifyResponse verifyPinResetOtp(
+     String authorizationHeader,
+     CusPinResetOtpVerifyRequest request) {
+
+ // =====================================================
+ // 1. ACCESS TOKEN REQUIRED
+ // =====================================================
+
+ if (authorizationHeader == null
+         || !authorizationHeader.startsWith("Bearer ")) {
+
+     throw new CusAuthenticationException(
+             "Access token is required."
+     );
+ }
+
+
+ String accessToken =
+         authorizationHeader
+                 .substring(7)
+                 .trim();
+
+
+ Claims claims =
+         cusJwtService.getClaims(
+                 accessToken
+         );
+
+
+ String tokenType =
+         claims.get(
+                 "tokenType",
+                 String.class
+         );
+
+
+ if (!"ACCESS".equals(tokenType)) {
+
+     throw new CusAuthenticationException(
+             "Invalid access token."
+     );
+ }
+
+
+ // =====================================================
+ // 2. VALIDATE SESSION
+ // =====================================================
+
+ AuthSessions session =
+         cusSessionService
+                 .validateAccessSession(
+                         claims
+                 );
+
+
+ Customers authenticatedCustomer =
+         session.getCustomer();
+
+
+ if (authenticatedCustomer == null
+         || authenticatedCustomer.getCustomerId() == null) {
+
+     throw new CusSessionExpiredException(
+             "Customer session is invalid."
+     );
+ }
+
+
+ // =====================================================
+ // 3. REQUEST VALIDATION
+ // =====================================================
+
+ if (request == null
+         || request.getChallengeGroupId() == null
+         || request.getChallengeGroupId().isBlank()
+         || request.getOtp() == null
+         || request.getOtp().isBlank()) {
+
+     throw new CusOtpException(
+             "OTP verification information is required."
+     );
+ }
+
+
+ String challengeGroupId =
+         request.getChallengeGroupId()
+                 .trim();
+
+
+ String enteredOtp =
+         request.getOtp()
+                 .trim();
+
+
+ // =====================================================
+ // 4. FIND PIN RESET OTP
+ // =====================================================
+
+ OtpChallenges otpChallenge =
+         otpChallengesRepository
+                 .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
+                         challengeGroupId,
+                         OtpPurpose.PIN_RESET
+                 )
+                 .orElseThrow(() ->
+                         new CusOtpException(
+                                 "Invalid PIN reset challenge."
+                         )
+                 );
+
+
+ // =====================================================
+ // 5. OTP MUST BELONG TO LOGGED-IN CUSTOMER
+ // =====================================================
+
+ if (otpChallenge.getCustomer() == null
+         || otpChallenge
+                 .getCustomer()
+                 .getCustomerId() == null
+         || !otpChallenge
+                 .getCustomer()
+                 .getCustomerId()
+                 .equals(
+                         authenticatedCustomer
+                                 .getCustomerId()
+                 )) {
+
+     throw new CusOtpException(
+             "Invalid PIN reset challenge."
+     );
+ }
+
+
+ // =====================================================
+ // 6. STATUS CHECK
+ // =====================================================
+
+ if (otpChallenge.getStatus()
+         == OtpStatus.CONSUMED) {
+
+     throw new CusOtpException(
+             "This PIN reset OTP has already been used."
+     );
+ }
+
+
+ if (otpChallenge.getStatus()
+         == OtpStatus.EXPIRED) {
+
+     throw new CusOtpException(
+             "PIN reset OTP has expired."
+     );
+ }
+
+
+ if (otpChallenge.getStatus()
+         == OtpStatus.BLOCKED) {
+
+     throw new CusOtpException(
+             "PIN reset OTP verification has been blocked."
+     );
+ }
+
+
+ if (otpChallenge.getStatus()
+         != OtpStatus.ACTIVE) {
+
+     throw new CusOtpException(
+             "PIN reset OTP is not active."
+     );
+ }
+
+
+ LocalDateTime now =
+         LocalDateTime.now();
+
+
+ // =====================================================
+ // 7. EXPIRY CHECK
+ // =====================================================
+
+ if (otpChallenge.getExpiresAt() == null
+         || !otpChallenge
+                 .getExpiresAt()
+                 .isAfter(now)) {
+
+     otpChallenge.setStatus(
+             OtpStatus.EXPIRED
+     );
+
+
+     markOtpUpdatedBySystem(
+             otpChallenge
+     );
+
+
+     otpChallengesRepository.save(
+             otpChallenge
+     );
+
+
+     saveAuditLog(
+             ActorType.SYSTEM,
+             null,
+             "PIN_RESET_OTP_EXPIRED",
+             "OTP_CHALLENGE",
+             String.valueOf(
+                     otpChallenge.getOtpId()
+             ),
+             "{\"status\":\"ACTIVE\"}",
+             "{\"status\":\"EXPIRED\","
+                     + "\"reason\":\"TIME_EXPIRED\"}"
+     );
+
+
+     throw new CusOtpException(
+             "PIN reset OTP has expired."
+     );
+ }
+
+
+ // =====================================================
+ // 8. MAX VERIFY ATTEMPTS
+ // =====================================================
+
+ if (otpChallenge.getAttemptCount()
+         >= otpChallenge.getMaxAttempts()) {
+
+     otpChallenge.setStatus(
+             OtpStatus.BLOCKED
+     );
+
+
+     markOtpUpdatedBySystem(
+             otpChallenge
+     );
+
+
+     otpChallengesRepository.save(
+             otpChallenge
+     );
+
+
+     throw new CusOtpException(
+             "PIN reset OTP verification has been blocked."
+     );
+ }
+
+
+ // =====================================================
+ // 9. OTP FORMAT + HASH VERIFY
+ // =====================================================
+
+ boolean validOtpFormat =
+         enteredOtp.matches(
+                 "\\d{6}"
+         );
+
+
+ boolean otpMatches =
+         validOtpFormat
+
+                 && passwordEncoder.matches(
+                         enteredOtp,
+                         otpChallenge.getOtpHash()
+                 );
+
+
+ // =====================================================
+ // 10. WRONG OTP
+ // =====================================================
+
+ if (!otpMatches) {
+
+     int failedAttempts =
+             otpChallenge.getAttemptCount() + 1;
+
+
+     otpChallenge.setAttemptCount(
+             failedAttempts
+     );
+
+
+     if (failedAttempts
+             >= otpChallenge.getMaxAttempts()) {
+
+         otpChallenge.setStatus(
+                 OtpStatus.BLOCKED
+         );
+     }
+
+
+     markOtpUpdatedByCustomer(
+             otpChallenge
+     );
+
+
+     otpChallengesRepository.save(
+             otpChallenge
+     );
+
+
+     saveAuditLog(
+             ActorType.CUSTOMER,
+             authenticatedCustomer,
+             "PIN_RESET_OTP_VERIFY_FAILED",
+             "OTP_CHALLENGE",
+             String.valueOf(
+                     otpChallenge.getOtpId()
+             ),
+             null,
+             "{\"attemptCount\":"
+                     + failedAttempts
+                     + ",\"status\":\""
+                     + otpChallenge.getStatus().name()
+                     + "\"}"
+     );
+
+
+     throw new CusOtpException(
+             "Invalid OTP."
+     );
+ }
+
+
+ // =====================================================
+ // 11. CORRECT OTP
+ // GENERATE VERIFIED CHALLENGE ID
+ // =====================================================
+
+ String verifiedChallengeGroupId =
+         UUID.randomUUID()
+                 .toString();
+
+
+ int updatedRows =
+         otpChallengesRepository
+                 .consumePinResetOtpIfActive(
+
+                         otpChallenge.getOtpId(),
+
+                         challengeGroupId,
+
+                         OtpPurpose.PIN_RESET,
+
+                         OtpStatus.ACTIVE,
+
+                         OtpStatus.CONSUMED,
+
+                         verifiedChallengeGroupId,
+
+                         now,
+
+                         now,
+
+                         UpdatedByType.CUSTOMER,
+
+                         authenticatedCustomer
+                                 .getCustomerId(),
+
+                         now
+                 );
+
+
+ if (updatedRows != 1) {
+
+     throw new CusOtpException(
+             "OTP has already been used or is no longer valid."
+     );
+ }
+
+
+ // =====================================================
+ // 12. AUDIT
+ // =====================================================
+
+ saveAuditLog(
+         ActorType.CUSTOMER,
+         authenticatedCustomer,
+         "PIN_RESET_OTP_VERIFIED",
+         "OTP_CHALLENGE",
+         String.valueOf(
+                 otpChallenge.getOtpId()
+         ),
+         "{\"status\":\"ACTIVE\"}",
+         "{\"status\":\"CONSUMED\","
+                 + "\"purpose\":\"PIN_RESET\"}"
+ );
+
+
+ // =====================================================
+ // 13. RESPONSE
+ // =====================================================
+
+ return new CusPinResetOtpVerifyResponse(
+         true,
+         "OTP verified successfully. You may now reset your Transaction PIN.",
+         verifiedChallengeGroupId
+ );
+}
+
+
+//=========================================================
+//TRANSACTION PIN RESET - CONFIRM NEW PIN
+//=========================================================
+
+@Transactional
+public void resetTransactionPin(
+     String authorizationHeader,
+     CusPinResetConfirmRequest request) {
+
+ // =====================================================
+ // 1. ACCESS TOKEN REQUIRED
+ // =====================================================
+
+ if (authorizationHeader == null
+         || !authorizationHeader.startsWith("Bearer ")) {
+
+     throw new CusAuthenticationException(
+             "Access token is required."
+     );
+ }
+
+
+ String accessToken =
+         authorizationHeader
+                 .substring(7)
+                 .trim();
+
+
+ Claims claims =
+         cusJwtService.getClaims(
+                 accessToken
+         );
+
+
+ String tokenType =
+         claims.get(
+                 "tokenType",
+                 String.class
+         );
+
+
+ if (!"ACCESS".equals(tokenType)) {
+
+     throw new CusAuthenticationException(
+             "Invalid access token."
+     );
+ }
+
+
+ // =====================================================
+ // 2. VALIDATE CURRENT SESSION
+ // =====================================================
+
+ AuthSessions session =
+         cusSessionService
+                 .validateAccessSession(
+                         claims
+                 );
+
+
+ Customers authenticatedCustomer =
+         session.getCustomer();
+
+
+ if (authenticatedCustomer == null
+         || authenticatedCustomer.getCustomerId() == null) {
+
+     throw new CusSessionExpiredException(
+             "Customer session is invalid."
+     );
+ }
+
+
+ UUID authenticatedCustomerId =
+         authenticatedCustomer.getCustomerId();
+
+
+ // =====================================================
+ // 3. REQUEST VALIDATION
+ // =====================================================
+
+ if (request == null
+         || request.getVerifiedChallengeGroupId() == null
+         || request.getVerifiedChallengeGroupId().isBlank()
+         || request.getNewPin() == null
+         || request.getNewPin().isBlank()
+         || request.getConfirmPin() == null
+         || request.getConfirmPin().isBlank()) {
+
+     throw new CusValidationException(
+             "All PIN reset fields are required."
+     );
+ }
+
+
+ String verifiedChallengeGroupId =
+         request.getVerifiedChallengeGroupId()
+                 .trim();
+
+
+ String newPin =
+         request.getNewPin();
+
+
+ String confirmPin =
+         request.getConfirmPin();
+
+
+ // =====================================================
+ // 4. NEW PIN = CONFIRM PIN ?
+ // =====================================================
+
+ if (!newPin.equals(
+         confirmPin)) {
+
+     throw new CusValidationException(
+             "New PIN and confirm PIN do not match."
+     );
+ }
+
+
+ // =====================================================
+ // 5. PIN MUST BE EXACTLY 6 DIGITS
+ // =====================================================
+
+ if (!newPin.matches(
+         "\\d{6}")) {
+
+     throw new CusValidationException(
+             "Transaction PIN must be exactly 6 digits."
+     );
+ }
+
+
+ // =====================================================
+ // 6. FIND VERIFIED PIN RESET CHALLENGE
+ // =====================================================
+
+ OtpChallenges verifiedChallenge =
+         otpChallengesRepository
+                 .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
+                         verifiedChallengeGroupId,
+                         OtpPurpose.PIN_RESET
+                 )
+                 .orElseThrow(() ->
+                         new CusOtpException(
+                                 "Invalid PIN reset authorization."
+                         )
+                 );
+
+
+ // =====================================================
+ // 7. OTP MUST HAVE BEEN VERIFIED
+ // =====================================================
+
+ if (verifiedChallenge.getStatus()
+         != OtpStatus.CONSUMED
+         || verifiedChallenge.getConsumedAt() == null) {
+
+     throw new CusOtpException(
+             "PIN reset authorization is not valid."
+     );
+ }
+
+
+ // =====================================================
+ // 8. CHALLENGE MUST BELONG TO CURRENT CUSTOMER
+ // =====================================================
+
+ Customers challengeCustomer =
+         verifiedChallenge.getCustomer();
+
+
+ if (challengeCustomer == null
+         || challengeCustomer.getCustomerId() == null
+         || !challengeCustomer
+                 .getCustomerId()
+                 .equals(
+                         authenticatedCustomerId
+                 )) {
+
+     throw new CusOtpException(
+             "Invalid PIN reset authorization."
+     );
+ }
+
+
+ // =====================================================
+ // 9. CUSTOMER MUST STILL BE ACTIVE
+ // =====================================================
+
+ validateCustomerStatus(
+         authenticatedCustomer
+ );
+
+
+ // =====================================================
+ // 10. GET CUSTOMER CREDENTIALS
+ // =====================================================
+
+ CustomerCredentials credentials =
+         credentialsRepository
+                 .findById(
+                         authenticatedCustomerId
+                 )
+                 .orElseThrow(() ->
+                         new RuntimeException(
+                                 "Customer credentials not found."
+                         )
+                 );
+
+
+ // =====================================================
+ // 11. EXISTING PIN SHOULD ALREADY EXIST
+ // =====================================================
+
+ if (credentials.getTransactionPinHash() == null
+         || credentials
+                 .getTransactionPinHash()
+                 .isBlank()) {
+
+     throw new CusValidationException(
+             "Transaction PIN has not been set yet."
+     );
+ }
+
+
+ // =====================================================
+ // 12. CLAIM VERIFIED CHALLENGE
+ // ONE-TIME USE
+ // =====================================================
+
+ LocalDateTime now =
+         LocalDateTime.now();
+
+
+ String claimedChallengeGroupId =
+         UUID.randomUUID()
+                 .toString();
+
+
+ int claimedRows =
+         otpChallengesRepository
+                 .claimVerifiedPinResetChallengeIfMatch(
+
+                         verifiedChallenge.getOtpId(),
+
+                         verifiedChallengeGroupId,
+
+                         claimedChallengeGroupId,
+
+                         OtpPurpose.PIN_RESET,
+
+                         OtpStatus.CONSUMED,
+
+                         UpdatedByType.CUSTOMER,
+
+                         authenticatedCustomerId,
+
+                         now
+                 );
+
+
+ if (claimedRows != 1) {
+
+     throw new CusOtpException(
+             "PIN reset authorization has already been used "
+                     + "or is no longer valid."
+     );
+ }
+
+
+ // =====================================================
+ // 13. RELOAD CREDENTIALS AFTER CLEAR
+ // =====================================================
+
+ credentials =
+         credentialsRepository
+                 .findById(
+                         authenticatedCustomerId
+                 )
+                 .orElseThrow(() ->
+                         new RuntimeException(
+                                 "Customer credentials not found."
+                         )
+                 );
+
+
+ // =====================================================
+ // 14. HASH NEW PIN
+ // =====================================================
+
+ String newPinHash =
+         passwordEncoder.encode(
+                 newPin
+         );
+
+
+ // =====================================================
+ // 15. UPDATE PIN
+ // =====================================================
+
+ credentials.setTransactionPinHash(
+         newPinHash
+ );
+
+
+ credentials.setPinChangedAt(
+         now
+ );
+
+
+ // =====================================================
+ // 16. RESET FAILED PIN ATTEMPTS
+ // =====================================================
+
+ credentials.setFailedPinAttemptCount(
+         0
+ );
+
+
+ // =====================================================
+ // 17. REMOVE PIN LOCK
+ // =====================================================
+
+ credentials.setPinLockedUntil(
+         null
+ );
+
+
+ // =====================================================
+ // 18. UPDATE AUDIT METADATA
+ // =====================================================
+
+ credentials.setUpdatedByType(
+         UpdatedByType.CUSTOMER
+ );
+
+
+ credentials.setUpdatedById(
+         authenticatedCustomerId
+ );
+
+
+ credentialsRepository.save(
+         credentials
+ );
+
+
+ // =====================================================
+ // 19. AUDIT LOG
+ // NEVER SAVE RAW PIN
+ // =====================================================
+
+ saveAuditLog(
+         ActorType.CUSTOMER,
+         authenticatedCustomer,
+         "PIN_RESET_SUCCESS",
+         "CUSTOMER_CREDENTIALS",
+         authenticatedCustomerId.toString(),
+         null,
+         "{\"pinChanged\":true,"
+                 + "\"failedPinAttemptCount\":0,"
+                 + "\"pinLocked\":false}"
  );
 }
 //=========================================================
