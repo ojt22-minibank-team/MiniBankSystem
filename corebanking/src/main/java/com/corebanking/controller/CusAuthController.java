@@ -1,16 +1,13 @@
 package com.corebanking.controller;
 
 import org.springframework.http.ResponseEntity;
-import com.corebanking.dto.CusPasswordResetRequest;
-import com.corebanking.dto.CusPasswordResetStartResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import com.corebanking.dto.CusPasswordResetOtpVerifyRequest;
-import com.corebanking.dto.CusPasswordResetOtpVerifyResponse;
+
 import com.corebanking.dto.CusFirstLoginPasswordRequest;
 import com.corebanking.dto.CusLoginRequest;
 import com.corebanking.dto.CusLoginResponse;
@@ -18,14 +15,18 @@ import com.corebanking.dto.CusOtpResendRequest;
 import com.corebanking.dto.CusOtpResendResponse;
 import com.corebanking.dto.CusOtpVerifyRequest;
 import com.corebanking.dto.CusOtpVerifyResponse;
+import com.corebanking.dto.CusPasswordResetConfirmRequest;
+import com.corebanking.dto.CusPasswordResetOtpVerifyRequest;
+import com.corebanking.dto.CusPasswordResetOtpVerifyResponse;
+import com.corebanking.dto.CusPasswordResetRequest;
+import com.corebanking.dto.CusPasswordResetStartResponse;
 import com.corebanking.dto.CusPinSetupRequest;
 import com.corebanking.dto.CusRefreshTokenRequest;
 import com.corebanking.dto.CusTokenResponse;
 import com.corebanking.service.CusAuthService;
 
 import lombok.RequiredArgsConstructor;
-import com.corebanking.dto.CusPasswordResetRequest;
-import com.corebanking.dto.CusPasswordResetStartResponse;
+
 @RestController
 @RequestMapping("/api/customer/auth")
 //@CrossOrigin(origins = "http://localhost:5173")
@@ -130,22 +131,66 @@ public class CusAuthController {
              response
      );
  }
- @PostMapping("/password-reset/verify-otp")
- public ResponseEntity<CusPasswordResetOtpVerifyResponse>
-         verifyPasswordResetOtp(
-                 @RequestBody
-                 CusPasswordResetOtpVerifyRequest request) {
+ 
+//=========================================================
+//PASSWORD RESET - RESEND OTP
+//=========================================================
 
-     CusPasswordResetOtpVerifyResponse response =
-             cusAuthService.verifyPasswordResetOtp(
-                     request
-             );
+@PostMapping("/password-reset/resend-otp")
+public ResponseEntity<CusOtpResendResponse>
+      resendPasswordResetOtp(
+              @RequestBody
+              CusOtpResendRequest request) {
 
-     return ResponseEntity.ok(
-             response
-     );
- }
-    
+  CusOtpResendResponse response =
+          cusAuthService.resendPasswordResetOtp(
+                  request
+          );
+
+  return ResponseEntity.ok(
+          response
+  );
+}
+
+//=========================================================
+//PASSWORD RESET - VERIFY OTP
+//=========================================================
+
+@PostMapping("/password-reset/verify-otp")
+public ResponseEntity<CusPasswordResetOtpVerifyResponse>
+     verifyPasswordResetOtp(
+             @RequestBody
+             CusPasswordResetOtpVerifyRequest request) {
+
+ CusPasswordResetOtpVerifyResponse response =
+         cusAuthService.verifyPasswordResetOtp(
+                 request
+         );
+
+ return ResponseEntity.ok(
+         response
+ );
+}
+//=========================================================
+//PASSWORD RESET - CONFIRM NEW PASSWORD
+//=========================================================
+
+@PostMapping("/password-reset/confirm")
+public ResponseEntity<String>
+     confirmPasswordReset(
+             @RequestBody
+             CusPasswordResetConfirmRequest request) {
+
+ cusAuthService.resetPassword(
+         request
+ );
+
+ return ResponseEntity.ok(
+         "Password reset successfully."
+ );
+}
+ 
+  
     @PostMapping("/refresh")
     public ResponseEntity<CusTokenResponse> refreshToken(
             @RequestBody CusRefreshTokenRequest request) {

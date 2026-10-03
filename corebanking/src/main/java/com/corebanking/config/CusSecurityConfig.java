@@ -126,11 +126,12 @@ public class CusSecurityConfig {
                         )
                         .permitAll()
                         
-                     // Password Reset - Request OTP
+                     // Password Reset Flow
                         .requestMatchers(
-                                "/api/customer/auth/password-reset/request"
+                                "/api/customer/auth/password-reset/**"
                         )
                         .permitAll()
+                        
 
                         // Refresh token
                         .requestMatchers(

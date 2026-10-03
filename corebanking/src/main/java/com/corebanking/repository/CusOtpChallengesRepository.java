@@ -96,4 +96,47 @@ public interface CusOtpChallengesRepository
 	        LocalDateTime updatedAt
 	);
 	
+	@Modifying(
+	        flushAutomatically = true,
+	        clearAutomatically = true
+	)
+	@Query("""
+	        UPDATE OtpChallenges o
+	           SET o.challengeGroupId = :newChallengeGroupId,
+	               o.updatedByType = :updatedByType,
+	               o.updatedById = :updatedById,
+	               o.updatedAt = :now
+	         WHERE o.otpId = :otpId
+	           AND o.challengeGroupId = :expectedChallengeGroupId
+	           AND o.purpose = :purpose
+	           AND o.status = :status
+	           AND o.consumedAt IS NOT NULL
+	        """)
+	int claimVerifiedPasswordResetChallengeIfMatch(
+
+	        @Param("otpId")
+	        Long otpId,
+
+	        @Param("expectedChallengeGroupId")
+	        String expectedChallengeGroupId,
+
+	        @Param("newChallengeGroupId")
+	        String newChallengeGroupId,
+
+	        @Param("purpose")
+	        OtpPurpose purpose,
+
+	        @Param("status")
+	        OtpStatus status,
+
+	        @Param("updatedByType")
+	        UpdatedByType updatedByType,
+
+	        @Param("updatedById")
+	        UUID updatedById,
+
+	        @Param("now")
+	        LocalDateTime now
+	);
+	
 }
