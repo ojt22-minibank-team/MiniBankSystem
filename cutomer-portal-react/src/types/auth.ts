@@ -75,6 +75,37 @@ export interface PasswordResetOtpVerifyResponse {
 }
 
 // ======================================================
+// TRANSACTION PIN RESET
+// ======================================================
+
+export interface PinResetStartResponse {
+  success: boolean;
+  message: string;
+  challengeGroupId: string;
+  destinationMasked: string;
+}
+
+
+export interface PinResetOtpVerifyRequest {
+  challengeGroupId: string;
+  otp: string;
+}
+
+
+export interface PinResetOtpVerifyResponse {
+  success: boolean;
+  message: string;
+  verifiedChallengeGroupId: string;
+}
+
+
+export interface PinResetConfirmRequest {
+  verifiedChallengeGroupId: string;
+  newPin: string;
+  confirmPin: string;
+}
+
+// ======================================================
 // PASSWORD RESET - CONFIRM NEW PASSWORD
 // ======================================================
 

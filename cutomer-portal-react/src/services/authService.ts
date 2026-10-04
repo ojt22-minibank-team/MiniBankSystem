@@ -15,6 +15,11 @@ import type {
   PasswordResetOtpVerifyRequest,
   PasswordResetOtpVerifyResponse,
   PasswordResetConfirmRequest,
+
+  PinResetStartResponse,
+  PinResetOtpVerifyRequest,
+  PinResetOtpVerifyResponse,
+  PinResetConfirmRequest,
 } from "../types/auth";
 
 
@@ -231,6 +236,85 @@ export const confirmPasswordReset = async (
 
   return response.data;
 };
+
+// ======================================================
+// TRANSACTION PIN RESET - REQUEST OTP
+// POST /api/customer/auth/pin-reset/request
+// ======================================================
+
+export const requestPinReset =
+  async (): Promise<PinResetStartResponse> => {
+
+    const response =
+      await api.post<PinResetStartResponse>(
+        "/auth/pin-reset/request"
+      );
+
+    return response.data;
+  };
+
+  // ======================================================
+// TRANSACTION PIN RESET - RESEND OTP
+// POST /api/customer/auth/pin-reset/resend-otp
+// ======================================================
+
+  export const resendPinResetOtp =
+  async (
+    data: ResendOtpRequest
+  ): Promise<ResendOtpResponse> => {
+
+    const response =
+      await api.post<ResendOtpResponse>(
+        "/auth/pin-reset/resend-otp",
+        data
+      );
+
+    return response.data;
+  };
+
+
+  // ======================================================
+// TRANSACTION PIN RESET - VERIFY OTP
+// POST /api/customer/auth/pin-reset/verify-otp
+// ======================================================
+
+export const verifyPinResetOtp =
+  async (
+    data: PinResetOtpVerifyRequest
+  ): Promise<PinResetOtpVerifyResponse> => {
+
+    const response =
+      await api.post<PinResetOtpVerifyResponse>(
+        "/auth/pin-reset/verify-otp",
+        data
+      );
+
+    return response.data;
+  };
+
+
+
+// ======================================================
+// TRANSACTION PIN RESET - CONFIRM NEW PIN
+// POST /api/customer/auth/pin-reset/confirm
+// ======================================================
+
+export const confirmPinReset =
+  async (
+    data: PinResetConfirmRequest
+  ): Promise<string> => {
+
+    const response =
+      await api.post<string>(
+        "/auth/pin-reset/confirm",
+        data
+      );
+
+    return response.data;
+  };
+
+
+
 // ======================================================
 // TEMPORARY PROTECTED API TEST
 // GET /api/customer/auth/test

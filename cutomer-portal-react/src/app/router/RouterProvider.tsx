@@ -20,6 +20,10 @@ import ForgotPasswordPage from "../../features/auth/pages/ForgotPasswordPage";
 import PasswordResetOtpPage from "../../features/auth/pages/PasswordResetOtpPage";
 import ResetPasswordPage from "../../features/auth/pages/ResetPasswordPage";
 
+//pin reset pages
+import PinResetOtpPage from "../../features/auth/pages/PinResetOtpPage";
+import PinResetNewPinPage from "../../features/auth/pages/PinResetNewPinPage";
+
 
 // ======================================================
 // CUSTOMER PAGES
@@ -123,6 +127,18 @@ const router = createBrowserRouter([
            {
             path: "/profile",
             element: <ProfilePage />,
+          },
+
+            //pin reset pages
+
+          {
+            path: "/pin-reset/otp",
+            element: <PinResetOtpPage />,
+          },
+
+          {
+            path: "/pin-reset/new-pin",
+            element: <PinResetNewPinPage />,
           },
 
         ],
