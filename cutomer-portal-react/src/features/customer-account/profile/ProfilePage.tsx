@@ -23,6 +23,10 @@ import Cropper, {
 } from "react-easy-crop";
 
 import {
+  useNavigate,
+} from "react-router-dom";
+
+import {
   getMyProfile,
   updateMyProfile,
   uploadProfileImage,
@@ -32,6 +36,10 @@ import type {
   CustomerProfile,
   CustomerProfileUpdate,
 } from "../types/profileTypes";
+
+import {
+  requestPinReset,
+} from "../../../services/authService";
 
 import PersonalInfo from "./components/PersonalInfo";
 import CompanyInfo from "./components/CompanyInfo";
@@ -1021,8 +1029,11 @@ export default function ProfilePage() {
             Loading profile...
           </span>
         </div>
+
       </div>
+
     );
+
   }
 
   /* ------------------------------------------------------------------------ */
@@ -1036,8 +1047,11 @@ export default function ProfilePage() {
           {error ??
             "Unable to load your profile."}
         </div>
+
       </div>
+
     );
+
   }
 
   /* ------------------------------------------------------------------------ */
@@ -1217,6 +1231,7 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>
+
           </div>
 
           {/* REGISTERED INFO NOTICE */}
@@ -1391,9 +1406,100 @@ export default function ProfilePage() {
                   Apply Crop
                 </button>
               </div>
+
             </div>
+
           </div>
         )}
     </>
   );
+
+}
+
+
+/* =========================================================
+   SECURITY ROW
+========================================================= */
+
+interface SecurityRowProps {
+
+  label:
+    string;
+
+  action:
+    string;
+
+  onClick:
+    () => void;
+
+}
+
+
+function SecurityRow({
+
+  label,
+
+  action,
+
+  onClick,
+
+}: SecurityRowProps) {
+
+  return (
+
+    <div
+      className="
+        flex
+        items-center
+        justify-between
+        border-b
+        border-slate-100
+        px-6
+        py-5
+        last:border-b-0
+      "
+    >
+
+      <div>
+
+        <p
+          className="
+            text-sm
+            font-semibold
+            text-slate-700
+          "
+        >
+
+          {label}
+
+        </p>
+
+      </div>
+
+
+      <button
+
+        type="button"
+
+        onClick={
+          onClick
+        }
+
+        className="
+          text-sm
+          font-semibold
+          text-blue-600
+          transition
+          hover:text-blue-700
+        "
+      >
+
+        {action} →
+
+      </button>
+
+    </div>
+
+  );
+
 }

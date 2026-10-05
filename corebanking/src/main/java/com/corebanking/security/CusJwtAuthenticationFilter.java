@@ -347,7 +347,11 @@ public class CusJwtAuthenticationFilter
 
                 || uri.equals(
                     "/api/customer/auth/refresh"
-                );
+                )
+                // Password Reset flow အားလုံး public
+                || uri.startsWith(
+                    "/api/customer/auth/password-reset/"
+                		);
     }
 
 
