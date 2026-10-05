@@ -1,3 +1,4 @@
+
 import {
   BriefcaseBusiness,
   CalendarDays,
@@ -6,7 +7,10 @@ import {
   Phone,
 } from "lucide-react";
 
-import type * as React from "react";
+import type {
+  ChangeEvent,
+  ReactNode,
+} from "react";
 
 import type {
   CustomerProfile,
@@ -17,9 +21,15 @@ interface PersonalInfoProps {
   profile: CustomerProfile;
   formData: CustomerProfileUpdate;
   isEditing: boolean;
+
   onInputChange: (
-    e: React.ChangeEvent<HTMLInputElement>
+    event: ChangeEvent<HTMLInputElement>
   ) => void;
+
+  onEdit: () => void;
+  onCancel: () => void;
+  onSave: () => void;
+  isSaving: boolean;
 }
 
 export default function PersonalInfo({
@@ -27,16 +37,32 @@ export default function PersonalInfo({
   formData,
   isEditing,
   onInputChange,
+  onEdit,
+  onCancel,
+  onSave,
+  isSaving,
 }: PersonalInfoProps) {
+  const fullName =
+    [
+      profile.firstName,
+      profile.lastName,
+    ]
+      .filter(Boolean)
+      .join(" ") || "Not available";
+
   const formatDate = (
     date: string | null
-  ) => {
-    if (!date) return "Not available";
+  ): string => {
+    if (!date) {
+      return "Not available";
+    }
 
     const parsedDate = new Date(date);
 
     if (
-      Number.isNaN(parsedDate.getTime())
+      Number.isNaN(
+        parsedDate.getTime()
+      )
     ) {
       return date;
     }
@@ -51,7 +77,7 @@ export default function PersonalInfo({
     );
   };
 
-  const formatAddress = () => {
+  const formatAddress = (): string => {
     const parts = [
       profile.address,
       profile.city,
@@ -66,11 +92,12 @@ export default function PersonalInfo({
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      {/* =====================================================
+          REGISTERED PERSONAL INFORMATION
+          These fields are read-only.
+      ====================================================== */}
 
-      {/* Personal Information */}
-
-      <div className="grid grid-cols-1 gap-x-10 gap-y-5 md:grid-cols-2">
-
+      <div className="grid grid-cols-1 gap-x-10 gap-y-6 md:grid-cols-2">
         <ProfileField
           label="Customer ID"
           value={profile.customerCode}
@@ -78,12 +105,7 @@ export default function PersonalInfo({
 
         <ProfileField
           label="Full Name"
-          value={[
-            profile.firstName,
-            profile.lastName,
-          ]
-            .filter(Boolean)
-            .join(" ")}
+          value={fullName}
         />
 
         <ProfileField
@@ -132,31 +154,42 @@ export default function PersonalInfo({
         />
       </div>
 
-      {/* Address */}
+      {/* =====================================================
+          ADDRESS
+      ====================================================== */}
 
       <AddressSection
-        profile={profile}
         formData={formData}
         isEditing={isEditing}
         onInputChange={onInputChange}
         formatAddress={formatAddress}
+        onEdit={onEdit}
+        onCancel={onCancel}
+        onSave={onSave}
+        isSaving={isSaving}
       />
     </div>
   );
 }
 
-/* =========================================================
-   Address
-========================================================= */
+/* ============================================================
+   ADDRESS SECTION
+============================================================ */
 
 interface AddressSectionProps {
-  profile: CustomerProfile;
   formData: CustomerProfileUpdate;
   isEditing: boolean;
+
   onInputChange: (
-    e: React.ChangeEvent<HTMLInputElement>
+    event: ChangeEvent<HTMLInputElement>
   ) => void;
+
   formatAddress: () => string;
+
+  onEdit: () => void;
+  onCancel: () => void;
+  onSave: () => void;
+  isSaving: boolean;
 }
 
 function AddressSection({
@@ -164,132 +197,190 @@ function AddressSection({
   isEditing,
   onInputChange,
   formatAddress,
+  onEdit,
+  onCancel,
+  onSave,
+  isSaving,
 }: AddressSectionProps) {
   return (
-    <div className="mt-6 border-t border-slate-100 pt-6">
+    <div className="mt-7 border-t border-slate-100 pt-6">
+      {/* ADDRESS HEADER */}
+
+      <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-500">
+        <MapPin size={16} />
+
+        <span>Address</span>
+      </div>
+
+      {/* =====================================================
+          VIEW MODE
+      ====================================================== */}
 
       {!isEditing ? (
-        <div>
-          <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-500">
-            <MapPin size={16} />
-
-            <span>Address</span>
-          </div>
-
-          <p className="text-base font-medium text-slate-800">
+        <>
+          <p className="text-sm font-semibold leading-6 text-slate-800">
             {formatAddress()}
           </p>
-        </div>
+
+          {/* FULL WIDTH EDIT BUTTON */}
+
+          <button
+            type="button"
+            onClick={onEdit}
+            className="mt-6 flex w-full items-center justify-center rounded-xl bg-[#0878E8] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100"
+          >
+            Edit Profile
+          </button>
+        </>
       ) : (
-        <div>
-          <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-500">
-            <MapPin size={16} />
+        /* ===================================================
+           EDIT MODE
+        ==================================================== */
 
-            <span>Address</span>
-          </div>
-
+        <>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            {/* ADDRESS */}
 
-            {/* Address */}
+            <FormField
+              id="address"
+              label="Address"
+              value={formData.address}
+              placeholder="Enter your address"
+              onChange={onInputChange}
+              fullWidth
+            />
 
-            <div className="md:col-span-2">
-              <label
-                htmlFor="address"
-                className="mb-2 block text-sm font-semibold text-slate-700"
-              >
-                Address
-              </label>
+            {/* CITY */}
 
-              <input
-                id="address"
-                name="address"
-                type="text"
-                value={formData.address ?? ""}
-                onChange={onInputChange}
-                placeholder="Enter your address"
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
-              />
-            </div>
+            <FormField
+              id="city"
+              label="City"
+              value={formData.city}
+              placeholder="Enter city"
+              onChange={onInputChange}
+            />
 
-            {/* City */}
+            {/* STATE / REGION */}
 
-            <div>
-              <label
-                htmlFor="city"
-                className="mb-2 block text-sm font-semibold text-slate-700"
-              >
-                City
-              </label>
+            <FormField
+              id="stateRegion"
+              label="State / Region"
+              value={formData.stateRegion}
+              placeholder="Enter state or region"
+              onChange={onInputChange}
+            />
 
-              <input
-                id="city"
-                name="city"
-                type="text"
-                value={formData.city ?? ""}
-                onChange={onInputChange}
-                placeholder="Enter city"
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
-              />
-            </div>
+            {/* COUNTRY */}
 
-            {/* State / Region */}
-
-            <div>
-              <label
-                htmlFor="stateRegion"
-                className="mb-2 block text-sm font-semibold text-slate-700"
-              >
-                State / Region
-              </label>
-
-              <input
-                id="stateRegion"
-                name="stateRegion"
-                type="text"
-                value={
-                  formData.stateRegion ?? ""
-                }
-                onChange={onInputChange}
-                placeholder="Enter state or region"
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
-              />
-            </div>
-
-            {/* Country */}
-
-            <div className="md:col-span-2">
-              <label
-                htmlFor="country"
-                className="mb-2 block text-sm font-semibold text-slate-700"
-              >
-                Country
-              </label>
-
-              <input
-                id="country"
-                name="country"
-                type="text"
-                value={formData.country ?? ""}
-                onChange={onInputChange}
-                placeholder="Enter country"
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
-              />
-            </div>
+            <FormField
+              id="country"
+              label="Country"
+              value={formData.country}
+              placeholder="Enter country"
+              onChange={onInputChange}
+            />
           </div>
-        </div>
+
+          {/* =================================================
+              ACTION BUTTONS
+          ================================================== */}
+
+          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            {/* CANCEL */}
+
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={isSaving}
+              className="rounded-xl border border-slate-200 bg-white px-6 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Cancel
+            </button>
+
+            {/* SAVE */}
+
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={isSaving}
+              className="rounded-xl bg-[#0878E8] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSaving
+                ? "Saving..."
+                : "Save Changes"}
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
 }
 
-/* =========================================================
-   Profile Field
-========================================================= */
+/* ============================================================
+   FORM FIELD
+============================================================ */
+
+interface FormFieldProps {
+  id: string;
+  label: string;
+  value: string;
+  placeholder: string;
+
+  onChange: (
+    event: ChangeEvent<HTMLInputElement>
+  ) => void;
+
+  fullWidth?: boolean;
+}
+
+function FormField({
+  id,
+  label,
+  value,
+  placeholder,
+  onChange,
+  fullWidth = false,
+}: FormFieldProps) {
+  return (
+    <div
+      className={
+        fullWidth
+          ? "md:col-span-2"
+          : undefined
+      }
+    >
+      <label
+        htmlFor={id}
+        className="mb-2 block text-sm font-semibold text-slate-700"
+      >
+        {label}
+      </label>
+
+      <input
+        id={id}
+        name={id}
+        type="text"
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        autoComplete="off"
+        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-[#0878E8] focus:ring-4 focus:ring-blue-50"
+      />
+    </div>
+  );
+}
+
+/* ============================================================
+   READ-ONLY PROFILE FIELD
+============================================================ */
 
 interface ProfileFieldProps {
   label: string;
-  value: string | null | undefined;
-  icon?: React.ReactNode;
+  value:
+    | string
+    | null
+    | undefined;
+  icon?: ReactNode;
 }
 
 function ProfileField({

@@ -1,3 +1,4 @@
+
 import {
   Building2,
   CalendarDays,
@@ -17,9 +18,16 @@ interface CompanyInfoProps {
   profile: CustomerProfile;
   formData: CustomerProfileUpdate;
   isEditing: boolean;
+
   onInputChange: (
     e: React.ChangeEvent<HTMLInputElement>
   ) => void;
+
+  onEdit: () => void;
+  onCancel: () => void;
+  onSave: () => void;
+
+  isSaving: boolean;
 }
 
 export default function CompanyInfo({
@@ -27,16 +35,24 @@ export default function CompanyInfo({
   formData,
   isEditing,
   onInputChange,
+  onEdit,
+  onCancel,
+  onSave,
+  isSaving,
 }: CompanyInfoProps) {
   const formatDate = (
     date: string | null
   ) => {
-    if (!date) return "Not available";
+    if (!date) {
+      return "Not available";
+    }
 
     const parsedDate = new Date(date);
 
     if (
-      Number.isNaN(parsedDate.getTime())
+      Number.isNaN(
+        parsedDate.getTime()
+      )
     ) {
       return date;
     }
@@ -67,7 +83,9 @@ export default function CompanyInfo({
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
 
-      {/* Company Information */}
+      {/* ================================================================ */}
+      {/* COMPANY INFORMATION                                             */}
+      {/* ================================================================ */}
 
       <div className="grid grid-cols-1 gap-x-10 gap-y-5 md:grid-cols-2">
 
@@ -87,18 +105,24 @@ export default function CompanyInfo({
         <ProfileField
           label="Company Email"
           value={profile.companyEmail}
-          icon={<Mail size={16} />}
+          icon={
+            <Mail size={16} />
+          }
         />
 
         <ProfileField
           label="Company Phone"
           value={profile.companyPhone}
-          icon={<Phone size={16} />}
+          icon={
+            <Phone size={16} />
+          }
         />
 
         <ProfileField
           label="Registration Number"
-          value={profile.registrationNumber}
+          value={
+            profile.registrationNumber
+          }
         />
 
         <ProfileField
@@ -125,34 +149,38 @@ export default function CompanyInfo({
         />
       </div>
 
-      {/* Address */}
+      {/* ================================================================ */}
+      {/* ADDRESS                                                          */}
+      {/* ================================================================ */}
 
       <div className="mt-6 border-t border-slate-100 pt-6">
 
+        <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-500">
+          <MapPin size={16} />
+
+          <span>Address</span>
+        </div>
+
         {!isEditing ? (
-          <div>
-            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-500">
-              <MapPin size={16} />
-
-              <span>Address</span>
-            </div>
-
+          <>
             <p className="text-base font-medium text-slate-800">
               {formatAddress()}
             </p>
-          </div>
+
+            {/* EDIT PROFILE */}
+            <button
+              type="button"
+              onClick={onEdit}
+              className="mt-6 flex w-full items-center justify-center rounded-xl bg-[#0878E8] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100"
+            >
+              Edit Profile
+            </button>
+          </>
         ) : (
-          <div>
-            <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-500">
-              <MapPin size={16} />
-
-              <span>Address</span>
-            </div>
-
+          <>
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
 
               {/* Address */}
-
               <div className="md:col-span-2">
                 <label
                   htmlFor="company-address"
@@ -165,15 +193,19 @@ export default function CompanyInfo({
                   id="company-address"
                   name="address"
                   type="text"
-                  value={formData.address ?? ""}
-                  onChange={onInputChange}
+                  value={
+                    formData.address ?? ""
+                  }
+                  onChange={
+                    onInputChange
+                  }
                   placeholder="Enter company address"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
+                  autoComplete="street-address"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-[#0878E8] focus:ring-4 focus:ring-blue-50"
                 />
               </div>
 
               {/* City */}
-
               <div>
                 <label
                   htmlFor="company-city"
@@ -186,15 +218,19 @@ export default function CompanyInfo({
                   id="company-city"
                   name="city"
                   type="text"
-                  value={formData.city ?? ""}
-                  onChange={onInputChange}
+                  value={
+                    formData.city ?? ""
+                  }
+                  onChange={
+                    onInputChange
+                  }
                   placeholder="Enter city"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
+                  autoComplete="address-level2"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-[#0878E8] focus:ring-4 focus:ring-blue-50"
                 />
               </div>
 
               {/* State / Region */}
-
               <div>
                 <label
                   htmlFor="company-state-region"
@@ -208,16 +244,19 @@ export default function CompanyInfo({
                   name="stateRegion"
                   type="text"
                   value={
-                    formData.stateRegion ?? ""
+                    formData.stateRegion ??
+                    ""
                   }
-                  onChange={onInputChange}
+                  onChange={
+                    onInputChange
+                  }
                   placeholder="Enter state or region"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
+                  autoComplete="address-level1"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-[#0878E8] focus:ring-4 focus:ring-blue-50"
                 />
               </div>
 
               {/* Country */}
-
               <div className="md:col-span-2">
                 <label
                   htmlFor="company-country"
@@ -230,23 +269,61 @@ export default function CompanyInfo({
                   id="company-country"
                   name="country"
                   type="text"
-                  value={formData.country ?? ""}
-                  onChange={onInputChange}
+                  value={
+                    formData.country ?? ""
+                  }
+                  onChange={
+                    onInputChange
+                  }
                   placeholder="Enter country"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
+                  autoComplete="country-name"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-[#0878E8] focus:ring-4 focus:ring-blue-50"
                 />
               </div>
             </div>
-          </div>
+
+            {/* ========================================================== */}
+            {/* ADDRESS ACTIONS                                             */}
+            {/* ========================================================== */}
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+
+              {/* CANCEL */}
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={isSaving}
+                className="rounded-xl border border-slate-200 bg-white px-6 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              {/* SAVE */}
+              <button
+                type="button"
+                onClick={onSave}
+                disabled={isSaving}
+                className="flex items-center justify-center gap-2 rounded-xl bg-[#0878E8] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSaving && (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                )}
+
+                {isSaving
+                  ? "Saving..."
+                  : "Save Changes"}
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>
   );
 }
 
-/* =========================================================
-   Profile Field
-========================================================= */
+/* ========================================================================== */
+/* Profile Field                                                              */
+/* ========================================================================== */
 
 interface ProfileFieldProps {
   label: string;
@@ -264,12 +341,16 @@ function ProfileField({
       <div className="mb-1.5 flex items-center gap-2 text-sm font-semibold text-slate-500">
         {icon}
 
-        <span>{label}</span>
+        <span>
+          {label}
+        </span>
       </div>
 
       <p className="text-sm font-semibold text-slate-800">
-        {value || "Not available"}
+        {value ||
+          "Not available"}
       </p>
     </div>
   );
 }
+
