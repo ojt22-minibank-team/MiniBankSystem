@@ -4,10 +4,13 @@ import {
 } from "react";
 
 import {
+  ArrowLeft,
+  Check,
+  CheckCircle2,
   Eye,
   EyeOff,
+  LockKeyhole,
   ShieldCheck,
-  CheckCircle2,
 } from "lucide-react";
 
 import {
@@ -29,16 +32,22 @@ function PinResetNewPinPage() {
   // STATE
   // ======================================================
 
-  const [newPin, setNewPin] =
-    useState("");
+  const [
+    newPin,
+    setNewPin,
+  ] = useState("");
 
 
-  const [confirmPin, setConfirmPin] =
-    useState("");
+  const [
+    confirmPin,
+    setConfirmPin,
+  ] = useState("");
 
 
-  const [showNewPin, setShowNewPin] =
-    useState(false);
+  const [
+    showNewPin,
+    setShowNewPin,
+  ] = useState(false);
 
 
   const [
@@ -47,16 +56,22 @@ function PinResetNewPinPage() {
   ] = useState(false);
 
 
-  const [error, setError] =
-    useState("");
+  const [
+    error,
+    setError,
+  ] = useState("");
 
 
-  const [loading, setLoading] =
-    useState(false);
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
 
 
-  const [completed, setCompleted] =
-    useState(false);
+  const [
+    completed,
+    setCompleted,
+  ] = useState(false);
 
 
   // ======================================================
@@ -144,7 +159,8 @@ function PinResetNewPinPage() {
     // ----------------------------------------------
 
     if (
-      newPin !== confirmPin
+      newPin !==
+      confirmPin
     ) {
 
       setError(
@@ -218,12 +234,16 @@ function PinResetNewPinPage() {
       );
 
 
-    } catch (err: any) {
+    } catch (
+      err: any
+    ) {
 
       setError(
+
         err.response?.data?.message
         ||
         "Unable to reset Transaction PIN. Please try again."
+
       );
 
 
@@ -277,57 +297,280 @@ function PinResetNewPinPage() {
 
     return (
 
-      <div className="flex min-h-screen items-center justify-center bg-[#F5F7FB] px-4">
+      <div
+        className="
+          min-h-full
+          bg-[#F3F7FB]
+          px-4
+          py-8
+          sm:px-6
+          lg:px-10
+        "
+      >
 
-        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <div
+          className="
+            mx-auto
+            w-full
+            max-w-3xl
+          "
+        >
 
-          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
+          {/* PAGE HEADING */}
 
-            <CheckCircle2
-              size={34}
-              className="text-emerald-600"
-            />
+          <div className="mb-6">
+
+            <p
+              className="
+                mb-2
+                text-sm
+                font-semibold
+                uppercase
+                tracking-wider
+                text-emerald-600
+              "
+            >
+
+              Security Updated
+
+            </p>
+
+
+            <h1
+              className="
+                text-2xl
+                font-bold
+                tracking-tight
+                text-[#08295C]
+                sm:text-3xl
+              "
+            >
+
+              Transaction PIN Security
+
+            </h1>
 
           </div>
 
 
-          <h1 className="text-2xl font-bold text-[#08295C]">
+          {/* SUCCESS CARD */}
 
-            Transaction PIN Reset
-
-          </h1>
-
-
-          <p className="mt-3 text-sm leading-6 text-slate-500">
-
-            Your Transaction PIN has been reset successfully.
-
-          </p>
-
-
-          <p className="mt-1 text-sm text-slate-500">
-
-            You can now use your new PIN for secure transactions.
-
-          </p>
-
-
-          <button
-
-            type="button"
-
-            onClick={() =>
-              navigate(
-                "/profile"
-              )
-            }
-
-            className="mt-7 w-full rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+          <div
+            className="
+              overflow-hidden
+              rounded-3xl
+              border
+              border-slate-200
+              bg-white
+              shadow-lg
+              shadow-slate-200/60
+            "
           >
 
-            Back to Profile
+            <div
+              className="
+                px-6
+                py-10
+                text-center
+                sm:px-10
+                sm:py-12
+              "
+            >
 
-          </button>
+              {/* SUCCESS ICON */}
+
+              <div
+                className="
+                  mx-auto
+                  mb-6
+                  flex
+                  h-20
+                  w-20
+                  items-center
+                  justify-center
+                  rounded-full
+                  bg-emerald-50
+                  text-emerald-600
+                "
+              >
+
+                <CheckCircle2
+                  size={42}
+                />
+
+              </div>
+
+
+              <p
+                className="
+                  mb-2
+                  text-sm
+                  font-semibold
+                  uppercase
+                  tracking-wider
+                  text-emerald-600
+                "
+              >
+
+                PIN Updated
+
+              </p>
+
+
+              <h2
+                className="
+                  text-3xl
+                  font-bold
+                  tracking-tight
+                  text-[#08295C]
+                "
+              >
+
+                Transaction PIN Reset Successful
+
+              </h2>
+
+
+              <p
+                className="
+                  mx-auto
+                  mt-4
+                  max-w-lg
+                  text-sm
+                  leading-6
+                  text-slate-500
+                "
+              >
+
+                Your Transaction PIN has been reset
+                successfully.
+
+              </p>
+
+
+              <p
+                className="
+                  mx-auto
+                  mt-1
+                  max-w-lg
+                  text-sm
+                  leading-6
+                  text-slate-500
+                "
+              >
+
+                You can now use your new PIN for
+                secure transactions.
+
+              </p>
+
+
+              {/* SUCCESS INFO */}
+
+              <div
+                className="
+                  mt-7
+                  rounded-xl
+                  border
+                  border-emerald-200
+                  bg-emerald-50
+                  px-5
+                  py-4
+                "
+              >
+
+                <div
+                  className="
+                    flex
+                    items-center
+                    justify-center
+                    gap-2
+                    text-sm
+                    font-medium
+                    text-emerald-700
+                  "
+                >
+
+                  <Check
+                    size={18}
+                  />
+
+                  Your new Transaction PIN is ready to use.
+
+                </div>
+
+              </div>
+
+
+              {/* BACK TO PROFILE */}
+
+              <button
+
+                type="button"
+
+                onClick={() =>
+                  navigate(
+                    "/profile"
+                  )
+                }
+
+                className="
+                  mt-8
+                  flex
+                  w-full
+                  items-center
+                  justify-center
+                  rounded-xl
+                  bg-blue-600
+                  px-5
+                  py-3.5
+                  text-sm
+                  font-bold
+                  text-white
+                  shadow-sm
+                  transition
+                  hover:bg-blue-700
+                  focus:outline-none
+                  focus:ring-4
+                  focus:ring-blue-200
+                "
+              >
+
+                Back to Profile
+
+              </button>
+
+
+              {/* SECURITY NOTE */}
+
+              <div
+                className="
+                  mt-6
+                  rounded-xl
+                  bg-slate-50
+                  px-4
+                  py-3
+                "
+              >
+
+                <p
+                  className="
+                    text-xs
+                    leading-5
+                    text-slate-500
+                  "
+                >
+
+                  Never share your Transaction PIN
+                  with anyone, including bank staff.
+
+                </p>
+
+              </div>
+
+            </div>
+
+          </div>
 
         </div>
 
@@ -344,301 +587,742 @@ function PinResetNewPinPage() {
 
   return (
 
-    <div className="flex min-h-screen items-center justify-center bg-[#F5F7FB] px-4 py-10">
+    <div
+      className="
+        min-h-full
+        bg-[#F3F7FB]
+        px-4
+        py-8
+        sm:px-6
+        lg:px-10
+      "
+    >
 
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+      <div
+        className="
+          mx-auto
+          w-full
+          max-w-3xl
+        "
+      >
 
 
-        {/* HEADER */}
+        {/* ============================================
+            PAGE HEADING
+        ============================================ */}
 
-        <div className="mb-7 text-center">
+        <div className="mb-6">
 
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-blue-50">
+          <p
+            className="
+              mb-2
+              text-sm
+              font-semibold
+              uppercase
+              tracking-wider
+              text-blue-600
+            "
+          >
 
-            <ShieldCheck
-              size={30}
-              className="text-blue-600"
-            />
+            Transaction PIN Security
 
-          </div>
+          </p>
 
 
-          <h1 className="text-2xl font-bold text-[#08295C]">
+          <h1
+            className="
+              text-2xl
+              font-bold
+              tracking-tight
+              text-[#08295C]
+              sm:text-3xl
+            "
+          >
 
             Create New Transaction PIN
 
           </h1>
 
 
-          <p className="mt-2 text-sm leading-6 text-slate-500">
+          <p
+            className="
+              mt-2
+              text-sm
+              leading-6
+              text-slate-500
+            "
+          >
 
-            Enter a new 6-digit Transaction PIN
-            and confirm it below.
+            Create a new 6-digit PIN for
+            authorizing secure transactions.
 
           </p>
 
         </div>
 
 
-        <form
-          onSubmit={
-            handleResetPin
-          }
+        {/* ============================================
+            MAIN CARD
+        ============================================ */}
+
+        <div
+          className="
+            overflow-hidden
+            rounded-3xl
+            border
+            border-slate-200
+            bg-white
+            shadow-lg
+            shadow-slate-200/60
+          "
         >
 
-
-          {/* NEW PIN */}
-
-          <div className="mb-5">
-
-            <label className="mb-2 block text-sm font-semibold text-slate-700">
-
-              New Transaction PIN
-
-            </label>
+          <div
+            className="
+              px-6
+              py-8
+              sm:px-10
+              sm:py-10
+            "
+          >
 
 
-            <div className="relative">
+            {/* SECURITY ICON */}
 
-              <input
+            <div
+              className="
+                mb-6
+                flex
+                h-16
+                w-16
+                items-center
+                justify-center
+                rounded-2xl
+                bg-blue-50
+                text-blue-600
+              "
+            >
 
-                type={
-                  showNewPin
-                    ? "text"
-                    : "password"
-                }
-
-                inputMode="numeric"
-
-                autoComplete="new-password"
-
-                maxLength={6}
-
-                value={
-                  newPin
-                }
-
-                placeholder="Enter 6-digit PIN"
-
-                onChange={(e) => {
-
-                  const value =
-                    e.target.value.replace(
-                      /\D/g,
-                      ""
-                    );
-
-                  setNewPin(
-                    value
-                  );
-
-                }}
-
-                disabled={
-                  loading
-                }
-
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-12 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
+              <ShieldCheck
+                size={31}
               />
-
-
-              <button
-
-                type="button"
-
-                onClick={() =>
-                  setShowNewPin(
-                    (prev) => !prev
-                  )
-                }
-
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600"
-              >
-
-                {
-                  showNewPin
-                    ? (
-                      <EyeOff
-                        size={19}
-                      />
-                    )
-                    : (
-                      <Eye
-                        size={19}
-                      />
-                    )
-                }
-
-              </button>
 
             </div>
 
-          </div>
 
+            {/* CARD HEADER */}
 
-          {/* CONFIRM PIN */}
+            <div className="mb-7">
 
-          <div className="mb-5">
-
-            <label className="mb-2 block text-sm font-semibold text-slate-700">
-
-              Confirm Transaction PIN
-
-            </label>
-
-
-            <div className="relative">
-
-              <input
-
-                type={
-                  showConfirmPin
-                    ? "text"
-                    : "password"
-                }
-
-                inputMode="numeric"
-
-                autoComplete="new-password"
-
-                maxLength={6}
-
-                value={
-                  confirmPin
-                }
-
-                placeholder="Re-enter 6-digit PIN"
-
-                onChange={(e) => {
-
-                  const value =
-                    e.target.value.replace(
-                      /\D/g,
-                      ""
-                    );
-
-                  setConfirmPin(
-                    value
-                  );
-
-                }}
-
-                disabled={
-                  loading
-                }
-
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-12 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
-              />
-
-
-              <button
-
-                type="button"
-
-                onClick={() =>
-                  setShowConfirmPin(
-                    (prev) => !prev
-                  )
-                }
-
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600"
+              <h2
+                className="
+                  text-2xl
+                  font-bold
+                  text-[#08295C]
+                  sm:text-3xl
+                "
               >
 
-                {
-                  showConfirmPin
-                    ? (
-                      <EyeOff
-                        size={19}
-                      />
-                    )
-                    : (
-                      <Eye
-                        size={19}
-                      />
-                    )
-                }
+                Set Your New PIN
 
-              </button>
+              </h2>
+
+
+              <p
+                className="
+                  mt-3
+                  max-w-xl
+                  text-sm
+                  leading-6
+                  text-slate-500
+                "
+              >
+
+                Enter a new 6-digit Transaction PIN
+                and confirm it below.
+
+              </p>
 
             </div>
 
-          </div>
+
+            {/* ============================================
+                FORM
+            ============================================ */}
+
+            <form
+              onSubmit={
+                handleResetPin
+              }
+            >
 
 
-          {/* PIN RULE */}
+              {/* ========================================
+                  NEW PIN
+              ======================================== */}
 
-          <div className="mb-5 rounded-xl bg-blue-50 px-4 py-3">
+              <div className="mb-5">
 
-            <p className="text-xs leading-5 text-blue-700">
+                <label
+                  className="
+                    mb-2
+                    block
+                    text-sm
+                    font-semibold
+                    text-slate-700
+                  "
+                >
 
-              Your Transaction PIN must contain exactly 6 numeric digits.
+                  New Transaction PIN
 
-            </p>
-
-          </div>
+                </label>
 
 
-          {/* ERROR */}
+                <div className="relative">
 
-          {
-            error
-            &&
-            (
+                  <LockKeyhole
+                    size={19}
+                    className="
+                      absolute
+                      left-4
+                      top-1/2
+                      -translate-y-1/2
+                      text-slate-400
+                    "
+                  />
 
-              <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
 
-                {error}
+                  <input
+
+                    type={
+                      showNewPin
+                        ? "text"
+                        : "password"
+                    }
+
+                    inputMode="numeric"
+
+                    autoComplete="new-password"
+
+                    maxLength={6}
+
+                    value={
+                      newPin
+                    }
+
+                    placeholder="Enter 6-digit PIN"
+
+                    onChange={(e) => {
+
+                      const value =
+                        e.target.value.replace(
+                          /\D/g,
+                          ""
+                        );
+
+
+                      setNewPin(
+                        value
+                      );
+
+                    }}
+
+                    disabled={
+                      loading
+                    }
+
+                    className="
+                      w-full
+                      rounded-xl
+                      border
+                      border-slate-300
+                      bg-white
+                      py-3.5
+                      pl-12
+                      pr-12
+                      text-sm
+                      text-slate-800
+                      outline-none
+                      transition
+                      placeholder:text-slate-400
+                      focus:border-blue-500
+                      focus:ring-4
+                      focus:ring-blue-100
+                      disabled:cursor-not-allowed
+                      disabled:bg-slate-50
+                    "
+
+                  />
+
+
+                  <button
+
+                    type="button"
+
+                    onClick={() =>
+                      setShowNewPin(
+                        (prev) =>
+                          !prev
+                      )
+                    }
+
+                    disabled={
+                      loading
+                    }
+
+                    aria-label={
+                      showNewPin
+                        ? "Hide PIN"
+                        : "Show PIN"
+                    }
+
+                    className="
+                      absolute
+                      right-4
+                      top-1/2
+                      -translate-y-1/2
+                      text-slate-400
+                      transition
+                      hover:text-slate-600
+                      disabled:cursor-not-allowed
+                      disabled:opacity-50
+                    "
+                  >
+
+                    {
+                      showNewPin
+                        ? (
+                          <EyeOff
+                            size={20}
+                          />
+                        )
+                        : (
+                          <Eye
+                            size={20}
+                          />
+                        )
+                    }
+
+                  </button>
+
+                </div>
 
               </div>
 
-            )
-          }
+
+              {/* ========================================
+                  CONFIRM PIN
+              ======================================== */}
+
+              <div className="mb-5">
+
+                <label
+                  className="
+                    mb-2
+                    block
+                    text-sm
+                    font-semibold
+                    text-slate-700
+                  "
+                >
+
+                  Confirm Transaction PIN
+
+                </label>
 
 
-          {/* RESET BUTTON */}
+                <div className="relative">
 
-          <button
-
-            type="submit"
-
-            disabled={
-              loading
-            }
-
-            className="w-full rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-
-            {
-              loading
-                ? "Resetting PIN..."
-                : "Reset Transaction PIN"
-            }
-
-          </button>
+                  <LockKeyhole
+                    size={19}
+                    className="
+                      absolute
+                      left-4
+                      top-1/2
+                      -translate-y-1/2
+                      text-slate-400
+                    "
+                  />
 
 
-          {/* CANCEL */}
+                  <input
 
-          <button
+                    type={
+                      showConfirmPin
+                        ? "text"
+                        : "password"
+                    }
 
-            type="button"
+                    inputMode="numeric"
 
-            onClick={
-              handleCancel
-            }
+                    autoComplete="new-password"
 
-            disabled={
-              loading
-            }
+                    maxLength={6}
 
-            className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
+                    value={
+                      confirmPin
+                    }
 
-            Cancel
+                    placeholder="Re-enter 6-digit PIN"
 
-          </button>
+                    onChange={(e) => {
 
-        </form>
+                      const value =
+                        e.target.value.replace(
+                          /\D/g,
+                          ""
+                        );
+
+
+                      setConfirmPin(
+                        value
+                      );
+
+                    }}
+
+                    disabled={
+                      loading
+                    }
+
+                    className="
+                      w-full
+                      rounded-xl
+                      border
+                      border-slate-300
+                      bg-white
+                      py-3.5
+                      pl-12
+                      pr-12
+                      text-sm
+                      text-slate-800
+                      outline-none
+                      transition
+                      placeholder:text-slate-400
+                      focus:border-blue-500
+                      focus:ring-4
+                      focus:ring-blue-100
+                      disabled:cursor-not-allowed
+                      disabled:bg-slate-50
+                    "
+
+                  />
+
+
+                  <button
+
+                    type="button"
+
+                    onClick={() =>
+                      setShowConfirmPin(
+                        (prev) =>
+                          !prev
+                      )
+                    }
+
+                    disabled={
+                      loading
+                    }
+
+                    aria-label={
+                      showConfirmPin
+                        ? "Hide confirm PIN"
+                        : "Show confirm PIN"
+                    }
+
+                    className="
+                      absolute
+                      right-4
+                      top-1/2
+                      -translate-y-1/2
+                      text-slate-400
+                      transition
+                      hover:text-slate-600
+                      disabled:cursor-not-allowed
+                      disabled:opacity-50
+                    "
+                  >
+
+                    {
+                      showConfirmPin
+                        ? (
+                          <EyeOff
+                            size={20}
+                          />
+                        )
+                        : (
+                          <Eye
+                            size={20}
+                          />
+                        )
+                    }
+
+                  </button>
+
+                </div>
+
+              </div>
+
+
+              {/* ========================================
+                  PIN REQUIREMENTS
+              ======================================== */}
+
+              <div
+                className="
+                  mb-5
+                  rounded-xl
+                  border
+                  border-blue-100
+                  bg-blue-50/60
+                  px-4
+                  py-4
+                "
+              >
+
+                <p
+                  className="
+                    mb-3
+                    text-sm
+                    font-semibold
+                    text-[#08295C]
+                  "
+                >
+
+                  PIN Requirements
+
+                </p>
+
+
+                <div
+                  className="
+                    space-y-2
+                  "
+                >
+
+                  <div
+                    className="
+                      flex
+                      items-center
+                      gap-2
+                    "
+                  >
+
+                    <Check
+                      size={16}
+                      className="
+                        shrink-0
+                        text-blue-600
+                      "
+                    />
+
+                    <span
+                      className="
+                        text-xs
+                        text-slate-600
+                      "
+                    >
+
+                      Exactly 6 digits
+
+                    </span>
+
+                  </div>
+
+
+                  <div
+                    className="
+                      flex
+                      items-center
+                      gap-2
+                    "
+                  >
+
+                    <Check
+                      size={16}
+                      className="
+                        shrink-0
+                        text-blue-600
+                      "
+                    />
+
+                    <span
+                      className="
+                        text-xs
+                        text-slate-600
+                      "
+                    >
+
+                      Numbers only
+
+                    </span>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+
+              {/* ========================================
+                  ERROR
+              ======================================== */}
+
+              {
+                error
+                &&
+                (
+
+                  <div
+                    className="
+                      mb-5
+                      rounded-xl
+                      border
+                      border-red-200
+                      bg-red-50
+                      px-4
+                      py-3
+                      text-sm
+                      font-medium
+                      text-red-600
+                    "
+                  >
+
+                    {error}
+
+                  </div>
+
+                )
+              }
+
+
+              {/* ========================================
+                  RESET BUTTON
+              ======================================== */}
+
+              <button
+
+                type="submit"
+
+                disabled={
+                  loading
+                }
+
+                className="
+                  flex
+                  w-full
+                  items-center
+                  justify-center
+                  rounded-xl
+                  bg-blue-600
+                  px-5
+                  py-3.5
+                  text-sm
+                  font-bold
+                  text-white
+                  shadow-sm
+                  transition
+                  hover:bg-blue-700
+                  focus:outline-none
+                  focus:ring-4
+                  focus:ring-blue-200
+                  disabled:cursor-not-allowed
+                  disabled:opacity-60
+                "
+              >
+
+                {
+                  loading
+                    ? "Resetting PIN..."
+                    : "Reset Transaction PIN"
+                }
+
+              </button>
+
+
+              {/* ========================================
+                  CANCEL
+              ======================================== */}
+
+              <button
+
+                type="button"
+
+                onClick={
+                  handleCancel
+                }
+
+                disabled={
+                  loading
+                }
+
+                className="
+                  mt-4
+                  flex
+                  w-full
+                  items-center
+                  justify-center
+                  gap-2
+                  rounded-xl
+                  border
+                  border-slate-200
+                  bg-white
+                  px-5
+                  py-3
+                  text-sm
+                  font-semibold
+                  text-slate-600
+                  transition
+                  hover:bg-slate-50
+                  hover:text-slate-800
+                  disabled:cursor-not-allowed
+                  disabled:opacity-60
+                "
+              >
+
+                <ArrowLeft
+                  size={17}
+                />
+
+                Cancel and Back to Profile
+
+              </button>
+
+            </form>
+
+
+            {/* ============================================
+                SECURITY NOTE
+            ============================================ */}
+
+            <div
+              className="
+                mt-6
+                rounded-xl
+                bg-slate-50
+                px-4
+                py-3
+                text-center
+              "
+            >
+
+              <p
+                className="
+                  text-xs
+                  leading-5
+                  text-slate-500
+                "
+              >
+
+                Never share your Transaction PIN
+                with anyone, including bank staff.
+
+              </p>
+
+            </div>
+
+          </div>
+
+        </div>
 
       </div>
 
