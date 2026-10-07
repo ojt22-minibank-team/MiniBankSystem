@@ -33,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -44,7 +45,7 @@ public class AccountService {
     private final CusEmailService cusEmailService;
     private final AccountSignatoriesRepository accountSignatoriesRepository;
     private final CustomerCredentialsRepository customerCredentialsRepository;
-    private final PasswordEncoder passwordEncoder; // [ပြင်ဆင်ချက်: PasswordEncoder ထည့်သွင်းပေးထားပါသည်]
+    private final PasswordEncoder passwordEncoder;
 
     /**
      * ၁။ Retail Account (Savings / Current) အသစ်ဖွင့်လှစ်ခြင်း
@@ -60,7 +61,7 @@ public class AccountService {
         BigDecimal initialDeposit = (dto.getInitialDeposit() != null) ? dto.getInitialDeposit() : BigDecimal.ZERO;
         String currency = (dto.getCurrency() != null && !dto.getCurrency().isBlank()) ? dto.getCurrency().toUpperCase() : "MMK";
 
-        // Accounts Record တည်ဆောက်ခြင်း (accounts table ထဲတွင် password လုံးဝ မပါတော့ပါ)
+        // Accounts Record တည်ဆောက်ခြင်း
         Accounts account = Accounts.builder()
                 .customer(customer)
                 .accountNumber(accountNumber)
@@ -200,7 +201,7 @@ public class AccountService {
                     company.getFullName() + " (Attn: " + ceoCustomer.getFullName() + ")",
                     savedAccount.getAccountNumber(),
                     savedAccount.getAccountType().name(),
-                    rawPassword // [ပြင်ဆင်ချက်: targetEmail အစား rawPassword အမှန်ကို ထည့်သွင်းထားပါသည်]
+                    rawPassword
             );
         }
 
@@ -216,11 +217,11 @@ public class AccountService {
     }
 
     @Transactional(readOnly = true)
-    public java.util.List<AccountResponseDTO> getAccountsByCustomerCode(String customerCode) {
+    public List<AccountResponseDTO> getAccountsByCustomerCode(String customerCode) {
         Customers customer = customerRepository.findByCustomerCode(customerCode)
                 .orElseThrow(() -> new RuntimeException("Customer not found with code: " + customerCode));
 
-        java.util.List<Accounts> accounts = accountRepository.findByCustomerCustomerCode(customerCode);
+        List<Accounts> accounts = accountRepository.findByCustomerCustomerCode(customerCode);
 
         return accounts.stream()
                 .map(this::mapToResponseDTO)
@@ -274,6 +275,16 @@ public class AccountService {
 
         Accounts updatedAccount = accountRepository.save(account);
         return mapToResponseDTO(updatedAccount);
+    }
+
+    /**
+     * Dashboard နှင့် Staff Portal အတွက် စနစ်အတွင်းရှိ အကောင့်အားလုံးကို ဆွဲယူခြင်း (Fix: mapToResponseDTO သို့ ပြင်ဆင်ပြီး)
+     */
+    @Transactional(readOnly = true)
+    public List<AccountResponseDTO> getAllAccounts() {
+        return accountRepository.findAll().stream()
+                .map(this::mapToResponseDTO) // mapToAccountResponseDTO အစား mapToResponseDTO အမှန်ကို အသုံးပြုထားပါသည်
+                .toList();
     }
 
     private StaffUsers getCurrentAuthenticatedStaff() {
