@@ -9,15 +9,9 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class CustomerProfileUpdateDTO {
+public class CusPasswordResetOtpVerifyRequest {
 
+    private String challengeGroupId;
 
-    private String address;
-
-    private String city;
-
-    private String stateRegion;
-
-    private String country;
-
+    private String otp;
 }

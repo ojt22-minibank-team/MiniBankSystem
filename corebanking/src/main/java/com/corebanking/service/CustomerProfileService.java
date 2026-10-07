@@ -72,19 +72,10 @@ public class CustomerProfileService {
                 companyInfoRepository.findById(customerId)
                         .orElse(null);
 
+        /*
+         * Retail / Personal Customer
+         */
         if (personalInfo != null) {
-
-            if (dto.getEmail() != null) {
-                personalInfo.setEmail(dto.getEmail());
-            }
-
-            if (dto.getPhone() != null) {
-                personalInfo.setPhone(dto.getPhone());
-            }
-
-            if (dto.getOccupation() != null) {
-                personalInfo.setOccupation(dto.getOccupation());
-            }
 
             updatePersonalAddress(
                     personalInfo,
@@ -94,19 +85,10 @@ public class CustomerProfileService {
             personalInfoRepository.save(personalInfo);
         }
 
+        /*
+         * Company Customer
+         */
         if (companyInfo != null) {
-
-            if (dto.getCompanyPhone() != null) {
-                companyInfo.setCompanyPhone(
-                        dto.getCompanyPhone()
-                );
-            }
-
-            if (dto.getCompanyEmail() != null) {
-                companyInfo.setCompanyEmail(
-                        dto.getCompanyEmail()
-                );
-            }
 
             updateCompanyAddress(
                     companyInfo,

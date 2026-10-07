@@ -8,43 +8,32 @@ import {
 } from "react-router-dom";
 
 import {
-  Eye,
-  EyeOff,
-  Landmark,
-  LockKeyhole,
+  ArrowLeft,
+  Check,
+  KeyRound,
+  Mail,
+  ShieldCheck,
   UserRound,
 } from "lucide-react";
 
 import {
-  loginCustomer,
+  requestPasswordReset,
 } from "../../../services/authService";
 
 import PublicAuthLayout
   from "../components/PublicAuthLayout";
 
 
-function LoginPage() {
+function ForgotPasswordPage() {
 
-  // =====================================================
+  // ======================================================
   // STATE
-  // =====================================================
+  // ======================================================
 
   const [
     loginIdentifier,
     setLoginIdentifier,
   ] = useState("");
-
-
-  const [
-    password,
-    setPassword,
-  ] = useState("");
-
-
-  const [
-    showPassword,
-    setShowPassword,
-  ] = useState(false);
 
 
   const [
@@ -59,50 +48,33 @@ function LoginPage() {
   ] = useState(false);
 
 
-  // =====================================================
-  // AUTOFILL CONTROL
-  // =====================================================
-
-  const [
-    loginFieldEditable,
-    setLoginFieldEditable,
-  ] = useState(false);
-
-
-  const [
-    passwordFieldEditable,
-    setPasswordFieldEditable,
-  ] = useState(false);
-
-
   const navigate =
     useNavigate();
 
 
-  // =====================================================
-  // LOGIN
-  // =====================================================
+  // ======================================================
+  // REQUEST PASSWORD RESET OTP
+  // ======================================================
 
-  const handleLogin = async (
+  const handleSubmit = async (
     e: FormEvent
   ) => {
 
     e.preventDefault();
 
-
     setError("");
 
 
-    // Empty field validation
+    // ----------------------------------------------
+    // 1. EMPTY FIELD CHECK
+    // ----------------------------------------------
 
     if (
-      !loginIdentifier
-      ||
-      !password
+      !loginIdentifier.trim()
     ) {
 
       setError(
-        "Please enter Customer ID / Account Number and password."
+        "Please enter your Customer ID or Account Number."
       );
 
       return;
@@ -116,56 +88,62 @@ function LoginPage() {
       );
 
 
+      // ----------------------------------------------
+      // 2. CALL BACKEND
+      // ----------------------------------------------
+
       const response =
-        await loginCustomer({
+        await requestPasswordReset({
 
           loginIdentifier:
-            loginIdentifier,
-
-          password:
-            password,
+            loginIdentifier.trim(),
 
         });
 
 
-      // Password correct → OTP required
+      // ----------------------------------------------
+      // 3. SAVE PASSWORD RESET CHALLENGE
+      // ----------------------------------------------
+
+      sessionStorage.setItem(
+        "passwordResetChallengeGroupId",
+        response.challengeGroupId
+      );
+
+
+      // Backend returns destinationMasked
+      // Example: su****@gmail.com
 
       if (
-        response.otpRequired
+        response.destinationMasked
       ) {
 
         sessionStorage.setItem(
-          "challengeGroupId",
-          response.challengeGroupId
-        );
-
-
-        if (
-          response.maskedEmail
-        ) {
-
-          sessionStorage.setItem(
-            "maskedEmail",
-            response.maskedEmail
-          );
-
-        }
-
-
-        navigate(
-          "/otp"
+          "passwordResetMaskedEmail",
+          response.destinationMasked
         );
 
       }
 
 
-    } catch (error: any) {
+      // ----------------------------------------------
+      // 4. GO TO PASSWORD RESET OTP PAGE
+      // ----------------------------------------------
+
+      navigate(
+        "/password-reset/otp"
+      );
+
+
+    } catch (
+      error: any
+    ) {
 
       setError(
 
         error.response?.data?.message
         ||
-        "Login failed. Please try again."
+        "Unable to request password reset. Please try again."
 
       );
 
@@ -181,9 +159,9 @@ function LoginPage() {
   };
 
 
-  // =====================================================
+  // ======================================================
   // UI
-  // =====================================================
+  // ======================================================
 
   return (
 
@@ -207,13 +185,13 @@ function LoginPage() {
           className="
             grid
             min-h-[610px]
-            md:grid-cols-2
+            md:grid-cols-[0.9fr_1.1fr]
           "
         >
 
 
           {/* ============================================
-              LEFT BRAND PANEL
+              LEFT ACCOUNT RECOVERY PANEL
           ============================================ */}
 
           <div
@@ -263,7 +241,7 @@ function LoginPage() {
             />
 
 
-            {/* BRAND */}
+            {/* TOP */}
 
             <div className="relative z-10">
 
@@ -289,22 +267,40 @@ function LoginPage() {
                   "
                 >
 
-                  <Landmark size={26} />
+                  <ShieldCheck
+                    size={27}
+                  />
 
                 </div>
 
 
-                <h1
-                  className="
-                    text-3xl
-                    font-bold
-                    tracking-tight
-                  "
-                >
+                <div>
 
-                  MiniBank
+                  <h1
+                    className="
+                      text-2xl
+                      font-bold
+                    "
+                  >
 
-                </h1>
+                    MiniBank
+
+                  </h1>
+
+
+                  <p
+                    className="
+                      mt-0.5
+                      text-xs
+                      text-blue-100
+                    "
+                  >
+
+                    Secure Account Recovery
+
+                  </p>
+
+                </div>
 
               </div>
 
@@ -319,8 +315,8 @@ function LoginPage() {
                 "
               >
 
-                Banking made secure,
-                simple and convenient.
+                Recover access to
+                your account securely.
 
               </h2>
 
@@ -336,85 +332,227 @@ function LoginPage() {
                 "
               >
 
-                Securely access your accounts,
-                manage your banking services,
-                and stay connected wherever you are.
+                Verify your identity using your
+                registered email before creating
+                a new password.
 
               </p>
 
             </div>
 
 
-            {/* BANK IMAGE */}
+            {/* SECURITY INFORMATION */}
 
             <div
               className="
                 relative
                 z-10
                 mt-8
-                overflow-hidden
                 rounded-2xl
                 border
                 border-white/15
                 bg-white/10
-                shadow-2xl
+                p-6
+                backdrop-blur-sm
               "
             >
 
-              <img
-
-                src="/images.jfif"
-
-                alt="MiniBank Building"
-
-                className="
-                  h-64
-                  w-full
-                  object-cover
-                  lg:h-72
-                "
-
-              />
-
-
               <div
                 className="
-                  absolute
-                  inset-x-0
-                  bottom-0
-                  bg-gradient-to-t
-                  from-[#08295C]/90
-                  to-transparent
-                  px-6
-                  pb-5
-                  pt-16
+                  mb-5
+                  flex
+                  items-center
+                  gap-3
                 "
               >
 
-                <p
+                <div
                   className="
-                    text-sm
-                    font-semibold
-                    text-white
+                    flex
+                    h-11
+                    w-11
+                    shrink-0
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-white/15
                   "
                 >
 
-                  Your Trust, Our Priority
+                  <KeyRound
+                    size={22}
+                  />
 
-                </p>
+                </div>
 
 
-                <p
+                <div>
+
+                  <h3
+                    className="
+                      text-lg
+                      font-bold
+                    "
+                  >
+
+                    Secure Recovery
+
+                  </h3>
+
+
+                  <p
+                    className="
+                      mt-1
+                      text-xs
+                      text-blue-100
+                    "
+                  >
+
+                    Your identity is verified first
+
+                  </p>
+
+                </div>
+
+              </div>
+
+
+              <div className="space-y-4">
+
+
+                {/* EMAIL OTP */}
+
+                <div
                   className="
-                    mt-1
-                    text-xs
-                    text-blue-100
+                    flex
+                    items-center
+                    gap-3
                   "
                 >
 
-                  Secure • Simple • Convenient
+                  <div
+                    className="
+                      flex
+                      h-7
+                      w-7
+                      shrink-0
+                      items-center
+                      justify-center
+                      rounded-full
+                      bg-emerald-400/20
+                      text-emerald-200
+                    "
+                  >
 
-                </p>
+                    <Check
+                      size={16}
+                    />
+
+                  </div>
+
+
+                  <p
+                    className="
+                      text-sm
+                      text-blue-50
+                    "
+                  >
+
+                    Verification through Email OTP
+
+                  </p>
+
+                </div>
+
+
+                {/* OTP EXPIRY */}
+
+                <div
+                  className="
+                    flex
+                    items-center
+                    gap-3
+                  "
+                >
+
+                  <div
+                    className="
+                      flex
+                      h-7
+                      w-7
+                      shrink-0
+                      items-center
+                      justify-center
+                      rounded-full
+                      bg-emerald-400/20
+                      text-emerald-200
+                    "
+                  >
+
+                    <Check
+                      size={16}
+                    />
+
+                  </div>
+
+
+                  <p
+                    className="
+                      text-sm
+                      text-blue-50
+                    "
+                  >
+
+                    OTP expires in 5 minutes
+
+                  </p>
+
+                </div>
+
+
+                {/* PASSWORD SECURITY */}
+
+                <div
+                  className="
+                    flex
+                    items-center
+                    gap-3
+                  "
+                >
+
+                  <div
+                    className="
+                      flex
+                      h-7
+                      w-7
+                      shrink-0
+                      items-center
+                      justify-center
+                      rounded-full
+                      bg-emerald-400/20
+                      text-emerald-200
+                    "
+                  >
+
+                    <Check
+                      size={16}
+                    />
+
+                  </div>
+
+
+                  <p
+                    className="
+                      text-sm
+                      text-blue-50
+                    "
+                  >
+
+                    Your password is never sent by email
+
+                  </p>
+
+                </div>
 
               </div>
 
@@ -424,7 +562,7 @@ function LoginPage() {
 
 
           {/* ============================================
-              RIGHT LOGIN PANEL
+              RIGHT PASSWORD RECOVERY PANEL
           ============================================ */}
 
           <div
@@ -435,19 +573,19 @@ function LoginPage() {
               px-6
               py-10
               sm:px-10
-              lg:px-14
+              lg:px-16
             "
           >
 
             <div
               className="
                 w-full
-                max-w-md
+                max-w-lg
               "
             >
 
 
-              {/* MOBILE LOGO */}
+              {/* MOBILE BRAND */}
 
               <div
                 className="
@@ -472,7 +610,9 @@ function LoginPage() {
                   "
                 >
 
-                  <Landmark size={22} />
+                  <ShieldCheck
+                    size={22}
+                  />
 
                 </div>
 
@@ -499,11 +639,34 @@ function LoginPage() {
                     "
                   >
 
-                    Customer Portal
+                    Secure Account Recovery
 
                   </p>
 
                 </div>
+
+              </div>
+
+
+              {/* ICON */}
+
+              <div
+                className="
+                  mb-6
+                  flex
+                  h-16
+                  w-16
+                  items-center
+                  justify-center
+                  rounded-2xl
+                  bg-blue-50
+                  text-blue-600
+                "
+              >
+
+                <KeyRound
+                  size={30}
+                />
 
               </div>
 
@@ -523,7 +686,7 @@ function LoginPage() {
                   "
                 >
 
-                  Mini Banking
+                  Password Recovery
 
                 </p>
 
@@ -538,7 +701,7 @@ function LoginPage() {
                   "
                 >
 
-                  Welcome!
+                  Forgot your password?
 
                 </h2>
 
@@ -546,14 +709,16 @@ function LoginPage() {
                 <p
                   className="
                     mt-3
+                    max-w-md
                     text-sm
                     leading-6
                     text-slate-500
                   "
                 >
 
-                  Login securely using your Customer ID
-                  or Account Number.
+                  Enter your Customer ID or Account Number.
+                  We will send a verification OTP to your
+                  registered email.
 
                 </p>
 
@@ -565,20 +730,16 @@ function LoginPage() {
               ======================================== */}
 
               <form
-
                 onSubmit={
-                  handleLogin
+                  handleSubmit
                 }
-
                 autoComplete="off"
-
                 className="space-y-5"
-
               >
 
 
                 {/* ======================================
-                    LOGIN IDENTIFIER
+                    CUSTOMER ID / ACCOUNT NUMBER
                 ====================================== */}
 
                 <div>
@@ -619,8 +780,6 @@ function LoginPage() {
 
                       type="text"
 
-                      name="customerLookupValue"
-
                       value={
                         loginIdentifier
                       }
@@ -629,16 +788,6 @@ function LoginPage() {
                         setLoginIdentifier(
                           e.target.value
                         )
-                      }
-
-                      onFocus={() =>
-                        setLoginFieldEditable(
-                          true
-                        )
-                      }
-
-                      readOnly={
-                        !loginFieldEditable
                       }
 
                       placeholder="Enter Customer ID or Account Number"
@@ -678,157 +827,6 @@ function LoginPage() {
 
 
                 {/* ======================================
-                    PASSWORD
-                ====================================== */}
-
-                <div>
-
-                  <label
-                    className="
-                      mb-2
-                      block
-                      text-sm
-                      font-semibold
-                      text-slate-700
-                    "
-                  >
-
-                    Password
-
-                  </label>
-
-
-                  <div className="relative">
-
-                    <LockKeyhole
-
-                      size={19}
-
-                      className="
-                        absolute
-                        left-4
-                        top-1/2
-                        -translate-y-1/2
-                        text-slate-400
-                      "
-
-                    />
-
-
-                    <input
-
-                      type={
-                        showPassword
-                          ? "text"
-                          : "password"
-                      }
-
-                      name="customerSecretValue"
-
-                      value={
-                        password
-                      }
-
-                      onChange={(e) =>
-                        setPassword(
-                          e.target.value
-                        )
-                      }
-
-                      onFocus={() =>
-                        setPasswordFieldEditable(
-                          true
-                        )
-                      }
-
-                      readOnly={
-                        !passwordFieldEditable
-                      }
-
-                      placeholder="Enter your password"
-
-                      autoComplete="new-password"
-
-                      disabled={
-                        loading
-                      }
-
-                      className="
-                        w-full
-                        rounded-xl
-                        border
-                        border-slate-300
-                        bg-white
-                        py-3.5
-                        pl-12
-                        pr-12
-                        text-sm
-                        text-slate-800
-                        outline-none
-                        transition
-                        placeholder:text-slate-400
-                        focus:border-blue-500
-                        focus:ring-4
-                        focus:ring-blue-100
-                        disabled:cursor-not-allowed
-                        disabled:bg-slate-50
-                      "
-
-                    />
-
-
-                    {/* PASSWORD SHOW / HIDE */}
-
-                    <button
-
-                      type="button"
-
-                      onClick={() =>
-                        setShowPassword(
-                          (prev) =>
-                            !prev
-                        )
-                      }
-
-                      aria-label={
-                        showPassword
-                          ? "Hide password"
-                          : "Show password"
-                      }
-
-                      className="
-                        absolute
-                        right-4
-                        top-1/2
-                        -translate-y-1/2
-                        text-slate-400
-                        transition
-                        hover:text-slate-600
-                      "
-                    >
-
-                      {
-                        showPassword
-                          ? (
-                            <EyeOff
-                              size={20}
-                            />
-                          )
-                          : (
-                            <Eye
-                              size={20}
-                            />
-                          )
-                      }
-
-                    </button>
-
-                  </div>
-
-                </div>
-
-
-                {/* ======================================
                     ERROR MESSAGE
                 ====================================== */}
 
@@ -860,45 +858,7 @@ function LoginPage() {
 
 
                 {/* ======================================
-                    FORGOT PASSWORD
-                ====================================== */}
-
-                <div
-                  className="
-                    flex
-                    items-center
-                    justify-end
-                  "
-                >
-
-                  <button
-
-                    type="button"
-
-                    onClick={() =>
-                      navigate(
-                        "/forgot-password"
-                      )
-                    }
-
-                    className="
-                      text-sm
-                      font-semibold
-                      text-blue-600
-                      transition
-                      hover:text-blue-700
-                    "
-                  >
-
-                    Forgot password?
-
-                  </button>
-
-                </div>
-
-
-                {/* ======================================
-                    LOGIN BUTTON
+                    CONTINUE BUTTON
                 ====================================== */}
 
                 <button
@@ -935,8 +895,58 @@ function LoginPage() {
                   {
                     loading
                       ? "Sending OTP..."
-                      : "Login"
+                      : "Continue"
                   }
+
+                </button>
+
+
+                {/* ======================================
+                    BACK TO LOGIN
+                ====================================== */}
+
+                <button
+
+                  type="button"
+
+                  onClick={() =>
+                    navigate(
+                      "/login"
+                    )
+                  }
+
+                  disabled={
+                    loading
+                  }
+
+                  className="
+                    flex
+                    w-full
+                    items-center
+                    justify-center
+                    gap-2
+                    rounded-xl
+                    border
+                    border-slate-200
+                    bg-white
+                    px-5
+                    py-3
+                    text-sm
+                    font-semibold
+                    text-slate-600
+                    transition
+                    hover:bg-slate-50
+                    hover:text-slate-800
+                    disabled:cursor-not-allowed
+                    disabled:opacity-60
+                  "
+                >
+
+                  <ArrowLeft
+                    size={17}
+                  />
+
+                  Back to Login
 
                 </button>
 
@@ -944,71 +954,55 @@ function LoginPage() {
 
 
               {/* ========================================
-                  CONTACT BANK
+                  EMAIL INFORMATION
               ======================================== */}
 
               <div
                 className="
-                  mt-8
-                  border-t
-                  border-slate-100
-                  pt-6
-                  text-center
-                "
-              >
-
-                <p
-                  className="
-                    text-sm
-                    text-slate-500
-                  "
-                >
-
-                  Don't have an account?{" "}
-
-                  <span
-                    className="
-                      font-semibold
-                      text-blue-600
-                    "
-                  >
-
-                    Contact your bank
-
-                  </span>
-
-                </p>
-
-              </div>
-
-
-              {/* ========================================
-                  SECURITY MESSAGE
-              ======================================== */}
-
-              <div
-                className="
-                  mt-5
+                  mt-7
                   rounded-xl
                   bg-slate-50
                   px-4
-                  py-3
-                  text-center
+                  py-4
                 "
               >
 
-                <p
+                <div
                   className="
-                    text-xs
-                    leading-5
-                    text-slate-500
+                    flex
+                    items-start
+                    gap-3
                   "
                 >
 
-                  For your security, never share your
-                  password or OTP with anyone.
+                  <Mail
 
-                </p>
+                    size={18}
+
+                    className="
+                      mt-0.5
+                      shrink-0
+                      text-slate-400
+                    "
+
+                  />
+
+
+                  <p
+                    className="
+                      text-xs
+                      leading-5
+                      text-slate-500
+                    "
+                  >
+
+                    The verification code will only be
+                    sent to the email address registered
+                    with your MiniBank account.
+
+                  </p>
+
+                </div>
 
               </div>
 
@@ -1027,4 +1021,4 @@ function LoginPage() {
 }
 
 
-export default LoginPage;
+export default ForgotPasswordPage;

@@ -44,6 +44,77 @@ export interface ChangePasswordRequest {
   confirmPassword: string;
 }
 
+// ======================================================
+// PASSWORD RESET - REQUEST OTP
+// ======================================================
+
+export interface PasswordResetRequest {
+  loginIdentifier: string;
+}
+
+export interface PasswordResetStartResponse {
+  success: boolean;
+  message: string;
+  challengeGroupId: string;
+  destinationMasked: string;
+}
+
+
+// ======================================================
+// PASSWORD RESET - VERIFY OTP
+// ======================================================
+
+export interface PasswordResetOtpVerifyRequest {
+  challengeGroupId: string;
+  otp: string;
+}
+export interface PasswordResetOtpVerifyResponse {
+  success: boolean;
+  message: string;
+  challengeGroupId: string;
+}
+
+// ======================================================
+// TRANSACTION PIN RESET
+// ======================================================
+
+export interface PinResetStartResponse {
+  success: boolean;
+  message: string;
+  challengeGroupId: string;
+  destinationMasked: string;
+}
+
+
+export interface PinResetOtpVerifyRequest {
+  challengeGroupId: string;
+  otp: string;
+}
+
+
+export interface PinResetOtpVerifyResponse {
+  success: boolean;
+  message: string;
+  verifiedChallengeGroupId: string;
+}
+
+
+export interface PinResetConfirmRequest {
+  verifiedChallengeGroupId: string;
+  newPin: string;
+  confirmPin: string;
+}
+
+// ======================================================
+// PASSWORD RESET - CONFIRM NEW PASSWORD
+// ======================================================
+
+export interface PasswordResetConfirmRequest {
+  verifiedChallengeGroupId: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
 export interface SetupPinRequest {
   challengeGroupId: string;
   pin: string;

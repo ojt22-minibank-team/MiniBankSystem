@@ -9,15 +9,11 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class CustomerProfileUpdateDTO {
+public class CusPinResetOtpVerifyResponse {
 
+    private boolean success;
 
-    private String address;
+    private String message;
 
-    private String city;
-
-    private String stateRegion;
-
-    private String country;
-
+    private String verifiedChallengeGroupId;
 }

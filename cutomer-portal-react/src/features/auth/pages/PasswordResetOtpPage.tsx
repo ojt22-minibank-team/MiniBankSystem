@@ -1,5 +1,6 @@
 import {
   useState,
+  type FormEvent,
 } from "react";
 
 import {
@@ -7,6 +8,7 @@ import {
 } from "react-router-dom";
 
 import {
+  ArrowLeft,
   Check,
   Clock3,
   KeyRound,
@@ -15,24 +17,19 @@ import {
 } from "lucide-react";
 
 import {
-  verifyOtp,
-  resendOtp,
-  testProtectedApi,
+  verifyPasswordResetOtp,
+  resendPasswordResetOtp,
 } from "../../../services/authService";
-
-import {
-  saveTokens,
-} from "../../../utils/tokenStorage";
 
 import PublicAuthLayout
   from "../components/PublicAuthLayout";
 
 
-function OtpPage() {
+function PasswordResetOtpPage() {
 
-  // =========================================
+  // ======================================================
   // STATE
-  // =========================================
+  // ======================================================
 
   const [
     otp,
@@ -53,8 +50,8 @@ function OtpPage() {
 
 
   const [
-    verifying,
-    setVerifying,
+    loading,
+    setLoading,
   ] = useState(false);
 
 
@@ -64,226 +61,192 @@ function OtpPage() {
   ] = useState(false);
 
 
-  const [
-    completed,
-    setCompleted,
-  ] = useState(false);
-
-
-  const [
-    testMessage,
-    setTestMessage,
-  ] = useState("");
-
-
   const navigate =
     useNavigate();
 
 
-  const maskedEmail =
+  // ======================================================
+  // GET PASSWORD RESET DATA FROM SESSION STORAGE
+  // ======================================================
+
+  const challengeGroupId =
     sessionStorage.getItem(
-      "maskedEmail"
+      "passwordResetChallengeGroupId"
     );
 
 
-  // =========================================
-  // VERIFY OTP
-  // =========================================
-
-  const handleVerifyOtp =
-    async () => {
-
-      setError("");
-
-      setMessage("");
-
-      setTestMessage("");
+  const maskedEmail =
+    sessionStorage.getItem(
+      "passwordResetMaskedEmail"
+    );
 
 
-      const challengeGroupId =
-        sessionStorage.getItem(
-          "challengeGroupId"
-        );
+  // ======================================================
+  // VERIFY PASSWORD RESET OTP
+  // ======================================================
+
+  const handleVerifyOtp = async (
+    e: FormEvent
+  ) => {
+
+    e.preventDefault();
 
 
-      if (
-        !challengeGroupId
-      ) {
+    setError("");
 
-        setError(
-          "Login session is missing. Please login again."
-        );
-
-        return;
-
-      }
+    setMessage("");
 
 
-      if (
-        !otp
-      ) {
+    // ====================================================
+    // 1. CHALLENGE GROUP ID CHECK
+    // ====================================================
 
-        setError(
-          "Please enter OTP."
-        );
+    if (
+      !challengeGroupId
+    ) {
 
-        return;
+      setError(
+        "Password reset session is missing. Please start again."
+      );
 
-      }
+      return;
 
-
-      if (
-        !/^\d{6}$/.test(
-          otp
-        )
-      ) {
-
-        setError(
-          "OTP must be exactly 6 digits."
-        );
-
-        return;
-
-      }
+    }
 
 
-      try {
+    // ====================================================
+    // 2. OTP MUST BE EXACTLY 6 DIGITS
+    // ====================================================
 
-        setVerifying(
-          true
-        );
+    if (
+      !/^\d{6}$/.test(
+        otp
+      )
+    ) {
+
+      setError(
+        "Please enter a valid 6-digit OTP."
+      );
+
+      return;
+
+    }
 
 
-        const response =
-          await verifyOtp({
+    try {
 
+      setLoading(
+        true
+      );
+
+
+      // ==================================================
+      // 3. CALL VERIFY OTP API
+      // ==================================================
+
+      const response =
+        await verifyPasswordResetOtp({
+
+          challengeGroupId:
             challengeGroupId,
 
+          otp:
             otp,
 
-          });
+        });
 
 
-        // =====================================
-        // FIRST LOGIN
-        // =====================================
+      // ==================================================
+      // 4. DEVELOPMENT LOG
+      // ==================================================
 
-        if (
-          response.firstLoginSetupRequired
-        ) {
-
-          if (
-            response.passwordChangeRequired
-          ) {
-
-            navigate(
-              "/first-login/change-password"
-            );
-
-            return;
-
-          }
+      console.log(
+        "PASSWORD RESET VERIFY RESPONSE:",
+        response
+      );
 
 
-          if (
-            response.pinSetupRequired
-          ) {
-
-            navigate(
-              "/first-login/setup-pin"
-            );
-
-            return;
-
-          }
+      console.log(
+        "verified challenge id:",
+        response.challengeGroupId
+      );
 
 
-          setError(
-            "Unable to determine first-login setup step."
-          );
+      // ==================================================
+      // 5. BACKEND RESPONSE CHECK
+      // ==================================================
 
-          return;
-
-        }
-
-
-        // =====================================
-        // NORMAL LOGIN
-        // =====================================
-
-        if (
-          response.accessToken
-          &&
-          response.refreshToken
-        ) {
-
-          saveTokens(
-            response.accessToken,
-            response.refreshToken
-          );
-
-
-          sessionStorage.removeItem(
-            "challengeGroupId"
-          );
-
-
-          sessionStorage.removeItem(
-            "maskedEmail"
-          );
-
-
-          setCompleted(
-            true
-          );
-
-
-          setMessage(
-            "Login completed successfully."
-          );
-
-
-          navigate(
-            "/dashboard"
-          );
-
-          return;
-
-        }
-
-
-        setError(
-          "Login could not be completed."
-        );
-
-
-      } catch (
-        error: any
+      if (
+        !response.challengeGroupId
       ) {
 
         setError(
-
-          error.response?.data?.message
-          ||
-          "OTP verification failed."
-
+          "Password reset verification information is missing."
         );
 
-
-      } finally {
-
-        setVerifying(
-          false
-        );
+        return;
 
       }
 
-    };
+
+      // ==================================================
+      // 6. SAVE VERIFIED CHALLENGE ID
+      //
+      // Backend property name = challengeGroupId
+      // But this value is the NEW verified challenge ID.
+      // ==================================================
+
+      sessionStorage.setItem(
+        "verifiedPasswordResetChallengeGroupId",
+        response.challengeGroupId
+      );
 
 
-  // =========================================
-  // RESEND OTP
-  // =========================================
+      // ==================================================
+      // 7. REMOVE OLD OTP CHALLENGE
+      // ==================================================
+
+      sessionStorage.removeItem(
+        "passwordResetChallengeGroupId"
+      );
+
+
+      // ==================================================
+      // 8. GO TO NEW PASSWORD PAGE
+      // ==================================================
+
+      navigate(
+        "/password-reset/new-password"
+      );
+
+
+    } catch (
+      error: any
+    ) {
+
+      setError(
+
+        error.response?.data?.message
+        ||
+        "OTP verification failed. Please try again."
+
+      );
+
+
+    } finally {
+
+      setLoading(
+        false
+      );
+
+    }
+
+  };
+
+
+  // ======================================================
+  // RESEND PASSWORD RESET OTP
+  // ======================================================
 
   const handleResendOtp =
     async () => {
@@ -293,18 +256,16 @@ function OtpPage() {
       setMessage("");
 
 
-      const challengeGroupId =
-        sessionStorage.getItem(
-          "challengeGroupId"
-        );
-
+      // ====================================================
+      // 1. CHALLENGE GROUP ID CHECK
+      // ====================================================
 
       if (
         !challengeGroupId
       ) {
 
         setError(
-          "Login session is missing. Please login again."
+          "Password reset session is missing. Please start again."
         );
 
         return;
@@ -319,30 +280,45 @@ function OtpPage() {
         );
 
 
-        const response =
-          await resendOtp({
+        // ==================================================
+        // 2. CALL RESEND OTP API
+        // ==================================================
 
-            challengeGroupId,
+        const response =
+          await resendPasswordResetOtp({
+
+            challengeGroupId:
+              challengeGroupId,
 
           });
 
 
-        // Backend returns new challengeGroupId
+        // ==================================================
+        // 3. SAVE RETURNED CHALLENGE GROUP ID
+        // ==================================================
 
         if (
           response.challengeGroupId
         ) {
 
           sessionStorage.setItem(
-            "challengeGroupId",
+            "passwordResetChallengeGroupId",
             response.challengeGroupId
           );
 
         }
 
 
+        // ==================================================
+        // 4. CLEAR OLD OTP INPUT
+        // ==================================================
+
         setOtp("");
 
+
+        // ==================================================
+        // 5. SUCCESS MESSAGE
+        // ==================================================
 
         setMessage(
 
@@ -361,7 +337,7 @@ function OtpPage() {
 
           error.response?.data?.message
           ||
-          "Unable to resend OTP."
+          "Unable to resend OTP. Please try again."
 
         );
 
@@ -377,61 +353,38 @@ function OtpPage() {
     };
 
 
-  // =========================================
-  // TEST PROTECTED API
-  // KEEP CURRENT LOGIC
-  // UI IS HIDDEN
-  // =========================================
+  // ======================================================
+  // BACK TO FORGOT PASSWORD
+  // ======================================================
 
-  const handleTestProtectedApi =
-    async () => {
+  const handleBack =
+    () => {
 
-      setTestMessage("");
-
-
-      try {
-
-        const response =
-          await testProtectedApi();
+      sessionStorage.removeItem(
+        "passwordResetChallengeGroupId"
+      );
 
 
-        console.log(
-          "Protected API success:",
-          response
-        );
+      sessionStorage.removeItem(
+        "passwordResetMaskedEmail"
+      );
 
 
-        setTestMessage(
-          "Protected API success."
-        );
+      sessionStorage.removeItem(
+        "verifiedPasswordResetChallengeGroupId"
+      );
 
 
-      } catch (
-        error: any
-      ) {
-
-        console.log(
-          "Protected API failed:",
-          error.response?.data
-        );
-
-
-        setTestMessage(
-
-          error.response?.data?.message
-          ||
-          "Protected API failed."
-
-        );
-
-      }
+      navigate(
+        "/forgot-password"
+      );
 
     };
 
 
-  // =========================================
+  // ======================================================
   // UI
-  // =========================================
+  // ======================================================
 
   return (
 
@@ -460,9 +413,9 @@ function OtpPage() {
         >
 
 
-          {/* =====================================
-              LEFT SECURITY PANEL
-          ====================================== */}
+          {/* ============================================
+              LEFT PASSWORD RECOVERY PANEL
+          ============================================ */}
 
           <div
             className="
@@ -483,7 +436,7 @@ function OtpPage() {
           >
 
 
-            {/* DECORATIVE BACKGROUND */}
+            {/* Decorative circles */}
 
             <div
               className="
@@ -511,14 +464,9 @@ function OtpPage() {
             />
 
 
-            {/* TOP */}
+            {/* BRAND / MESSAGE */}
 
-            <div
-              className="
-                relative
-                z-10
-              "
-            >
+            <div className="relative z-10">
 
               <div
                 className="
@@ -571,7 +519,7 @@ function OtpPage() {
                     "
                   >
 
-                    Secure Verification
+                    Secure Password Recovery
 
                   </p>
 
@@ -590,8 +538,9 @@ function OtpPage() {
                 "
               >
 
-                Protecting your account,
-                every step of the way.
+                Confirm your identity
+                before creating a
+                new password.
 
               </h2>
 
@@ -607,9 +556,9 @@ function OtpPage() {
                 "
               >
 
-                Email verification adds an
-                additional security layer before
-                you access your MiniBank account.
+                Enter the verification code sent
+                to your registered email to continue
+                the password recovery process.
 
               </p>
 
@@ -670,7 +619,7 @@ function OtpPage() {
                     "
                   >
 
-                    Two-Step Security
+                    Password Recovery
 
                   </h3>
 
@@ -683,7 +632,7 @@ function OtpPage() {
                     "
                   >
 
-                    Verify your identity securely
+                    Secure identity verification
 
                   </p>
 
@@ -692,11 +641,10 @@ function OtpPage() {
               </div>
 
 
-              <div
-                className="
-                  space-y-4
-                "
-              >
+              <div className="space-y-4">
+
+
+                {/* EMAIL OTP */}
 
                 <div
                   className="
@@ -734,13 +682,15 @@ function OtpPage() {
                     "
                   >
 
-                    OTP expires in 5 minutes
+                    Verification through Email OTP
 
                   </p>
 
                 </div>
 
 
+                {/* EXPIRY */}
+
                 <div
                   className="
                     flex
@@ -777,13 +727,15 @@ function OtpPage() {
                     "
                   >
 
-                    Never share your OTP with anyone
+                    OTP is valid for 5 minutes
 
                   </p>
 
                 </div>
 
 
+                {/* LATEST OTP */}
+
                 <div
                   className="
                     flex
@@ -820,7 +772,7 @@ function OtpPage() {
                     "
                   >
 
-                    Only use the latest OTP sent to you
+                    Only the latest OTP can be used
 
                   </p>
 
@@ -833,9 +785,9 @@ function OtpPage() {
           </div>
 
 
-          {/* =====================================
+          {/* ============================================
               RIGHT OTP PANEL
-          ====================================== */}
+          ============================================ */}
 
           <div
             className="
@@ -911,7 +863,7 @@ function OtpPage() {
                     "
                   >
 
-                    Secure Verification
+                    Password Recovery
 
                   </p>
 
@@ -920,7 +872,7 @@ function OtpPage() {
               </div>
 
 
-              {/* EMAIL ICON */}
+              {/* ICON */}
 
               <div
                 className="
@@ -945,11 +897,7 @@ function OtpPage() {
 
               {/* HEADER */}
 
-              <div
-                className="
-                  mb-7
-                "
-              >
+              <div className="mb-7">
 
                 <p
                   className="
@@ -962,7 +910,7 @@ function OtpPage() {
                   "
                 >
 
-                  Email Verification
+                  Password Recovery
 
                 </p>
 
@@ -977,7 +925,7 @@ function OtpPage() {
                   "
                 >
 
-                  Verify your identity
+                  Verify your email
 
                 </h2>
 
@@ -1034,30 +982,35 @@ function OtpPage() {
               </div>
 
 
-              {/* OTP LABEL */}
+              {/* ========================================
+                  OTP FORM
+              ======================================== */}
 
-              <label
-                className="
-                  mb-2
-                  block
-                  text-sm
-                  font-semibold
-                  text-slate-700
-                "
+              <form
+                onSubmit={
+                  handleVerifyOtp
+                }
               >
 
-                Verification Code
 
-              </label>
+                {/* OTP LABEL */}
+
+                <label
+                  className="
+                    mb-2
+                    block
+                    text-sm
+                    font-semibold
+                    text-slate-700
+                  "
+                >
+
+                  Verification Code
+
+                </label>
 
 
-              {/* OTP INPUT */}
-
-              <div
-                className="
-                  relative
-                "
-              >
+                {/* OTP INPUT */}
 
                 <input
 
@@ -1071,26 +1024,30 @@ function OtpPage() {
                     otp
                   }
 
-                  disabled={
-                    completed
-                    ||
-                    verifying
-                    ||
-                    resending
-                  }
-
-                  onChange={(e) =>
-                    setOtp(
-                      e.target.value.replace(
-                        /\D/g,
-                        ""
-                      )
-                    )
-                  }
-
                   placeholder="000000"
 
                   autoComplete="one-time-code"
+
+                  onChange={(e) => {
+
+                    const value =
+                      e.target.value.replace(
+                        /\D/g,
+                        ""
+                      );
+
+
+                    setOtp(
+                      value
+                    );
+
+                  }}
+
+                  disabled={
+                    loading
+                    ||
+                    resending
+                  }
 
                   className="
                     w-full
@@ -1117,205 +1074,251 @@ function OtpPage() {
 
                 />
 
-              </div>
+
+                {/* EXPIRY INFORMATION */}
+
+                <div
+                  className="
+                    mt-3
+                    flex
+                    items-center
+                    gap-2
+                    text-xs
+                    text-slate-400
+                  "
+                >
+
+                  <Clock3
+                    size={15}
+                  />
+
+                  The verification code is valid for
+                  5 minutes.
+
+                </div>
 
 
-              {/* OTP EXPIRY INFO */}
-
-              <div
-                className="
-                  mt-3
-                  flex
-                  items-center
-                  gap-2
-                  text-xs
-                  text-slate-400
-                "
-              >
-
-                <Clock3
-                  size={15}
-                />
-
-                The code is valid for 5 minutes.
-
-              </div>
-
-
-              {/* ERROR */}
-
-              {
-                error
-                &&
-                (
-
-                  <div
-                    className="
-                      mt-5
-                      rounded-xl
-                      border
-                      border-red-200
-                      bg-red-50
-                      px-4
-                      py-3
-                      text-sm
-                      font-medium
-                      text-red-600
-                    "
-                  >
-
-                    {error}
-
-                  </div>
-
-                )
-              }
-
-
-              {/* SUCCESS MESSAGE */}
-
-              {
-                message
-                &&
-                (
-
-                  <div
-                    className="
-                      mt-5
-                      rounded-xl
-                      border
-                      border-emerald-200
-                      bg-emerald-50
-                      px-4
-                      py-3
-                      text-sm
-                      font-medium
-                      text-emerald-700
-                    "
-                  >
-
-                    {message}
-
-                  </div>
-
-                )
-              }
-
-
-              {/* VERIFY BUTTON */}
-
-              <button
-
-                type="button"
-
-                onClick={
-                  handleVerifyOtp
-                }
-
-                disabled={
-                  verifying
-                  ||
-                  resending
-                  ||
-                  completed
-                }
-
-                className="
-                  mt-6
-                  flex
-                  w-full
-                  items-center
-                  justify-center
-                  rounded-xl
-                  bg-blue-600
-                  px-5
-                  py-3.5
-                  text-sm
-                  font-bold
-                  text-white
-                  shadow-sm
-                  transition
-                  hover:bg-blue-700
-                  focus:outline-none
-                  focus:ring-4
-                  focus:ring-blue-200
-                  disabled:cursor-not-allowed
-                  disabled:opacity-60
-                "
-              >
+                {/* ======================================
+                    ERROR MESSAGE
+                ====================================== */}
 
                 {
-                  verifying
-                    ? "Verifying..."
-                    : "Verify OTP"
+                  error
+                  &&
+                  (
+
+                    <div
+                      className="
+                        mt-5
+                        rounded-xl
+                        border
+                        border-red-200
+                        bg-red-50
+                        px-4
+                        py-3
+                        text-sm
+                        font-medium
+                        text-red-600
+                      "
+                    >
+
+                      {error}
+
+                    </div>
+
+                  )
                 }
 
-              </button>
+
+                {/* ======================================
+                    SUCCESS MESSAGE
+                ====================================== */}
+
+                {
+                  message
+                  &&
+                  (
+
+                    <div
+                      className="
+                        mt-5
+                        rounded-xl
+                        border
+                        border-emerald-200
+                        bg-emerald-50
+                        px-4
+                        py-3
+                        text-sm
+                        font-medium
+                        text-emerald-700
+                      "
+                    >
+
+                      {message}
+
+                    </div>
+
+                  )
+                }
 
 
-              {/* RESEND */}
+                {/* ======================================
+                    VERIFY BUTTON
+                ====================================== */}
 
-              {
-                !completed
-                &&
-                (
+                <button
 
-                  <div
+                  type="submit"
+
+                  disabled={
+                    loading
+                    ||
+                    resending
+                  }
+
+                  className="
+                    mt-6
+                    flex
+                    w-full
+                    items-center
+                    justify-center
+                    rounded-xl
+                    bg-blue-600
+                    px-5
+                    py-3.5
+                    text-sm
+                    font-bold
+                    text-white
+                    shadow-sm
+                    transition
+                    hover:bg-blue-700
+                    focus:outline-none
+                    focus:ring-4
+                    focus:ring-blue-200
+                    disabled:cursor-not-allowed
+                    disabled:opacity-60
+                  "
+                >
+
+                  {
+                    loading
+                      ? "Verifying..."
+                      : "Verify OTP"
+                  }
+
+                </button>
+
+
+                {/* ======================================
+                    RESEND OTP
+                ====================================== */}
+
+                <div
+                  className="
+                    mt-6
+                    text-center
+                  "
+                >
+
+                  <span
                     className="
-                      mt-6
-                      text-center
+                      text-sm
+                      text-slate-500
                     "
                   >
 
-                    <span
-                      className="
-                        text-sm
-                        text-slate-500
-                      "
-                    >
+                    Didn't receive the code?{" "}
 
-                      Didn't receive the code?{" "}
-
-                    </span>
+                  </span>
 
 
-                    <button
+                  <button
 
-                      type="button"
+                    type="button"
 
-                      onClick={
-                        handleResendOtp
-                      }
+                    onClick={
+                      handleResendOtp
+                    }
 
-                      disabled={
-                        verifying
-                        ||
-                        resending
-                      }
+                    disabled={
+                      loading
+                      ||
+                      resending
+                    }
 
-                      className="
-                        text-sm
-                        font-semibold
-                        text-blue-600
-                        transition
-                        hover:text-blue-700
-                        disabled:cursor-not-allowed
-                        disabled:opacity-50
-                      "
-                    >
+                    className="
+                      text-sm
+                      font-semibold
+                      text-blue-600
+                      transition
+                      hover:text-blue-700
+                      disabled:cursor-not-allowed
+                      disabled:opacity-50
+                    "
+                  >
 
-                      {
-                        resending
-                          ? "Sending..."
-                          : "Resend OTP"
-                      }
+                    {
+                      resending
+                        ? "Sending..."
+                        : "Resend OTP"
+                    }
 
-                    </button>
+                  </button>
 
-                  </div>
+                </div>
 
-                )
-              }
+
+                {/* ======================================
+                    BACK
+                ====================================== */}
+
+                <button
+
+                  type="button"
+
+                  onClick={
+                    handleBack
+                  }
+
+                  disabled={
+                    loading
+                    ||
+                    resending
+                  }
+
+                  className="
+                    mt-5
+                    flex
+                    w-full
+                    items-center
+                    justify-center
+                    gap-2
+                    rounded-xl
+                    border
+                    border-slate-200
+                    bg-white
+                    px-5
+                    py-3
+                    text-sm
+                    font-semibold
+                    text-slate-600
+                    transition
+                    hover:bg-slate-50
+                    hover:text-slate-800
+                    disabled:cursor-not-allowed
+                    disabled:opacity-60
+                  "
+                >
+
+                  <ArrowLeft
+                    size={17}
+                  />
+
+                  Back to Password Recovery
+
+                </button>
+
+              </form>
 
 
               {/* SECURITY NOTE */}
@@ -1339,52 +1342,11 @@ function OtpPage() {
                   "
                 >
 
-                  MiniBank will never ask you to share
-                  your OTP by phone, message, or email.
+                  For your security, only use the
+                  latest verification code sent to
+                  your registered email.
 
                 </p>
-
-              </div>
-
-
-              {/* =====================================
-                  TEMPORARY DEV TEST
-                  Keep current logic but hide UI.
-              ====================================== */}
-
-              <div className="hidden">
-
-                {
-                  completed
-                  &&
-                  (
-
-                    <button
-                      type="button"
-                      onClick={
-                        handleTestProtectedApi
-                      }
-                    >
-
-                      Test Protected API
-
-                    </button>
-
-                  )
-                }
-
-
-                {
-                  testMessage
-                  &&
-                  (
-
-                    <div>
-                      {testMessage}
-                    </div>
-
-                  )
-                }
 
               </div>
 
@@ -1403,4 +1365,4 @@ function OtpPage() {
 }
 
 
-export default OtpPage;
+export default PasswordResetOtpPage;
