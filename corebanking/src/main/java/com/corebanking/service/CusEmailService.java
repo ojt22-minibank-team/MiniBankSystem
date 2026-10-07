@@ -113,4 +113,34 @@ public class CusEmailService {
                 message
         );
     }
+    
+    /**
+     * Group 2 (Account Module) အတွက်:
+     * ဘဏ်အကောင့် အောင်မြင်စွာ ဖွင့်လှစ်ပြီးကြောင်း Customer ဆီသို့ အတည်ပြုချက် Email ပေးပို့ခြင်း
+     */
+    /**
+     * Account Number နှင့် Temporary Password အား Customer Gmail သို့ ပေးပို့ခြင်း
+     */
+    public void sendAccountOpeningConfirmation(String toEmail, String customerName, String accountNumber, String accountType, String tempPassword) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(toEmail);
+            message.setSubject("🏦 Core Banking - Account Credentials & Temporary Password");
+            message.setText(
+                    "မင်္ဂလာပါ " + customerName + " ခင်ဗျာ,\n\n"
+                    + "သင့်၏ Core Banking ဘဏ်အကောင့်ကို အောင်မြင်စွာ ဖွင့်လှစ်ပြီး ဖြစ်ပါသည်။\n\n"
+                    + "🔹 Account Number: " + accountNumber + "\n"
+                    + "🔹 Account Type: " + accountType + "\n"
+                    + "🔹 Temporary Password: " + tempPassword + "\n\n"
+                    + "Online/Mobile Banking သို့ ဝင်ရောက်ရန် အထက်ပါ ယာယီစကားဝှက်ကို အသုံးပြုနိုင်ပါသည်။\n"
+                    + "လုံခြုံရေးအရ ပထမဆုံးအကြိမ် ဝင်ရောက်ပြီးသည်နှင့် စကားဝှက်ကို ချက်ချင်း ပြောင်းလဲပေးပါရန် မေတ္တာရပ်ခံအပ်ပါသည်။\n\n"
+                    + "လေးစားစွာဖြင့်,\nCore Banking Team"
+            );
+
+            mailSender.send(message);
+            System.out.println("Credentials email sent to: " + toEmail);
+        } catch (Exception e) {
+            System.err.println("Failed to send credentials email to " + toEmail + ": " + e.getMessage());
+        }
+    }
 }
