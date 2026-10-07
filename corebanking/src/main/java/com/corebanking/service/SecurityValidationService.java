@@ -31,7 +31,7 @@ public class SecurityValidationService {
         if (credentials.getTransactionPinHash() == null || !passwordEncoder.matches(rawPin, credentials.getTransactionPinHash())) {
             // Delegate to Member 1's official lock logic!
             customerSecurityService.recordFailedPinAttemptAndCheckLock(customerId);
-            throw new SecurityException("Invalid PIN");
+            throw new com.corebanking.exception.InvalidPinException("Invalid Transaction PIN. Please try again.");
         }
 
         // PIN is correct, reset failures using Member 1's official reset logic!

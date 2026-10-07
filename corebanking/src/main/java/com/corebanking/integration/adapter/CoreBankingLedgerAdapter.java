@@ -32,8 +32,8 @@ public class CoreBankingLedgerAdapter implements LedgerFacadePort {
     // READ-ONLY METHOD FOR PRE-CHECK UX
     @Override
     @Transactional(readOnly = true)
-    public void validateSufficientFundsAndLimits(UUID customerId, BigDecimal amount) {
-        log.info("Performing read-only pre-check for customer {} for amount {}", customerId, amount);
+    public void validateSufficientFundsAndLimits(UUID customerId, String accountId, BigDecimal amount) {
+        log.info("Performing read-only pre-check for customer {}, account {} for amount {}", customerId, accountId, amount);
 
         List<Accounts> customerAccounts = accountRepository.findByCustomerCustomerId(customerId);
         if (customerAccounts.isEmpty()) {
@@ -41,10 +41,11 @@ public class CoreBankingLedgerAdapter implements LedgerFacadePort {
         }
         
         Accounts sourceAccount = customerAccounts.stream()
+                .filter(acc -> acc.getAccountNumber().equals(accountId))
                 .filter(acc -> com.corebanking.entity.enums.AccountType.CURRENT.equals(acc.getAccountType()))
                 .filter(acc -> com.corebanking.entity.enums.AccountStatus.ACTIVE.equals(acc.getStatus()))
                 .findFirst()
-                .orElseThrow(() -> new AccountNotFoundException("Customer has no active CURRENT account for payments"));
+                .orElseThrow(() -> new AccountNotFoundException("Selected account must be an active CURRENT account"));
 
         BigDecimal availableBalance = sourceAccount.getAvailableBalance();
         BigDecimal dailyLimit = sourceAccount.getDailyTransferLimit();

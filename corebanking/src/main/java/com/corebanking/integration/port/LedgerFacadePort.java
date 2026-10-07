@@ -5,5 +5,5 @@ import java.util.UUID;
 
 public interface LedgerFacadePort {
     boolean isDuplicatePayment(String paymentToken);
-    void validateSufficientFundsAndLimits(UUID customerId, BigDecimal amount);
+    void validateSufficientFundsAndLimits(UUID customerId, String accountId, BigDecimal amount);
 }

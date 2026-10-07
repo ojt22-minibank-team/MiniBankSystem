@@ -38,18 +38,6 @@ public class SecurityConfig {
 
 
     // =========================================================
-    // PASSWORD ENCODER
-    // =========================================================
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-
-        return new BCryptPasswordEncoder();
-    }
-    
-   
-
-    // =========================================================
     // GENERAL SECURITY CHAIN
     // Customer chain ပြီးမှ ဒီ chain သုံးမယ်
     // =========================================================
@@ -95,13 +83,6 @@ public class SecurityConfig {
                         )
                         .permitAll()
 
-
-                        // Member 5: Merchant Payment Checkout Info (Public so UI can show price)
-                        .requestMatchers(
-                                org.springframework.http.HttpMethod.GET,
-                                "/api/customer/merchant-payment/request/**"
-                        )
-                        .permitAll()
 
                         // Existing Auth APIs
                         .requestMatchers(

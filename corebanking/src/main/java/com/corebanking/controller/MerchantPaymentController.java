@@ -38,18 +38,7 @@ public class MerchantPaymentController {
             }
         }
         
-        String ledgerReference = authorizationEngine.processPaymentAuthorization(request);
-
-        PaymentReceiptResponse receipt = PaymentReceiptResponse.builder()
-                .success(true)
-                .message("Payment authorized successfully")
-                .paymentToken(request.getPaymentToken())
-                .coreLedgerReference(ledgerReference)
-                .amount(request.getAmount())
-                .currency("MMK")
-                .timestamp(java.time.LocalDateTime.now())
-                .build();
-
+        PaymentReceiptResponse receipt = authorizationEngine.processPaymentAuthorization(request);
         return ResponseEntity.ok(receipt);
     }
 }

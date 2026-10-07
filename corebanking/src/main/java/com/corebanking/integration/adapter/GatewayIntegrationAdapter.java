@@ -42,7 +42,7 @@ public class GatewayIntegrationAdapter implements GatewayOutboundPort {
     }
 
     @Override
-    public void dispatchAuthorizationOutcome(String paymentToken, String transactionStatus, UUID customerId) {
+    public void dispatchAuthorizationOutcome(String paymentToken, String transactionStatus, UUID customerId, String errorCode, String errorMessage) {
         log.info("Sending Authorization to Group 3 Gateway for token: {} with status: {}", paymentToken, transactionStatus);
         
         try {
@@ -53,6 +53,12 @@ public class GatewayIntegrationAdapter implements GatewayOutboundPort {
             request.put("status", transactionStatus);
             if (customerId != null) {
                 request.put("customerId", customerId.toString());
+            }
+            if (errorCode != null) {
+                request.put("errorCode", errorCode);
+            }
+            if (errorMessage != null) {
+                request.put("errorMessage", errorMessage);
             }
 
             ResponseEntity<Void> response = restTemplate.postForEntity(url, request, Void.class);

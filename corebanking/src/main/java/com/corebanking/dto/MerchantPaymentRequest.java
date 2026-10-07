@@ -20,6 +20,9 @@ public class MerchantPaymentRequest {
 
     private UUID customerId;
 
+    @NotBlank(message = "Account ID is mandatory")
+    private String accountId;
+
     @NotNull(message = "Amount is mandatory")
     private BigDecimal amount;
 

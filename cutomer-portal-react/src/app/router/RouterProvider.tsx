@@ -71,17 +71,24 @@ import SetupPinPage from "../../features/auth/pages/SetupPinPage";
 import DashboardPage from "../../features/customer-account/dashboard/DashboardPage";
 import MainLayout from "../../components/layout/MainLayout";
 import MyAccountsPage from "../../features/customer-account/accounts/MyaccountPage";
+import { MerchantPaymentAuthorize } from "../../features/merchant-payment/pages/MerchantPaymentAuthorize";
+
 
 
 const router = createBrowserRouter([
 
   // =========================================
-  // PUBLIC AUTH PAGES
+  // PUBLIC AUTH PAGES & STANDALONE PAGES
   // =========================================
 
   {
     path: "/",
     element: <LoginPage />,
+  },
+
+  {
+    path: "/checkout",
+    element: <MerchantPaymentAuthorize />,
   },
 
   {
@@ -105,6 +112,7 @@ const router = createBrowserRouter([
   },
 
 
+
   // =========================================
   // PROTECTED CUSTOMER PAGES
   // =========================================
@@ -113,7 +121,8 @@ const router = createBrowserRouter([
     element: <ProtectedRoute />,
 
     children: [
-
+      
+      // Dashboard routes (With Sidebar)
       {
         element: <MainLayout />,
 
