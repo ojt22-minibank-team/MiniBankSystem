@@ -1,7 +1,7 @@
 import {
-  ArrowLeft,
   Camera,
   CheckCircle2,
+  Loader2,
   ShieldCheck,
   User,
   Building2,
@@ -9,16 +9,18 @@ import {
 } from "lucide-react";
 
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
+  type ChangeEvent,
 } from "react";
 
-import type * as React from "react";
+import Cropper, {
+  type Area,
+} from "react-easy-crop";
 
-import {
-  useNavigate,
-} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import {
   getMyProfile,
@@ -35,133 +37,345 @@ import {
   requestPinReset,
 } from "../../../services/authService";
 
+import {
+  useAppDispatch,
+  useAppSelector,
+} from "../../../lib/redux";
+
+import { setProfile } from "./ProfileSlice";
+
 import PersonalInfo from "./components/PersonalInfo";
 import CompanyInfo from "./components/CompanyInfo";
+import ProfileSkeleton from "./components/ProfileSkeleton";
+import ProfileErrorState from "./components/ProfileErrorState";
+/* -------------------------------------------------------------------------- */
+/* Types                                                                      */
+/* -------------------------------------------------------------------------- */
 
+interface ProfileFormData {
+  address: string;
+  city: string;
+  stateRegion: string;
+  country: string;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Constants                                                                  */
+/* -------------------------------------------------------------------------- */
+
+const MAX_FILE_SIZE =
+  5 * 1024 * 1024;
+
+const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+];
+
+/* -------------------------------------------------------------------------- */
+/* Helpers                                                                    */
+/* -------------------------------------------------------------------------- */
+
+function revokeObjectUrl(
+  url: string | null
+): void {
+  if (url) {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function createImage(
+  url: string
+): Promise<HTMLImageElement> {
+  return new Promise(
+    (resolve, reject) => {
+      const image =
+        new Image();
+
+      image.onload = () =>
+        resolve(image);
+
+      image.onerror = () =>
+        reject(
+          new Error(
+            "Failed to load image."
+          )
+        );
+
+      image.src = url;
+    }
+  );
+}
+
+async function createCroppedImage(
+  imageSrc: string,
+  crop: Area
+): Promise<Blob> {
+  const image =
+    await createImage(imageSrc);
+
+  const canvas =
+    document.createElement("canvas");
+
+  const context =
+    canvas.getContext("2d");
+
+  if (!context) {
+    throw new Error(
+      "Canvas is not supported."
+    );
+  }
+
+  const scaleX =
+    image.naturalWidth /
+    image.width;
+
+  const scaleY =
+    image.naturalHeight /
+    image.height;
+
+  canvas.width =
+    Math.round(
+      crop.width * scaleX
+    );
+
+  canvas.height =
+    Math.round(
+      crop.height * scaleY
+    );
+
+  context.drawImage(
+    image,
+    crop.x * scaleX,
+    crop.y * scaleY,
+    crop.width * scaleX,
+    crop.height * scaleY,
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+  return new Promise(
+    (resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(
+              new Error(
+                "Failed to create cropped image."
+              )
+            );
+
+            return;
+          }
+
+          resolve(blob);
+        },
+        "image/jpeg",
+        0.92
+      );
+    }
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Component                                                                  */
+/* -------------------------------------------------------------------------- */
 
 export default function ProfilePage() {
-
-  // =====================================================
-  // NAVIGATION
-  // =====================================================
-
   const navigate =
     useNavigate();
 
-
-  // =====================================================
-  // REFERENCES
-  // =====================================================
+  /* ------------------------------------------------------------------------ */
+  /* Refs                                                                     */
+  /* ------------------------------------------------------------------------ */
 
   const fileInputRef =
     useRef<HTMLInputElement | null>(
       null
     );
 
-
-  // =====================================================
-  // PROFILE STATE
-  // =====================================================
-
-  const [profile, setProfile] =
-    useState<CustomerProfile | null>(
+  const previewBlobUrlRef =
+    useRef<string | null>(
       null
     );
 
+  const cropSourceUrlRef =
+    useRef<string | null>(
+      null
+    );
 
-  const [formData, setFormData] =
-    useState<CustomerProfileUpdate>({
-      address: "",
-      city: "",
-      stateRegion: "",
-      country: "",
-    });
+  /* ------------------------------------------------------------------------ */
+  /* Profile                                                                   */
+  /* ------------------------------------------------------------------------ */
 
+  const dispatch = useAppDispatch();
 
-  const [previewImage, setPreviewImage] =
+  const profile = useAppSelector(
+    (state) => state.profile.profile
+  );
+
+  /* ------------------------------------------------------------------------ */
+  /* Address form                                                              */
+  /* ------------------------------------------------------------------------ */
+
+  const [
+    formData,
+    setFormData,
+  ] = useState<ProfileFormData>({
+    address: "",
+    city: "",
+    stateRegion: "",
+    country: "",
+  });
+
+  /* ------------------------------------------------------------------------ */
+  /* Profile image                                                             */
+  /* ------------------------------------------------------------------------ */
+
+  const [
+    previewImage,
+    setPreviewImage,
+  ] =
     useState<string | null>(
       null
     );
 
-
-  const [selectedImage, setSelectedImage] =
+  const [
+    croppedImageFile,
+    setCroppedImageFile,
+  ] =
     useState<File | null>(
       null
     );
 
+  const [
+    cropSourceUrl,
+    setCropSourceUrl,
+  ] =
+    useState<string | null>(
+      null
+    );
 
-  // =====================================================
-  // PAGE STATE
-  // =====================================================
-
-  const [isEditing, setIsEditing] =
+  const [
+    isPhotoEditing,
+    setIsPhotoEditing,
+  ] =
     useState(false);
 
+  const [
+    isPhotoSaving,
+    setIsPhotoSaving,
+  ] =
+    useState(false);
 
-  const [isLoading, setIsLoading] =
+  /* ------------------------------------------------------------------------ */
+  /* Crop state                                                                */
+  /* ------------------------------------------------------------------------ */
+
+  const [
+    crop,
+    setCrop,
+  ] =
+    useState({
+      x: 0,
+      y: 0,
+    });
+
+  const [
+    zoom,
+    setZoom,
+  ] =
+    useState(1);
+
+  const [
+    croppedAreaPixels,
+    setCroppedAreaPixels,
+  ] =
+    useState<Area | null>(
+      null
+    );
+
+  const [
+    isCropModalOpen,
+    setIsCropModalOpen,
+  ] =
+    useState(false);
+
+  /* ------------------------------------------------------------------------ */
+  /* Address UI state                                                          */
+  /* ------------------------------------------------------------------------ */
+
+  const [
+    isEditing,
+    setIsEditing,
+  ] =
+    useState(false);
+
+  const [
+    isLoading,
+    setIsLoading,
+  ] =
     useState(true);
 
-
-  const [isSaving, setIsSaving] =
+  const [
+    isSaving,
+    setIsSaving,
+  ] =
     useState(false);
 
+  /* ------------------------------------------------------------------------ */
+  /* PIN reset state                                                           */
+  /* ------------------------------------------------------------------------ */
 
   const [
     pinResetLoading,
     setPinResetLoading,
-  ] = useState(false);
+  ] =
+    useState(false);
 
+  /* ------------------------------------------------------------------------ */
+  /* Messages                                                                  */
+  /* ------------------------------------------------------------------------ */
 
-  const [error, setError] =
-    useState("");
+  const [
+    error,
+    setError,
+  ] =
+    useState<string | null>(
+      null
+    );
 
+  const [
+    successMessage,
+    setSuccessMessage,
+  ] =
+    useState<string | null>(
+      null
+    );
 
-  const [success, setSuccess] =
-    useState("");
-
-
-  // =====================================================
-  // COMPANY CUSTOMER CHECK
-  // =====================================================
+  /* ------------------------------------------------------------------------ */
+  /* Customer type                                                             */
+  /* ------------------------------------------------------------------------ */
 
   const isCompany =
-    profile?.customerType?.toUpperCase()
-      === "COMPANY"
-    ||
-    profile?.customerType?.toUpperCase()
-      === "CORPORATE";
+    profile?.customerType
+      ?.toUpperCase() ===
+    "COMPANY" ||
+    profile?.customerType
+      ?.toUpperCase() ===
+    "CORPORATE";
 
+  /* ------------------------------------------------------------------------ */
+  /* Form helpers                                                              */
+  /* ------------------------------------------------------------------------ */
 
-  // =====================================================
-  // LOAD PROFILE
-  // =====================================================
-
-  useEffect(() => {
-
-    loadProfile();
-
-  }, []);
-
-
-  const loadProfile =
-    async () => {
-
-      try {
-
-        setIsLoading(true);
-
-        setError("");
-
-
-        const data =
-          await getMyProfile();
-
-
-        setProfile(
-          data
-        );
-
-
+  const setFormDataFromProfile =
+    useCallback(
+      (
+        data: CustomerProfile
+      ) => {
         setFormData({
           address:
             data.address ?? "",
@@ -175,1507 +389,1109 @@ export default function ProfilePage() {
           country:
             data.country ?? "",
         });
-
-
-        setPreviewImage(
-          data.profileImageUrl
-            ?? null
-        );
-
-
-      } catch (err) {
-
-        console.error(
-          "Failed to load profile:",
-          err
-        );
-
-
-        setError(
-          "Failed to load your profile. Please try again."
-        );
-
-
-      } finally {
-
-        setIsLoading(
-          false
-        );
-
-      }
-
-    };
-
-
-  // =====================================================
-  // ENTER EDIT MODE
-  // =====================================================
-
-  const handleEdit =
-    () => {
-
-      if (!profile) {
-        return;
-      }
-
-
-      setFormData({
-
-        address:
-          profile.address ?? "",
-
-        city:
-          profile.city ?? "",
-
-        stateRegion:
-          profile.stateRegion ?? "",
-
-        country:
-          profile.country ?? "",
-
-      });
-
-
-      setSelectedImage(
-        null
-      );
-
-
-      setPreviewImage(
-        profile.profileImageUrl
-          ?? null
-      );
-
-
-      setError("");
-
-      setSuccess("");
-
-
-      setIsEditing(
-        true
-      );
-
-    };
-
-
-  // =====================================================
-  // CANCEL EDITING
-  // =====================================================
-
-  const handleCancel =
-    () => {
-
-      if (!profile) {
-        return;
-      }
-
-
-      setFormData({
-
-        address:
-          profile.address ?? "",
-
-        city:
-          profile.city ?? "",
-
-        stateRegion:
-          profile.stateRegion ?? "",
-
-        country:
-          profile.country ?? "",
-
-      });
-
-
-      setSelectedImage(
-        null
-      );
-
-
-      setPreviewImage(
-        profile.profileImageUrl
-          ?? null
-      );
-
-
-      setError("");
-
-      setSuccess("");
-
-
-      setIsEditing(
-        false
-      );
-
-    };
-
-
-  // =====================================================
-  // ADDRESS INPUT
-  // =====================================================
-
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-
-    const {
-      name,
-      value,
-    } = e.target;
-
-
-    setFormData(
-      (prev) => ({
-
-        ...prev,
-
-        [name]:
-          value,
-
-      })
+      },
+      []
     );
 
-  };
+  const clearMessages =
+    useCallback(() => {
+      setError(null);
+      setSuccessMessage(null);
+    }, []);
 
+  /* ------------------------------------------------------------------------ */
+  /* Load profile                                                              */
+  /* ------------------------------------------------------------------------ */
 
-  // =====================================================
-  // PROFILE IMAGE SELECTION
-  // =====================================================
+  const loadProfile =
+    useCallback(
+      async () => {
+        try {
+          setIsLoading(true);
+          setError(null);
 
-  const handleImageChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+          const data =
+            await getMyProfile();
 
-    const file =
-      e.target.files?.[0];
+          dispatch(setProfile(data));
 
-
-    if (!file) {
-      return;
-    }
-
-
-    // ----------------------------------------------
-    // Validate image type
-    // ----------------------------------------------
-
-    if (
-      !file.type.startsWith(
-        "image/"
-      )
-    ) {
-
-      setError(
-        "Please select a valid image file."
-      );
-
-      return;
-    }
-
-
-    // ----------------------------------------------
-    // Maximum 5 MB
-    // ----------------------------------------------
-
-    if (
-      file.size >
-      5 * 1024 * 1024
-    ) {
-
-      setError(
-        "Profile image must be smaller than 5 MB."
-      );
-
-      return;
-    }
-
-
-    setError("");
-
-
-    setSelectedImage(
-      file
-    );
-
-
-    const imageUrl =
-      URL.createObjectURL(
-        file
-      );
-
-
-    setPreviewImage(
-      imageUrl
-    );
-
-  };
-
-
-  // =====================================================
-  // SAVE ADDRESS + PROFILE IMAGE
-  // =====================================================
-
-  const handleSave =
-    async () => {
-
-      if (!profile) {
-        return;
-      }
-
-
-      try {
-
-        setIsSaving(
-          true
-        );
-
-
-        setError("");
-
-        setSuccess("");
-
-
-        // ----------------------------------------------
-        // 1. Update address
-        // ----------------------------------------------
-
-        let finalProfile =
-          await updateMyProfile(
-            formData
+          setFormDataFromProfile(
+            data
           );
 
+          setPreviewImage(
+            data.profileImageUrl ??
+            null
+          );
+        } catch (err) {
+          console.error(
+            "Failed to load profile:",
+            err
+          );
 
-        // ----------------------------------------------
-        // 2. Upload profile image
-        // ----------------------------------------------
-
-        if (
-          selectedImage
-        ) {
-
-          finalProfile =
-            await uploadProfileImage(
-              selectedImage
-            );
-
+          setError(
+            "Unable to load your profile information right now. Please try again."
+          );
+        } finally {
+          setIsLoading(false);
         }
+      },
+      [setFormDataFromProfile, dispatch]
+    );
 
+  useEffect(() => {
+    void loadProfile();
+  }, [loadProfile]);
 
-        // ----------------------------------------------
-        // 3. Update local state
-        // ----------------------------------------------
+  /* ------------------------------------------------------------------------ */
+  /* Cleanup object URLs                                                       */
+  /* ------------------------------------------------------------------------ */
 
-        setProfile(
-          finalProfile
-        );
+  useEffect(() => {
+    return () => {
+      revokeObjectUrl(
+        previewBlobUrlRef.current
+      );
 
-
-        setFormData({
-
-          address:
-            finalProfile.address
-              ?? "",
-
-          city:
-            finalProfile.city
-              ?? "",
-
-          stateRegion:
-            finalProfile.stateRegion
-              ?? "",
-
-          country:
-            finalProfile.country
-              ?? "",
-
-        });
-
-
-        setPreviewImage(
-          finalProfile.profileImageUrl
-            ?? null
-        );
-
-
-        setSelectedImage(
-          null
-        );
-
-
-        setSuccess(
-          "Profile updated successfully."
-        );
-
-
-        setIsEditing(
-          false
-        );
-
-
-      } catch (err) {
-
-        console.error(
-          "Failed to update profile:",
-          err
-        );
-
-
-        setError(
-          "Failed to update your profile. Please try again."
-        );
-
-
-      } finally {
-
-        setIsSaving(
-          false
-        );
-
-      }
-
+      revokeObjectUrl(
+        cropSourceUrlRef.current
+      );
     };
+  }, []);
 
+  /* ------------------------------------------------------------------------ */
+  /* Address edit                                                              */
+  /* ------------------------------------------------------------------------ */
 
-  // =====================================================
-  // FORGOT TRANSACTION PIN
-  // =====================================================
-
-  const handleForgotPin =
-    async () => {
-
-      // Prevent double click
-      if (
-        pinResetLoading
-      ) {
-
+  const handleEdit =
+    useCallback(() => {
+      if (!profile) {
         return;
       }
 
+      clearMessages();
 
-      try {
+      setFormDataFromProfile(
+        profile
+      );
 
-        setPinResetLoading(
-          true
+      setIsEditing(true);
+    }, [
+      profile,
+      clearMessages,
+      setFormDataFromProfile,
+    ]);
+
+  /* ------------------------------------------------------------------------ */
+  /* Address cancel                                                            */
+  /* ------------------------------------------------------------------------ */
+
+  const handleCancel =
+    useCallback(() => {
+      if (
+        !profile ||
+        isSaving
+      ) {
+        return;
+      }
+
+      clearMessages();
+
+      setFormDataFromProfile(
+        profile
+      );
+
+      setIsEditing(false);
+    }, [
+      profile,
+      isSaving,
+      clearMessages,
+      setFormDataFromProfile,
+    ]);
+
+  /* ------------------------------------------------------------------------ */
+  /* Address input                                                             */
+  /* ------------------------------------------------------------------------ */
+
+  const handleInputChange =
+    useCallback(
+      (
+        event: ChangeEvent<HTMLInputElement>
+      ) => {
+        const {
+          name,
+          value,
+        } = event.target;
+
+        setFormData(
+          (current) => ({
+            ...current,
+            [name]: value,
+          })
         );
 
+        setError(null);
+        setSuccessMessage(null);
+      },
+      []
+    );
 
-        setError("");
+  /* ------------------------------------------------------------------------ */
+  /* Open file picker                                                          */
+  /* ------------------------------------------------------------------------ */
 
-        setSuccess("");
+  const handleFileInputClick =
+    useCallback(() => {
+      if (
+        isSaving ||
+        isPhotoSaving
+      ) {
+        return;
+      }
 
+      fileInputRef.current?.click();
+    }, [
+      isSaving,
+      isPhotoSaving,
+    ]);
 
-        // ----------------------------------------------
-        // 1. Clear previous PIN reset information
-        // ----------------------------------------------
+  /* ------------------------------------------------------------------------ */
+  /* Image selection                                                           */
+  /* ------------------------------------------------------------------------ */
 
-        sessionStorage.removeItem(
-          "pinResetChallengeGroupId"
-        );
+  const handleImageChange =
+    useCallback(
+      (
+        event: ChangeEvent<HTMLInputElement>
+      ) => {
+        const file =
+          event.target.files?.[0];
 
+        /*
+         * Allows selecting the same
+         * image again later.
+         */
+        event.target.value = "";
 
-        sessionStorage.removeItem(
-          "pinResetMaskedEmail"
-        );
+        if (!file) {
+          return;
+        }
 
+        clearMessages();
 
-        sessionStorage.removeItem(
-          "verifiedPinResetChallengeGroupId"
-        );
-
-
-        // ----------------------------------------------
-        // 2. Request PIN reset OTP
-        //
-        // POST
-        // /api/customer/auth/pin-reset/request
-        //
-        // Access Token will be added by api.ts
-        // interceptor.
-        // ----------------------------------------------
-
-        const response =
-          await requestPinReset();
-
-
-        // ----------------------------------------------
-        // 3. Validate backend response
-        // ----------------------------------------------
-
+        /* Validate image type */
         if (
-          !response.challengeGroupId
+          !ALLOWED_IMAGE_TYPES.includes(
+            file.type
+          )
         ) {
-
           setError(
-            "PIN reset verification information is missing."
+            "Only JPG, PNG and WEBP images are allowed."
           );
 
           return;
         }
 
-
-        // ----------------------------------------------
-        // 4. Save challengeGroupId
-        // ----------------------------------------------
-
-        sessionStorage.setItem(
-          "pinResetChallengeGroupId",
-          response.challengeGroupId
-        );
-
-
-        // ----------------------------------------------
-        // 5. Save masked registered email
-        // ----------------------------------------------
-
+        /* Validate file size */
         if (
-          response.destinationMasked
+          file.size >
+          MAX_FILE_SIZE
         ) {
-
-          sessionStorage.setItem(
-            "pinResetMaskedEmail",
-            response.destinationMasked
+          setError(
+            "Profile image must not exceed 5MB."
           );
 
+          return;
         }
 
-
-        // ----------------------------------------------
-        // 6. Go to PIN Reset OTP page
-        // ----------------------------------------------
-
-        navigate(
-          "/pin-reset/otp"
+        /*
+         * Revoke previous crop source.
+         */
+        revokeObjectUrl(
+          cropSourceUrlRef.current
         );
 
+        const sourceUrl =
+          URL.createObjectURL(
+            file
+          );
 
-      } catch (err: any) {
+        cropSourceUrlRef.current =
+          sourceUrl;
 
-        setError(
-          err.response?.data?.message
-          ||
-          "Unable to start Transaction PIN reset. Please try again."
+        setCrop({
+          x: 0,
+          y: 0,
+        });
+
+        setZoom(1);
+
+        setCroppedAreaPixels(
+          null
         );
 
-
-      } finally {
-
-        setPinResetLoading(
-          false
+        setCropSourceUrl(
+          sourceUrl
         );
 
+        setIsPhotoEditing(
+          true
+        );
+
+        setIsCropModalOpen(
+          true
+        );
+      },
+      [clearMessages]
+    );
+
+  /* ------------------------------------------------------------------------ */
+  /* Crop complete                                                             */
+  /* ------------------------------------------------------------------------ */
+
+  const handleCropComplete =
+    useCallback(
+      (
+        _croppedArea: Area,
+        croppedAreaPixelsValue: Area
+      ) => {
+        setCroppedAreaPixels(
+          croppedAreaPixelsValue
+        );
+      },
+      []
+    );
+
+  /* ------------------------------------------------------------------------ */
+  /* Close crop modal                                                          */
+  /* ------------------------------------------------------------------------ */
+
+  const closeCropModal =
+    useCallback(() => {
+      setIsCropModalOpen(false);
+
+      revokeObjectUrl(
+        cropSourceUrlRef.current
+      );
+
+      cropSourceUrlRef.current =
+        null;
+
+      setCropSourceUrl(null);
+
+      setCrop({
+        x: 0,
+        y: 0,
+      });
+
+      setZoom(1);
+
+      setCroppedAreaPixels(
+        null
+      );
+    }, []);
+
+  /* ------------------------------------------------------------------------ */
+  /* Cancel crop                                                               */
+  /* ------------------------------------------------------------------------ */
+
+  const handleCropCancel =
+    useCallback(() => {
+      closeCropModal();
+
+      /*
+       * If there is no previously
+       * cropped image, photo editing
+       * should also be cancelled.
+       */
+      if (!croppedImageFile) {
+        setIsPhotoEditing(false);
+      }
+    }, [
+      closeCropModal,
+      croppedImageFile,
+    ]);
+
+  /* ------------------------------------------------------------------------ */
+  /* Apply crop                                                                */
+  /* ------------------------------------------------------------------------ */
+
+  const handleCropSave =
+    useCallback(
+      async () => {
+        if (
+          !cropSourceUrl ||
+          !croppedAreaPixels
+        ) {
+          return;
+        }
+
+        try {
+          clearMessages();
+
+          const croppedBlob =
+            await createCroppedImage(
+              cropSourceUrl,
+              croppedAreaPixels
+            );
+
+          const croppedFile =
+            new File(
+              [croppedBlob],
+              `profile-${Date.now()}.jpg`,
+              {
+                type: "image/jpeg",
+              }
+            );
+
+          /*
+           * Create local preview.
+           */
+          const previewUrl =
+            URL.createObjectURL(
+              croppedBlob
+            );
+
+          revokeObjectUrl(
+            previewBlobUrlRef.current
+          );
+
+          previewBlobUrlRef.current =
+            previewUrl;
+
+          setCroppedImageFile(
+            croppedFile
+          );
+
+          setPreviewImage(
+            previewUrl
+          );
+
+          closeCropModal();
+        } catch (err) {
+          console.error(
+            "Failed to crop image:",
+            err
+          );
+
+          setError(
+            "Failed to crop the selected image."
+          );
+        }
+      },
+      [
+        cropSourceUrl,
+        croppedAreaPixels,
+        clearMessages,
+        closeCropModal,
+      ]
+    );
+
+  /* ------------------------------------------------------------------------ */
+  /* Cancel photo changes                                                     */
+  /* ------------------------------------------------------------------------ */
+
+  const handlePhotoCancel =
+    useCallback(() => {
+      if (isPhotoSaving) {
+        return;
       }
 
-    };
+      closeCropModal();
 
+      revokeObjectUrl(
+        previewBlobUrlRef.current
+      );
 
-  // =====================================================
-  // FULL NAME
-  // =====================================================
+      previewBlobUrlRef.current =
+        null;
+
+      setCroppedImageFile(
+        null
+      );
+
+      setPreviewImage(
+        profile?.profileImageUrl ??
+        null
+      );
+
+      setIsPhotoEditing(
+        false
+      );
+
+      clearMessages();
+    }, [
+      isPhotoSaving,
+      profile,
+      closeCropModal,
+      clearMessages,
+    ]);
+
+  /* ------------------------------------------------------------------------ */
+  /* Save photo changes                                                        */
+  /* ------------------------------------------------------------------------ */
+
+  const handlePhotoSave =
+    useCallback(
+      async () => {
+        if (
+          !profile ||
+          !croppedImageFile ||
+          isPhotoSaving
+        ) {
+          return;
+        }
+
+        try {
+          clearMessages();
+
+          setIsPhotoSaving(true);
+
+          /*
+           * Upload cropped image only.
+           */
+          const updatedProfile =
+            await uploadProfileImage(
+              croppedImageFile
+            );
+
+          dispatch(setProfile(updatedProfile));
+
+          setPreviewImage(
+            updatedProfile.profileImageUrl ??
+            null
+          );
+
+          setCroppedImageFile(
+            null
+          );
+
+          revokeObjectUrl(
+            previewBlobUrlRef.current
+          );
+
+          previewBlobUrlRef.current =
+            null;
+
+          setIsPhotoEditing(
+            false
+          );
+
+          setSuccessMessage(
+            "Profile photo updated successfully."
+          );
+          window.setTimeout(() => {
+            setSuccessMessage(
+              null
+            );
+          }, 3000);
+        } catch (err) {
+          console.error(
+            "Failed to update profile photo:",
+            err
+          );
+
+          setError(
+            "Failed to update your profile photo."
+          );
+        } finally {
+          setIsPhotoSaving(false);
+        }
+      },
+      [
+        profile,
+        croppedImageFile,
+        isPhotoSaving,
+        clearMessages,
+        dispatch,
+      ]
+    );
+
+  /* ------------------------------------------------------------------------ */
+  /* Save address                                                              */
+  /* ------------------------------------------------------------------------ */
+
+  const handleSave =
+    useCallback(
+      async () => {
+        if (
+          !profile ||
+          isSaving
+        ) {
+          return;
+        }
+
+        clearMessages();
+
+        const hasAddressChanges =
+          formData.address !==
+          (profile.address ?? "") ||
+          formData.city !==
+          (profile.city ?? "") ||
+          formData.stateRegion !==
+          (profile.stateRegion ??
+            "") ||
+          formData.country !==
+          (profile.country ?? "");
+
+        if (!hasAddressChanges) {
+          setIsEditing(false);
+          return;
+        }
+
+        try {
+          setIsSaving(true);
+
+          const updateData:
+            CustomerProfileUpdate =
+          {
+            address:
+              formData.address,
+
+            city:
+              formData.city,
+
+            stateRegion:
+              formData.stateRegion,
+
+            country:
+              formData.country,
+          };
+
+          const updatedProfile =
+            await updateMyProfile(
+              updateData
+            );
+
+          dispatch(setProfile(updatedProfile));
+
+          setFormDataFromProfile(
+            updatedProfile
+          );
+
+          setIsEditing(false);
+
+          setSuccessMessage(
+            "Address updated successfully."
+          );
+          window.setTimeout(() => {
+            setSuccessMessage(
+              null
+            );
+          }, 3000);
+        } catch (err) {
+          console.error(
+            "Failed to update address:",
+            err
+          );
+
+          setError(
+            "Failed to update your address."
+          );
+        } finally {
+          setIsSaving(false);
+        }
+      },
+      [
+        profile,
+        isSaving,
+        formData,
+        clearMessages,
+        setFormDataFromProfile,
+        dispatch,
+      ]
+    );
+
+  /* ------------------------------------------------------------------------ */
+  /* Forgot Transaction PIN                                                   */
+  /* ------------------------------------------------------------------------ */
+
+  const handleForgotPin =
+    useCallback(
+      async () => {
+        if (pinResetLoading) {
+          return;
+        }
+
+        try {
+          setPinResetLoading(true);
+
+          clearMessages();
+
+          /*
+           * Remove previous PIN reset
+           * session information.
+           */
+          sessionStorage.removeItem(
+            "pinResetChallengeGroupId"
+          );
+
+          sessionStorage.removeItem(
+            "pinResetMaskedEmail"
+          );
+
+          sessionStorage.removeItem(
+            "verifiedPinResetChallengeGroupId"
+          );
+
+          /*
+           * Request OTP.
+           *
+           * POST
+           * /api/customer/auth/pin-reset/request
+           */
+          const response =
+            await requestPinReset();
+
+          if (
+            !response.challengeGroupId
+          ) {
+            setError(
+              "PIN reset verification information is missing."
+            );
+
+            return;
+          }
+
+          /*
+           * Save challenge information.
+           */
+          sessionStorage.setItem(
+            "pinResetChallengeGroupId",
+            response.challengeGroupId
+          );
+
+          if (
+            response.destinationMasked
+          ) {
+            sessionStorage.setItem(
+              "pinResetMaskedEmail",
+              response.destinationMasked
+            );
+          }
+
+          /*
+           * Navigate to OTP page.
+           */
+          navigate(
+            "/pin-reset/otp"
+          );
+        } catch (err: unknown) {
+          console.error(
+            "Failed to start PIN reset:",
+            err
+          );
+
+          const axiosError =
+            err as {
+              response?: {
+                data?: {
+                  message?: string;
+                };
+              };
+            };
+
+          setError(
+            axiosError.response?.data
+              ?.message ??
+            "Unable to start Transaction PIN reset. Please try again."
+          );
+        } finally {
+          setPinResetLoading(
+            false
+          );
+        }
+      },
+      [
+        pinResetLoading,
+        clearMessages,
+        navigate,
+      ]
+    );
+
+    
+
+  /* ------------------------------------------------------------------------ */
+  /* Full name                                                                 */
+  /* ------------------------------------------------------------------------ */
 
   const getFullName =
-    () => {
-
+    useCallback(() => {
       if (!profile) {
         return "";
       }
 
-
-      if (
-        isCompany
-      ) {
-
+      if (isCompany) {
         return (
-          profile.companyName
-          ||
+          profile.companyName ??
           "Company"
         );
-
       }
 
-
       return (
-
         [
           profile.firstName,
           profile.lastName,
         ]
-
-          .filter(
-            Boolean
-          )
-
-          .join(" ")
-
-        ||
-
+          .filter(Boolean)
+          .join(" ") ||
         "Customer"
-
       );
+    }, [
+      profile,
+      isCompany,
+    ]);
 
-    };
+  /* ------------------------------------------------------------------------ */
+  /* Loading                                                                   */
+  /* ------------------------------------------------------------------------ */
 
-
-  // =====================================================
-  // LOADING STATE
-  // =====================================================
-
-  if (
-    isLoading
-  ) {
-
-    return (
-
-      <div
-        className="
-          flex
-          min-h-[calc(100vh-80px)]
-          items-center
-          justify-center
-          bg-[#F5F7FB]
-        "
-      >
-
-        <div
-          className="text-center"
-        >
-
-          <div
-            className="
-              mx-auto
-              mb-4
-              h-10
-              w-10
-              animate-spin
-              rounded-full
-              border-4
-              border-slate-200
-              border-t-blue-600
-            "
-          />
-
-
-          <p
-            className="
-              text-sm
-              font-medium
-              text-slate-500
-            "
-          >
-
-            Loading profile...
-
-          </p>
-
-        </div>
-
-      </div>
-
-    );
-
+  if (isLoading) {
+    return <ProfileSkeleton />;
   }
 
+  if (error || !profile) {
+  return (
+    <ProfileErrorState
+      onRetry={loadProfile}
+      message={
+        error ??
+        "We couldn't retrieve your profile information right now."
+      }
+    />
+  );
+}
 
-  // =====================================================
-  // PROFILE LOADING FAILED
-  // =====================================================
+  /* ------------------------------------------------------------------------ */
+  /* No profile                                                                */
+  /* ------------------------------------------------------------------------ */
 
-  if (
-    !profile
-  ) {
-
+  if (!profile) {
     return (
-
-      <div
-        className="
-          min-h-[calc(100vh-80px)]
-          bg-[#F5F7FB]
-          p-8
-        "
-      >
-
-        <div
-          className="
-            mx-auto
-            max-w-5xl
-            rounded-2xl
-            border
-            border-red-100
-            bg-white
-            p-8
-            text-center
-          "
-        >
-
-          <p
-            className="
-              text-sm
-              font-medium
-              text-red-600
-            "
-          >
-
-            {
-              error
-              ||
-              "Unable to load profile."
-            }
-
+      <div className="min-h-[calc(100vh-80px)] bg-[#F5F7FB] p-8">
+        <div className="mx-auto max-w-5xl rounded-2xl border border-red-100 bg-white p-8 text-center">
+          <p className="text-sm font-medium text-red-600">
+            {error ??
+              "Unable to load your profile."}
           </p>
-
 
           <button
-
             type="button"
-
-            onClick={
-              loadProfile
-            }
-
-            className="
-              mt-4
-              rounded-lg
-              bg-blue-600
-              px-5
-              py-2.5
-              text-sm
-              font-semibold
-              text-white
-              transition
-              hover:bg-blue-700
-            "
+            onClick={() => {
+              void loadProfile();
+            }}
+            className="mt-4 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
           >
-
             Try Again
-
           </button>
-
         </div>
-
       </div>
-
     );
-
   }
 
-
-  // =====================================================
-  // PAGE UI
-  // =====================================================
+  /* ------------------------------------------------------------------------ */
+  /* Render                                                                    */
+  /* ------------------------------------------------------------------------ */
 
   return (
+    <div className="min-h-[calc(100vh-80px)] bg-[#F5F7FB] px-6 py-8 lg:px-8">
+      <div className="mx-auto max-w-5xl">
+        {/* ================================================================ */}
+        {/* MESSAGES                                                          */}
+        {/* ================================================================ */}
 
-    <div
-      className="
-        min-h-[calc(100vh-80px)]
-        bg-[#F5F7FB]
-        px-6
-        py-8
-        lg:px-8
-      "
-    >
+        {error && (
+          <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+            <X
+              size={18}
+              className="mt-0.5 shrink-0"
+            />
 
-      <div
-        className="
-          mx-auto
-          max-w-5xl
-        "
-      >
-
-
-        {/* ==============================================
-            PAGE HEADER
-        ============================================== */}
-
-        <div
-          className="mb-8"
-        >
-
-          <div
-            className="
-              mb-3
-              flex
-              items-center
-              gap-3
-            "
-          >
-
-            <button
-
-              type="button"
-
-              onClick={() =>
-                window.history.back()
-              }
-
-              className="
-                rounded-lg
-                p-2
-                text-slate-500
-                transition
-                hover:bg-white
-                hover:text-slate-700
-              "
-            >
-
-              <ArrowLeft
-                size={20}
-              />
-
-            </button>
-
-
-            <div>
-
-              <h1
-                className="
-                  text-2xl
-                  font-bold
-                  text-[#08295C]
-                "
-              >
-
-                My Profile
-
-              </h1>
-
-
-              <p
-                className="
-                  mt-1
-                  text-sm
-                  text-slate-500
-                "
-              >
-
-                Manage your personal information
-
-              </p>
-
-            </div>
-
-          </div>
-
-        </div>
-
-
-        {/* ==============================================
-            SUCCESS MESSAGE
-        ============================================== */}
-
-        {
-          success
-          &&
-          (
-
-            <div
-              className="
-                mb-6
-                flex
-                items-center
-                gap-3
-                rounded-xl
-                border
-                border-emerald-200
-                bg-emerald-50
-                px-4
-                py-3
-                text-sm
-                font-medium
-                text-emerald-700
-              "
-            >
-
-              <CheckCircle2
-                size={18}
-              />
-
-              {success}
-
-            </div>
-
-          )
-        }
-
-
-        {/* ==============================================
-            ERROR MESSAGE
-        ============================================== */}
-
-        {
-          error
-          &&
-          (
-
-            <div
-              className="
-                mb-6
-                flex
-                items-center
-                gap-3
-                rounded-xl
-                border
-                border-red-200
-                bg-red-50
-                px-4
-                py-3
-                text-sm
-                font-medium
-                text-red-600
-              "
-            >
-
-              <X
-                size={18}
-              />
-
+            <span>
               {error}
+            </span>
+          </div>
+        )}
 
-            </div>
+        {successMessage && (
+          <div className="mb-6 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+            <CheckCircle2
+              size={18}
+              className="mt-0.5 shrink-0"
+            />
 
-          )
-        }
+            <span>
+              {successMessage}
+            </span>
+          </div>
+        )}
 
+        {/* ================================================================ */}
+        {/* PROFILE SUMMARY                                                   */}
+        {/* ================================================================ */}
 
-        {/* ==============================================
-            PROFILE HEADER
-        ============================================== */}
+        <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 
-        <div
-          className="
-            mb-6
-            rounded-2xl
-            border
-            border-slate-200
-            bg-white
-            p-6
-            shadow-sm
-          "
-        >
+          <div className="bg-gradient-to-r from-[#08295C] to-[#0878E8] px-6 py-8">
 
-          <div
-            className="
-              flex
-              flex-col
-              gap-6
-              sm:flex-row
-              sm:items-center
-            "
-          >
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
 
+              {/* ---------------------------------------------------------- */}
+              {/* PROFILE PHOTO                                               */}
+              {/* ---------------------------------------------------------- */}
 
-            {/* Profile Image */}
+              <div className="relative h-28 w-28 shrink-0">
 
-            <div
-              className="
-                relative
-                shrink-0
-              "
-            >
+                <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-white bg-slate-100 shadow-lg">
 
-              <div
-                className="
-                  flex
-                  h-24
-                  w-24
-                  items-center
-                  justify-center
-                  overflow-hidden
-                  rounded-full
-                  border-4
-                  border-slate-100
-                  bg-slate-100
-                "
-              >
+                  {previewImage ? (
+                    <img
+                      src={previewImage}
+                      alt={getFullName()}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-slate-100">
+                      {isCompany ? (
+                        <Building2
+                          size={42}
+                          className="text-slate-400"
+                        />
+                      ) : (
+                        <User
+                          size={42}
+                          className="text-slate-400"
+                        />
+                      )}
+                    </div>
+                  )}
 
-                {
-                  previewImage
-                    ? (
+                </div>
 
-                      <img
+                {/* Camera button */}
 
-                        src={
-                          previewImage
-                        }
+                <button
+                  type="button"
+                  onClick={
+                    handleFileInputClick
+                  }
+                  disabled={
+                    isSaving ||
+                    isPhotoSaving
+                  }
+                  aria-label="Change profile photo"
+                  title="Change profile photo"
+                  className="absolute bottom-0 right-0 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-[#0878E8] text-white shadow-md transition hover:bg-[#0668ca] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Camera
+                    size={17}
+                  />
+                </button>
 
-                        alt={
-                          getFullName()
-                        }
-
-                        className="
-                          h-full
-                          w-full
-                          object-cover
-                        "
-                      />
-
-                    )
-                    : (
-
-                      <User
-
-                        size={42}
-
-                        strokeWidth={1.5}
-
-                        className="
-                          text-slate-400
-                        "
-                      />
-
-                    )
-                }
-
-              </div>
-
-
-              {/* Camera */}
-
-              <button
-
-                type="button"
-
-                onClick={() =>
-                  fileInputRef
-                    .current
-                    ?.click()
-                }
-
-                className="
-                  absolute
-                  bottom-0
-                  right-0
-                  flex
-                  h-9
-                  w-9
-                  items-center
-                  justify-center
-                  rounded-full
-                  border-2
-                  border-white
-                  bg-blue-600
-                  text-white
-                  shadow-md
-                  transition
-                  hover:bg-blue-700
-                "
-
-                title="
-                  Change profile photo
-                "
-              >
-
-                <Camera
-                  size={17}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={
+                    handleImageChange
+                  }
+                  className="hidden"
                 />
 
-              </button>
-
-
-              <input
-
-                ref={
-                  fileInputRef
-                }
-
-                type="file"
-
-                accept="image/*"
-
-                onChange={
-                  handleImageChange
-                }
-
-                className="hidden"
-              />
-
-            </div>
-
-
-            {/* Name */}
-
-            <div
-              className="
-                flex-1
-              "
-            >
-
-              <h2
-                className="
-                  text-xl
-                  font-bold
-                  text-slate-800
-                "
-              >
-
-                {
-                  getFullName()
-                }
-
-              </h2>
-
-
-              <div
-                className="
-                  mt-1
-                  flex
-                  items-center
-                  gap-2
-                  text-sm
-                  text-slate-500
-                "
-              >
-
-                {
-                  isCompany
-                    ? (
-
-                      <Building2
-                        size={16}
-                      />
-
-                    )
-                    : (
-
-                      <User
-                        size={16}
-                      />
-
-                    )
-                }
-
-
-                <span>
-
-                  {
-                    isCompany
-                      ? "Company Customer"
-                      : "Customer"
-                  }
-
-                </span>
-
               </div>
 
+              {/* ---------------------------------------------------------- */}
+              {/* PROFILE DETAILS                                             */}
+              {/* ---------------------------------------------------------- */}
 
-              {
-                isEditing
-                &&
-                (
+              <div className="min-w-0 flex-1 text-white">
 
-                  <button
+                <h2 className="truncate text-2xl font-bold">
+                  {getFullName()}
+                </h2>
 
-                    type="button"
+                <p className="mt-1 text-sm text-white/80">
+                  Customer ID:{" "}
+                  {profile.customerCode}
+                </p>
 
-                    onClick={() =>
-                      fileInputRef
-                        .current
-                        ?.click()
-                    }
+                <div className="mt-3 flex flex-wrap items-center gap-2">
 
-                    className="
-                      mt-3
-                      inline-flex
-                      items-center
-                      gap-2
-                      text-sm
-                      font-semibold
-                      text-blue-600
-                      hover:text-blue-700
-                    "
-                  >
-
-                    <Camera
-                      size={16}
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white">
+                    <ShieldCheck
+                      size={14}
                     />
 
-                    Change Photo
+                    {profile.status}
+                  </span>
 
-                  </button>
+                  <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white">
+                    {profile.customerType}
+                  </span>
 
-                )
-              }
+                </div>
+
+                {/* Photo actions */}
+
+                {isPhotoEditing &&
+                  !isCropModalOpen && (
+                    <div className="mt-4 flex flex-wrap gap-3">
+
+                      <button
+                        type="button"
+                        onClick={
+                          handlePhotoCancel
+                        }
+                        disabled={
+                          isPhotoSaving
+                        }
+                        className="rounded-xl border border-white/40 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={
+                          handlePhotoSave
+                        }
+                        disabled={
+                          !croppedImageFile ||
+                          isPhotoSaving
+                        }
+                        className="flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-[#0878E8] shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isPhotoSaving && (
+                          <Loader2
+                            size={16}
+                            className="animate-spin"
+                          />
+                        )}
+
+                        {isPhotoSaving
+                          ? "Saving..."
+                          : "Save Photo"}
+                      </button>
+
+                    </div>
+                  )}
+
+              </div>
 
             </div>
 
           </div>
 
-        </div>
+          {/* Registered info notice */}
 
+          <div className="flex items-start gap-3 border-t border-slate-100 px-6 py-4">
 
-        {/* ==============================================
-            PERSONAL / COMPANY INFORMATION
-        ============================================== */}
+            <ShieldCheck
+              size={18}
+              className="mt-0.5 shrink-0 text-[#0878E8]"
+            />
 
-        <section
-          className="mb-6"
-        >
-
-          <div
-            className="mb-3"
-          >
-
-            <h2
-              className="
-                text-lg
-                font-bold
-                text-[#08295C]
-              "
-            >
-
-              {
-                isCompany
-                  ? "Company Information"
-                  : "Personal Information"
-              }
-
-            </h2>
-
-          </div>
-
-
-          {
-            isCompany
-              ? (
-
-                <CompanyInfo
-
-                  profile={
-                    profile
-                  }
-
-                  formData={
-                    formData
-                  }
-
-                  isEditing={
-                    isEditing
-                  }
-
-                  onInputChange={
-                    handleInputChange
-                  }
-
-                />
-
-              )
-              : (
-
-                <PersonalInfo
-
-                  profile={
-                    profile
-                  }
-
-                  formData={
-                    formData
-                  }
-
-                  isEditing={
-                    isEditing
-                  }
-
-                  onInputChange={
-                    handleInputChange
-                  }
-
-                />
-
-              )
-          }
-
-
-          {/* ============================================
-              ACTION BUTTONS
-          ============================================ */}
-
-          <div
-            className="
-              mt-6
-              flex
-              justify-end
-              gap-3
-            "
-          >
-
-            {
-              !isEditing
-                ? (
-
-                  <button
-
-                    type="button"
-
-                    onClick={
-                      handleEdit
-                    }
-
-                    className="
-                      inline-flex
-                      items-center
-                      gap-2
-                      rounded-xl
-                      bg-blue-600
-                      px-6
-                      py-3
-                      text-sm
-                      font-semibold
-                      text-white
-                      shadow-sm
-                      transition
-                      hover:bg-blue-700
-                    "
-                  >
-
-                    Edit Profile
-
-                  </button>
-
-                )
-                : (
-                  <>
-
-                    <button
-
-                      type="button"
-
-                      onClick={
-                        handleCancel
-                      }
-
-                      disabled={
-                        isSaving
-                      }
-
-                      className="
-                        rounded-xl
-                        border
-                        border-slate-200
-                        bg-white
-                        px-6
-                        py-3
-                        text-sm
-                        font-semibold
-                        text-slate-600
-                        transition
-                        hover:bg-slate-50
-                        disabled:cursor-not-allowed
-                        disabled:opacity-50
-                      "
-                    >
-
-                      Cancel
-
-                    </button>
-
-
-                    <button
-
-                      type="button"
-
-                      onClick={
-                        handleSave
-                      }
-
-                      disabled={
-                        isSaving
-                      }
-
-                      className="
-                        rounded-xl
-                        bg-blue-600
-                        px-6
-                        py-3
-                        text-sm
-                        font-semibold
-                        text-white
-                        shadow-sm
-                        transition
-                        hover:bg-blue-700
-                        disabled:cursor-not-allowed
-                        disabled:opacity-60
-                      "
-                    >
-
-                      {
-                        isSaving
-                          ? "Saving..."
-                          : "Save Changes"
-                      }
-
-                    </button>
-
-                  </>
-                )
-            }
+            <p className="text-xs leading-relaxed text-slate-500">
+              <span className="font-semibold text-slate-700">
+                Notice:
+              </span>{" "}
+              Registered personal details,
+              contact information and
+              email are read-only.
+              Address information can be
+              updated from Edit Profile.
+            </p>
 
           </div>
 
         </section>
 
+        {/* ================================================================ */}
+        {/* PERSONAL / COMPANY INFORMATION                                   */}
+        {/* ================================================================ */}
 
-        {/* ==============================================
-            SECURITY
-        ============================================== */}
+        {isCompany ? (
+          <CompanyInfo
+            profile={profile}
+            formData={formData}
+            isEditing={isEditing}
+            onInputChange={handleInputChange}
+            onEdit={handleEdit}
+            onCancel={handleCancel}
+            onSave={handleSave}
+            isSaving={isSaving}
+          />
+        ) : (
+          <PersonalInfo
+            profile={profile}
+            formData={formData}
+            isEditing={isEditing}
+            onInputChange={handleInputChange}
+            onEdit={handleEdit}
+            onCancel={handleCancel}
+            onSave={handleSave}
+            isSaving={isSaving}
+          />
+        )}
+
+        {!isEditing && (
+          <div className="mt-4 flex items-center gap-2 px-1 text-xs text-slate-400">
+          </div>
+        )}
+
+
+        {/* ================================================================ */}
+        {/* SECURITY                                                          */}
+        {/* ================================================================ */}
 
         <section>
 
-          <div
-            className="
-              mb-3
-              flex
-              items-center
-              gap-2
-            "
-          >
+          <div className="mb-3 flex items-center gap-2">
 
             <ShieldCheck
-
               size={20}
-
-              className="
-                text-[#08295C]
-              "
+              className="text-[#08295C]"
             />
 
-
-            <h2
-              className="
-                text-lg
-                font-bold
-                text-[#08295C]
-              "
-            >
-
+            <h2 className="text-lg font-bold text-[#08295C]">
               Security
-
             </h2>
 
           </div>
 
-
-          <div
-            className="
-              overflow-hidden
-              rounded-2xl
-              border
-              border-slate-200
-              bg-white
-              shadow-sm
-            "
-          >
-
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 
             {/* Password */}
 
             <SecurityRow
-
               label="Password"
-
               action="Change"
-
               onClick={() => {
-
-                // Existing password change
-                // route can be connected here later.
-
+                /*
+                 * Connect existing password
+                 * change route here.
+                 */
               }}
-
             />
 
-
-            {/* ==========================================
-                TRANSACTION PIN - FORGOT PIN
-            ========================================== */}
+            {/* Transaction PIN */}
 
             <SecurityRow
-
               label="Transaction PIN"
-
               action={
                 pinResetLoading
                   ? "Sending OTP..."
                   : "Forgot Transaction PIN"
               }
-
               onClick={
                 handleForgotPin
               }
-
+              disabled={
+                pinResetLoading
+              }
             />
 
 
-            {/* MFA */}
-
-            <div
-              className="
-                flex
-                items-center
-                justify-between
-                px-6
-                py-5
-              "
-            >
-
-              <div>
-
-                <p
-                  className="
-                    text-sm
-                    font-semibold
-                    text-slate-700
-                  "
-                >
-
-                  MFA (Email OTP)
-
-                </p>
-
-
-                <p
-                  className="
-                    mt-1
-                    text-xs
-                    text-slate-400
-                  "
-                >
-
-                  Multi-factor authentication
-
-                </p>
-
-              </div>
-
-
-              <div
-                className="
-                  inline-flex
-                  items-center
-                  gap-2
-                  rounded-full
-                  bg-emerald-50
-                  px-3
-                  py-1.5
-                  text-xs
-                  font-bold
-                  text-emerald-600
-                "
-              >
-
-                <span
-                  className="
-                    h-2
-                    w-2
-                    rounded-full
-                    bg-emerald-500
-                  "
-                />
-
-                Enabled
-
-              </div>
-
-            </div>
 
           </div>
 
@@ -1683,96 +1499,175 @@ export default function ProfilePage() {
 
       </div>
 
+      {/* ================================================================ */}
+      {/* CROP MODAL                                                        */}
+      {/* ================================================================ */}
+
+      {isCropModalOpen &&
+        cropSourceUrl && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
+
+            <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+
+              {/* Modal header */}
+
+              <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+
+                <div>
+                  <h3 className="text-base font-bold text-[#08295C]">
+                    Crop Profile Photo
+                  </h3>
+
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Adjust your photo before
+                    saving.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={
+                    handleCropCancel
+                  }
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                  aria-label="Close crop modal"
+                >
+                  <X
+                    size={20}
+                  />
+                </button>
+
+              </div>
+
+              {/* Crop area */}
+
+              <div className="relative h-[380px] w-full bg-black">
+
+                <Cropper
+                  image={cropSourceUrl}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={1}
+                  cropShape="round"
+                  showGrid={false}
+                  onCropChange={
+                    setCrop
+                  }
+                  onZoomChange={
+                    setZoom
+                  }
+                  onCropComplete={
+                    handleCropComplete
+                  }
+                />
+
+              </div>
+
+              {/* Zoom */}
+
+              <div className="px-5 pt-5">
+
+                <label
+                  htmlFor="profile-photo-zoom"
+                  className="mb-2 block text-xs font-medium text-slate-600"
+                >
+                  Zoom
+                </label>
+
+                <input
+                  id="profile-photo-zoom"
+                  type="range"
+                  min={1}
+                  max={3}
+                  step={0.1}
+                  value={zoom}
+                  onChange={(
+                    event
+                  ) =>
+                    setZoom(
+                      Number(
+                        event.target.value
+                      )
+                    )
+                  }
+                  className="w-full accent-[#0878E8]"
+                />
+
+              </div>
+
+              {/* Modal actions */}
+
+              <div className="flex items-center justify-end gap-3 px-5 py-5">
+
+                <button
+                  type="button"
+                  onClick={
+                    handleCropCancel
+                  }
+                  className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={
+                    handleCropSave
+                  }
+                  disabled={
+                    !croppedAreaPixels
+                  }
+                  className="rounded-lg bg-[#0878E8] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0668ca] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Apply Crop
+                </button>
+
+              </div>
+
+            </div>
+
+          </div>
+        )}
+
     </div>
-
   );
-
 }
 
-
-/* =========================================================
+/* ==========================================================================
    SECURITY ROW
-========================================================= */
+============================================================================= */
 
 interface SecurityRowProps {
-
-  label:
-    string;
-
-  action:
-    string;
-
-  onClick:
-    () => void;
-
+  label: string;
+  action: string;
+  onClick: () => void;
+  disabled?: boolean;
 }
 
-
 function SecurityRow({
-
   label,
-
   action,
-
   onClick,
-
+  disabled = false,
 }: SecurityRowProps) {
-
   return (
-
-    <div
-      className="
-        flex
-        items-center
-        justify-between
-        border-b
-        border-slate-100
-        px-6
-        py-5
-        last:border-b-0
-      "
-    >
+    <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5 last:border-b-0">
 
       <div>
-
-        <p
-          className="
-            text-sm
-            font-semibold
-            text-slate-700
-          "
-        >
-
+        <p className="text-sm font-semibold text-slate-700">
           {label}
-
         </p>
-
       </div>
 
-
       <button
-
         type="button"
-
-        onClick={
-          onClick
-        }
-
-        className="
-          text-sm
-          font-semibold
-          text-blue-600
-          transition
-          hover:text-blue-700
-        "
+        onClick={onClick}
+        disabled={disabled}
+        className="text-sm font-semibold text-blue-600 transition hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
       >
-
         {action} →
-
       </button>
 
     </div>
-
   );
-
 }

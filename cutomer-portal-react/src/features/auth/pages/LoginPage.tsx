@@ -34,24 +34,20 @@ function LoginPage() {
     setLoginIdentifier,
   ] = useState("");
 
-
   const [
     password,
     setPassword,
   ] = useState("");
-
 
   const [
     showPassword,
     setShowPassword,
   ] = useState(false);
 
-
   const [
     error,
     setError,
   ] = useState("");
-
 
   const [
     loading,
@@ -67,7 +63,6 @@ function LoginPage() {
     loginFieldEditable,
     setLoginFieldEditable,
   ] = useState(false);
-
 
   const [
     passwordFieldEditable,
@@ -89,15 +84,13 @@ function LoginPage() {
 
     e.preventDefault();
 
-
     setError("");
 
 
     // Empty field validation
 
     if (
-      !loginIdentifier
-      ||
+      !loginIdentifier ||
       !password
     ) {
 
@@ -111,9 +104,7 @@ function LoginPage() {
 
     try {
 
-      setLoading(
-        true
-      );
+      setLoading(true);
 
 
       const response =
@@ -169,12 +160,9 @@ function LoginPage() {
 
       );
 
-
     } finally {
 
-      setLoading(
-        false
-      );
+      setLoading(false);
 
     }
 
@@ -189,205 +177,188 @@ function LoginPage() {
 
     <PublicAuthLayout>
 
+      {/* =================================================
+          MAIN CARD
+      ================================================= */}
+
       <div
         className="
+          relative
           w-full
           max-w-6xl
           overflow-hidden
           rounded-3xl
           border
-          border-slate-200
+          border-white/60
           bg-white
-          shadow-xl
-          shadow-slate-200/70
+          shadow-2xl
+          shadow-slate-900/20
         "
       >
 
         <div
           className="
             grid
-            min-h-[610px]
+            min-h-[620px]
             md:grid-cols-2
           "
         >
 
 
-          {/* ============================================
-              LEFT BRAND PANEL
-          ============================================ */}
+          {/* =================================================
+              LEFT SIDE - BANKING BUILDING
+          ================================================= */}
 
           <div
             className="
               relative
               hidden
+              min-h-[620px]
               overflow-hidden
-              bg-gradient-to-br
-              from-[#08295C]
-              via-[#0B3A78]
-              to-[#125AA3]
-              p-10
-              text-white
-              md:flex
-              md:flex-col
-              md:justify-between
-              lg:p-12
+              md:block
             "
           >
 
+            {/* BANKING BUILDING IMAGE */}
 
-            {/* Decorative circles */}
-
-            <div
+            <img
+              src="/images.jfif"
+              alt="MiniBank Building"
               className="
                 absolute
-                -right-24
-                -top-24
-                h-72
-                w-72
-                rounded-full
-                bg-white/5
+                inset-0
+                h-full
+                w-full
+                object-cover
               "
             />
 
 
+            {/* DARK OVERLAY */}
+
             <div
               className="
                 absolute
-                -bottom-28
-                -left-20
-                h-72
-                w-72
-                rounded-full
-                bg-white/5
+                inset-0
+                bg-[#06254D]/45
               "
             />
 
 
-            {/* BRAND */}
+            {/* GRADIENT OVERLAY */}
 
-            <div className="relative z-10">
-
-              <div
-                className="
-                  mb-8
-                  flex
-                  items-center
-                  gap-3
-                "
-              >
-
-                <div
-                  className="
-                    flex
-                    h-12
-                    w-12
-                    items-center
-                    justify-center
-                    rounded-2xl
-                    bg-white/15
-                    backdrop-blur
-                  "
-                >
-
-                  <Landmark size={26} />
-
-                </div>
+            <div
+              className="
+                absolute
+                inset-0
+                bg-gradient-to-t
+                from-[#031B36]/90
+                via-[#06254D]/30
+                to-transparent
+              "
+            />
 
 
-                <h1
-                  className="
-                    text-3xl
-                    font-bold
-                    tracking-tight
-                  "
-                >
-
-                  MiniBank
-
-                </h1>
-
-              </div>
-
-
-              <h2
-                className="
-                  max-w-md
-                  text-3xl
-                  font-bold
-                  leading-tight
-                  lg:text-4xl
-                "
-              >
-
-                Banking made secure,
-                simple and convenient.
-
-              </h2>
-
-
-              <p
-                className="
-                  mt-5
-                  max-w-md
-                  text-sm
-                  leading-7
-                  text-blue-100
-                  lg:text-base
-                "
-              >
-
-                Securely access your accounts,
-                manage your banking services,
-                and stay connected wherever you are.
-
-              </p>
-
-            </div>
-
-
-            {/* BANK IMAGE */}
+            {/* LEFT CONTENT */}
 
             <div
               className="
                 relative
                 z-10
-                mt-8
-                overflow-hidden
-                rounded-2xl
-                border
-                border-white/15
-                bg-white/10
-                shadow-2xl
+                flex
+                h-full
+                flex-col
+                items-center
+                justify-center
+                px-10
+                text-center
+                text-white
               "
             >
 
-              <img
+              {/* BANK ICON */}
 
-                src="/images.jfif"
-
-                alt="MiniBank Building"
-
+              <div
                 className="
-                  h-64
-                  w-full
-                  object-cover
-                  lg:h-72
+                  mb-6
+                  flex
+                  h-16
+                  w-16
+                  items-center
+                  justify-center
+                  rounded-full
+                  border
+                  border-white/30
+                  bg-white/15
+                  shadow-lg
+                  backdrop-blur-md
                 "
+              >
 
+                <Landmark
+                  size={30}
+                  strokeWidth={1.8}
+                />
+
+              </div>
+
+
+              {/* TITLE */}
+
+              <h1
+                className="
+                  text-3xl
+                  font-extrabold
+                  tracking-wide
+                  drop-shadow-lg
+                  lg:text-4xl
+                "
+              >
+                WELCOME TO MINIBANK
+              </h1>
+
+
+              {/* BLUE / CYAN LINE */}
+
+              <div
+                className="
+                  my-5
+                  h-1
+                  w-20
+                  rounded-full
+                  bg-cyan-400
+                "
               />
 
+
+              {/* DESCRIPTION */}
+
+              <p
+                className="
+                  max-w-md
+                  text-sm
+                  leading-6
+                  text-blue-50
+                  drop-shadow-md
+                  lg:text-base
+                "
+              >
+                Securely access your account, manage
+                your banking services, and stay
+                connected with MiniBank.
+              </p>
+
+
+              {/* BOTTOM TEXT */}
 
               <div
                 className="
                   absolute
-                  inset-x-0
-                  bottom-0
-                  bg-gradient-to-t
-                  from-[#08295C]/90
-                  to-transparent
-                  px-6
-                  pb-5
-                  pt-16
+                  bottom-10
+                  left-0
+                  right-0
+                  px-8
+                  text-center
                 "
               >
 
@@ -395,12 +366,11 @@ function LoginPage() {
                   className="
                     text-sm
                     font-semibold
+                    tracking-wide
                     text-white
                   "
                 >
-
                   Your Trust, Our Priority
-
                 </p>
 
 
@@ -411,9 +381,7 @@ function LoginPage() {
                     text-blue-100
                   "
                 >
-
                   Secure • Simple • Convenient
-
                 </p>
 
               </div>
@@ -423,19 +391,20 @@ function LoginPage() {
           </div>
 
 
-          {/* ============================================
-              RIGHT LOGIN PANEL
-          ============================================ */}
+          {/* =================================================
+              RIGHT SIDE - LOGIN FORM
+          ================================================= */}
 
           <div
             className="
               flex
               items-center
               justify-center
-              px-6
+              bg-white
+              px-7
               py-10
-              sm:px-10
-              lg:px-14
+              sm:px-12
+              lg:px-16
             "
           >
 
@@ -447,7 +416,9 @@ function LoginPage() {
             >
 
 
-              {/* MOBILE LOGO */}
+              {/* =================================================
+                  MOBILE LOGO
+              ================================================= */}
 
               <div
                 className="
@@ -472,7 +443,9 @@ function LoginPage() {
                   "
                 >
 
-                  <Landmark size={22} />
+                  <Landmark
+                    size={22}
+                  />
 
                 </div>
 
@@ -486,9 +459,7 @@ function LoginPage() {
                       text-[#08295C]
                     "
                   >
-
                     MiniBank
-
                   </h1>
 
 
@@ -498,9 +469,7 @@ function LoginPage() {
                       text-slate-400
                     "
                   >
-
                     Customer Portal
-
                   </p>
 
                 </div>
@@ -508,38 +477,40 @@ function LoginPage() {
               </div>
 
 
-              {/* HEADER */}
+              {/* =================================================
+                  HEADER
+              ================================================= */}
 
-              <div className="mb-8">
+              <div
+                className="
+                  mb-8
+                "
+              >
 
                 <p
                   className="
                     mb-2
-                    text-sm
-                    font-semibold
+                    text-xs
+                    font-bold
                     uppercase
-                    tracking-wider
-                    text-blue-600
+                    tracking-[0.2em]
+                    text-cyan-600
                   "
                 >
-
                   Mini Banking
-
                 </p>
 
 
                 <h2
                   className="
                     text-3xl
-                    font-bold
+                    font-extrabold
                     tracking-tight
                     text-[#08295C]
                     lg:text-4xl
                   "
                 >
-
                   Welcome!
-
                 </h2>
 
 
@@ -551,35 +522,31 @@ function LoginPage() {
                     text-slate-500
                   "
                 >
-
                   Login securely using your Customer ID
                   or Account Number.
-
                 </p>
 
               </div>
 
 
-              {/* ========================================
-                  FORM
-              ======================================== */}
+              {/* =================================================
+                  LOGIN FORM
+              ================================================= */}
 
               <form
-
                 onSubmit={
                   handleLogin
                 }
-
                 autoComplete="off"
-
-                className="space-y-5"
-
+                className="
+                  space-y-5
+                "
               >
 
 
-                {/* ======================================
-                    LOGIN IDENTIFIER
-                ====================================== */}
+                {/* =================================================
+                    CUSTOMER ID / ACCOUNT NUMBER
+                ================================================= */}
 
                 <div>
 
@@ -592,18 +559,18 @@ function LoginPage() {
                       text-slate-700
                     "
                   >
-
                     Customer ID or Account Number
-
                   </label>
 
 
-                  <div className="relative">
+                  <div
+                    className="
+                      relative
+                    "
+                  >
 
                     <UserRound
-
                       size={19}
-
                       className="
                         absolute
                         left-4
@@ -611,65 +578,55 @@ function LoginPage() {
                         -translate-y-1/2
                         text-slate-400
                       "
-
                     />
 
 
                     <input
-
                       type="text"
-
                       name="customerLookupValue"
-
                       value={
                         loginIdentifier
                       }
-
                       onChange={(e) =>
                         setLoginIdentifier(
                           e.target.value
                         )
                       }
-
                       onFocus={() =>
                         setLoginFieldEditable(
                           true
                         )
                       }
-
                       readOnly={
                         !loginFieldEditable
                       }
-
                       placeholder="Enter Customer ID or Account Number"
-
                       autoComplete="off"
-
                       disabled={
                         loading
                       }
-
                       className="
                         w-full
                         rounded-xl
                         border
-                        border-slate-300
-                        bg-white
+                        border-slate-200
+                        bg-slate-50
                         py-3.5
                         pl-12
                         pr-4
                         text-sm
                         text-slate-800
                         outline-none
-                        transition
+                        transition-all
                         placeholder:text-slate-400
-                        focus:border-blue-500
+                        hover:border-slate-300
+                        focus:border-cyan-500
+                        focus:bg-white
                         focus:ring-4
-                        focus:ring-blue-100
+                        focus:ring-cyan-100
                         disabled:cursor-not-allowed
-                        disabled:bg-slate-50
+                        disabled:bg-slate-100
                       "
-
                     />
 
                   </div>
@@ -677,9 +634,9 @@ function LoginPage() {
                 </div>
 
 
-                {/* ======================================
+                {/* =================================================
                     PASSWORD
-                ====================================== */}
+                ================================================= */}
 
                 <div>
 
@@ -692,18 +649,18 @@ function LoginPage() {
                       text-slate-700
                     "
                   >
-
                     Password
-
                   </label>
 
 
-                  <div className="relative">
+                  <div
+                    className="
+                      relative
+                    "
+                  >
 
                     <LockKeyhole
-
                       size={19}
-
                       className="
                         absolute
                         left-4
@@ -711,91 +668,77 @@ function LoginPage() {
                         -translate-y-1/2
                         text-slate-400
                       "
-
                     />
 
 
                     <input
-
                       type={
                         showPassword
                           ? "text"
                           : "password"
                       }
-
                       name="customerSecretValue"
-
                       value={
                         password
                       }
-
                       onChange={(e) =>
                         setPassword(
                           e.target.value
                         )
                       }
-
                       onFocus={() =>
                         setPasswordFieldEditable(
                           true
                         )
                       }
-
                       readOnly={
                         !passwordFieldEditable
                       }
-
                       placeholder="Enter your password"
-
                       autoComplete="new-password"
-
                       disabled={
                         loading
                       }
-
                       className="
                         w-full
                         rounded-xl
                         border
-                        border-slate-300
-                        bg-white
+                        border-slate-200
+                        bg-slate-50
                         py-3.5
                         pl-12
                         pr-12
                         text-sm
                         text-slate-800
                         outline-none
-                        transition
+                        transition-all
                         placeholder:text-slate-400
-                        focus:border-blue-500
+                        hover:border-slate-300
+                        focus:border-cyan-500
+                        focus:bg-white
                         focus:ring-4
-                        focus:ring-blue-100
+                        focus:ring-cyan-100
                         disabled:cursor-not-allowed
-                        disabled:bg-slate-50
+                        disabled:bg-slate-100
                       "
-
                     />
 
 
-                    {/* PASSWORD SHOW / HIDE */}
+                    {/* SHOW / HIDE PASSWORD */}
 
                     <button
-
                       type="button"
-
                       onClick={() =>
                         setShowPassword(
                           (prev) =>
                             !prev
                         )
                       }
-
                       aria-label={
                         showPassword
                           ? "Hide password"
                           : "Show password"
                       }
-
                       className="
                         absolute
                         right-4
@@ -803,23 +746,23 @@ function LoginPage() {
                         -translate-y-1/2
                         text-slate-400
                         transition
-                        hover:text-slate-600
+                        hover:text-[#08295C]
                       "
                     >
 
-                      {
-                        showPassword
-                          ? (
-                            <EyeOff
-                              size={20}
-                            />
-                          )
-                          : (
-                            <Eye
-                              size={20}
-                            />
-                          )
-                      }
+                      {showPassword ? (
+
+                        <EyeOff
+                          size={20}
+                        />
+
+                      ) : (
+
+                        <Eye
+                          size={20}
+                        />
+
+                      )}
 
                     </button>
 
@@ -828,13 +771,12 @@ function LoginPage() {
                 </div>
 
 
-                {/* ======================================
+                {/* =================================================
                     ERROR MESSAGE
-                ====================================== */}
+                ================================================= */}
 
                 {
-                  error
-                  &&
+                  error &&
                   (
 
                     <div
@@ -859,9 +801,9 @@ function LoginPage() {
                 }
 
 
-                {/* ======================================
+                {/* =================================================
                     FORGOT PASSWORD
-                ====================================== */}
+                ================================================= */}
 
                 <div
                   className="
@@ -872,61 +814,55 @@ function LoginPage() {
                 >
 
                   <button
-
                     type="button"
-
                     onClick={() =>
                       navigate(
                         "/forgot-password"
                       )
                     }
-
                     className="
                       text-sm
                       font-semibold
-                      text-blue-600
+                      text-cyan-600
                       transition
-                      hover:text-blue-700
+                      hover:text-cyan-700
                     "
                   >
-
                     Forgot password?
-
                   </button>
 
                 </div>
 
 
-                {/* ======================================
+                {/* =================================================
                     LOGIN BUTTON
-                ====================================== */}
+                ================================================= */}
 
                 <button
-
                   type="submit"
-
                   disabled={
                     loading
                   }
-
                   className="
                     flex
                     w-full
                     items-center
                     justify-center
                     rounded-xl
-                    bg-blue-600
+                    bg-[#08295C]
                     px-5
                     py-3.5
                     text-sm
                     font-bold
                     text-white
-                    shadow-sm
-                    transition
-                    hover:bg-blue-700
+                    shadow-lg
+                    shadow-blue-900/15
+                    transition-all
+                    hover:bg-[#0B3A78]
+                    hover:shadow-xl
                     focus:outline-none
                     focus:ring-4
-                    focus:ring-blue-200
+                    focus:ring-blue-100
                     disabled:cursor-not-allowed
                     disabled:opacity-60
                   "
@@ -943,9 +879,9 @@ function LoginPage() {
               </form>
 
 
-              {/* ========================================
+              {/* =================================================
                   CONTACT BANK
-              ======================================== */}
+              ================================================= */}
 
               <div
                 className="
@@ -969,12 +905,10 @@ function LoginPage() {
                   <span
                     className="
                       font-semibold
-                      text-blue-600
+                      text-cyan-600
                     "
                   >
-
                     Contact your bank
-
                   </span>
 
                 </p>
@@ -982,13 +916,17 @@ function LoginPage() {
               </div>
 
 
-              {/* ========================================
+              {/* =================================================
                   SECURITY MESSAGE
-              ======================================== */}
+              ================================================= */}
 
               <div
                 className="
                   mt-5
+                  flex
+                  items-center
+                  justify-center
+                  gap-2
                   rounded-xl
                   bg-slate-50
                   px-4
@@ -997,6 +935,14 @@ function LoginPage() {
                 "
               >
 
+                <LockKeyhole
+                  size={14}
+                  className="
+                    text-slate-400
+                  "
+                />
+
+
                 <p
                   className="
                     text-xs
@@ -1004,10 +950,8 @@ function LoginPage() {
                     text-slate-500
                   "
                 >
-
                   For your security, never share your
                   password or OTP with anyone.
-
                 </p>
 
               </div>
@@ -1023,7 +967,6 @@ function LoginPage() {
     </PublicAuthLayout>
 
   );
-
 }
 
 
