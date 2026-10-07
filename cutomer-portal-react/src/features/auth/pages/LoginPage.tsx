@@ -510,7 +510,7 @@ function LoginPage() {
                     lg:text-4xl
                   "
                 >
-                  Welcome Back
+                  Welcome!
                 </h2>
 
 
