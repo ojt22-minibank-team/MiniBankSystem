@@ -1,9 +1,7 @@
-
 import {
   Camera,
   CheckCircle2,
   Loader2,
-  MapPin,
   ShieldCheck,
   User,
   Building2,
@@ -22,9 +20,7 @@ import Cropper, {
   type Area,
 } from "react-easy-crop";
 
-import {
-  useNavigate,
-} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import {
   getMyProfile,
@@ -41,9 +37,17 @@ import {
   requestPinReset,
 } from "../../../services/authService";
 
+import {
+  useAppDispatch,
+  useAppSelector,
+} from "../../../lib/redux";
+
+import { setProfile } from "./ProfileSlice";
+
 import PersonalInfo from "./components/PersonalInfo";
 import CompanyInfo from "./components/CompanyInfo";
-
+import ProfileSkeleton from "./components/ProfileSkeleton";
+import ProfileErrorState from "./components/ProfileErrorState";
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
 /* -------------------------------------------------------------------------- */
@@ -58,9 +62,6 @@ interface ProfileFormData {
 /* -------------------------------------------------------------------------- */
 /* Constants                                                                  */
 /* -------------------------------------------------------------------------- */
-
-export const PROFILE_UPDATED_EVENT =
-  "customer-profile-updated";
 
 const MAX_FILE_SIZE =
   5 * 1024 * 1024;
@@ -114,14 +115,12 @@ async function createCroppedImage(
     await createImage(imageSrc);
 
   const canvas =
-    document.createElement(
-      "canvas"
-    );
+    document.createElement("canvas");
 
-  const ctx =
+  const context =
     canvas.getContext("2d");
 
-  if (!ctx) {
+  if (!context) {
     throw new Error(
       "Canvas is not supported."
     );
@@ -135,15 +134,17 @@ async function createCroppedImage(
     image.naturalHeight /
     image.height;
 
-  canvas.width = Math.round(
-    crop.width * scaleX
-  );
+  canvas.width =
+    Math.round(
+      crop.width * scaleX
+    );
 
-  canvas.height = Math.round(
-    crop.height * scaleY
-  );
+  canvas.height =
+    Math.round(
+      crop.height * scaleY
+    );
 
-  ctx.drawImage(
+  context.drawImage(
     image,
     crop.x * scaleX,
     crop.y * scaleY,
@@ -183,35 +184,54 @@ async function createCroppedImage(
 /* -------------------------------------------------------------------------- */
 
 export default function ProfilePage() {
+  const navigate =
+    useNavigate();
+
   /* ------------------------------------------------------------------------ */
-  /* Profile                                                                  */
+  /* Refs                                                                     */
   /* ------------------------------------------------------------------------ */
 
-  const [
-    profile,
-    setProfile,
-  ] =
-    useState<CustomerProfile | null>(
+  const fileInputRef =
+    useRef<HTMLInputElement | null>(
+      null
+    );
+
+  const previewBlobUrlRef =
+    useRef<string | null>(
+      null
+    );
+
+  const cropSourceUrlRef =
+    useRef<string | null>(
       null
     );
 
   /* ------------------------------------------------------------------------ */
-  /* Address form                                                             */
+  /* Profile                                                                   */
+  /* ------------------------------------------------------------------------ */
+
+  const dispatch = useAppDispatch();
+
+  const profile = useAppSelector(
+    (state) => state.profile.profile
+  );
+
+  /* ------------------------------------------------------------------------ */
+  /* Address form                                                              */
   /* ------------------------------------------------------------------------ */
 
   const [
     formData,
     setFormData,
-  ] =
-    useState<ProfileFormData>({
-      address: "",
-      city: "",
-      stateRegion: "",
-      country: "",
-    });
+  ] = useState<ProfileFormData>({
+    address: "",
+    city: "",
+    stateRegion: "",
+    country: "",
+  });
 
   /* ------------------------------------------------------------------------ */
-  /* Profile image                                                            */
+  /* Profile image                                                             */
   /* ------------------------------------------------------------------------ */
 
   const [
@@ -238,12 +258,6 @@ export default function ProfilePage() {
       null
     );
 
-  /*
-   * Controls whether photo Save / Cancel
-   * buttons are visible.
-   *
-   * This is separate from address editing.
-   */
   const [
     isPhotoEditing,
     setIsPhotoEditing,
@@ -257,7 +271,7 @@ export default function ProfilePage() {
     useState(false);
 
   /* ------------------------------------------------------------------------ */
-  /* Crop state                                                               */
+  /* Crop state                                                                */
   /* ------------------------------------------------------------------------ */
 
   const [
@@ -290,7 +304,7 @@ export default function ProfilePage() {
     useState(false);
 
   /* ------------------------------------------------------------------------ */
-  /* Address UI state                                                         */
+  /* Address UI state                                                          */
   /* ------------------------------------------------------------------------ */
 
   const [
@@ -311,6 +325,20 @@ export default function ProfilePage() {
   ] =
     useState(false);
 
+  /* ------------------------------------------------------------------------ */
+  /* PIN reset state                                                           */
+  /* ------------------------------------------------------------------------ */
+
+  const [
+    pinResetLoading,
+    setPinResetLoading,
+  ] =
+    useState(false);
+
+  /* ------------------------------------------------------------------------ */
+  /* Messages                                                                  */
+  /* ------------------------------------------------------------------------ */
+
   const [
     error,
     setError,
@@ -328,48 +356,36 @@ export default function ProfilePage() {
     );
 
   /* ------------------------------------------------------------------------ */
-  /* Refs                                                                     */
-  /* ------------------------------------------------------------------------ */
-
-  const fileInputRef =
-    useRef<HTMLInputElement | null>(
-      null
-    );
-
-  const previewBlobUrlRef =
-    useRef<string | null>(
-      null
-    );
-
-  const cropSourceUrlRef =
-    useRef<string | null>(
-      null
-    );
-
-  /* ------------------------------------------------------------------------ */
-  /* Customer type                                                            */
+  /* Customer type                                                             */
   /* ------------------------------------------------------------------------ */
 
   const isCompany =
-    profile?.customerType ===
+    profile?.customerType
+      ?.toUpperCase() ===
     "COMPANY" ||
-    profile?.customerType ===
+    profile?.customerType
+      ?.toUpperCase() ===
     "CORPORATE";
 
   /* ------------------------------------------------------------------------ */
-  /* Form helpers                                                             */
+  /* Form helpers                                                              */
   /* ------------------------------------------------------------------------ */
 
   const setFormDataFromProfile =
     useCallback(
-      (data: CustomerProfile) => {
+      (
+        data: CustomerProfile
+      ) => {
         setFormData({
           address:
             data.address ?? "",
+
           city:
             data.city ?? "",
+
           stateRegion:
             data.stateRegion ?? "",
+
           country:
             data.country ?? "",
         });
@@ -384,7 +400,117 @@ export default function ProfilePage() {
     }, []);
 
   /* ------------------------------------------------------------------------ */
-  /* Input change                                                             */
+  /* Load profile                                                              */
+  /* ------------------------------------------------------------------------ */
+
+  const loadProfile =
+    useCallback(
+      async () => {
+        try {
+          setIsLoading(true);
+          setError(null);
+
+          const data =
+            await getMyProfile();
+
+          dispatch(setProfile(data));
+
+          setFormDataFromProfile(
+            data
+          );
+
+          setPreviewImage(
+            data.profileImageUrl ??
+            null
+          );
+        } catch (err) {
+          console.error(
+            "Failed to load profile:",
+            err
+          );
+
+          setError(
+            "Unable to load your profile information right now. Please try again."
+          );
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      [setFormDataFromProfile, dispatch]
+    );
+
+  useEffect(() => {
+    void loadProfile();
+  }, [loadProfile]);
+
+  /* ------------------------------------------------------------------------ */
+  /* Cleanup object URLs                                                       */
+  /* ------------------------------------------------------------------------ */
+
+  useEffect(() => {
+    return () => {
+      revokeObjectUrl(
+        previewBlobUrlRef.current
+      );
+
+      revokeObjectUrl(
+        cropSourceUrlRef.current
+      );
+    };
+  }, []);
+
+  /* ------------------------------------------------------------------------ */
+  /* Address edit                                                              */
+  /* ------------------------------------------------------------------------ */
+
+  const handleEdit =
+    useCallback(() => {
+      if (!profile) {
+        return;
+      }
+
+      clearMessages();
+
+      setFormDataFromProfile(
+        profile
+      );
+
+      setIsEditing(true);
+    }, [
+      profile,
+      clearMessages,
+      setFormDataFromProfile,
+    ]);
+
+  /* ------------------------------------------------------------------------ */
+  /* Address cancel                                                            */
+  /* ------------------------------------------------------------------------ */
+
+  const handleCancel =
+    useCallback(() => {
+      if (
+        !profile ||
+        isSaving
+      ) {
+        return;
+      }
+
+      clearMessages();
+
+      setFormDataFromProfile(
+        profile
+      );
+
+      setIsEditing(false);
+    }, [
+      profile,
+      isSaving,
+      clearMessages,
+      setFormDataFromProfile,
+    ]);
+
+  /* ------------------------------------------------------------------------ */
+  /* Address input                                                             */
   /* ------------------------------------------------------------------------ */
 
   const handleInputChange =
@@ -411,90 +537,7 @@ export default function ProfilePage() {
     );
 
   /* ------------------------------------------------------------------------ */
-  /* Load profile                                                             */
-  /* ------------------------------------------------------------------------ */
-
-  const loadProfile =
-    useCallback(
-      async () => {
-        try {
-          setIsLoading(true);
-          setError(null);
-
-          const data =
-            await getMyProfile();
-
-          setProfile(data);
-
-          setFormDataFromProfile(
-            data
-          );
-
-          setPreviewImage(
-            data.profileImageUrl ??
-            null
-          );
-        } catch (err) {
-          console.error(
-            "Failed to load profile:",
-            err
-          );
-
-          setError(
-            "Failed to load your profile."
-          );
-        } finally {
-          setIsLoading(false);
-        }
-      },
-      [setFormDataFromProfile]
-    );
-
-  useEffect(() => {
-    void loadProfile();
-  }, [loadProfile]);
-
-  /* ------------------------------------------------------------------------ */
-  /* Cleanup                                                                  */
-  /* ------------------------------------------------------------------------ */
-
-  useEffect(() => {
-    return () => {
-      revokeObjectUrl(
-        previewBlobUrlRef.current
-      );
-
-      revokeObjectUrl(
-        cropSourceUrlRef.current
-      );
-    };
-  }, []);
-
-  /* ------------------------------------------------------------------------ */
-  /* Address Edit                                                             */
-  /* ------------------------------------------------------------------------ */
-
-  const handleEdit =
-    useCallback(() => {
-      if (!profile) {
-        return;
-      }
-
-      clearMessages();
-
-      setFormDataFromProfile(
-        profile
-      );
-
-      setIsEditing(true);
-    }, [
-      profile,
-      clearMessages,
-      setFormDataFromProfile,
-    ]);
-
-  /* ------------------------------------------------------------------------ */
-  /* File picker                                                              */
+  /* Open file picker                                                          */
   /* ------------------------------------------------------------------------ */
 
   const handleFileInputClick =
@@ -513,7 +556,7 @@ export default function ProfilePage() {
     ]);
 
   /* ------------------------------------------------------------------------ */
-  /* Image selection                                                          */
+  /* Image selection                                                           */
   /* ------------------------------------------------------------------------ */
 
   const handleImageChange =
@@ -524,6 +567,10 @@ export default function ProfilePage() {
         const file =
           event.target.files?.[0];
 
+        /*
+         * Allows selecting the same
+         * image again later.
+         */
         event.target.value = "";
 
         if (!file) {
@@ -532,6 +579,7 @@ export default function ProfilePage() {
 
         clearMessages();
 
+        /* Validate image type */
         if (
           !ALLOWED_IMAGE_TYPES.includes(
             file.type
@@ -544,6 +592,7 @@ export default function ProfilePage() {
           return;
         }
 
+        /* Validate file size */
         if (
           file.size >
           MAX_FILE_SIZE
@@ -556,11 +605,8 @@ export default function ProfilePage() {
         }
 
         /*
-         * Photo editing is independent
-         * from address editing.
+         * Revoke previous crop source.
          */
-        setIsPhotoEditing(true);
-
         revokeObjectUrl(
           cropSourceUrlRef.current
         );
@@ -588,6 +634,10 @@ export default function ProfilePage() {
           sourceUrl
         );
 
+        setIsPhotoEditing(
+          true
+        );
+
         setIsCropModalOpen(
           true
         );
@@ -596,7 +646,7 @@ export default function ProfilePage() {
     );
 
   /* ------------------------------------------------------------------------ */
-  /* Crop complete                                                            */
+  /* Crop complete                                                             */
   /* ------------------------------------------------------------------------ */
 
   const handleCropComplete =
@@ -613,14 +663,12 @@ export default function ProfilePage() {
     );
 
   /* ------------------------------------------------------------------------ */
-  /* Close crop modal                                                         */
+  /* Close crop modal                                                          */
   /* ------------------------------------------------------------------------ */
 
   const closeCropModal =
     useCallback(() => {
-      setIsCropModalOpen(
-        false
-      );
+      setIsCropModalOpen(false);
 
       revokeObjectUrl(
         cropSourceUrlRef.current
@@ -629,9 +677,7 @@ export default function ProfilePage() {
       cropSourceUrlRef.current =
         null;
 
-      setCropSourceUrl(
-        null
-      );
+      setCropSourceUrl(null);
 
       setCrop({
         x: 0,
@@ -646,7 +692,7 @@ export default function ProfilePage() {
     }, []);
 
   /* ------------------------------------------------------------------------ */
-  /* Cancel crop                                                              */
+  /* Cancel crop                                                               */
   /* ------------------------------------------------------------------------ */
 
   const handleCropCancel =
@@ -654,12 +700,11 @@ export default function ProfilePage() {
       closeCropModal();
 
       /*
-       * If there was no previously cropped
-       * photo, remain in the previous state.
+       * If there is no previously
+       * cropped image, photo editing
+       * should also be cancelled.
        */
-      if (
-        !croppedImageFile
-      ) {
+      if (!croppedImageFile) {
         setIsPhotoEditing(false);
       }
     }, [
@@ -668,7 +713,7 @@ export default function ProfilePage() {
     ]);
 
   /* ------------------------------------------------------------------------ */
-  /* Apply crop                                                               */
+  /* Apply crop                                                                */
   /* ------------------------------------------------------------------------ */
 
   const handleCropSave =
@@ -699,6 +744,9 @@ export default function ProfilePage() {
               }
             );
 
+          /*
+           * Create local preview.
+           */
           const previewUrl =
             URL.createObjectURL(
               croppedBlob
@@ -740,7 +788,7 @@ export default function ProfilePage() {
     );
 
   /* ------------------------------------------------------------------------ */
-  /* Cancel PHOTO changes                                                     */
+  /* Cancel photo changes                                                     */
   /* ------------------------------------------------------------------------ */
 
   const handlePhotoCancel =
@@ -748,8 +796,6 @@ export default function ProfilePage() {
       if (isPhotoSaving) {
         return;
       }
-
-      clearMessages();
 
       closeCropModal();
 
@@ -764,9 +810,6 @@ export default function ProfilePage() {
         null
       );
 
-      /*
-       * Restore server photo.
-       */
       setPreviewImage(
         profile?.profileImageUrl ??
         null
@@ -775,15 +818,17 @@ export default function ProfilePage() {
       setIsPhotoEditing(
         false
       );
+
+      clearMessages();
     }, [
       isPhotoSaving,
-      clearMessages,
-      closeCropModal,
       profile,
+      closeCropModal,
+      clearMessages,
     ]);
 
   /* ------------------------------------------------------------------------ */
-  /* Save PHOTO changes                                                       */
+  /* Save photo changes                                                        */
   /* ------------------------------------------------------------------------ */
 
   const handlePhotoSave =
@@ -800,22 +845,17 @@ export default function ProfilePage() {
         try {
           clearMessages();
 
-          setIsPhotoSaving(
-            true
-          );
+          setIsPhotoSaving(true);
 
           /*
-           * ONLY here does the photo
-           * get uploaded to Cloudinary.
+           * Upload cropped image only.
            */
           const updatedProfile =
             await uploadProfileImage(
               croppedImageFile
             );
 
-          setProfile(
-            updatedProfile
-          );
+          dispatch(setProfile(updatedProfile));
 
           setPreviewImage(
             updatedProfile.profileImageUrl ??
@@ -840,23 +880,11 @@ export default function ProfilePage() {
           setSuccessMessage(
             "Profile photo updated successfully."
           );
-
-          setTimeout(() => {
-            setSuccessMessage(null);
+          window.setTimeout(() => {
+            setSuccessMessage(
+              null
+            );
           }, 3000);
-
-          /*
-           * Update Navbar immediately.
-           */
-          window.dispatchEvent(
-            new CustomEvent(
-              PROFILE_UPDATED_EVENT,
-              {
-                detail:
-                  updatedProfile,
-              }
-            )
-          );
         } catch (err) {
           console.error(
             "Failed to update profile photo:",
@@ -867,9 +895,7 @@ export default function ProfilePage() {
             "Failed to update your profile photo."
           );
         } finally {
-          setIsPhotoSaving(
-            false
-          );
+          setIsPhotoSaving(false);
         }
       },
       [
@@ -877,38 +903,12 @@ export default function ProfilePage() {
         croppedImageFile,
         isPhotoSaving,
         clearMessages,
+        dispatch,
       ]
     );
 
   /* ------------------------------------------------------------------------ */
-  /* Cancel ADDRESS changes                                                   */
-  /* ------------------------------------------------------------------------ */
-
-  const handleCancel =
-    useCallback(() => {
-      if (
-        !profile ||
-        isSaving
-      ) {
-        return;
-      }
-
-      clearMessages();
-
-      setFormDataFromProfile(
-        profile
-      );
-
-      setIsEditing(false);
-    }, [
-      profile,
-      isSaving,
-      clearMessages,
-      setFormDataFromProfile,
-    ]);
-
-  /* ------------------------------------------------------------------------ */
-  /* Save ADDRESS changes                                                     */
+  /* Save address                                                              */
   /* ------------------------------------------------------------------------ */
 
   const handleSave =
@@ -939,18 +939,21 @@ export default function ProfilePage() {
           return;
         }
 
-        setIsSaving(true);
-
         try {
+          setIsSaving(true);
+
           const updateData:
             CustomerProfileUpdate =
           {
             address:
               formData.address,
+
             city:
               formData.city,
+
             stateRegion:
               formData.stateRegion,
+
             country:
               formData.country,
           };
@@ -960,9 +963,7 @@ export default function ProfilePage() {
               updateData
             );
 
-          setProfile(
-            updatedProfile
-          );
+          dispatch(setProfile(updatedProfile));
 
           setFormDataFromProfile(
             updatedProfile
@@ -973,23 +974,11 @@ export default function ProfilePage() {
           setSuccessMessage(
             "Address updated successfully."
           );
-
-          setTimeout(() => {
-            setSuccessMessage(null);
+          window.setTimeout(() => {
+            setSuccessMessage(
+              null
+            );
           }, 3000);
-          /*
-           * Navbar can use the updated
-           * profile immediately.
-           */
-          window.dispatchEvent(
-            new CustomEvent(
-              PROFILE_UPDATED_EVENT,
-              {
-                detail:
-                  updatedProfile,
-              }
-            )
-          );
         } catch (err) {
           console.error(
             "Failed to update address:",
@@ -1009,63 +998,210 @@ export default function ProfilePage() {
         formData,
         clearMessages,
         setFormDataFromProfile,
+        dispatch,
       ]
     );
 
   /* ------------------------------------------------------------------------ */
-  /* Loading                                                                  */
+  /* Forgot Transaction PIN                                                   */
+  /* ------------------------------------------------------------------------ */
+
+  const handleForgotPin =
+    useCallback(
+      async () => {
+        if (pinResetLoading) {
+          return;
+        }
+
+        try {
+          setPinResetLoading(true);
+
+          clearMessages();
+
+          /*
+           * Remove previous PIN reset
+           * session information.
+           */
+          sessionStorage.removeItem(
+            "pinResetChallengeGroupId"
+          );
+
+          sessionStorage.removeItem(
+            "pinResetMaskedEmail"
+          );
+
+          sessionStorage.removeItem(
+            "verifiedPinResetChallengeGroupId"
+          );
+
+          /*
+           * Request OTP.
+           *
+           * POST
+           * /api/customer/auth/pin-reset/request
+           */
+          const response =
+            await requestPinReset();
+
+          if (
+            !response.challengeGroupId
+          ) {
+            setError(
+              "PIN reset verification information is missing."
+            );
+
+            return;
+          }
+
+          /*
+           * Save challenge information.
+           */
+          sessionStorage.setItem(
+            "pinResetChallengeGroupId",
+            response.challengeGroupId
+          );
+
+          if (
+            response.destinationMasked
+          ) {
+            sessionStorage.setItem(
+              "pinResetMaskedEmail",
+              response.destinationMasked
+            );
+          }
+
+          /*
+           * Navigate to OTP page.
+           */
+          navigate(
+            "/pin-reset/otp"
+          );
+        } catch (err: unknown) {
+          console.error(
+            "Failed to start PIN reset:",
+            err
+          );
+
+          const axiosError =
+            err as {
+              response?: {
+                data?: {
+                  message?: string;
+                };
+              };
+            };
+
+          setError(
+            axiosError.response?.data
+              ?.message ??
+            "Unable to start Transaction PIN reset. Please try again."
+          );
+        } finally {
+          setPinResetLoading(
+            false
+          );
+        }
+      },
+      [
+        pinResetLoading,
+        clearMessages,
+        navigate,
+      ]
+    );
+
+    
+
+  /* ------------------------------------------------------------------------ */
+  /* Full name                                                                 */
+  /* ------------------------------------------------------------------------ */
+
+  const getFullName =
+    useCallback(() => {
+      if (!profile) {
+        return "";
+      }
+
+      if (isCompany) {
+        return (
+          profile.companyName ??
+          "Company"
+        );
+      }
+
+      return (
+        [
+          profile.firstName,
+          profile.lastName,
+        ]
+          .filter(Boolean)
+          .join(" ") ||
+        "Customer"
+      );
+    }, [
+      profile,
+      isCompany,
+    ]);
+
+  /* ------------------------------------------------------------------------ */
+  /* Loading                                                                   */
   /* ------------------------------------------------------------------------ */
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-[70vh] items-center justify-center">
-        <div className="flex items-center gap-3 text-slate-500">
-          <Loader2
-            size={22}
-            className="animate-spin"
-          />
-
-          <span className="text-sm">
-            Loading profile...
-          </span>
-        </div>
-
-      </div>
-
-    );
-
+    return <ProfileSkeleton />;
   }
 
+  if (error || !profile) {
+  return (
+    <ProfileErrorState
+      onRetry={loadProfile}
+      message={
+        error ??
+        "We couldn't retrieve your profile information right now."
+      }
+    />
+  );
+}
+
   /* ------------------------------------------------------------------------ */
-  /* No profile                                                               */
+  /* No profile                                                                */
   /* ------------------------------------------------------------------------ */
 
   if (!profile) {
     return (
-      <div className="mx-auto max-w-5xl px-6 py-10">
-        <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-600">
-          {error ??
-            "Unable to load your profile."}
+      <div className="min-h-[calc(100vh-80px)] bg-[#F5F7FB] p-8">
+        <div className="mx-auto max-w-5xl rounded-2xl border border-red-100 bg-white p-8 text-center">
+          <p className="text-sm font-medium text-red-600">
+            {error ??
+              "Unable to load your profile."}
+          </p>
+
+          <button
+            type="button"
+            onClick={() => {
+              void loadProfile();
+            }}
+            className="mt-4 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+          >
+            Try Again
+          </button>
         </div>
-
       </div>
-
     );
-
   }
 
   /* ------------------------------------------------------------------------ */
-  /* Render                                                                   */
+  /* Render                                                                    */
   /* ------------------------------------------------------------------------ */
 
   return (
-    <>
-      <div className="mx-auto max-w-6xl px-6 py-8">
+    <div className="min-h-[calc(100vh-80px)] bg-[#F5F7FB] px-6 py-8 lg:px-8">
+      <div className="mx-auto max-w-5xl">
+        {/* ================================================================ */}
+        {/* MESSAGES                                                          */}
+        {/* ================================================================ */}
 
-
-        {/* ERROR */}
         {error && (
-          <div className="mb-5 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+          <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
             <X
               size={18}
               className="mt-0.5 shrink-0"
@@ -1077,9 +1213,8 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* SUCCESS */}
         {successMessage && (
-          <div className="mb-5 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          <div className="mb-6 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
             <CheckCircle2
               size={18}
               className="mt-0.5 shrink-0"
@@ -1091,40 +1226,50 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* PROFILE SUMMARY */}
+        {/* ================================================================ */}
+        {/* PROFILE SUMMARY                                                   */}
+        {/* ================================================================ */}
+
         <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 
           <div className="bg-gradient-to-r from-[#08295C] to-[#0878E8] px-6 py-8">
+
             <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
 
-              {/* PROFILE PHOTO */}
-              <div className="relative h-32 w-32 shrink-0">
+              {/* ---------------------------------------------------------- */}
+              {/* PROFILE PHOTO                                               */}
+              {/* ---------------------------------------------------------- */}
 
-                <div className="h-32 w-32 overflow-hidden rounded-full border-4 border-white bg-slate-100 shadow-lg">
+              <div className="relative h-28 w-28 shrink-0">
+
+                <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-white bg-slate-100 shadow-lg">
+
                   {previewImage ? (
                     <img
                       src={previewImage}
-                      alt="Profile"
+                      alt={getFullName()}
                       className="h-full w-full object-cover"
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-slate-100">
                       {isCompany ? (
                         <Building2
-                          size={48}
+                          size={42}
                           className="text-slate-400"
                         />
                       ) : (
                         <User
-                          size={48}
+                          size={42}
                           className="text-slate-400"
                         />
                       )}
                     </div>
                   )}
+
                 </div>
 
-                {/* CAMERA BUTTON */}
+                {/* Camera button */}
+
                 <button
                   type="button"
                   onClick={
@@ -1135,11 +1280,11 @@ export default function ProfilePage() {
                     isPhotoSaving
                   }
                   aria-label="Change profile photo"
-                  className="absolute bottom-0 right-0 flex h-10 w-10 items-center justify-center rounded-full border-4 border-white bg-[#0878E8] text-white shadow-md transition hover:bg-[#0668ca] disabled:cursor-not-allowed disabled:opacity-50"
+                  title="Change profile photo"
+                  className="absolute bottom-0 right-0 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-[#0878E8] text-white shadow-md transition hover:bg-[#0668ca] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Camera
-                    size={18}
-                    strokeWidth={2.5}
+                    size={17}
                   />
                 </button>
 
@@ -1147,68 +1292,22 @@ export default function ProfilePage() {
                   ref={fileInputRef}
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
                   onChange={
                     handleImageChange
                   }
+                  className="hidden"
                 />
+
               </div>
 
-              {/* PHOTO ACTIONS */}
-              {isPhotoEditing &&
-                !isCropModalOpen && (
-                  <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={
-                        handlePhotoCancel
-                      }
-                      disabled={
-                        isPhotoSaving
-                      }
-                      className="rounded-xl border border-white/40 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
+              {/* ---------------------------------------------------------- */}
+              {/* PROFILE DETAILS                                             */}
+              {/* ---------------------------------------------------------- */}
 
-                    <button
-                      type="button"
-                      onClick={
-                        handlePhotoSave
-                      }
-                      disabled={
-                        !croppedImageFile ||
-                        isPhotoSaving
-                      }
-                      className="flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-[#0878E8] shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {isPhotoSaving && (
-                        <Loader2
-                          size={16}
-                          className="animate-spin"
-                        />
-                      )}
+              <div className="min-w-0 flex-1 text-white">
 
-                      {isPhotoSaving
-                        ? "Saving..."
-                        : "Save"}
-                    </button>
-                  </div>
-                )}
-
-              {/* PROFILE SUMMARY */}
-              <div className="min-w-0 text-white">
                 <h2 className="truncate text-2xl font-bold">
-                  {isCompany
-                    ? profile.companyName ??
-                    "Company"
-                    : [
-                      profile.firstName,
-                      profile.lastName,
-                    ]
-                      .filter(Boolean)
-                      .join(" ") ||
-                    "Customer"}
+                  {getFullName()}
                 </h2>
 
                 <p className="mt-1 text-sm text-white/80">
@@ -1217,6 +1316,7 @@ export default function ProfilePage() {
                 </p>
 
                 <div className="mt-3 flex flex-wrap items-center gap-2">
+
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white">
                     <ShieldCheck
                       size={14}
@@ -1228,89 +1328,191 @@ export default function ProfilePage() {
                   <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white">
                     {profile.customerType}
                   </span>
+
                 </div>
+
+                {/* Photo actions */}
+
+                {isPhotoEditing &&
+                  !isCropModalOpen && (
+                    <div className="mt-4 flex flex-wrap gap-3">
+
+                      <button
+                        type="button"
+                        onClick={
+                          handlePhotoCancel
+                        }
+                        disabled={
+                          isPhotoSaving
+                        }
+                        className="rounded-xl border border-white/40 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={
+                          handlePhotoSave
+                        }
+                        disabled={
+                          !croppedImageFile ||
+                          isPhotoSaving
+                        }
+                        className="flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-[#0878E8] shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isPhotoSaving && (
+                          <Loader2
+                            size={16}
+                            className="animate-spin"
+                          />
+                        )}
+
+                        {isPhotoSaving
+                          ? "Saving..."
+                          : "Save Photo"}
+                      </button>
+
+                    </div>
+                  )}
+
               </div>
+
             </div>
 
           </div>
 
-          {/* REGISTERED INFO NOTICE */}
+          {/* Registered info notice */}
+
           <div className="flex items-start gap-3 border-t border-slate-100 px-6 py-4">
+
             <ShieldCheck
               size={18}
               className="mt-0.5 shrink-0 text-[#0878E8]"
             />
-            <p className="text-xs text-slate-500 leading-relaxed">
-  <span className="font-semibold text-slate-700">Notice:</span> Please ensure your registered personal details, contact number, and email address are up to date. This information is strictly used for official banking notifications and account security verification.
-</p>
-          </div>
-        </section>
 
-        {/* PERSONAL / COMPANY INFORMATION */}
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="mb-6">
-            <h2 className="text-lg font-bold text-[#08295C]">
-              {isCompany
-                ? "Company Information"
-                : "Personal Information"}
-            </h2>
-
-            <p className="mt-1 text-sm text-slate-500">
-              Registered information is
-              read-only. Address information
-              can be updated.
+            <p className="text-xs leading-relaxed text-slate-500">
+              <span className="font-semibold text-slate-700">
+                Notice:
+              </span>{" "}
+              Registered personal details,
+              contact information and
+              email are read-only.
+              Address information can be
+              updated from Edit Profile.
             </p>
+
           </div>
 
-          {isCompany ? (
-            <CompanyInfo
-              profile={profile}
-              formData={formData}
-              isEditing={isEditing}
-              isSaving={isSaving}
-              onInputChange={
-                handleInputChange
-              }
-              onEdit={handleEdit}
-              onCancel={handleCancel}
-              onSave={handleSave}
-            />
-          ) : (
-            <PersonalInfo
-              profile={profile}
-              formData={formData}
-              isEditing={isEditing}
-              isSaving={isSaving}
-              onInputChange={
-                handleInputChange
-              }
-              onEdit={handleEdit}
-              onCancel={handleCancel}
-              onSave={handleSave}
-            />
-          )}
         </section>
 
-        {/* ADDRESS HINT */}
+        {/* ================================================================ */}
+        {/* PERSONAL / COMPANY INFORMATION                                   */}
+        {/* ================================================================ */}
+
+        {isCompany ? (
+          <CompanyInfo
+            profile={profile}
+            formData={formData}
+            isEditing={isEditing}
+            onInputChange={handleInputChange}
+            onEdit={handleEdit}
+            onCancel={handleCancel}
+            onSave={handleSave}
+            isSaving={isSaving}
+          />
+        ) : (
+          <PersonalInfo
+            profile={profile}
+            formData={formData}
+            isEditing={isEditing}
+            onInputChange={handleInputChange}
+            onEdit={handleEdit}
+            onCancel={handleCancel}
+            onSave={handleSave}
+            isSaving={isSaving}
+          />
+        )}
+
         {!isEditing && (
           <div className="mt-4 flex items-center gap-2 px-1 text-xs text-slate-400">
-            <MapPin size={14} />
-
-            <span>
-              You can update your address
-              information using Edit Profile.
-            </span>
           </div>
         )}
+
+
+        {/* ================================================================ */}
+        {/* SECURITY                                                          */}
+        {/* ================================================================ */}
+
+        <section>
+
+          <div className="mb-3 flex items-center gap-2">
+
+            <ShieldCheck
+              size={20}
+              className="text-[#08295C]"
+            />
+
+            <h2 className="text-lg font-bold text-[#08295C]">
+              Security
+            </h2>
+
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+            {/* Password */}
+
+            <SecurityRow
+              label="Password"
+              action="Change"
+              onClick={() => {
+                /*
+                 * Connect existing password
+                 * change route here.
+                 */
+              }}
+            />
+
+            {/* Transaction PIN */}
+
+            <SecurityRow
+              label="Transaction PIN"
+              action={
+                pinResetLoading
+                  ? "Sending OTP..."
+                  : "Forgot Transaction PIN"
+              }
+              onClick={
+                handleForgotPin
+              }
+              disabled={
+                pinResetLoading
+              }
+            />
+
+
+
+          </div>
+
+        </section>
+
       </div>
 
-      {/* CROP MODAL */}
+      {/* ================================================================ */}
+      {/* CROP MODAL                                                        */}
+      {/* ================================================================ */}
+
       {isCropModalOpen &&
         cropSourceUrl && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
+
             <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl">
 
+              {/* Modal header */}
+
               <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+
                 <div>
                   <h3 className="text-base font-bold text-[#08295C]">
                     Crop Profile Photo
@@ -1330,11 +1532,17 @@ export default function ProfilePage() {
                   className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
                   aria-label="Close crop modal"
                 >
-                  <X size={20} />
+                  <X
+                    size={20}
+                  />
                 </button>
+
               </div>
 
+              {/* Crop area */}
+
               <div className="relative h-[380px] w-full bg-black">
+
                 <Cropper
                   image={cropSourceUrl}
                   crop={crop}
@@ -1352,9 +1560,13 @@ export default function ProfilePage() {
                     handleCropComplete
                   }
                 />
+
               </div>
 
+              {/* Zoom */}
+
               <div className="px-5 pt-5">
+
                 <label
                   htmlFor="profile-photo-zoom"
                   className="mb-2 block text-xs font-medium text-slate-600"
@@ -1380,9 +1592,13 @@ export default function ProfilePage() {
                   }
                   className="w-full accent-[#0878E8]"
                 />
+
               </div>
 
+              {/* Modal actions */}
+
               <div className="flex items-center justify-end gap-3 px-5 py-5">
+
                 <button
                   type="button"
                   onClick={
@@ -1405,101 +1621,53 @@ export default function ProfilePage() {
                 >
                   Apply Crop
                 </button>
+
               </div>
 
             </div>
 
           </div>
         )}
-    </>
-  );
 
+    </div>
+  );
 }
 
-
-/* =========================================================
+/* ==========================================================================
    SECURITY ROW
-========================================================= */
+============================================================================= */
 
 interface SecurityRowProps {
-
-  label:
-    string;
-
-  action:
-    string;
-
-  onClick:
-    () => void;
-
+  label: string;
+  action: string;
+  onClick: () => void;
+  disabled?: boolean;
 }
 
-
 function SecurityRow({
-
   label,
-
   action,
-
   onClick,
-
+  disabled = false,
 }: SecurityRowProps) {
-
   return (
-
-    <div
-      className="
-        flex
-        items-center
-        justify-between
-        border-b
-        border-slate-100
-        px-6
-        py-5
-        last:border-b-0
-      "
-    >
+    <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5 last:border-b-0">
 
       <div>
-
-        <p
-          className="
-            text-sm
-            font-semibold
-            text-slate-700
-          "
-        >
-
+        <p className="text-sm font-semibold text-slate-700">
           {label}
-
         </p>
-
       </div>
 
-
       <button
-
         type="button"
-
-        onClick={
-          onClick
-        }
-
-        className="
-          text-sm
-          font-semibold
-          text-blue-600
-          transition
-          hover:text-blue-700
-        "
+        onClick={onClick}
+        disabled={disabled}
+        className="text-sm font-semibold text-blue-600 transition hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
       >
-
         {action} →
-
       </button>
 
     </div>
-
   );
-
 }
