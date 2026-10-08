@@ -17,10 +17,12 @@ import java.util.List;
 public class DashboardResponseDTO {
 
     private String customerCode;
+
     private String fullName;
 
     private BigDecimal totalBalance;
+
     private int accountCount;
 
-    private List<AccountResponseDTO> accounts;
+    private List<DashboardAccountDTO> accounts;
 }
