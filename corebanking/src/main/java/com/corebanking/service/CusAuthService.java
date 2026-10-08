@@ -724,11 +724,7 @@ public class CusAuthService {
             );
 
         } catch (MailException ex) {
-        	 ex.printStackTrace();
-
-        	    savedOtp.setStatus(
-        	            OtpStatus.EXPIRED
-        	    );
+            ex.printStackTrace();
 
             System.out.println(
                     "[TIMING] Gmail SMTP failed after: "
