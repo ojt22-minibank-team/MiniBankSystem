@@ -48,6 +48,7 @@ import PersonalInfo from "./components/PersonalInfo";
 import CompanyInfo from "./components/CompanyInfo";
 import ProfileSkeleton from "./components/ProfileSkeleton";
 import ProfileErrorState from "./components/ProfileErrorState";
+
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
 /* -------------------------------------------------------------------------- */
@@ -196,11 +197,6 @@ export default function ProfilePage() {
       null
     );
 
-  const previewBlobUrlRef =
-    useRef<string | null>(
-      null
-    );
-
   const cropSourceUrlRef =
     useRef<string | null>(
       null
@@ -210,11 +206,14 @@ export default function ProfilePage() {
   /* Profile                                                                   */
   /* ------------------------------------------------------------------------ */
 
-  const dispatch = useAppDispatch();
+  const dispatch =
+    useAppDispatch();
 
-  const profile = useAppSelector(
-    (state) => state.profile.profile
-  );
+  const profile =
+    useAppSelector(
+      (state) =>
+        state.profile.profile
+    );
 
   /* ------------------------------------------------------------------------ */
   /* Address form                                                              */
@@ -241,28 +240,6 @@ export default function ProfilePage() {
     useState<string | null>(
       null
     );
-
-  const [
-    croppedImageFile,
-    setCroppedImageFile,
-  ] =
-    useState<File | null>(
-      null
-    );
-
-  const [
-    cropSourceUrl,
-    setCropSourceUrl,
-  ] =
-    useState<string | null>(
-      null
-    );
-
-  const [
-    isPhotoEditing,
-    setIsPhotoEditing,
-  ] =
-    useState(false);
 
   const [
     isPhotoSaving,
@@ -294,6 +271,14 @@ export default function ProfilePage() {
     setCroppedAreaPixels,
   ] =
     useState<Area | null>(
+      null
+    );
+
+  const [
+    cropSourceUrl,
+    setCropSourceUrl,
+  ] =
+    useState<string | null>(
       null
     );
 
@@ -362,10 +347,10 @@ export default function ProfilePage() {
   const isCompany =
     profile?.customerType
       ?.toUpperCase() ===
-    "COMPANY" ||
+      "COMPANY" ||
     profile?.customerType
       ?.toUpperCase() ===
-    "CORPORATE";
+      "CORPORATE";
 
   /* ------------------------------------------------------------------------ */
   /* Form helpers                                                              */
@@ -413,7 +398,9 @@ export default function ProfilePage() {
           const data =
             await getMyProfile();
 
-          dispatch(setProfile(data));
+          dispatch(
+            setProfile(data)
+          );
 
           setFormDataFromProfile(
             data
@@ -421,7 +408,7 @@ export default function ProfilePage() {
 
           setPreviewImage(
             data.profileImageUrl ??
-            null
+              null
           );
         } catch (err) {
           console.error(
@@ -436,7 +423,10 @@ export default function ProfilePage() {
           setIsLoading(false);
         }
       },
-      [setFormDataFromProfile, dispatch]
+      [
+        setFormDataFromProfile,
+        dispatch,
+      ]
     );
 
   useEffect(() => {
@@ -449,10 +439,6 @@ export default function ProfilePage() {
 
   useEffect(() => {
     return () => {
-      revokeObjectUrl(
-        previewBlobUrlRef.current
-      );
-
       revokeObjectUrl(
         cropSourceUrlRef.current
       );
@@ -580,6 +566,7 @@ export default function ProfilePage() {
         clearMessages();
 
         /* Validate image type */
+
         if (
           !ALLOWED_IMAGE_TYPES.includes(
             file.type
@@ -593,6 +580,7 @@ export default function ProfilePage() {
         }
 
         /* Validate file size */
+
         if (
           file.size >
           MAX_FILE_SIZE
@@ -605,7 +593,8 @@ export default function ProfilePage() {
         }
 
         /*
-         * Revoke previous crop source.
+         * Revoke previous crop
+         * source URL.
          */
         revokeObjectUrl(
           cropSourceUrlRef.current
@@ -632,10 +621,6 @@ export default function ProfilePage() {
 
         setCropSourceUrl(
           sourceUrl
-        );
-
-        setIsPhotoEditing(
-          true
         );
 
         setIsCropModalOpen(
@@ -697,23 +682,18 @@ export default function ProfilePage() {
 
   const handleCropCancel =
     useCallback(() => {
-      closeCropModal();
-
-      /*
-       * If there is no previously
-       * cropped image, photo editing
-       * should also be cancelled.
-       */
-      if (!croppedImageFile) {
-        setIsPhotoEditing(false);
+      if (isPhotoSaving) {
+        return;
       }
+
+      closeCropModal();
     }, [
       closeCropModal,
-      croppedImageFile,
+      isPhotoSaving,
     ]);
 
   /* ------------------------------------------------------------------------ */
-  /* Apply crop                                                                */
+  /* Crop + Upload + Save                                                     */
   /* ------------------------------------------------------------------------ */
 
   const handleCropSave =
@@ -721,122 +701,7 @@ export default function ProfilePage() {
       async () => {
         if (
           !cropSourceUrl ||
-          !croppedAreaPixels
-        ) {
-          return;
-        }
-
-        try {
-          clearMessages();
-
-          const croppedBlob =
-            await createCroppedImage(
-              cropSourceUrl,
-              croppedAreaPixels
-            );
-
-          const croppedFile =
-            new File(
-              [croppedBlob],
-              `profile-${Date.now()}.jpg`,
-              {
-                type: "image/jpeg",
-              }
-            );
-
-          /*
-           * Create local preview.
-           */
-          const previewUrl =
-            URL.createObjectURL(
-              croppedBlob
-            );
-
-          revokeObjectUrl(
-            previewBlobUrlRef.current
-          );
-
-          previewBlobUrlRef.current =
-            previewUrl;
-
-          setCroppedImageFile(
-            croppedFile
-          );
-
-          setPreviewImage(
-            previewUrl
-          );
-
-          closeCropModal();
-        } catch (err) {
-          console.error(
-            "Failed to crop image:",
-            err
-          );
-
-          setError(
-            "Failed to crop the selected image."
-          );
-        }
-      },
-      [
-        cropSourceUrl,
-        croppedAreaPixels,
-        clearMessages,
-        closeCropModal,
-      ]
-    );
-
-  /* ------------------------------------------------------------------------ */
-  /* Cancel photo changes                                                     */
-  /* ------------------------------------------------------------------------ */
-
-  const handlePhotoCancel =
-    useCallback(() => {
-      if (isPhotoSaving) {
-        return;
-      }
-
-      closeCropModal();
-
-      revokeObjectUrl(
-        previewBlobUrlRef.current
-      );
-
-      previewBlobUrlRef.current =
-        null;
-
-      setCroppedImageFile(
-        null
-      );
-
-      setPreviewImage(
-        profile?.profileImageUrl ??
-        null
-      );
-
-      setIsPhotoEditing(
-        false
-      );
-
-      clearMessages();
-    }, [
-      isPhotoSaving,
-      profile,
-      closeCropModal,
-      clearMessages,
-    ]);
-
-  /* ------------------------------------------------------------------------ */
-  /* Save photo changes                                                        */
-  /* ------------------------------------------------------------------------ */
-
-  const handlePhotoSave =
-    useCallback(
-      async () => {
-        if (
-          !profile ||
-          !croppedImageFile ||
+          !croppedAreaPixels ||
           isPhotoSaving
         ) {
           return;
@@ -848,43 +713,74 @@ export default function ProfilePage() {
           setIsPhotoSaving(true);
 
           /*
-           * Upload cropped image only.
+           * 1. Create cropped image
+           */
+          const croppedBlob =
+            await createCroppedImage(
+              cropSourceUrl,
+              croppedAreaPixels
+            );
+
+          /*
+           * 2. Convert Blob to File
+           */
+          const croppedFile =
+            new File(
+              [croppedBlob],
+              `profile-${Date.now()}.jpg`,
+              {
+                type: "image/jpeg",
+              }
+            );
+
+          /*
+           * 3. Upload immediately
+           *
+           * No second Save button
+           * is required.
            */
           const updatedProfile =
             await uploadProfileImage(
-              croppedImageFile
+              croppedFile
             );
 
-          dispatch(setProfile(updatedProfile));
+          /*
+           * 4. Update Redux
+           */
+          dispatch(
+            setProfile(
+              updatedProfile
+            )
+          );
 
+          /*
+           * 5. Update UI immediately
+           */
           setPreviewImage(
             updatedProfile.profileImageUrl ??
-            null
+              null
           );
 
-          setCroppedImageFile(
-            null
-          );
+          /*
+           * 6. Close crop modal
+           */
+          closeCropModal();
 
-          revokeObjectUrl(
-            previewBlobUrlRef.current
-          );
-
-          previewBlobUrlRef.current =
-            null;
-
-          setIsPhotoEditing(
-            false
-          );
-
+          /*
+           * 7. Success message
+           */
           setSuccessMessage(
             "Profile photo updated successfully."
           );
-          window.setTimeout(() => {
-            setSuccessMessage(
-              null
-            );
-          }, 3000);
+
+          window.setTimeout(
+            () => {
+              setSuccessMessage(
+                null
+              );
+            },
+            3000
+          );
         } catch (err) {
           console.error(
             "Failed to update profile photo:",
@@ -892,18 +788,19 @@ export default function ProfilePage() {
           );
 
           setError(
-            "Failed to update your profile photo."
+            "Failed to update your profile photo. Please try again."
           );
         } finally {
           setIsPhotoSaving(false);
         }
       },
       [
-        profile,
-        croppedImageFile,
+        cropSourceUrl,
+        croppedAreaPixels,
         isPhotoSaving,
         clearMessages,
         dispatch,
+        closeCropModal,
       ]
     );
 
@@ -925,14 +822,17 @@ export default function ProfilePage() {
 
         const hasAddressChanges =
           formData.address !==
-          (profile.address ?? "") ||
+            (profile.address ??
+              "") ||
           formData.city !==
-          (profile.city ?? "") ||
+            (profile.city ??
+              "") ||
           formData.stateRegion !==
-          (profile.stateRegion ??
-            "") ||
+            (profile.stateRegion ??
+              "") ||
           formData.country !==
-          (profile.country ?? "");
+            (profile.country ??
+              "");
 
         if (!hasAddressChanges) {
           setIsEditing(false);
@@ -943,8 +843,7 @@ export default function ProfilePage() {
           setIsSaving(true);
 
           const updateData:
-            CustomerProfileUpdate =
-          {
+            CustomerProfileUpdate = {
             address:
               formData.address,
 
@@ -963,7 +862,11 @@ export default function ProfilePage() {
               updateData
             );
 
-          dispatch(setProfile(updatedProfile));
+          dispatch(
+            setProfile(
+              updatedProfile
+            )
+          );
 
           setFormDataFromProfile(
             updatedProfile
@@ -974,11 +877,15 @@ export default function ProfilePage() {
           setSuccessMessage(
             "Address updated successfully."
           );
-          window.setTimeout(() => {
-            setSuccessMessage(
-              null
-            );
-          }, 3000);
+
+          window.setTimeout(
+            () => {
+              setSuccessMessage(
+                null
+              );
+            },
+            3000
+          );
         } catch (err) {
           console.error(
             "Failed to update address:",
@@ -1014,14 +921,12 @@ export default function ProfilePage() {
         }
 
         try {
-          setPinResetLoading(true);
+          setPinResetLoading(
+            true
+          );
 
           clearMessages();
 
-          /*
-           * Remove previous PIN reset
-           * session information.
-           */
           sessionStorage.removeItem(
             "pinResetChallengeGroupId"
           );
@@ -1034,12 +939,6 @@ export default function ProfilePage() {
             "verifiedPinResetChallengeGroupId"
           );
 
-          /*
-           * Request OTP.
-           *
-           * POST
-           * /api/customer/auth/pin-reset/request
-           */
           const response =
             await requestPinReset();
 
@@ -1053,9 +952,6 @@ export default function ProfilePage() {
             return;
           }
 
-          /*
-           * Save challenge information.
-           */
           sessionStorage.setItem(
             "pinResetChallengeGroupId",
             response.challengeGroupId
@@ -1070,9 +966,6 @@ export default function ProfilePage() {
             );
           }
 
-          /*
-           * Navigate to OTP page.
-           */
           navigate(
             "/pin-reset/otp"
           );
@@ -1094,7 +987,7 @@ export default function ProfilePage() {
           setError(
             axiosError.response?.data
               ?.message ??
-            "Unable to start Transaction PIN reset. Please try again."
+              "Unable to start Transaction PIN reset. Please try again."
           );
         } finally {
           setPinResetLoading(
@@ -1108,8 +1001,6 @@ export default function ProfilePage() {
         navigate,
       ]
     );
-
-    
 
   /* ------------------------------------------------------------------------ */
   /* Full name                                                                 */
@@ -1151,41 +1042,14 @@ export default function ProfilePage() {
   }
 
   if (error || !profile) {
-  return (
-    <ProfileErrorState
-      onRetry={loadProfile}
-      message={
-        error ??
-        "We couldn't retrieve your profile information right now."
-      }
-    />
-  );
-}
-
-  /* ------------------------------------------------------------------------ */
-  /* No profile                                                                */
-  /* ------------------------------------------------------------------------ */
-
-  if (!profile) {
     return (
-      <div className="min-h-[calc(100vh-80px)] bg-[#F5F7FB] p-8">
-        <div className="mx-auto max-w-5xl rounded-2xl border border-red-100 bg-white p-8 text-center">
-          <p className="text-sm font-medium text-red-600">
-            {error ??
-              "Unable to load your profile."}
-          </p>
-
-          <button
-            type="button"
-            onClick={() => {
-              void loadProfile();
-            }}
-            className="mt-4 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
+      <ProfileErrorState
+        onRetry={loadProfile}
+        message={
+          error ??
+          "We couldn't retrieve your profile information right now."
+        }
+      />
     );
   }
 
@@ -1196,6 +1060,7 @@ export default function ProfilePage() {
   return (
     <div className="min-h-[calc(100vh-80px)] bg-[#F5F7FB] px-6 py-8 lg:px-8">
       <div className="mx-auto max-w-5xl">
+
         {/* ================================================================ */}
         {/* MESSAGES                                                          */}
         {/* ================================================================ */}
@@ -1236,9 +1101,7 @@ export default function ProfilePage() {
 
             <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
 
-              {/* ---------------------------------------------------------- */}
-              {/* PROFILE PHOTO                                               */}
-              {/* ---------------------------------------------------------- */}
+              {/* Profile Photo */}
 
               <div className="relative h-28 w-28 shrink-0">
 
@@ -1252,6 +1115,7 @@ export default function ProfilePage() {
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-slate-100">
+
                       {isCompany ? (
                         <Building2
                           size={42}
@@ -1263,12 +1127,13 @@ export default function ProfilePage() {
                           className="text-slate-400"
                         />
                       )}
+
                     </div>
                   )}
 
                 </div>
 
-                {/* Camera button */}
+                {/* Camera Button */}
 
                 <button
                   type="button"
@@ -1300,9 +1165,7 @@ export default function ProfilePage() {
 
               </div>
 
-              {/* ---------------------------------------------------------- */}
-              {/* PROFILE DETAILS                                             */}
-              {/* ---------------------------------------------------------- */}
+              {/* Profile Details */}
 
               <div className="min-w-0 flex-1 text-white">
 
@@ -1331,58 +1194,13 @@ export default function ProfilePage() {
 
                 </div>
 
-                {/* Photo actions */}
-
-                {isPhotoEditing &&
-                  !isCropModalOpen && (
-                    <div className="mt-4 flex flex-wrap gap-3">
-
-                      <button
-                        type="button"
-                        onClick={
-                          handlePhotoCancel
-                        }
-                        disabled={
-                          isPhotoSaving
-                        }
-                        className="rounded-xl border border-white/40 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Cancel
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={
-                          handlePhotoSave
-                        }
-                        disabled={
-                          !croppedImageFile ||
-                          isPhotoSaving
-                        }
-                        className="flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-[#0878E8] shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {isPhotoSaving && (
-                          <Loader2
-                            size={16}
-                            className="animate-spin"
-                          />
-                        )}
-
-                        {isPhotoSaving
-                          ? "Saving..."
-                          : "Save Photo"}
-                      </button>
-
-                    </div>
-                  )}
-
               </div>
 
             </div>
 
           </div>
 
-          {/* Registered info notice */}
+          {/* Registered Info Notice */}
 
           <div className="flex items-start gap-3 border-t border-slate-100 px-6 py-4">
 
@@ -1392,14 +1210,17 @@ export default function ProfilePage() {
             />
 
             <p className="text-xs leading-relaxed text-slate-500">
+
               <span className="font-semibold text-slate-700">
                 Notice:
               </span>{" "}
+
               Registered personal details,
               contact information and
               email are read-only.
               Address information can be
               updated from Edit Profile.
+
             </p>
 
           </div>
@@ -1415,7 +1236,9 @@ export default function ProfilePage() {
             profile={profile}
             formData={formData}
             isEditing={isEditing}
-            onInputChange={handleInputChange}
+            onInputChange={
+              handleInputChange
+            }
             onEdit={handleEdit}
             onCancel={handleCancel}
             onSave={handleSave}
@@ -1426,7 +1249,9 @@ export default function ProfilePage() {
             profile={profile}
             formData={formData}
             isEditing={isEditing}
-            onInputChange={handleInputChange}
+            onInputChange={
+              handleInputChange
+            }
             onEdit={handleEdit}
             onCancel={handleCancel}
             onSave={handleSave}
@@ -1434,17 +1259,11 @@ export default function ProfilePage() {
           />
         )}
 
-        {!isEditing && (
-          <div className="mt-4 flex items-center gap-2 px-1 text-xs text-slate-400">
-          </div>
-        )}
-
-
         {/* ================================================================ */}
         {/* SECURITY                                                          */}
         {/* ================================================================ */}
 
-        <section>
+        <section className="mt-8">
 
           <div className="mb-3 flex items-center gap-2">
 
@@ -1491,8 +1310,6 @@ export default function ProfilePage() {
               }
             />
 
-
-
           </div>
 
         </section>
@@ -1509,7 +1326,7 @@ export default function ProfilePage() {
 
             <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl">
 
-              {/* Modal header */}
+              {/* Modal Header */}
 
               <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
 
@@ -1519,27 +1336,29 @@ export default function ProfilePage() {
                   </h3>
 
                   <p className="mt-0.5 text-xs text-slate-500">
-                    Adjust your photo before
-                    saving.
+                    Adjust your photo before saving.
                   </p>
                 </div>
+
+                {/* Close */}
 
                 <button
                   type="button"
                   onClick={
                     handleCropCancel
                   }
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                  disabled={
+                    isPhotoSaving
+                  }
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
                   aria-label="Close crop modal"
                 >
-                  <X
-                    size={20}
-                  />
+                  <X size={20} />
                 </button>
 
               </div>
 
-              {/* Crop area */}
+              {/* Crop Area */}
 
               <div className="relative h-[380px] w-full bg-black">
 
@@ -1581,33 +1400,41 @@ export default function ProfilePage() {
                   max={3}
                   step={0.1}
                   value={zoom}
-                  onChange={(
-                    event
-                  ) =>
+                  onChange={(event) =>
                     setZoom(
                       Number(
                         event.target.value
                       )
                     )
                   }
+                  disabled={
+                    isPhotoSaving
+                  }
                   className="w-full accent-[#0878E8]"
                 />
 
               </div>
 
-              {/* Modal actions */}
+              {/* Modal Actions */}
 
               <div className="flex items-center justify-end gap-3 px-5 py-5">
+
+                {/* Cancel */}
 
                 <button
                   type="button"
                   onClick={
                     handleCropCancel
                   }
-                  className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  disabled={
+                    isPhotoSaving
+                  }
+                  className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Cancel
                 </button>
+
+                {/* Save */}
 
                 <button
                   type="button"
@@ -1615,11 +1442,23 @@ export default function ProfilePage() {
                     handleCropSave
                   }
                   disabled={
-                    !croppedAreaPixels
+                    !croppedAreaPixels ||
+                    isPhotoSaving
                   }
-                  className="rounded-lg bg-[#0878E8] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0668ca] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-lg bg-[#0878E8] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0668ca] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Apply Crop
+
+                  {isPhotoSaving && (
+                    <Loader2
+                      size={16}
+                      className="animate-spin"
+                    />
+                  )}
+
+                  {isPhotoSaving
+                    ? "Saving..."
+                    : "Save"}
+
                 </button>
 
               </div>
@@ -1628,14 +1467,13 @@ export default function ProfilePage() {
 
           </div>
         )}
-
     </div>
   );
 }
 
-/* ==========================================================================
-   SECURITY ROW
-============================================================================= */
+/* ========================================================================== */
+/* SECURITY ROW                                                               */
+/* ========================================================================== */
 
 interface SecurityRowProps {
   label: string;
