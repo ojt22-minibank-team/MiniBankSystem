@@ -3,8 +3,11 @@ package com.corebanking.service;
 import com.corebanking.dto.AccountCreateDTO;
 import com.corebanking.dto.AccountResponseDTO;
 import com.corebanking.dto.AccountStatusUpdateDTO;
+import com.corebanking.dto.CorporateAccountCreateDTO;
 import com.corebanking.dto.JointHolderAddDTO;
+import com.corebanking.entity.AccountSignatories;
 import com.corebanking.entity.Accounts;
+import com.corebanking.entity.CustomerCredentials;
 import com.corebanking.entity.Customers;
 import com.corebanking.entity.StaffUsers;
 import com.corebanking.entity.enums.AccountCategory;
@@ -12,9 +15,15 @@ import com.corebanking.entity.enums.AccountStatus;
 import com.corebanking.entity.enums.AccountType;
 import com.corebanking.entity.enums.CustomerStatus;
 import com.corebanking.entity.enums.CustomerType;
+import com.corebanking.entity.enums.SignatoryRole;
+import com.corebanking.entity.enums.SignatoryStatus;
 import com.corebanking.repository.AccountRepository;
+import com.corebanking.repository.AccountSignatoriesRepository;
+import com.corebanking.repository.CustomerCredentialsRepository;
 import com.corebanking.repository.CustomerRepository;
 import com.corebanking.repository.StaffUsersRepository;
+import com.corebanking.util.PasswordGeneratorUtil;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -24,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -33,166 +42,192 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private final CustomerRepository customerRepository;
     private final StaffUsersRepository staffUsersRepository;
-    private final PasswordEncoder passwordEncoder; // Group 1 Password Hash အတွက် ထည့်သွင်းခြင်း
+    private final CusEmailService cusEmailService;
+    private final AccountSignatoriesRepository accountSignatoriesRepository;
+    private final CustomerCredentialsRepository customerCredentialsRepository;
+    private final PasswordEncoder passwordEncoder;
 
+    /**
+     * ၁။ Retail Account (Savings / Current) အသစ်ဖွင့်လှစ်ခြင်း
+     */
     @Transactional
     public AccountResponseDTO createAccount(AccountCreateDTO dto) {
-        // 1. Verify Customer exists and is ACTIVE
+        // Customer ရှိမရှိ စစ်ဆေးခြင်း
         Customers customer = customerRepository.findByCustomerCode(dto.getCustomerCode())
                 .orElseThrow(() -> new RuntimeException("Customer not found with code: " + dto.getCustomerCode()));
 
-        if (customer.getStatus() != CustomerStatus.ACTIVE) {
-            throw new RuntimeException("Cannot open account for an inactive customer");
-        }
-
-        // 2. Identify the authenticated Staff creating this account
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String currentStaffUsername = (auth != null) ? auth.getName() : "admin";
-
-        StaffUsers staff = staffUsersRepository.findByUsername(currentStaffUsername)
-                .orElseThrow(() -> new RuntimeException("Authenticated staff record not found"));
-
-        // 3. Generate a unique Account Number
-        AccountType accountType = (dto.getAccountType() != null) ? dto.getAccountType() : AccountType.SAVINGS;
-        String accountNumber = generateUniqueAccountNumber(accountType);
-
-        // 4. Calculate initial balances and defaults
+        StaffUsers staff = getCurrentAuthenticatedStaff();
+        String accountNumber = generateUniqueAccountNumber(dto.getAccountType());
         BigDecimal initialDeposit = (dto.getInitialDeposit() != null) ? dto.getInitialDeposit() : BigDecimal.ZERO;
         String currency = (dto.getCurrency() != null && !dto.getCurrency().isBlank()) ? dto.getCurrency().toUpperCase() : "MMK";
-        boolean isJoint = (dto.getIsJointAccount() != null) && dto.getIsJointAccount();
 
-        // Business Rules: Customer Type ပေါ်မူတည်၍ Category, Limit နှင့် Approvals သတ်မှတ်ခြင်း
-        AccountCategory category;
-        BigDecimal dailyTransferLimit;
-        short approvals;
-
-        if (customer.getCustomerType() == CustomerType.COMPANY) {
-            category = AccountCategory.CORPORATE;
-            dailyTransferLimit = new BigDecimal("100000000.0000"); // သိန်း ၁၀၀၀
-            approvals = (dto.getRequiredApprovals() != null && dto.getRequiredApprovals() > 1) 
-                        ? dto.getRequiredApprovals() 
-                        : (short) 2;
-        } else {
-            category = (dto.getAccountCategory() != null) ? dto.getAccountCategory() : AccountCategory.RETAIL;
-            dailyTransferLimit = new BigDecimal("5000000.0000"); // သိန်း ၅၀
-            approvals = (dto.getRequiredApprovals() != null) ? dto.getRequiredApprovals() : (short) 1;
-        }
-
-        // Group 1 အတွက် Account Password ကို BCrypt ဖြင့် Hash ပြုလုပ်ခြင်း
-        String rawAccountPassword = (dto.getAccountPassword() != null && !dto.getAccountPassword().isBlank())
-                ? dto.getAccountPassword()
-                : "123456"; // Password မပါလာပါက Default အဖြစ် 123456 သတ်မှတ်ခြင်း
-        String encodedAccountPassword = passwordEncoder.encode(rawAccountPassword);
-
-        // 5. Build and save the Account entity
+        // Accounts Record တည်ဆောက်ခြင်း
         Accounts account = Accounts.builder()
                 .customer(customer)
                 .accountNumber(accountNumber)
-                .accountCategory(category)
-                .accountType(accountType)
-                .isJointAccount(isJoint)
-                .requiredApprovals(approvals)
+                .accountCategory(AccountCategory.RETAIL)
+                .accountType(dto.getAccountType())
+                .isJointAccount(false)
+                .requiredApprovals((short) 1)
                 .currency(currency)
                 .currentBalance(initialDeposit)
                 .availableBalance(initialDeposit)
                 .minimumBalance(BigDecimal.ZERO)
-                .dailyTransferLimit(dailyTransferLimit)
-                .accountPasswordHash(encodedAccountPassword) // Hashed Password သိမ်းဆည်းခြင်း
+                .dailyTransferLimit(new BigDecimal("50000000.0000"))
                 .status(AccountStatus.ACTIVE)
                 .openedAt(LocalDateTime.now())
                 .createdByStaff(staff)
                 .build();
 
-        Accounts saved = accountRepository.save(account);
+        Accounts savedAccount = accountRepository.save(account);
 
-        // 6. Return response DTO (လုံခြုံရေးအရ Password Hash ကို Response တွင် မပြပါ)
-        return AccountResponseDTO.builder()
-                .accountNumber(saved.getAccountNumber())
-                .accountType(saved.getAccountType().name())
-                .accountCategory(saved.getAccountCategory().name())
-                .isJointAccount(saved.isJointAccount())
-                .customerCode(customer.getCustomerCode())
-                .customerName(customer.getFullName())
-                .currentBalance(saved.getCurrentBalance())
-                .availableBalance(saved.getAvailableBalance())
-                .currency(saved.getCurrency())
-                .status(saved.getStatus().name())
-                .openedAt(saved.getOpenedAt())
-                .build();
-    }
+        // Temporary Password ကို Auto-generate ထုတ်ယူပြီး Credential Table တွင် သိမ်းဆည်းခြင်း
+        String rawPassword = PasswordGeneratorUtil.generateTemporaryPassword(8);
+        String hashedPassword = passwordEncoder.encode(rawPassword);
 
-    private String generateUniqueAccountNumber(AccountType type) {
-        String prefix = switch (type) {
-            case SAVINGS -> "100";
-            case CURRENT -> "200";
-            case FIXED_DEPOSIT -> "300";
-            case SALARY -> "400";
-        };
+        CustomerCredentials credentials = customerCredentialsRepository.findByCustomerId(customer.getId())
+                .orElseGet(() -> {
+                    CustomerCredentials newCred = new CustomerCredentials();
+                    newCred.setCustomerId(customer.getId());
+                    return newCred;
+                });
 
-        String accNum;
-        do {
-            long randomDigits = ThreadLocalRandom.current().nextLong(1000000L, 9999999L);
-            accNum = prefix + randomDigits;
-        } while (accountRepository.existsByAccountNumber(accNum));
+        credentials.setPasswordHash(hashedPassword);
+        credentials.setUpdatedAt(LocalDateTime.now());
+        customerCredentialsRepository.save(credentials);
 
-        return accNum;
+        // Customer Gmail သို့ Account Number နှင့် Login Temporary Password အား ပို့ဆောင်ပေးခြင်း
+        if (customer.getEmail() != null && !customer.getEmail().isBlank()) {
+            cusEmailService.sendAccountOpeningConfirmation(
+                    customer.getEmail(),
+                    customer.getFullName(),
+                    savedAccount.getAccountNumber(),
+                    savedAccount.getAccountType().name(),
+                    rawPassword
+            );
+        }
+
+        return mapToResponseDTO(savedAccount);
     }
 
     /**
-     * Account Number ဖြင့် အကောင့်အသေးစိတ်နှင့် လက်ကျန်ငွေ စစ်ဆေးခြင်း
+     * ၂။ Company Account အား CEO (PRIMARY_HOLDER) နှင့် Accountant (JOINT_HOLDER) တို့ဖြင့် ဖွင့်လှစ်ခြင်း
      */
+    @Transactional
+    public String createCorporateAccountWithExistingRoles(CorporateAccountCreateDTO dto) {
+        Customers company = customerRepository.findByCustomerCode(dto.getCompanyCustomerCode())
+                .orElseThrow(() -> new RuntimeException("Company record not found: " + dto.getCompanyCustomerCode()));
+
+        if (company.getCustomerType() != CustomerType.COMPANY) {
+            throw new IllegalArgumentException("Customer must be of type COMPANY");
+        }
+
+        Customers ceoCustomer = customerRepository.findByCustomerCode(dto.getCeoCustomerCode())
+                .orElseThrow(() -> new RuntimeException("CEO record not found: " + dto.getCeoCustomerCode()));
+
+        Customers accountantCustomer = customerRepository.findByCustomerCode(dto.getAccountantCustomerCode())
+                .orElseThrow(() -> new RuntimeException("Accountant record not found: " + dto.getAccountantCustomerCode()));
+
+        StaffUsers staff = getCurrentAuthenticatedStaff();
+
+        AccountType accountType = (dto.getAccountType() != null && dto.getAccountType().equalsIgnoreCase("CURRENT"))
+                ? AccountType.CURRENT : AccountType.SAVINGS;
+        String accountNumber = generateUniqueAccountNumber(accountType);
+        BigDecimal initialDeposit = (dto.getInitialDeposit() != null) ? dto.getInitialDeposit() : BigDecimal.ZERO;
+        String currency = (dto.getCurrency() != null && !dto.getCurrency().isBlank()) ? dto.getCurrency().toUpperCase() : "MMK";
+
+        Accounts account = Accounts.builder()
+                .customer(company)
+                .accountNumber(accountNumber)
+                .accountCategory(AccountCategory.CORPORATE)
+                .accountType(accountType)
+                .isJointAccount(false)
+                .requiredApprovals((short) 2)
+                .currency(currency)
+                .currentBalance(initialDeposit)
+                .availableBalance(initialDeposit)
+                .minimumBalance(BigDecimal.ZERO)
+                .dailyTransferLimit(new BigDecimal("100000000.0000"))
+                .status(AccountStatus.ACTIVE)
+                .openedAt(LocalDateTime.now())
+                .createdByStaff(staff)
+                .build();
+
+        Accounts savedAccount = accountRepository.save(account);
+
+        // Signatories ချိတ်ဆက်ခြင်း
+        AccountSignatories ceoSignatory = AccountSignatories.builder()
+                .account(savedAccount)
+                .customer(ceoCustomer)
+                .signatoryRole(SignatoryRole.PRIMARY_HOLDER)
+                .canInitiate(false)
+                .canApprove(true)
+                .status(SignatoryStatus.ACTIVE)
+                .build();
+
+        AccountSignatories accountantSignatory = AccountSignatories.builder()
+                .account(savedAccount)
+                .customer(accountantCustomer)
+                .signatoryRole(SignatoryRole.JOINT_HOLDER)
+                .canInitiate(true)
+                .canApprove(false)
+                .status(SignatoryStatus.ACTIVE)
+                .build();
+
+        accountSignatoriesRepository.save(ceoSignatory);
+        accountSignatoriesRepository.save(accountantSignatory);
+
+        // CEO အတွက် Login Temporary Password ထုတ်ပေးပြီး Credential သိမ်းဆည်းခြင်း
+        String rawPassword = PasswordGeneratorUtil.generateTemporaryPassword(8);
+        String hashedPassword = passwordEncoder.encode(rawPassword);
+
+        CustomerCredentials ceoCred = customerCredentialsRepository.findByCustomerId(ceoCustomer.getId())
+                .orElseGet(() -> {
+                    CustomerCredentials newCred = new CustomerCredentials();
+                    newCred.setCustomerId(ceoCustomer.getId());
+                    return newCred;
+                });
+        ceoCred.setPasswordHash(hashedPassword);
+        ceoCred.setUpdatedAt(LocalDateTime.now());
+        customerCredentialsRepository.save(ceoCred);
+
+        // CEO ၏ Email သို့ အကောင့်နံပါတ်နှင့် Temporary Password ပို့ပေးခြင်း
+        String targetEmail = (ceoCustomer.getEmail() != null && !ceoCustomer.getEmail().isBlank())
+                ? ceoCustomer.getEmail() : company.getEmail();
+
+        if (targetEmail != null && !targetEmail.isBlank()) {
+            cusEmailService.sendAccountOpeningConfirmation(
+                    targetEmail,
+                    company.getFullName() + " (Attn: " + ceoCustomer.getFullName() + ")",
+                    savedAccount.getAccountNumber(),
+                    savedAccount.getAccountType().name(),
+                    rawPassword
+            );
+        }
+
+        return accountNumber;
+    }
+
     @Transactional(readOnly = true)
     public AccountResponseDTO getAccountByNumber(String accountNumber) {
         Accounts account = accountRepository.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new RuntimeException("Account not found with number: " + accountNumber));
 
-        Customers customer = account.getCustomer();
-
-        return AccountResponseDTO.builder()
-                .accountNumber(account.getAccountNumber())
-                .accountType(account.getAccountType().name())
-                .accountCategory(account.getAccountCategory().name())
-                .isJointAccount(account.isJointAccount())
-                .customerCode(customer.getCustomerCode())
-                .customerName(customer.getFullName())
-                .currentBalance(account.getCurrentBalance())
-                .availableBalance(account.getAvailableBalance())
-                .currency(account.getCurrency())
-                .status(account.getStatus().name())
-                .openedAt(account.getOpenedAt())
-                .build();
+        return mapToResponseDTO(account);
     }
 
-    /**
-     * Customer Code ဖြင့် သက်ဆိုင်ရာ ဖောက်သည် ပိုင်ဆိုင်သမျှ အကောင့်များအားလုံးကို ဆွဲထုတ်ခြင်း
-     */
     @Transactional(readOnly = true)
-    public java.util.List<AccountResponseDTO> getAccountsByCustomerCode(String customerCode) {
+    public List<AccountResponseDTO> getAccountsByCustomerCode(String customerCode) {
         Customers customer = customerRepository.findByCustomerCode(customerCode)
                 .orElseThrow(() -> new RuntimeException("Customer not found with code: " + customerCode));
 
-        java.util.List<Accounts> accounts = accountRepository.findByCustomerCustomerCode(customerCode);
+        List<Accounts> accounts = accountRepository.findByCustomerCustomerCode(customerCode);
 
         return accounts.stream()
-                .map(acc -> AccountResponseDTO.builder()
-                        .accountNumber(acc.getAccountNumber())
-                        .accountType(acc.getAccountType().name())
-                        .accountCategory(acc.getAccountCategory().name())
-                        .isJointAccount(acc.isJointAccount())
-                        .customerCode(customer.getCustomerCode())
-                        .customerName(customer.getFullName())
-                        .currentBalance(acc.getCurrentBalance())
-                        .availableBalance(acc.getAvailableBalance())
-                        .currency(acc.getCurrency())
-                        .status(acc.getStatus().name())
-                        .openedAt(acc.getOpenedAt())
-                        .build())
+                .map(this::mapToResponseDTO)
                 .toList();
     }
 
-    /**
-     * Account Status ပြင်ဆင်ပြောင်းလဲခြင်း (ACTIVE / FROZEN / SUSPENDED / CLOSED)
-     */
     @Transactional
     public AccountResponseDTO updateAccountStatus(String accountNumber, AccountStatusUpdateDTO dto) {
         Accounts account = accountRepository.findByAccountNumber(accountNumber)
@@ -209,26 +244,9 @@ public class AccountService {
         account.setUpdatedAt(LocalDateTime.now());
 
         Accounts updatedAccount = accountRepository.save(account);
-        Customers customer = updatedAccount.getCustomer();
-
-        return AccountResponseDTO.builder()
-                .accountNumber(updatedAccount.getAccountNumber())
-                .accountType(updatedAccount.getAccountType().name())
-                .accountCategory(updatedAccount.getAccountCategory().name())
-                .isJointAccount(updatedAccount.isJointAccount())
-                .customerCode(customer.getCustomerCode())
-                .customerName(customer.getFullName())
-                .currentBalance(updatedAccount.getCurrentBalance())
-                .availableBalance(updatedAccount.getAvailableBalance())
-                .currency(updatedAccount.getCurrency())
-                .status(updatedAccount.getStatus().name())
-                .openedAt(updatedAccount.getOpenedAt())
-                .build();
+        return mapToResponseDTO(updatedAccount);
     }
 
-    /**
-     * အကောင့်တစ်ခုသို့ ပူးတွဲပိုင်ရှင် (Joint Holder) ထည့်သွင်းခြင်း
-     */
     @Transactional
     public AccountResponseDTO addJointHolder(String accountNumber, JointHolderAddDTO dto) {
         Accounts account = accountRepository.findByAccountNumber(accountNumber)
@@ -256,19 +274,48 @@ public class AccountService {
         account.setUpdatedAt(LocalDateTime.now());
 
         Accounts updatedAccount = accountRepository.save(account);
+        return mapToResponseDTO(updatedAccount);
+    }
 
+    /**
+     * Dashboard နှင့် Staff Portal အတွက် စနစ်အတွင်းရှိ အကောင့်အားလုံးကို ဆွဲယူခြင်း (Fix: mapToResponseDTO သို့ ပြင်ဆင်ပြီး)
+     */
+    @Transactional(readOnly = true)
+    public List<AccountResponseDTO> getAllAccounts() {
+        return accountRepository.findAll().stream()
+                .map(this::mapToResponseDTO) // mapToAccountResponseDTO အစား mapToResponseDTO အမှန်ကို အသုံးပြုထားပါသည်
+                .toList();
+    }
+
+    private StaffUsers getCurrentAuthenticatedStaff() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String currentStaffUsername = (auth != null && auth.getName() != null && !auth.getName().equalsIgnoreCase("anonymousUser"))
+                ? auth.getName() : "admin";
+
+        return staffUsersRepository.findByUsername(currentStaffUsername)
+                .orElseThrow(() -> new RuntimeException("Authenticated staff record not found for username: " + currentStaffUsername));
+    }
+
+    private String generateUniqueAccountNumber(AccountType type) {
+        String prefix = (type == AccountType.SAVINGS) ? "100" : "200";
+        long randomNum = (long) (Math.random() * 9000000L) + 1000000L;
+        return prefix + randomNum;
+    }
+
+    private AccountResponseDTO mapToResponseDTO(Accounts account) {
+        Customers customer = account.getCustomer();
         return AccountResponseDTO.builder()
-                .accountNumber(updatedAccount.getAccountNumber())
-                .accountType(updatedAccount.getAccountType().name())
-                .accountCategory(updatedAccount.getAccountCategory().name())
-                .isJointAccount(updatedAccount.isJointAccount())
-                .customerCode(updatedAccount.getCustomer().getCustomerCode())
-                .customerName(updatedAccount.getCustomer().getFullName())
-                .currentBalance(updatedAccount.getCurrentBalance())
-                .availableBalance(updatedAccount.getAvailableBalance())
-                .currency(updatedAccount.getCurrency())
-                .status(updatedAccount.getStatus().name())
-                .openedAt(updatedAccount.getOpenedAt())
+                .accountNumber(account.getAccountNumber())
+                .accountType(account.getAccountType() != null ? account.getAccountType().name() : null)
+                .accountCategory(account.getAccountCategory() != null ? account.getAccountCategory().name() : null)
+                .isJointAccount(account.isJointAccount())
+                .customerCode(customer != null ? customer.getCustomerCode() : null)
+                .customerName(customer != null ? customer.getFullName() : null)
+                .currentBalance(account.getCurrentBalance())
+                .availableBalance(account.getAvailableBalance())
+                .currency(account.getCurrency())
+                .status(account.getStatus() != null ? account.getStatus().name() : null)
+                .openedAt(account.getOpenedAt())
                 .build();
     }
 }

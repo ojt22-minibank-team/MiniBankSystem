@@ -15,6 +15,7 @@ import com.corebanking.entity.CustomerCredentials;
 import com.corebanking.entity.enums.CustomerStatus;
 import com.corebanking.entity.enums.SessionSubjectType;
 import com.corebanking.exception.CusAuthenticationException;
+import com.corebanking.exception.CusSessionExpiredException;
 import com.corebanking.repository.CusAuthSessionsRepository;
 import com.corebanking.repository.CusCredentialsRepository;
 
@@ -27,7 +28,6 @@ import lombok.RequiredArgsConstructor;
 public class CusSessionService {
 
     private final CusAuthSessionsRepository authSessionsRepository;
-
     private final CusCredentialsRepository credentialsRepository;
 
 
@@ -35,7 +35,9 @@ public class CusSessionService {
     // 1. VALIDATE ACCESS TOKEN SESSION
     // =========================================================
 
-    @Transactional
+    @Transactional(
+            noRollbackFor = CusSessionExpiredException.class
+    )
     public AuthSessions validateAccessSession(
             Claims claims) {
 
@@ -45,13 +47,11 @@ public class CusSessionService {
                         "ACCESS"
                 );
 
-
-        // Valid request ဖြစ်တဲ့အတွက်
-        // user activity time update
+        // Valid protected API request ဖြစ်တဲ့အတွက်
+        // last activity time update
         session.setLastSeenAt(
                 LocalDateTime.now()
         );
-
 
         return authSessionsRepository.save(
                 session
@@ -63,7 +63,9 @@ public class CusSessionService {
     // 2. VALIDATE REFRESH TOKEN SESSION
     // =========================================================
 
-    @Transactional
+    @Transactional(
+            noRollbackFor = CusSessionExpiredException.class
+    )
     public AuthSessions validateRefreshSession(
             Claims claims,
             String rawRefreshToken) {
@@ -75,7 +77,7 @@ public class CusSessionService {
         if (rawRefreshToken == null
                 || rawRefreshToken.isBlank()) {
 
-            throw new RuntimeException(
+            throw new CusAuthenticationException(
                     "Refresh token is required."
             );
         }
@@ -109,8 +111,8 @@ public class CusSessionService {
         if (storedHash == null
                 || storedHash.isBlank()) {
 
-            throw new RuntimeException(
-                    "Stored refresh token is invalid."
+            throw new CusAuthenticationException(
+                    "Invalid refresh token."
             );
         }
 
@@ -132,9 +134,9 @@ public class CusSessionService {
 
         if (!refreshTokenMatches) {
 
-        	throw new CusAuthenticationException(
-        	        "Invalid refresh token."
-        	);
+            throw new CusAuthenticationException(
+                    "Invalid refresh token."
+            );
         }
 
 
@@ -162,10 +164,15 @@ public class CusSessionService {
             Claims claims,
             String expectedTokenType) {
 
+
+        // =====================================================
+        // TOKEN CLAIMS REQUIRED
+        // =====================================================
+
         if (claims == null) {
 
-            throw new RuntimeException(
-                    "Token claims are required."
+            throw new CusAuthenticationException(
+                    "Invalid authentication token."
             );
         }
 
@@ -185,8 +192,8 @@ public class CusSessionService {
         if (subject == null
                 || subject.isBlank()) {
 
-            throw new RuntimeException(
-                    "Invalid token subject."
+            throw new CusAuthenticationException(
+                    "Invalid authentication token."
             );
         }
 
@@ -202,8 +209,8 @@ public class CusSessionService {
 
         } catch (IllegalArgumentException ex) {
 
-            throw new RuntimeException(
-                    "Invalid customer identity."
+            throw new CusAuthenticationException(
+                    "Invalid authentication token."
             );
         }
 
@@ -222,8 +229,8 @@ public class CusSessionService {
         if (sessionUuid == null
                 || sessionUuid.isBlank()) {
 
-            throw new RuntimeException(
-                    "Invalid token session."
+            throw new CusAuthenticationException(
+                    "Invalid authentication token."
             );
         }
 
@@ -242,8 +249,8 @@ public class CusSessionService {
         if (!"CUSTOMER".equals(
                 subjectType)) {
 
-            throw new RuntimeException(
-                    "Invalid token subject type."
+            throw new CusAuthenticationException(
+                    "Invalid authentication token."
             );
         }
 
@@ -262,8 +269,8 @@ public class CusSessionService {
         if (!expectedTokenType.equals(
                 tokenType)) {
 
-            throw new RuntimeException(
-                    "Invalid token type."
+            throw new CusAuthenticationException(
+                    "Invalid authentication token."
             );
         }
 
@@ -281,8 +288,8 @@ public class CusSessionService {
         if (!(tokenVersionObject
                 instanceof Number)) {
 
-            throw new RuntimeException(
-                    "Invalid token version."
+            throw new CusAuthenticationException(
+                    "Invalid authentication token."
             );
         }
 
@@ -302,8 +309,8 @@ public class CusSessionService {
                                 sessionUuid
                         )
                         .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Authentication session not found."
+                                new CusAuthenticationException(
+                                        "Authentication session is invalid."
                                 )
                         );
 
@@ -315,8 +322,8 @@ public class CusSessionService {
         if (session.getSubjectType()
                 != SessionSubjectType.CUSTOMER) {
 
-            throw new RuntimeException(
-                    "Invalid customer session."
+            throw new CusAuthenticationException(
+                    "Authentication session is invalid."
             );
         }
 
@@ -334,8 +341,8 @@ public class CusSessionService {
                         .getCustomerId()
                         .equals(customerId)) {
 
-            throw new RuntimeException(
-                    "Session customer does not match token."
+            throw new CusAuthenticationException(
+                    "Authentication session is invalid."
             );
         }
 
@@ -349,7 +356,7 @@ public class CusSessionService {
                 .getStatus()
                 != CustomerStatus.ACTIVE) {
 
-            throw new RuntimeException(
+            throw new CusAuthenticationException(
                     "Customer account is not active."
             );
         }
@@ -362,7 +369,7 @@ public class CusSessionService {
         if (session.getRevokedAt()
                 != null) {
 
-            throw new RuntimeException(
+            throw new CusAuthenticationException(
                     "Authentication session has been revoked."
             );
         }
@@ -382,8 +389,7 @@ public class CusSessionService {
                     "SESSION_EXPIRED"
             );
 
-
-            throw new RuntimeException(
+            throw new CusSessionExpiredException(
                     "Authentication session has expired."
             );
         }
@@ -401,8 +407,7 @@ public class CusSessionService {
                     "INVALID_SESSION_ACTIVITY"
             );
 
-
-            throw new RuntimeException(
+            throw new CusSessionExpiredException(
                     "Authentication session is invalid."
             );
         }
@@ -428,8 +433,7 @@ public class CusSessionService {
                     "IDLE_TIMEOUT"
             );
 
-
-            throw new RuntimeException(
+            throw new CusSessionExpiredException(
                     "Session expired due to inactivity."
             );
         }
@@ -442,8 +446,8 @@ public class CusSessionService {
         if (session.getTokenVersionAtIssue()
                 != tokenVersion) {
 
-            throw new RuntimeException(
-                    "Token version is invalid."
+            throw new CusAuthenticationException(
+                    "Authentication token is no longer valid."
             );
         }
 
@@ -458,7 +462,7 @@ public class CusSessionService {
                                 customerId
                         )
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new IllegalStateException(
                                         "Customer credentials not found."
                                 )
                         );
@@ -472,8 +476,7 @@ public class CusSessionService {
                     "TOKEN_VERSION_CHANGED"
             );
 
-
-            throw new RuntimeException(
+            throw new CusSessionExpiredException(
                     "Authentication token is no longer valid."
             );
         }
@@ -493,7 +496,6 @@ public class CusSessionService {
             String reason) {
 
         if (session == null) {
-
             return;
         }
 
@@ -533,8 +535,8 @@ public class CusSessionService {
         if (refreshToken == null
                 || refreshToken.isBlank()) {
 
-            throw new RuntimeException(
-                    "Refresh token cannot be empty."
+            throw new CusAuthenticationException(
+                    "Refresh token is required."
             );
         }
 
@@ -564,7 +566,9 @@ public class CusSessionService {
 
         } catch (NoSuchAlgorithmException ex) {
 
-            throw new RuntimeException(
+            // ဒီဟာက user authentication error မဟုတ်ဘူး
+            // Server/JVM internal problem
+            throw new IllegalStateException(
                     "Unable to hash refresh token.",
                     ex
             );

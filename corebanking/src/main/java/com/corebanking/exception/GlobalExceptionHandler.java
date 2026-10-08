@@ -105,4 +105,92 @@ public ResponseEntity<Map<String, Object>>
             .status(HttpStatus.UNAUTHORIZED)
             .body(response);
 }
+@ExceptionHandler(CusAccountLockedException.class)
+public ResponseEntity<Map<String, Object>> handleAccountLocked(
+        CusAccountLockedException ex) {
+
+    Map<String, Object> body = new HashMap<>();
+
+    body.put("code", "ACCOUNT_LOCKED");
+    body.put("message", ex.getMessage());
+    body.put("timestamp", LocalDateTime.now());
+    body.put("status", 423);
+
+    return ResponseEntity
+            .status(HttpStatus.LOCKED)
+            .body(body);
+}
+
+@ExceptionHandler(CusOtpException.class)
+public ResponseEntity<Map<String, Object>> handleOtpException(
+        CusOtpException ex) {
+
+    return buildErrorResponse(
+            HttpStatus.BAD_REQUEST,
+            "OTP_ERROR",
+            ex.getMessage()
+    );
+}
+@ExceptionHandler(CusSessionExpiredException.class)
+public ResponseEntity<Map<String, Object>>
+        handleSessionExpired(
+                CusSessionExpiredException ex) {
+
+    return buildErrorResponse(
+            HttpStatus.UNAUTHORIZED,
+            "SESSION_EXPIRED",
+            ex.getMessage()
+    );
+}
+@ExceptionHandler(CusOtpResendLimitException.class)
+public ResponseEntity<Map<String, Object>> handleOtpResendLimit(
+        CusOtpResendLimitException ex) {
+
+    Map<String, Object> body = new HashMap<>();
+
+    body.put("code", "OTP_RESEND_LIMIT_REACHED");
+    body.put("message", ex.getMessage());
+    body.put("timestamp", LocalDateTime.now());
+    body.put("status", 429);
+
+    return ResponseEntity
+            .status(HttpStatus.TOO_MANY_REQUESTS)
+            .body(body);
+}
+
+
+@ExceptionHandler(CusEmailException.class)
+public ResponseEntity<Map<String, Object>>
+        handleEmailException(
+                CusEmailException ex) {
+
+    Map<String, Object> body =
+            new HashMap<>();
+
+    body.put(
+            "code",
+            "EMAIL_SERVICE_UNAVAILABLE"
+    );
+
+    body.put(
+            "message",
+            ex.getMessage()
+    );
+
+    body.put(
+            "timestamp",
+            LocalDateTime.now()
+    );
+
+    body.put(
+            "status",
+            503
+    );
+
+    return ResponseEntity
+            .status(
+                    HttpStatus.SERVICE_UNAVAILABLE
+            )
+            .body(body);
+}
 }
