@@ -9,7 +9,8 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class CusEmailService {
-
+//khin cusemailservice
+	
     private final JavaMailSender mailSender;
 
 
