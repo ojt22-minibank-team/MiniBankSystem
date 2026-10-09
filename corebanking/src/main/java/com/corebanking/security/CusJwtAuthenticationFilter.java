@@ -26,7 +26,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpMethod;
-
+import com.corebanking.exception.CusSessionExpiredException;
 @Component
 @RequiredArgsConstructor
 public class CusJwtAuthenticationFilter
@@ -287,6 +287,15 @@ public class CusJwtAuthenticationFilter
             );
 
 
+        
+        
+        } catch (CusSessionExpiredException ex) {
+
+            sessionExpired(
+                    response,
+                    ex.getMessage()
+            );
+
         } catch (RuntimeException ex) {
 
 
@@ -305,6 +314,32 @@ public class CusJwtAuthenticationFilter
             );
         }
     }
+    
+ // =========================================================
+ // SESSION EXPIRED RESPONSE
+ // =========================================================
+
+ private void sessionExpired(
+         HttpServletResponse response,
+         String message)
+         throws IOException {
+
+     response.setStatus(
+             HttpServletResponse.SC_UNAUTHORIZED
+     );
+
+     response.setContentType(
+             "application/json"
+     );
+
+     response.getWriter().write(
+             "{\"success\":false,"
+                     + "\"code\":\"SESSION_EXPIRED\","
+                     + "\"message\":\""
+                     + message
+                     + "\"}"
+     );
+ }
 
 
     // =========================================================
