@@ -102,8 +102,7 @@ public class P2PTransferService {
         
      // Account Status Check
        
-        if (!sourceAccount.getCustomer().getCustomerCode().equalsIgnoreCase(authenticatedUsername) &&
-            !sourceAccount.getCustomer().getEmail().equalsIgnoreCase(authenticatedUsername)) {
+        if (!sourceAccount.getCustomer().getCustomerId().toString().equalsIgnoreCase(authenticatedUsername)) {
             throw new TransactionException("Authenticated user does not own the source account.");
         }
 

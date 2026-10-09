@@ -6,6 +6,7 @@ import DashboardPage from "./features/customer-account/dashboard/DashboardPage";
 import MyAccountsPage from "./features/customer-account/accounts/MyaccountPage";
 //import AccountDetailPage from "./features/customer-account/accounts/AccountDetailPage";
 import ProfilePage from "./features/customer-account/profile/ProfilePage";
+import TransferPage from "./features/transfer/pages/TransferPage";
 import MainLayout from "./components/layout/MainLayout";
 
 function App() {
@@ -39,6 +40,12 @@ function App() {
           element={<ProfilePage />}
         />
 
+        {/* Transfer & Payments */}
+        <Route
+          path="/transfer"
+          element={<TransferPage />}
+        />
+
         {/* Account Details */}
         {/* <Route
           path="/accounts/:accountNumber"
@@ -54,7 +61,10 @@ function App() {
         path="*"
         element={<Navigate to="/" replace />}
       />
+
+      
     </Routes>
+    
   );
 }
 

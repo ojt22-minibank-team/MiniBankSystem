@@ -11,7 +11,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/transfers")
+@RequestMapping("/api/customer/transfers")
 @RequiredArgsConstructor
 public class P2PTransferController {
 
@@ -19,7 +19,7 @@ public class P2PTransferController {
 
     @PostMapping("/p2p")
     public ResponseEntity<P2PTransferResponseDto> executeP2PTransfer(
-            @AuthenticationPrincipal UserDetails authenticatedUser,
+    		@AuthenticationPrincipal String customerId,
             @RequestHeader(value = "Idempotency-Key", required = false) String headerIdempotencyKey,
             @Valid @RequestBody P2PTransferRequestDto request) {
     	
@@ -28,7 +28,7 @@ public class P2PTransferController {
                 : request.getIdempotencyKey();
 
         P2PTransferResponseDto response = p2pTransferService.processP2PTransfer(
-        		authenticatedUser.getUsername(),
+        		 customerId,
                 request, 
                 idempotencyKey
         );

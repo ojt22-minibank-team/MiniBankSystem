@@ -33,6 +33,7 @@ import DashboardPage from "../../features/customer-account/dashboard/DashboardPa
 import MainLayout from "../../components/layout/MainLayout";
 import MyAccountsPage from "../../features/customer-account/accounts/MyaccountPage";
 import ProfilePage from "../../features/customer-account/profile/ProfilePage";
+import { P2PTransferForm } from "../../features/transfer/components/P2PTransferForm";
 
 // ======================================================
 // ROUTER
@@ -140,6 +141,11 @@ const router = createBrowserRouter([
             path: "/pin-reset/new-pin",
             element: <PinResetNewPinPage />,
           },
+
+          {
+        path: "/transfer",
+        element: <P2PTransferForm />,
+      },
 
         ],
 
