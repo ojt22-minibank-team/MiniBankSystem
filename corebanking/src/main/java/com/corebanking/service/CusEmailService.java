@@ -15,9 +15,9 @@ public class CusEmailService {
     private final JavaMailSender mailSender;
 
 
-    // =========================================================
+
     // LOGIN OTP EMAIL
-    // =========================================================
+    
 
     public void sendLoginOtp(
             String toEmail,
@@ -106,7 +106,7 @@ public class CusEmailService {
         message.setText(
                 "Your Transaction PIN reset OTP code is: "
                         + otp
-                        + "\n\nThis OTP will expire in 5 minutes."
+                        + "\n\nThis OTP will expire in 5 min."
                         + "\n\nDo not share this OTP with anyone."
         );
 
