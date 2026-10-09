@@ -14,10 +14,11 @@ public class CusEmailService {
     private final JavaMailSender mailSender;
 
 
-    /**
-     * ၂။ ဘဏ်အကောင့် (Current / Savings) ဖွင့်လှစ်ပြီးတိုင်း Account နံပါတ်နှင့် Type သာ ပို့သော Email (Password မပါပါ)
-     */
-    public void sendAccountOpeningDetailsEmail(
+
+    // LOGIN OTP EMAIL
+    
+
+    public void sendLoginOtp(
             String toEmail,
             String otp) {
 
@@ -66,10 +67,56 @@ public class CusEmailService {
                     + "Core Banking Team"
             );
 
-            mailSender.send(message);
-            System.out.println("✅ Corporate Signatory Email sent to " + toEmail + " (" + roleName + ")");
-        } catch (Exception e) {
-            System.err.println("❌ Failed to send Corporate Signatory Email to " + toEmail + ": " + e.getMessage());
-        }
+
+        message.setTo(
+                toEmail
+        );
+
+
+        message.setSubject(
+                "Online Banking Password Reset OTP"
+        );
+
+
+        message.setText(
+                "Your password reset OTP code is: "
+                        + otp
+                        + "\n\nThis OTP will expire in 5 minutes."
+                        + "\n\nDo not share this OTP with anyone."
+                        + "\n\nIf you did not request a password reset, "
+                        + "please ignore this email."
+        );
+
+
+        mailSender.send(
+                message
+        );
+    }
+    
+    public void sendPinResetOtp(
+            String toEmail,
+            String otp) {
+
+        SimpleMailMessage message =
+                new SimpleMailMessage();
+
+        message.setTo(
+                toEmail
+        );
+
+        message.setSubject(
+                "Online Banking Transaction PIN Reset OTP"
+        );
+
+        message.setText(
+                "Your Transaction PIN reset OTP code is: "
+                        + otp
+                        + "\n\nThis OTP will expire in 5 min."
+                        + "\n\nDo not share this OTP with anyone."
+        );
+
+        mailSender.send(
+                message
+        );
     }
 }
