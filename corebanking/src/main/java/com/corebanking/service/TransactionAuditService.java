@@ -1,5 +1,6 @@
 package com.corebanking.service;
 
+import com.corebanking.dto.EcommercePaymentRequestDto;
 import com.corebanking.dto.P2PTransferRequestDto;
 import com.corebanking.entity.Accounts;
 import com.corebanking.entity.BankTransactions;
@@ -63,6 +64,45 @@ public class TransactionAuditService {
             log.info("Successfully persisted FAILED transaction record Ref: {}", failedRef);
         } catch (Exception ex) {
             log.error("Failed to save failed transaction record: {}", ex.getMessage(), ex);
+        }
+    }
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordFailedEcommercePayment(EcommercePaymentRequestDto request, String idempotencyKey, String failureCode, String failureMessage) {
+        try {
+            Accounts sourceAccount = accountRepository.findByAccountNumber(request.getSourceAccountNumber()).orElse(null);
+            Accounts destAccount = accountRepository.findByAccountNumber(request.getMerchantAccountNumber()).orElse(null);
+
+            String dateStr = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
+            int randomNum = ThreadLocalRandom.current().nextInt(1000, 9999);
+            String failedRef = String.format("TXN-ECOM-FAIL-%s-%d", dateStr, randomNum);
+
+            BankTransactions failedTxn = BankTransactions.builder()
+                    .transactionRef(failedRef)
+                    .transactionType(TransactionType.EXTERNAL_PAYMENT)
+                    .status(TransactionStatus.FAILED)
+                    .sourceAccount(sourceAccount)
+                    .destinationAccount(destAccount)
+                    .amount(request.getAmount() != null ? request.getAmount() : BigDecimal.ZERO)
+                    .serviceFee(BigDecimal.ZERO)
+                    .currency(request.getCurrency() != null ? request.getCurrency() : "MMK")
+                    .initiatedByType(InitiatedByType.CUSTOMER)
+                    .initiatedByCustomer(sourceAccount != null ? sourceAccount.getCustomer() : null)
+                    .channel(TransactionChannel.PAYMENT_GATEWAY)
+                    .externalReference(request.getOrderId())
+                    .idempotencyKey(idempotencyKey)
+                    .description(request.getDescription())
+                    .auditNote("E-Commerce Failure: " + failureCode)
+                    .failureCode(failureCode)
+                    .failureMessage(failureMessage != null && failureMessage.length() > 255 
+                            ? failureMessage.substring(0, 255) 
+                            : failureMessage)
+                    .completedAt(LocalDateTime.now())
+                    .build();
+
+            bankTransactionRepository.save(failedTxn);
+            log.info("Persisted FAILED E-Commerce transaction into DB: Ref {}", failedRef);
+        } catch (Exception ex) {
+            log.error("Failed to save failed e-commerce transaction record: {}", ex.getMessage(), ex);
         }
     }
 }
