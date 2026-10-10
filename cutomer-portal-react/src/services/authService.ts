@@ -5,28 +5,7 @@ import type {
   LoginResponse,
   OtpVerifyRequest,
   OtpVerifyResponse,
-  ChangePasswordRequest,
-  SetupPinRequest,
-  ResendOtpRequest,
-  ResendOtpResponse,
-
-  PasswordResetRequest,
-  PasswordResetStartResponse,
-  PasswordResetOtpVerifyRequest,
-  PasswordResetOtpVerifyResponse,
-  PasswordResetConfirmRequest,
-
-  PinResetStartResponse,
-  PinResetOtpVerifyRequest,
-  PinResetOtpVerifyResponse,
-  PinResetConfirmRequest,
 } from "../types/auth";
-
-
-// ======================================================
-// LOGIN
-// POST /api/customer/auth/login
-// ======================================================
 
 export const loginCustomer = async (
   data: LoginRequest
@@ -34,7 +13,7 @@ export const loginCustomer = async (
 
   const response =
     await api.post<LoginResponse>(
-      "/auth/login",
+      "/login",
       data
     );
 
@@ -42,18 +21,13 @@ export const loginCustomer = async (
 };
 
 
-// ======================================================
-// VERIFY OTP
-// POST /api/customer/auth/verify-otp
-// ======================================================
-
 export const verifyOtp = async (
   data: OtpVerifyRequest
 ): Promise<OtpVerifyResponse> => {
 
   const response =
     await api.post<OtpVerifyResponse>(
-      "/auth/verify-otp",
+      "/verify-otp",
       data
     );
 

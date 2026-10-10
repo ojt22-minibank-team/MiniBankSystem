@@ -10,16 +10,12 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.corebanking.entity.AuditLogs;
 import com.corebanking.entity.AuthSessions;
 import com.corebanking.entity.CustomerCredentials;
-import com.corebanking.entity.enums.ActorType;
 import com.corebanking.entity.enums.CustomerStatus;
 import com.corebanking.entity.enums.SessionSubjectType;
-import com.corebanking.entity.enums.UpdatedByType;
 import com.corebanking.exception.CusAuthenticationException;
 import com.corebanking.exception.CusSessionExpiredException;
-import com.corebanking.repository.CusAuditLogsRepository;
 import com.corebanking.repository.CusAuthSessionsRepository;
 import com.corebanking.repository.CusCredentialsRepository;
 
@@ -31,21 +27,14 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CusSessionService {
 
-
-    // =========================================================
-    // REPOSITORIES
-    // =========================================================
-
     private final CusAuthSessionsRepository authSessionsRepository;
-
     private final CusCredentialsRepository credentialsRepository;
-
-    private final CusAuditLogsRepository auditLogsRepository;
 
 
     // =========================================================
     // 1. VALIDATE ACCESS TOKEN SESSION
     // =========================================================
+
     @Transactional(
             noRollbackFor = CusSessionExpiredException.class
     )
@@ -58,18 +47,11 @@ public class CusSessionService {
                         "ACCESS"
                 );
 
-
-        // Valid protected API request
-        // => customer activity ဖြစ်လို့ lastSeenAt update
+        // Valid protected API request ဖြစ်တဲ့အတွက်
+        // last activity time update
         session.setLastSeenAt(
                 LocalDateTime.now()
         );
-
-
-        markSessionUpdatedByCustomer(
-                session
-        );
-
 
         return authSessionsRepository.save(
                 session
@@ -88,10 +70,9 @@ public class CusSessionService {
             Claims claims,
             String rawRefreshToken) {
 
-
-        // =====================================================
-        // REFRESH TOKEN REQUIRED
-        // =====================================================
+        // -----------------------------------------
+        // Refresh Token required
+        // -----------------------------------------
 
         if (rawRefreshToken == null
                 || rawRefreshToken.isBlank()) {
@@ -102,9 +83,9 @@ public class CusSessionService {
         }
 
 
-        // =====================================================
-        // COMMON SESSION VALIDATION
-        // =====================================================
+        // -----------------------------------------
+        // Common session validation
+        // -----------------------------------------
 
         AuthSessions session =
                 validateBaseSession(
@@ -113,9 +94,9 @@ public class CusSessionService {
                 );
 
 
-        // =====================================================
-        // HASH INCOMING REFRESH TOKEN
-        // =====================================================
+        // -----------------------------------------
+        // Raw Refresh Token ကို SHA-256 hash
+        // -----------------------------------------
 
         String incomingHash =
                 hashRefreshToken(
@@ -136,17 +117,15 @@ public class CusSessionService {
         }
 
 
-        // =====================================================
-        // CONSTANT-TIME HASH COMPARISON
-        // =====================================================
+        // -----------------------------------------
+        // SHA-256 hash compare
+        // -----------------------------------------
 
         boolean refreshTokenMatches =
                 MessageDigest.isEqual(
-
                         incomingHash.getBytes(
                                 StandardCharsets.UTF_8
                         ),
-
                         storedHash.getBytes(
                                 StandardCharsets.UTF_8
                         )
@@ -161,11 +140,19 @@ public class CusSessionService {
         }
 
 
-        // ဒီ method ရဲ့တာဝန်က validate ပဲ
-        // DB update / rotation ကို CusAuthService မှာ
-        // atomic update နဲ့လုပ်မယ်.
+        // -----------------------------------------
+        // Refresh request က valid activity ဖြစ်လို့
+        // lastSeenAt update
+        // -----------------------------------------
 
-        return session;
+        session.setLastSeenAt(
+                LocalDateTime.now()
+        );
+
+
+        return authSessionsRepository.save(
+                session
+        );
     }
 
 
@@ -179,7 +166,7 @@ public class CusSessionService {
 
 
         // =====================================================
-        // CLAIMS REQUIRED
+        // TOKEN CLAIMS REQUIRED
         // =====================================================
 
         if (claims == null) {
@@ -212,7 +199,6 @@ public class CusSessionService {
 
 
         UUID customerId;
-
 
         try {
 
@@ -270,11 +256,7 @@ public class CusSessionService {
 
 
         // =====================================================
-        // 4. TOKEN TYPE
-        // =====================================================
-        //
-        // ACCESS endpoint ဆို ACCESS ဖြစ်ရမယ်.
-        // REFRESH endpoint ဆို REFRESH ဖြစ်ရမယ်.
+        // 4. ACCESS OR REFRESH TOKEN TYPE
         // =====================================================
 
         String tokenType =
@@ -318,7 +300,7 @@ public class CusSessionService {
 
 
         // =====================================================
-        // 6. FIND AUTH SESSION
+        // 6. AUTH SESSION FROM DATABASE
         // =====================================================
 
         AuthSessions session =
@@ -334,7 +316,7 @@ public class CusSessionService {
 
 
         // =====================================================
-        // 7. SESSION MUST BELONG TO CUSTOMER
+        // 7. SESSION SUBJECT TYPE
         // =====================================================
 
         if (session.getSubjectType()
@@ -347,7 +329,7 @@ public class CusSessionService {
 
 
         // =====================================================
-        // 8. SESSION CUSTOMER MUST MATCH JWT CUSTOMER
+        // 8. SESSION CUSTOMER = JWT CUSTOMER ?
         // =====================================================
 
         if (session.getCustomer() == null
@@ -366,7 +348,7 @@ public class CusSessionService {
 
 
         // =====================================================
-        // 9. CUSTOMER STATUS MUST BE ACTIVE
+        // 9. CUSTOMER STATUS ACTIVE ?
         // =====================================================
 
         if (session
@@ -381,7 +363,7 @@ public class CusSessionService {
 
 
         // =====================================================
-        // 10. SESSION ALREADY REVOKED?
+        // 10. SESSION ALREADY REVOKED ?
         // =====================================================
 
         if (session.getRevokedAt()
@@ -394,7 +376,7 @@ public class CusSessionService {
 
 
         // =====================================================
-        // 11. REFRESH SESSION MAX EXPIRY
+        // 11. REFRESH SESSION EXPIRY CHECK
         // =====================================================
 
         if (session.getRefreshExpiresAt() == null
@@ -402,12 +384,10 @@ public class CusSessionService {
                         .getRefreshExpiresAt()
                         .isAfter(now)) {
 
-
             revokeSession(
                     session,
                     "SESSION_EXPIRED"
             );
-
 
             throw new CusSessionExpiredException(
                     "Authentication session has expired."
@@ -422,12 +402,10 @@ public class CusSessionService {
         if (session.getLastSeenAt()
                 == null) {
 
-
             revokeSession(
                     session,
                     "INVALID_SESSION_ACTIVITY"
             );
-
 
             throw new CusSessionExpiredException(
                     "Authentication session is invalid."
@@ -436,18 +414,7 @@ public class CusSessionService {
 
 
         // =====================================================
-        // 13. IDLE TIMEOUT CHECK
-        // =====================================================
-        //
-        // Example:
-        //
-        // lastSeenAt = 10:00
-        // idleTimeoutMinutes = 5
-        //
-        // idleExpiry = 10:05
-        //
-        // 10:05 ကျော်ပြီး request ထပ်လာရင်
-        // session revoke လုပ်မယ်.
+        // 13. SESSION IDLE TIMEOUT
         // =====================================================
 
         LocalDateTime idleExpiry =
@@ -461,12 +428,10 @@ public class CusSessionService {
         if (!idleExpiry.isAfter(
                 now)) {
 
-
             revokeSession(
                     session,
                     "IDLE_TIMEOUT"
             );
-
 
             throw new CusSessionExpiredException(
                     "Session expired due to inactivity."
@@ -475,7 +440,7 @@ public class CusSessionService {
 
 
         // =====================================================
-        // 14. TOKEN VERSION STORED IN SESSION
+        // 14. SESSION TOKEN VERSION CHECK
         // =====================================================
 
         if (session.getTokenVersionAtIssue()
@@ -488,7 +453,7 @@ public class CusSessionService {
 
 
         // =====================================================
-        // 15. CURRENT CUSTOMER TOKEN VERSION
+        // 15. CURRENT CREDENTIALS TOKEN VERSION
         // =====================================================
 
         CustomerCredentials credentials =
@@ -506,12 +471,10 @@ public class CusSessionService {
         if (credentials.getTokenVersion()
                 != tokenVersion) {
 
-
             revokeSession(
                     session,
                     "TOKEN_VERSION_CHANGED"
             );
-
 
             throw new CusSessionExpiredException(
                     "Authentication token is no longer valid."
@@ -519,42 +482,12 @@ public class CusSessionService {
         }
 
 
-        // =====================================================
-        // SESSION VALID
-        // =====================================================
-
         return session;
     }
 
 
     // =========================================================
-    // 4. SYSTEM / AUTOMATIC SESSION REVOKE
-    // =========================================================
-    //
-    // Example:
-    //
-    // IDLE_TIMEOUT
-    // SESSION_EXPIRED
-    // TOKEN_VERSION_CHANGED
-    // INVALID_SESSION_ACTIVITY
-    //
-    // IMPORTANT:
-    //
-    // Java object ရဲ့ revokedAt ကိုပဲ မစစ်တော့ပါ.
-    //
-    // DB level atomic UPDATE သုံးပါတယ်.
-    //
-    // WHERE revokedAt IS NULL
-    //
-    // ဆိုတဲ့ condition ကြောင့် concurrent requests
-    // အများကြီးတပြိုင်နက်လာလည်း
-    //
-    // request တစ်ခုတည်းက rows = 1 ရမယ်.
-    //
-    // ကျန် requests → rows = 0
-    //
-    // ဒီနည်းနဲ့ duplicate SESSION_REVOKED audit
-    // မဖြစ်တော့ပါ.
+    // 4. REVOKE SESSION
     // =========================================================
 
     @Transactional
@@ -562,291 +495,42 @@ public class CusSessionService {
             AuthSessions session,
             String reason) {
 
+        if (session == null) {
+            return;
+        }
 
-        if (session == null
-                || session.getSessionUuid() == null) {
+
+        // Already revoked ဖြစ်နေရင်
+        // ထပ် update မလုပ်တော့ဘူး
+        if (session.getRevokedAt()
+                != null) {
 
             return;
         }
 
 
-        LocalDateTime now =
-                LocalDateTime.now();
-
-
-        // =====================================================
-        // ATOMIC DATABASE UPDATE
-        // =====================================================
-
-        int updatedRows =
-                authSessionsRepository
-                        .revokeIfActive(
-
-                                session.getSessionUuid(),
-
-                                reason,
-
-                                now,
-
-                                UpdatedByType.SYSTEM,
-
-                                null,
-
-                                now
-                        );
-
-
-        // =====================================================
-        // ONLY ONE REQUEST MAY CREATE AUDIT LOG
-        // =====================================================
-        //
-        // updatedRows == 1
-        // → ဒီ request က session ကို revoke လုပ်ခဲ့တာ
-        //
-        // updatedRows == 0
-        // → အခြား request တစ်ခုက revoke လုပ်ပြီးသား
-        //
-        // =====================================================
-
-        if (updatedRows == 1) {
-
-            saveSystemSessionRevokeAudit(
-                    session,
-                    reason
-            );
-        }
-    }
- // =========================================================
- // REVOKE ALL ACTIVE CUSTOMER SESSIONS
- // =========================================================
- //
- // Used for:
- // - PASSWORD_RESET
- // - PASSWORD_CHANGED
- //
- // Return value:
- // 0  -> active session မရှိ / အခြား request က revoke လုပ်ပြီးသား
- // >0 -> revoke လုပ်ခဲ့တဲ့ session အရေအတွက်
- // =========================================================
-
- @Transactional
- public int revokeAllActiveCustomerSessions(
-         UUID customerId,
-         String reason,
-         UpdatedByType updatedByType,
-         UUID updatedById) {
-
-     if (customerId == null) {
-
-         throw new IllegalArgumentException(
-                 "Customer ID is required."
-         );
-     }
-
-
-     LocalDateTime now =
-             LocalDateTime.now();
-
-
-     return authSessionsRepository
-             .revokeAllActiveCustomerSessions(
-
-                     customerId,
-
-                     reason,
-
-                     now,
-
-                     updatedByType,
-
-                     updatedById,
-
-                     now
-             );
- }
-
-    // =========================================================
-    // 4A. CUSTOMER / EXPLICIT ACTOR SESSION REVOKE
-    // =========================================================
-    //
-    // Customer Logout အတွက်သုံးမယ်.
-    //
-    // Example:
-    //
-    // updatedByType = CUSTOMER
-    // updatedById   = customerId
-    //
-    // boolean return:
-    //
-    // true  → session ကို ဒီ request က revoke လုပ်ခဲ့တယ်
-    // false → session revoke ဖြစ်ပြီးသား
-    //
-    // CusAuthService မှာ true ဖြစ်မှ
-    // CUSTOMER_LOGOUT audit record create လုပ်နိုင်မယ်.
-    // =========================================================
-
-    @Transactional
-    public boolean revokeSession(
-            AuthSessions session,
-            String reason,
-            UpdatedByType updatedByType,
-            UUID updatedById) {
-
-
-        if (session == null
-                || session.getSessionUuid() == null) {
-
-            return false;
-        }
-
-
-        LocalDateTime now =
-                LocalDateTime.now();
-
-
-        int updatedRows =
-                authSessionsRepository
-                        .revokeIfActive(
-
-                                session.getSessionUuid(),
-
-                                reason,
-
-                                now,
-
-                                updatedByType,
-
-                                updatedById,
-
-                                now
-                        );
-
-
-        return updatedRows == 1;
-    }
-
-
-    // =========================================================
-    // 5. MARK SESSION UPDATED BY CUSTOMER
-    // =========================================================
-
-    private void markSessionUpdatedByCustomer(
-            AuthSessions session) {
-
-
-        if (session == null
-                || session.getCustomer() == null
-                || session
-                        .getCustomer()
-                        .getCustomerId() == null) {
-
-            return;
-        }
-
-
-        session.setUpdatedByType(
-                UpdatedByType.CUSTOMER
+        session.setRevokedAt(
+                LocalDateTime.now()
         );
 
 
-        session.setUpdatedById(
+        session.setRevokeReason(
+                reason
+        );
+
+
+        authSessionsRepository.save(
                 session
-                        .getCustomer()
-                        .getCustomerId()
         );
     }
 
 
     // =========================================================
-    // 6. SAVE SYSTEM SESSION REVOKE AUDIT
-    // =========================================================
-
-    private void saveSystemSessionRevokeAudit(
-            AuthSessions session,
-            String reason) {
-
-
-        if (session == null
-                || session.getSessionUuid() == null) {
-
-            return;
-        }
-
-
-        AuditLogs auditLog =
-                AuditLogs.builder()
-
-                        // -------------------------------------
-                        // Automatic system action
-                        // -------------------------------------
-
-                        .actorType(
-                                ActorType.SYSTEM
-                        )
-
-                        .actorCustomer(
-                                null
-                        )
-
-                        .actorStaff(
-                                null
-                        )
-
-                        // -------------------------------------
-                        // Audit action
-                        // -------------------------------------
-
-                        .actionType(
-                                "SESSION_REVOKED"
-                        )
-
-                        // -------------------------------------
-                        // Affected entity
-                        // -------------------------------------
-
-                        .entityType(
-                                "AUTH_SESSION"
-                        )
-
-                        .entityId(
-                                session.getSessionUuid()
-                        )
-
-                        // -------------------------------------
-                        // Before
-                        // -------------------------------------
-
-                        .oldValues(
-                                "{\"status\":\"ACTIVE\"}"
-                        )
-
-                        // -------------------------------------
-                        // After
-                        // -------------------------------------
-
-                        .newValues(
-                                "{\"status\":\"REVOKED\","
-                                        + "\"reason\":\""
-                                        + reason
-                                        + "\"}"
-                        )
-
-                        .build();
-
-
-        auditLogsRepository.save(
-                auditLog
-        );
-    }
-
-
-    // =========================================================
-    // 7. SHA-256 REFRESH TOKEN HASH
+    // 5. SHA-256 REFRESH TOKEN HASH
     // =========================================================
 
     public String hashRefreshToken(
             String refreshToken) {
-
 
         if (refreshToken == null
                 || refreshToken.isBlank()) {
@@ -859,7 +543,6 @@ public class CusSessionService {
 
         try {
 
-
             MessageDigest digest =
                     MessageDigest.getInstance(
                             "SHA-256"
@@ -868,7 +551,6 @@ public class CusSessionService {
 
             byte[] hashBytes =
                     digest.digest(
-
                             refreshToken.getBytes(
                                     StandardCharsets.UTF_8
                             )
@@ -884,26 +566,12 @@ public class CusSessionService {
 
         } catch (NoSuchAlgorithmException ex) {
 
-
-            // SHA-256 JVM မှာမရှိတာက
-            // user authentication error မဟုတ်ဘဲ
-            // server configuration/internal error ဖြစ်ပါတယ်.
-
+            // ဒီဟာက user authentication error မဟုတ်ဘူး
+            // Server/JVM internal problem
             throw new IllegalStateException(
                     "Unable to hash refresh token.",
                     ex
             );
         }
-    }
-    @Transactional(
-            noRollbackFor = CusSessionExpiredException.class
-    )
-    public AuthSessions validateAccessSessionForLogout(
-            Claims claims) {
-
-        return validateBaseSession(
-                claims,
-                "ACCESS"
-        );
     }
 }

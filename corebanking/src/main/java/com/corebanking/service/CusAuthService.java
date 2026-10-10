@@ -75,12 +75,6 @@ public class CusAuthService {
     private final CusEmailService cusEmailService;
     private final CusAuditLogsRepository auditLogsRepository;
 
-
-
-    // =========================================================
-    // LOGIN RULES
-    // =========================================================
-
     private static final int MAX_FAILED_ATTEMPTS = 5;
     private static final int LOCK_MINUTES = 15;
 
