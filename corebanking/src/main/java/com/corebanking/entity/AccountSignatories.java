@@ -33,12 +33,6 @@ public class AccountSignatories {
     @JoinColumn(name = "account_id", nullable = false,
             foreignKey = @ForeignKey(name = "fk_signatory_account"))
     private Accounts account;
-    
-    @Column(name = "account_number", length = 32, nullable = false)
-    private String accountNumber;
-    
-    @Column(name = "customer_code", length = 64, nullable = false)
-    private String customerCode;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false,

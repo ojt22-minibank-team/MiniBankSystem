@@ -25,8 +25,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import lombok.RequiredArgsConstructor;
-
-
+import org.springframework.http.HttpMethod;
+import com.corebanking.exception.CusSessionExpiredException;
 @Component
 @RequiredArgsConstructor
 public class CusJwtAuthenticationFilter
@@ -52,7 +52,8 @@ public class CusJwtAuthenticationFilter
             FilterChain filterChain)
             throws ServletException, IOException {
 
-
+        
+    	
         System.out.println(
                 "CUS JWT FILTER RUNNING: "
                         + request.getRequestURI()
@@ -286,6 +287,15 @@ public class CusJwtAuthenticationFilter
             );
 
 
+        
+        
+        } catch (CusSessionExpiredException ex) {
+
+            sessionExpired(
+                    response,
+                    ex.getMessage()
+            );
+
         } catch (RuntimeException ex) {
 
 
@@ -304,6 +314,32 @@ public class CusJwtAuthenticationFilter
             );
         }
     }
+    
+ // =========================================================
+ // SESSION EXPIRED RESPONSE
+ // =========================================================
+
+ private void sessionExpired(
+         HttpServletResponse response,
+         String message)
+         throws IOException {
+
+     response.setStatus(
+             HttpServletResponse.SC_UNAUTHORIZED
+     );
+
+     response.setContentType(
+             "application/json"
+     );
+
+     response.getWriter().write(
+             "{\"success\":false,"
+                     + "\"code\":\"SESSION_EXPIRED\","
+                     + "\"message\":\""
+                     + message
+                     + "\"}"
+     );
+ }
 
 
     // =========================================================
@@ -314,31 +350,15 @@ public class CusJwtAuthenticationFilter
     protected boolean shouldNotFilter(
             HttpServletRequest request) {
 
-
         String uri =
                 request.getRequestURI();
 
-
-        // =====================================================
-        // 1. CUSTOMER API မဟုတ်ရင်
-        // JWT Filter မစစ်ဘူး
-        //
-        // Swagger UI
-        // v3 api docs
-        // staff APIs
-        // other APIs
-        // =====================================================
-
-        if (!uri.startsWith(
-                "/api/customer/")) {
+        // CORS preflight request ကို JWT မစစ်ပါ
+        if (HttpMethod.OPTIONS.matches(
+                request.getMethod())) {
 
             return true;
         }
-
-
-        // =====================================================
-        // 2. PUBLIC CUSTOMER AUTH APIs
-        // =====================================================
 
         return uri.equals(
                     "/api/customer/auth/login"
@@ -362,7 +382,11 @@ public class CusJwtAuthenticationFilter
 
                 || uri.equals(
                     "/api/customer/auth/refresh"
-                );
+                )
+                // Password Reset flow အားလုံး public
+                || uri.startsWith(
+                    "/api/customer/auth/password-reset/"
+                		);
     }
 
 

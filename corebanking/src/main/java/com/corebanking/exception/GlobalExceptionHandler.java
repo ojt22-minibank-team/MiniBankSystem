@@ -120,6 +120,17 @@ public ResponseEntity<Map<String, Object>> handleAccountLocked(
             .status(HttpStatus.LOCKED)
             .body(body);
 }
+@ExceptionHandler(CusValidationException.class)
+public ResponseEntity<Map<String, Object>>
+        handleCusValidationException(
+                CusValidationException ex) {
+
+    return buildErrorResponse(
+            HttpStatus.BAD_REQUEST,
+            "VALIDATION_ERROR",
+            ex.getMessage()
+    );
+}
 
 @ExceptionHandler(CusOtpException.class)
 public ResponseEntity<Map<String, Object>> handleOtpException(
@@ -193,4 +204,15 @@ public ResponseEntity<Map<String, Object>>
             )
             .body(body);
 }
+
+
+
+
+
+
+
+
+
+
+
 }

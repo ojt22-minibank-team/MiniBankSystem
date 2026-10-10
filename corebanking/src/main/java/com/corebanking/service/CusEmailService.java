@@ -10,12 +10,14 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class CusEmailService {
-//khin cusemailservice
-	
+
     private final JavaMailSender mailSender;
 
+
+    // =========================================================
     // LOGIN OTP EMAIL
-   
+    // =========================================================
+
     public void sendLoginOtp(
             String toEmail,
             String otp) {
@@ -46,6 +48,7 @@ public class CusEmailService {
                 message
         );
     }
+
 
     // =========================================================
     // PASSWORD RESET OTP EMAIL
@@ -83,7 +86,7 @@ public class CusEmailService {
                 message
         );
     }
-   
+    
     public void sendPinResetOtp(
             String toEmail,
             String otp) {
@@ -102,7 +105,7 @@ public class CusEmailService {
         message.setText(
                 "Your Transaction PIN reset OTP code is: "
                         + otp
-                        + "\n\nThis OTP will expire in 5 min."
+                        + "\n\nThis OTP will expire in 5 minutes."
                         + "\n\nDo not share this OTP with anyone."
         );
 
