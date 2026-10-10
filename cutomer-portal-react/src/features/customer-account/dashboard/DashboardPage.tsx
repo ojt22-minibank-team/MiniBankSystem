@@ -4,6 +4,8 @@ import {
   Eye,
   EyeOff,
   Send,
+  UserRound,
+  Landmark,
   WalletCards,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -70,187 +72,255 @@ export default function DashboardPage() {
           {error}
         </div>
       )}
-{/* =====================================================
+      {/* =====================================================
     WELCOME HEADER
 ====================================================== */}
-<section className="mb-8 flex flex-col gap-6 border-b border-slate-200/80 pb-6 sm:flex-row sm:items-end sm:justify-between">
-  
-  {/* Text Content */}
-  <div className="space-y-1">
-    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-      Welcome back
-    </p>
+<section className="mb-8 flex flex-col gap-5 border-b border-slate-200/80 pb-6 sm:flex-row sm:items-center sm:justify-between">
+  {/* Welcome Content */}
+  <div className="flex items-center gap-4">
+    {/* Welcome Icon */}
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#0878E8]">
+      <UserRound size={23} strokeWidth={1.8} />
+    </div>
 
-    <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-      {loading ? (
-        <span className="mt-1 block h-9 w-48 animate-pulse rounded-md bg-slate-200" />
-      ) : (
-        dashboard?.fullName || "Guest"
-      )}
-    </h1>
+    <div>
+      {/* Small Label */}
+      <div className="flex items-center gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          Welcome back
+        </p>
 
-    <p className="text-sm text-slate-500">
-      Here's your account overview and recent activity.
-    </p>
+        <span className="h-1 w-1 rounded-full bg-slate-300" />
+
+        <span className="text-xs font-medium text-slate-400">
+          Customer Portal
+        </span>
+      </div>
+
+      {/* Customer Name */}
+      <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-[#08295C] sm:text-3xl">
+        {loading ? (
+          <span className="block h-8 w-52 animate-pulse rounded-md bg-slate-200" />
+        ) : (
+          dashboard?.fullName || "Guest"
+        )}
+      </h1>
+
+      {/* Description */}
+      <p className="mt-1 text-sm text-slate-500">
+        Here's your account overview and recent activity.
+      </p>
+    </div>
   </div>
-
-
-
 </section>
       {/* =====================================================
     TOTAL BALANCE - Left-Aligned Modern Fintech Style
 ====================================================== */}
-<section>
-  <div className="relative overflow-hidden rounded-2xl bg-[#08295C] p-6 shadow-md ring-1 ring-white/10 sm:p-8">
-    {/* Subtle Radial Glows */}
-    <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-blue-500/20 blur-3xl" />
-    <div className="pointer-events-none absolute -bottom-20 -left-10 h-48 w-48 rounded-full bg-emerald-500/10 blur-2xl" />
+      <section>
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0878E8] via-[#176FE0] to-[#0755B8] p-6 shadow-md ring-1 ring-white/10 sm:p-8">
 
-    <div className="relative flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
-      
-      {/* Left Column: Label & Balance */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-blue-300/80">
-            Total Balance
-          </span>
-          <span className="h-1 w-1 rounded-full bg-blue-400/50" />
-          <span className="text-xs text-blue-200/70">Across all accounts</span>
-        </div>
+          {/* Subtle Background Glows */}
+          <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-blue-300/20 blur-3xl" />
 
-        {/* Balance Display */}
-        <div className="flex items-baseline gap-2 pt-1">
-          <span className="text-xl font-bold text-blue-300">MMK</span>
-          <div className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-            {loading ? (
-              <span className="inline-block h-10 w-52 animate-pulse rounded-lg bg-white/10 align-middle" />
-            ) : showBalance ? (
-              formattedBalance
-            ) : (
-          <span className="tracking-widest text-blue-200">* * * * * * </span>
-            )}
+          <div className="pointer-events-none absolute -bottom-20 -left-10 h-48 w-48 rounded-full bg-cyan-300/10 blur-2xl" />
+
+          {/* Decorative Background Shape */}
+          <div className="pointer-events-none absolute right-[-80px] top-1/2 h-64 w-64 -translate-y-1/2 rounded-full border-[28px] border-blue-300/10" />
+
+          <div className="relative flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
+
+            {/* Left Column: Label & Balance */}
+            <div className="space-y-2">
+
+              {/* Total Balance */}
+              <div className="flex items-center gap-2">
+
+                <WalletCards
+                  size={16}
+                  className="text-blue-100/90"
+                />
+
+                <span className="text-xs font-semibold uppercase tracking-wider text-blue-100/90">
+                  Total Balance
+                </span>
+
+                <span className="h-1 w-1 rounded-full bg-blue-100/60" />
+
+                <span className="text-xs text-blue-50/80">
+                  Across all accounts
+                </span>
+
+                {/* Eye Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setShowBalance((v) => !v)}
+                  aria-label={
+                    showBalance
+                      ? "Hide total balance"
+                      : "Show total balance"
+                  }
+                  title={
+                    showBalance
+                      ? "Hide total balance"
+                      : "Show total balance"
+                  }
+                  className="inline-flex items-center justify-center rounded-full p-1 text-blue-100/80 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                >
+                  {showBalance ? (
+                    <EyeOff size={15} />
+                  ) : (
+                    <Eye size={15} />
+                  )}
+                </button>
+              </div>
+
+              {/* Balance Display */}
+              <div className="flex items-baseline gap-2 pt-1">
+
+                <span className="text-xl font-bold text-blue-100">
+                  MMK
+                </span>
+
+                <div className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+                  {loading ? (
+                    <span className="inline-block h-10 w-52 animate-pulse rounded-lg bg-white/10 align-middle" />
+                  ) : showBalance ? (
+                    formattedBalance
+                  ) : (
+                    <span className="tracking-widest text-blue-100/80">
+                      * * * * * *
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Status & Account Badges */}
+              <div className="flex items-center gap-2.5 pt-2">
+
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-300/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-100 ring-1 ring-inset ring-emerald-200/20">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />
+                  Active
+                </span>
+
+                <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-blue-50/90 ring-1 ring-inset ring-white/10">
+                  {loading
+                    ? "..."
+                    : `${accountCount} Linked Accounts`}
+                </span>
+
+              </div>
+            </div>
+
+            {/* Right Decorative Bank Icon */}
+            <div className="pointer-events-none absolute -right-5 top-1/2 hidden -translate-y-1/2 sm:block">
+
+              <Landmark
+                size={165}
+                strokeWidth={1.2}
+                className="text-blue-100/30"
+              />
+
+            </div>
           </div>
         </div>
+      </section>
 
-        {/* Status & Account Badges */}
-        <div className="flex items-center gap-2.5 pt-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-300 ring-1 ring-inset ring-emerald-400/20">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Active
-          </span>
-          <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-xs font-medium text-blue-200/80 ring-1 ring-inset ring-white/10">
-            {loading ? "..." : `${accountCount} Linked Accounts`}
-          </span>
+
+      {/* QUICK ACTIONS */}
+      <section>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+
+          {/* My Account */}
+          <Link
+            to="/accounts"
+            className="group flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-md"
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[#0878E8] transition-colors duration-200 group-hover:bg-[#0878E8] group-hover:text-white">
+                <WalletCards size={24} />
+              </div>
+
+              <div>
+                <h3 className="text-sm font-bold text-[#08295C]">
+                  My Account
+                </h3>
+
+                <p className="mt-1 text-xs text-slate-400">
+                  View account details
+                </p>
+              </div>
+            </div>
+
+            <ArrowRight
+              size={20}
+              className="shrink-0 text-slate-400 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-[#0878E8]"
+            />
+          </Link>
+
+          {/* Transfer Money */}
+          <Link
+            to="/transfer"
+            className="group flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-md"
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[#0878E8] transition-colors duration-200 group-hover:bg-[#0878E8] group-hover:text-white">
+                <Send size={24} />
+              </div>
+
+              <div>
+                <h3 className="text-sm font-bold text-[#08295C]">
+                  Transfer Money
+                </h3>
+
+                <p className="mt-1 text-xs text-slate-400">
+                  Send money easily
+                </p>
+              </div>
+            </div>
+
+            <ArrowRight
+              size={20}
+              className="shrink-0 text-slate-400 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-[#0878E8]"
+            />
+          </Link>
+
+          {/* Transaction History */}
+          <Link
+            to="/transaction"
+            className="group flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-md"
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[#0878E8] transition-colors duration-200 group-hover:bg-[#0878E8] group-hover:text-white">
+                <CreditCard size={24} />
+              </div>
+
+              <div>
+                <h3 className="text-sm font-bold text-[#08295C]">
+                  Transaction History
+                </h3>
+
+                <p className="mt-1 text-xs text-slate-400">
+                  Check your past transactions
+                </p>
+              </div>
+            </div>
+
+            <ArrowRight
+              size={20}
+              className="shrink-0 text-slate-400 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-[#0878E8]"
+            />
+          </Link>
+
         </div>
-      </div>
-
-      {/* Right Column: Toggle Visibility Button */}
-      <div className="self-start sm:self-center">
-        <button
-          type="button"
-          onClick={() => setShowBalance((v) => !v)}
-          aria-label={showBalance ? "Hide total balance" : "Show total balance"}
-          className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3.5 py-2 text-xs font-semibold text-blue-100 backdrop-blur-md transition-all hover:bg-white/20 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
-        >
-          {showBalance ? <EyeOff size={15} /> : <Eye size={15} />}
-          <span>{showBalance ? "Hide" : "Show"}</span>
-        </button>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-
-
-  {/* QUICK ACTIONS */}
-  <section>
-
-
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-
-      {/* My Accounts */}
-      <Link
-        to="/accounts"
-        className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-[#0878E8] transition-colors duration-200 group-hover:bg-[#0878E8] group-hover:text-white">
-            <WalletCards size={20} />
-          </div>
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-50 text-slate-400 transition-all duration-200 group-hover:bg-blue-50 group-hover:text-[#0878E8]">
-            <ArrowRight size={14} className="transition-transform duration-200 group-hover:translate-x-0.5" />
-          </span>
-        </div>
-
-        <div className="mt-5">
-          <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#0878E8] transition-colors">
-            My Accounts
-          </h3>
-          <p className="mt-0.5 text-xs text-slate-500">
-            View balances & details
-          </p>
-        </div>
-      </Link>
-
-      {/* Transfer */}
-      <Link
-        to="/transfer"
-        className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition-colors duration-200 group-hover:bg-emerald-600 group-hover:text-white">
-            <Send size={20} />
-          </div>
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-50 text-slate-400 transition-all duration-200 group-hover:bg-emerald-50 group-hover:text-emerald-600">
-            <ArrowRight size={14} className="transition-transform duration-200 group-hover:translate-x-0.5" />
-          </span>
-        </div>
-
-        <div className="mt-5">
-          <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
-            Transfer Money
-          </h3>
-          <p className="mt-0.5 text-xs text-slate-500">
-            Send money securely
-          </p>
-        </div>
-      </Link>
-
-      {/* Transactions */}
-      <Link
-        to="/transaction"
-        className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 transition-colors duration-200 group-hover:bg-indigo-600 group-hover:text-white">
-            <CreditCard size={20} />
-          </div>
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-50 text-slate-400 transition-all duration-200 group-hover:bg-indigo-50 group-hover:text-indigo-600">
-            <ArrowRight size={14} className="transition-transform duration-200 group-hover:translate-x-0.5" />
-          </span>
-        </div>
-
-        <div className="mt-5">
-          <h3 className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
-            Transactions
-          </h3>
-          <p className="mt-0.5 text-xs text-slate-500">
-            View transaction history
-          </p>
-        </div>
-      </Link>
-
-    </div>
-    </section>
-{/* =====================================================
+      </section>
+      {/* =====================================================
     MY ACCOUNTS
 ====================================================== */}
-<section>
+      <section>
 
 
-  <AccountSummary accounts={dashboard?.accounts ?? []} />
-</section>
+        <AccountSummary accounts={dashboard?.accounts ?? []} />
+      </section>
 
       {/* =====================================================
           RECENT TRANSACTIONS

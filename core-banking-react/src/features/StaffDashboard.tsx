@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { CustomerManagement } from './CustomerManagement';
 import { CreateAccountForm } from './CreateAccountForm';
+import ReportingView from './reporting/ReportingView';
+
 
 const API_BASE_URL = 'http://localhost:8080';
 
@@ -23,7 +25,8 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
   staffName = 'Bank Officer',
   staffRole = 'Staff'
 }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'customer-mgmt' | 'account-mgmt'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'customer-mgmt' | 'account-mgmt' | 'reporting'>('dashboard');
+
 
   // Dashboard Metrics State (သင်တောင်းဆိုထားသော ၄ မျိုး)
   const [metrics, setMetrics] = useState<ComprehensiveMetrics>({
@@ -130,7 +133,21 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
           >
             <span>💳</span> Account Management
           </button>
+
+          <div style={styles.menuLabel}>REPORTS & ANALYTICS</div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('reporting')}
+            style={{
+              ...styles.navButton,
+              backgroundColor: activeTab === 'reporting' ? '#1e3a8a' : 'transparent',
+              fontWeight: activeTab === 'reporting' ? 600 : 400
+            }}
+          >
+            <span>📊</span> Reporting
+          </button>
         </nav>
+
 
         {/* Profile & Logout */}
         <div style={styles.profileBox}>
@@ -151,6 +168,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
             {activeTab === 'dashboard' && 'Real-Time Overview'}
             {activeTab === 'customer-mgmt' && 'Customer Management (Personal & Corporate)'}
             {activeTab === 'account-mgmt' && 'Account Management & Operations'}
+            {activeTab === 'reporting' && 'Reports & Analytics'}
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '13px', color: '#475569' }}>
             <span>🕒 {new Date().toLocaleDateString('en-GB')}</span>
@@ -243,6 +261,11 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
           {/* ACCOUNT MANAGEMENT TAB */}
           {activeTab === 'account-mgmt' && (
             <CreateAccountForm />
+          )}
+
+          {/* REPORTING TAB — Group 2 Reporting Subsystem */}
+          {activeTab === 'reporting' && (
+            <ReportingView />
           )}
 
         </div>

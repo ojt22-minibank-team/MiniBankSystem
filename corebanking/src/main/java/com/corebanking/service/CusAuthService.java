@@ -110,9 +110,9 @@ public class CusAuthService {
         long loginStartTime = System.currentTimeMillis();
         System.out.println("\n========== LOGIN TIMING START ==========");
 
-        // -----------------------------------------
+
         // Request validation
-        // -----------------------------------------
+
 
         if (request == null
                 || request.getLoginIdentifier() == null
@@ -159,17 +159,13 @@ public class CusAuthService {
                         + " ms"
         );
 
-
-        // -----------------------------------------
         // Customer status စစ်
-        // -----------------------------------------
+     
 
         validateCustomerStatus(customer);
 
-
-        // -----------------------------------------
         // Customer Credentials ရှာ
-        // -----------------------------------------
+       
 
         long credentialsLookupStart = System.currentTimeMillis();
 
@@ -724,11 +720,7 @@ public class CusAuthService {
             );
 
         } catch (MailException ex) {
-        	 ex.printStackTrace();
-
-        	    savedOtp.setStatus(
-        	            OtpStatus.EXPIRED
-        	    );
+           // ex.printStackTrace();
 
             System.out.println(
                     "[TIMING] Gmail SMTP failed after: "
