@@ -28,7 +28,7 @@ public class P2PTransferRequestDto {
 
    
     @NotNull(message = "Transfer amount is required")
-    @DecimalMin(value = "10000.00", message = "Minimum transfer amount is 10000 MMK") 
+    @DecimalMin(value = "1.00", inclusive = true, message = "Transfer amount must be at least 1 MMK")
     @Digits(integer = 14, fraction = 4, message = "Invalid amount format")
     private BigDecimal amount;
    
@@ -37,9 +37,6 @@ public class P2PTransferRequestDto {
     @Pattern(regexp = "^[A-Z]{3}$", message = "Invalid currency code format")
     private String currency = "MMK";
 
-    @NotBlank(message = "Transaction PIN is required")
-    @Pattern(regexp = "^\\d{6}$", message = "Transaction PIN must be exactly 6 digits")
-    private String transactionPin;
 
     @Size(max = 255, message = "Description must not exceed 255 characters")
     private String description;
