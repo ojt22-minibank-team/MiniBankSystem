@@ -2,16 +2,16 @@ import {
   createBrowserRouter,
   RouterProvider as ReactRouterProvider,
 } from "react-router-dom";
-// ၁။ မိမိ Component ကို Import လုပ်ပါ
-import { TransactionReport } from "../../features/auth/reports/TransactionReport";
+import ReportingView from "../../features/reporting/ReportingView";
 
 const router = createBrowserRouter([
-  // ... အခြားရှိပြီးသား Route များ (ဥပမာ Login, Dashboard စသည်) ...
-
-  // ၂။ ယခု Report အတွက် Route အသစ် ထည့်ပါ
+  {
+    path: "/reports",
+    element: <ReportingView />,
+  },
   {
     path: "/reports/transactions",
-    element: <TransactionReport />,
+    element: <ReportingView />,
   },
 ]);
 
