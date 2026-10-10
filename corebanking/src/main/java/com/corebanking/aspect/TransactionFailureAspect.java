@@ -1,6 +1,5 @@
 package com.corebanking.aspect;
 
-import com.corebanking.dto.EcommercePaymentRequestDto;
 import com.corebanking.dto.P2PTransferRequestDto;
 import com.corebanking.exception.InsufficientFundsException;
 import com.corebanking.exception.TransactionException;
@@ -22,43 +21,34 @@ public class TransactionFailureAspect {
 
     private final TransactionAuditService transactionAuditService;
 
-    // P2PTransferService ရော EcommercePaymentService ကိုပါ ၂ ခုစလုံး ကြားဖြတ်စောင့်ကြည့်မည်
     @AfterThrowing(
-        pointcut = "execution(* com.corebanking.service.P2PTransferService.processP2PTransfer(..)) || " +
-                   "execution(* com.corebanking.service.EcommercePaymentService.processEcommercePayment(..))",
+        pointcut = "execution(* com.corebanking.service.P2PTransferService.processP2PTransfer(..))",
         throwing = "ex"
     )
     public void handleTransferFailure(JoinPoint joinPoint, Throwable ex) {
-        String failureCode = resolveEligibleFailureCode(ex);
-        if (failureCode == null) {
-            return;
-        }
-
         Object[] args = joinPoint.getArgs();
-        String failureMessage = ex.getMessage();
-
-        // ၁။ P2P Transfer ကျရှုံးမှုကို ကိုင်တွယ်ခြင်း
         if (args.length >= 3 && args[1] instanceof P2PTransferRequestDto request) {
             String idempotencyKey = (String) args[2];
-            executePostRollback(() -> transactionAuditService.recordFailedTransfer(request, idempotencyKey, failureCode, failureMessage));
-        }
-        // ၂။ E-Commerce Payment ကျရှုံးမှုကို ကိုင်တွယ်ခြင်း
-        else if (args.length >= 2 && args[0] instanceof EcommercePaymentRequestDto request) {
-            String idempotencyKey = (String) args[1];
-            executePostRollback(() -> transactionAuditService.recordFailedEcommercePayment(request, idempotencyKey, failureCode, failureMessage));
-        }
-    }
+            
+            
+            String failureCode = resolveEligibleFailureCode(ex);
+            if (failureCode == null) {
+                return;
+            }
 
-    private void executePostRollback(Runnable task) {
-        if (TransactionSynchronizationManager.isActualTransactionActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCompletion(int status) {
-                    task.run();
-                }
-            });
-        } else {
-            task.run();
+            String failureMessage = ex.getMessage();
+
+           
+            if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCompletion(int status) {
+                        transactionAuditService.recordFailedTransfer(request, idempotencyKey, failureCode, failureMessage);
+                    }
+                });
+            } else {
+                transactionAuditService.recordFailedTransfer(request, idempotencyKey, failureCode, failureMessage);
+            }
         }
     }
 
@@ -71,10 +61,11 @@ public class TransactionFailureAspect {
             if (msg.contains("daily limit")) {
                 return "DAILY_LIMIT_EXCEEDED";
             }
-            if (msg.contains("not active") || msg.contains("frozen")) {
+            if (msg.contains("not active")) {
                 return "ACCOUNT_NOT_ACTIVE";
             }
         }
+        
         return null;
     }
 }

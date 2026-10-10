@@ -13,34 +13,23 @@ public class PasswordGeneratorUtil {
     private static final SecureRandom random = new SecureRandom();
 
     /**
-     * Default method: generates an 8-character temporary password.
+     * အနည်းဆုံး ၈ လုံးပါဝင်ပြီး Policy များနှင့် ကိုက်ညီသော Temporary Password အား Auto Generate ထုတ်ပေးခြင်း
      */
     public static String generateTemporaryPassword() {
-        return generateTemporaryPassword(8);
-    }
-
-    /**
-     * Overloaded method: accepts length (e.g., 8, 10, 12).
-     */
-    public static String generateTemporaryPassword(int length) {
-        if (length < 8) {
-            length = 8; // Enforce minimum length policy
-        }
-
         StringBuilder password = new StringBuilder();
 
-        // Enforce at least 1 character from each group
+        // Policy နှင့် ကိုက်ညီစေရန် အနည်းဆုံး ၁ လုံးစီ မဖြစ်မနေ ထည့်သွင်းခြင်း
         password.append(UPPER.charAt(random.nextInt(UPPER.length())));
         password.append(LOWER.charAt(random.nextInt(LOWER.length())));
         password.append(DIGITS.charAt(random.nextInt(DIGITS.length())));
         password.append(SPECIAL.charAt(random.nextInt(SPECIAL.length())));
 
-        // Fill remaining slots
-        for (int i = 4; i < length; i++) {
+        // ကျန်ရှိသော ၄ လုံးကို စုစုပေါင်း အလုံးရေ ၈ လုံး ပြည့်အောင် Random ရွေးချယ်ခြင်း
+        for (int i = 4; i < 8; i++) {
             password.append(ALL_CHARS.charAt(random.nextInt(ALL_CHARS.length())));
         }
 
-        // Shuffle characters using Fisher-Yates algorithm
+        // စာလုံးများကို နေရာစုံအောင် မွှေနှောက် (Shuffle) ခြင်း
         char[] array = password.toString().toCharArray();
         for (int i = array.length - 1; i > 0; i--) {
             int j = random.nextInt(i + 1);

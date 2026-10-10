@@ -69,22 +69,4 @@ public class CustomerController {
                 "customerCode", customerCode
         ));
     }
-    /**
-     * Staff က Customer ၏ KYC Status ကို အတည်ပြု (Verify) သို့မဟုတ် ပယ်ချ (Reject) သည့် API
-     * PATCH /api/customers/{customerCode}/kyc-status
-     */
-    @PatchMapping("/{customerCode}/kyc-status")
-    public ResponseEntity<?> updateKycStatus(
-            @PathVariable String customerCode,
-            @RequestBody Map<String, String> payload) {
-        
-        String newStatus = payload.get("status"); // "ACTIVE" (VERIFIED) သို့မဟုတ် "REJECTED"
-        customerService.updateCustomerKycStatus(customerCode, newStatus);
-        
-        return ResponseEntity.ok(Map.of(
-            "message", "Customer KYC status updated successfully",
-            "customerCode", customerCode,
-            "status", newStatus
-        ));
-    }
 }
