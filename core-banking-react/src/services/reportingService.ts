@@ -138,14 +138,3 @@ export async function exportAuditTrail(
   const ext = format === 'excel' ? 'xlsx' : format === 'pdf' ? 'pdf' : 'csv';
   triggerDownload(res.data as Blob, `Audit_Trail_Log.${ext}`);
 }
-
-export const reportService = {
-  fetchDailyLedgerSummary,
-  fetchAccountStatusSummary,
-  fetchAuditTrailLogs,
-  exportDailyLedger,
-  exportAccountStatus,
-  exportAuditTrail,
-};
-
-export default reportService;

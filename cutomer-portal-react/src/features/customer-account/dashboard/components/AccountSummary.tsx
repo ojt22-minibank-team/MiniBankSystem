@@ -1,6 +1,8 @@
 import {
-  ArrowUpRight,
+  ArrowRight,
   CreditCard,
+  PiggyBank,
+  WalletCards,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -10,89 +12,119 @@ interface AccountSummaryProps {
   accounts: DashboardAccount[];
 }
 
+function getAccountIcon(accountType: string) {
+  const type = accountType.toUpperCase();
+
+  if (type.includes("SAVING")) {
+    return PiggyBank;
+  }
+
+  if (type.includes("CURRENT")) {
+    return CreditCard;
+  }
+
+  return WalletCards;
+}
+
 export default function AccountSummary({
   accounts,
 }: AccountSummaryProps) {
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      {accounts.map((account) => (
-        <div
-          key={account.accountNumber}
-          className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md"
-        >
-          {/* Header */}
-          <div className="flex items-start justify-between gap-4">
+    <section>
 
-            {/* Account Information */}
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="shrink-0 rounded-lg bg-blue-50 p-3 text-blue-700">
-                <CreditCard size={21} />
-              </div>
+      {/* Account Cards */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {accounts.map((account) => {
+          const AccountIcon = getAccountIcon(
+            account.accountType
+          );
 
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-900">
-                  {account.accountType}
-                </p>
-
-                <p className="mt-1 text-xs text-slate-500">
-                  {account.accountNumber}
-                </p>
-              </div>
-            </div>
-
-            {/* Account Status */}
-            <span
-              className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
-                account.status === "ACTIVE"
-                  ? "bg-green-50 text-green-700"
-                  : account.status === "FROZEN"
-                  ? "bg-yellow-50 text-yellow-700"
-                  : "bg-red-50 text-red-700"
-              }`}
-            >
-              {account.status}
-            </span>
-          </div>
-
-          {/* Balance */}
-          <div className="mt-6">
-            <p className="text-xs text-slate-500">
-              Available Balance
-            </p>
-
-            <p className="mt-1 text-2xl font-bold text-slate-900">
-              {account.availableBalance.toLocaleString()}
-              <span className="ml-2 text-sm font-medium text-slate-500">
-                {account.currency}
-              </span>
-            </p>
-          </div>
-
-          {/* Footer */}
-          <div className="mt-5 flex items-center justify-between gap-4 border-t border-slate-100 pt-4">
-
-            {/* Account Type */}
-            <div>
-              <p className="text-xs text-slate-400">
-                Account Type
-              </p>
-
-              <p className="mt-1 text-sm font-medium text-slate-700">
-                {account.accountType}
-              </p>
-            </div>
-
-            {/* View Details */}
+          return (
             <Link
+              key={account.accountNumber}
               to={`/accounts/${account.accountNumber}`}
-              className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-blue-700 transition hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className="group block rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md"
             >
-              View Details
-              <ArrowUpRight size={16} />
+              {/* Account Header */}
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex min-w-0 items-center gap-4">
+                  {/* Account Icon */}
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[#0878E8] transition-colors duration-200 group-hover:bg-[#0878E8] group-hover:text-white">
+                    <AccountIcon size={25} strokeWidth={1.8} />
+                  </div>
+
+                  {/* Account Information */}
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-[#08295C]">
+                      {account.accountType}
+                    </p>
+
+                    <p className="mt-1 text-xs text-slate-400">
+                      {account.accountNumber}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Status */}
+                <span
+                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
+                    account.status === "ACTIVE"
+                      ? "bg-emerald-50 text-emerald-600"
+                      : account.status === "FROZEN"
+                      ? "bg-amber-50 text-amber-600"
+                      : "bg-red-50 text-red-600"
+                  }`}
+                >
+                  {account.status}
+                </span>
+              </div>
+
+              {/* Balance */}
+              <div className="mt-5">
+                <p className="text-xs text-slate-400">
+                  Available Balance
+                </p>
+
+                <p className="mt-1 text-xl font-bold text-[#08295C]">
+                  {account.availableBalance.toLocaleString(
+                    "en-MM",
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }
+                  )}
+
+                  <span className="ml-2 text-sm font-medium text-slate-500">
+                    {account.currency}
+                  </span>
+                </p>
+              </div>
+
+              {/* Footer */}
+              <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
+                <div>
+                  <p className="text-xs text-slate-400">
+                    Account Type
+                  </p>
+
+                  <p className="mt-1 text-sm font-medium text-slate-700">
+                    {account.accountType}
+                  </p>
+                </div>
+
+                <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#0878E8] transition-colors group-hover:text-[#0668ca]">
+                  View Details
+
+                  <ArrowRight
+                    size={16}
+                    className="transition-transform duration-200 group-hover:translate-x-1"
+                  />
+                </span>
+              </div>
             </Link>
-          </div>
-        </div>
-      ))}
-    </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
