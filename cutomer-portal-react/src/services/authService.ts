@@ -315,6 +315,21 @@ export const confirmPinReset =
 
 
 
+  export interface KeepAliveResponse {
+  success: boolean;
+  message: string;
+}
+
+export const keepSessionAlive =
+  async (): Promise<KeepAliveResponse> => {
+
+    const response =
+      await api.get<KeepAliveResponse>(
+        "/auth/session/keep-alive"
+      );
+
+    return response.data;
+  };
 // ======================================================
 // TEMPORARY PROTECTED API TEST
 // GET /api/customer/auth/test
