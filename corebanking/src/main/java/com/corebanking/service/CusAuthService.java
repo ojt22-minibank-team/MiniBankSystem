@@ -720,14 +720,14 @@ public class CusAuthService {
             );
 
         } catch (MailException ex) {
-           // ex.printStackTrace();
+           
 
             System.out.println(
                     "[TIMING] Gmail SMTP failed after: "
                             + (System.currentTimeMillis() - emailSendStart)
                             + " ms"
             );
-
+            ex.printStackTrace();
             // Email မရောက်တဲ့ OTP ကို usable မဖြစ်အောင်
             savedOtp.setStatus(
                     OtpStatus.EXPIRED

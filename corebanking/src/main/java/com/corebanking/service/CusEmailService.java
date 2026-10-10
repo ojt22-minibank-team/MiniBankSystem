@@ -18,23 +18,54 @@ public class CusEmailService {
     // LOGIN OTP EMAIL
     // =========================================================
 
+    
     public void sendLoginOtp(
             String toEmail,
             String otp) {
 
+        // ==========================================
+        // DEV LOG
+        // ==========================================
+
+        System.out.println(
+                "========================================"
+        );
+
+        System.out.println(
+                "[DEV ONLY] LOGIN OTP"
+        );
+
+        System.out.println(
+                "Email : " + toEmail
+        );
+
+        System.out.println(
+                "OTP   : " + otp
+        );
+
+        System.out.println(
+                "Expires in : 5 minutes"
+        );
+
+        System.out.println(
+                "========================================"
+        );
+
+
+        // ==========================================
+        // SEND OTP EMAIL
+        // ==========================================
+
         SimpleMailMessage message =
                 new SimpleMailMessage();
-
 
         message.setTo(
                 toEmail
         );
 
-
         message.setSubject(
                 "Online Banking Login OTP"
         );
-
 
         message.setText(
                 "Your OTP code is: "
@@ -42,7 +73,6 @@ public class CusEmailService {
                         + "\n\nThis OTP will expire in 5 minutes."
                         + "\n\nDo not share this OTP with anyone."
         );
-
 
         mailSender.send(
                 message
