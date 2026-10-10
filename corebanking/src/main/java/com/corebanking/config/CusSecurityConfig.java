@@ -1,23 +1,20 @@
 package com.corebanking.config;
 
-import java.util.List;
+import com.corebanking.security.CusJwtAuthenticationFilter;
+
+import lombok.RequiredArgsConstructor;
 
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
-import org.springframework.http.HttpMethod;
+
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import com.corebanking.security.CusJwtAuthenticationFilter;
 
-import lombok.RequiredArgsConstructor;
 @Configuration
 @RequiredArgsConstructor
 public class CusSecurityConfig {
@@ -64,19 +61,12 @@ public class CusSecurityConfig {
             .securityMatcher(
                     "/api/customer/**"
             )
-            
-           
-            
+
             // REST API + JWT
             .csrf(
                     csrf ->
                             csrf.disable()
             )
-            .cors(cors ->
-            cors.configurationSource(
-                    corsConfigurationSource()
-            )
-    )
 
             // Server HTTP Session မသုံး
             .sessionManagement(
@@ -89,12 +79,6 @@ public class CusSecurityConfig {
             // Authorization rules
             .authorizeHttpRequests(
                     auth -> auth
-                    // CORS preflight
-                    .requestMatchers(
-                            HttpMethod.OPTIONS,
-                            "/**"
-                    )
-                    .permitAll()
 
                         // Login
                         .requestMatchers(
@@ -125,13 +109,6 @@ public class CusSecurityConfig {
                                 "/api/customer/auth/first-login/setup-pin"
                         )
                         .permitAll()
-                        
-                     // Password Reset Flow
-                        .requestMatchers(
-                                "/api/customer/auth/password-reset/**"
-                        )
-                        .permitAll()
-                        
 
                         // Refresh token
                         .requestMatchers(
@@ -153,51 +130,5 @@ public class CusSecurityConfig {
             );
 
         return http.build();
-    }
-    
-    
-    @Bean
-    public CorsConfigurationSource
-            corsConfigurationSource() {
-
-        CorsConfiguration configuration =
-                new CorsConfiguration();
-
-        configuration.setAllowedOrigins(
-                List.of(
-                        "http://localhost:5173"
-                )
-        );
-
-        configuration.setAllowedMethods(
-                List.of(
-                        "GET",
-                        "POST",
-                        "PUT",
-                        "PATCH",
-                        "DELETE",
-                        "OPTIONS"
-                )
-        );
-
-        configuration.setAllowedHeaders(
-                List.of(
-                        "Authorization",
-                        "Content-Type"
-                )
-        );
-
-        configuration.setAllowCredentials(true);
-
-
-        UrlBasedCorsConfigurationSource source =
-                new UrlBasedCorsConfigurationSource();
-
-        source.registerCorsConfiguration(
-                "/**",
-                configuration
-        );
-
-        return source;
     }
 }
