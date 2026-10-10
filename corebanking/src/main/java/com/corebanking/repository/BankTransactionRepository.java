@@ -19,6 +19,10 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
 
     boolean existsByIdempotencyKey(String idempotencyKey);
 
+    Optional<BankTransactions> findByTransactionRef(String transactionRef);
+
+    boolean existsByTransactionRef(String transactionRef);
+
     /**
      * Calculates total transferred amount by account for the current day.
      */
