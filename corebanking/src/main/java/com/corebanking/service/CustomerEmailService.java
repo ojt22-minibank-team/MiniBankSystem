@@ -11,7 +11,7 @@ public class CustomerEmailService {
 
     private final JavaMailSender mailSender;
 
-    /**
+    /***
      * ၁။ Customer Register ဖြစ်ချိန်တွင် Customer Code နှင့် Login Password ပို့သော Email
      */
     public void sendCustomerRegistrationEmail(String toEmail, String customerName, String customerCode, String tempPassword) {
