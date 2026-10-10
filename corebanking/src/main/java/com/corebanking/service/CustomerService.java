@@ -43,7 +43,7 @@ public class CustomerService {
     private final CustomerCredentialsRepository customerCredentialsRepository;
     private final StaffUsersRepository staffUsersRepository;
     private final PasswordEncoder passwordEncoder;
-    private final CusEmailService cusEmailService; // Email Service ကို ထည့်သွင်းခြင်း
+    private final CustomerEmailService cusEmailService; // Email Service ကို ထည့်သွင်းခြင်း
     private final CompanyContactPersonsRepository companyContactPersonsRepository;
 
     /**

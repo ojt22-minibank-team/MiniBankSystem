@@ -45,7 +45,7 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private final CustomerRepository customerRepository;
     private final StaffUsersRepository staffUsersRepository;
-    private final CusEmailService cusEmailService;
+    private final CustomerEmailService customerEmailService;
     private final AccountSignatoriesRepository accountSignatoriesRepository;
     private final CompanyContactPersonsRepository companyContactPersonsRepository; // 👈 Contact Persons Repository
     private final CustomerCredentialsRepository customerCredentialsRepository;
@@ -85,7 +85,7 @@ public class AccountService {
 
         // Account Details သာ ပါဝင်သော Email ကို ပို့ဆောင်ခြင်း (Password မပါပါ)
         if (customer.getEmail() != null && !customer.getEmail().isBlank()) {
-            cusEmailService.sendAccountOpeningDetailsEmail(
+            customerEmailService.sendAccountOpeningDetailsEmail(
                     customer.getEmail(),
                     customer.getFullName(),
                     savedAccount.getAccountNumber(),
@@ -225,7 +225,7 @@ public class AccountService {
         // ၁။ Company Official Email သို့ ပို့ခြင်း
         if (company.getEmail() != null && !company.getEmail().isBlank()) {
             try {
-                cusEmailService.sendCorporateAccountOpeningToCompany(
+                customerEmailService.sendCorporateAccountOpeningToCompany(
                         company.getEmail().trim(),
                         company.getFullName(),
                         company.getCustomerCode(),
@@ -240,7 +240,7 @@ public class AccountService {
         // ၂။ CEO ထံသို့ Approver Credentials Email ပို့ခြင်း
         if (ceoCustomer.getEmail() != null && !ceoCustomer.getEmail().isBlank()) {
             try {
-                cusEmailService.sendCorporateSignatoryWelcome(
+                customerEmailService.sendCorporateSignatoryWelcome(
                         ceoCustomer.getEmail().trim(),
                         ceoCustomer.getFullName(),
                         "Approver (CEO)",
@@ -258,7 +258,7 @@ public class AccountService {
         // ၃။ Accountant ထံသို့ Maker Credentials Email ပို့ခြင်း
         if (accountantCustomer.getEmail() != null && !accountantCustomer.getEmail().isBlank()) {
             try {
-                cusEmailService.sendCorporateSignatoryWelcome(
+                customerEmailService.sendCorporateSignatoryWelcome(
                         accountantCustomer.getEmail().trim(),
                         accountantCustomer.getFullName(),
                         "Maker (Accountant)",
