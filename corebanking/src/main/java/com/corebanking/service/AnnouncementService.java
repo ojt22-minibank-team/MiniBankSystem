@@ -48,7 +48,10 @@ public class AnnouncementService {
 
         // Validate audience
         validateAudience(request.getAudience());
-
+        validateDates(
+        	    request.getStartsAt(),
+        	    request.getEndsAt()
+        	);
 
         // Create announcement
         Announcements announcement =
@@ -175,7 +178,10 @@ public class AnnouncementService {
         validateAudience(
                 request.getAudience()
         );
-
+        validateDates(
+        	    request.getStartsAt(),
+        	    request.getEndsAt()
+        	);
 
         announcement.setTitle(
                 request.getTitle()
@@ -394,4 +400,51 @@ public class AnnouncementService {
                 announcement.getUpdatedAt()
         );
     }
+    
+    
+ // Validate announcement date range
+    private void validateDates(
+            LocalDateTime startsAt,
+            LocalDateTime endsAt) {
+
+        if (startsAt == null) {
+            throw new IllegalArgumentException(
+                "Start date and time are required"
+            );
+        }
+
+        if (endsAt != null && !endsAt.isAfter(startsAt)) {
+            throw new IllegalArgumentException(
+                "End date and time must be after start date and time"
+            );
+        }
+    }
+
+    // Active announcements visible to staff
+    public List<AnnouncementResponse> getAnnouncementsForStaff() {
+        LocalDateTime now = LocalDateTime.now();
+
+        return announcementsRepository.findVisibleAnnouncements(
+                AnnouncementAudience.STAFF,
+                AnnouncementAudience.ALL,
+                now
+        ).stream()
+         .map(this::toResponse)
+         .toList();
+    }
+
+    // Active announcements visible to customers
+    public List<AnnouncementResponse> getAnnouncementsForCustomers() {
+        LocalDateTime now = LocalDateTime.now();
+
+        return announcementsRepository.findVisibleAnnouncements(
+                AnnouncementAudience.CUSTOMERS,
+                AnnouncementAudience.ALL,
+                now
+        ).stream()
+         .map(this::toResponse)
+         .toList();
+    }
+    
+    
 }

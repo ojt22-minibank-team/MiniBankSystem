@@ -37,6 +37,11 @@ public class JwtRevokedTokens {
     private Customers customer;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "corporate_user_id",
+            foreignKey = @ForeignKey(name = "fk_jwt_corporate_user"))
+    private CorporateUser corporateUser;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "staff_id",
             foreignKey = @ForeignKey(name = "fk_jwt_staff"))
     private StaffUsers staff;

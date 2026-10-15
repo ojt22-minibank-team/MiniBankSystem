@@ -34,4 +34,12 @@ public class AnnouncementController {
                         .getActiveAnnouncements()
         );
     }
+    @GetMapping("/customer")
+    public ResponseEntity<List<AnnouncementResponse>>
+    getCustomerAnnouncements() {
+
+        return ResponseEntity.ok(
+                announcementService.getAnnouncementsForCustomers()
+        );
+    }
 }

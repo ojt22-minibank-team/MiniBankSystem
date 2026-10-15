@@ -4,7 +4,6 @@ import com.corebanking.dto.AccountCreateDTO;
 import com.corebanking.dto.AccountResponseDTO;
 import com.corebanking.dto.AccountStatusUpdateDTO;
 import com.corebanking.dto.CorporateAccountCreateDTO;
-import com.corebanking.dto.DepositRequestDTO;
 import com.corebanking.dto.JointHolderAddDTO;
 import com.corebanking.service.AccountService;
 
@@ -87,11 +86,6 @@ public class AccountController {
             @PathVariable String accountNumber,
             @RequestBody JointHolderAddDTO dto) {
         AccountResponseDTO response = accountService.addJointHolder(accountNumber, dto);
-        return ResponseEntity.ok(response);
-    }
-    @PostMapping("/deposit")
-    public ResponseEntity<AccountResponseDTO> depositFunds(@Valid @RequestBody DepositRequestDTO dto) {
-        AccountResponseDTO response = accountService.depositFunds(dto);
         return ResponseEntity.ok(response);
     }
 }

@@ -73,6 +73,7 @@ body.put("message", message);
 return new ResponseEntity<>(body, status);
 }
 
+
 @ExceptionHandler(CusAuthenticationException.class)
 public ResponseEntity<Map<String, Object>>
         handleCusAuthenticationException(
@@ -119,6 +120,17 @@ public ResponseEntity<Map<String, Object>> handleAccountLocked(
     return ResponseEntity
             .status(HttpStatus.LOCKED)
             .body(body);
+}
+@ExceptionHandler(CusValidationException.class)
+public ResponseEntity<Map<String, Object>>
+        handleCusValidationException(
+                CusValidationException ex) {
+
+    return buildErrorResponse(
+            HttpStatus.BAD_REQUEST,
+            "VALIDATION_ERROR",
+            ex.getMessage()
+    );
 }
 
 @ExceptionHandler(CusOtpException.class)
@@ -193,4 +205,10 @@ public ResponseEntity<Map<String, Object>>
             )
             .body(body);
 }
+
+@ExceptionHandler(AuthException.class)
+public ResponseEntity<Map<String, Object>> handleAuthException(AuthException ex) {
+    return buildErrorResponse(HttpStatus.UNAUTHORIZED, "AUTH_FAILED", ex.getMessage());
+}
+
 }

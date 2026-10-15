@@ -1,8 +1,8 @@
 package com.corebanking.entity.enums;
 
 public enum UpdatedByType {
-	CUSTOMER,
+    CUSTOMER,
+    CORPORATE_USER,
     STAFF,
     SYSTEM
-    
 }

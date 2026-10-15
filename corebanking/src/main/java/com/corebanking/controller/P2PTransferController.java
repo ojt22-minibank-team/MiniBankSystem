@@ -1,5 +1,6 @@
 package com.corebanking.controller;
 
+import com.corebanking.dto.AccountLookupResponseDto;
 import com.corebanking.dto.P2PTransferRequestDto;
 import com.corebanking.dto.P2PTransferResponseDto;
 import com.corebanking.service.P2PTransferService;
@@ -7,19 +8,25 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/transfers")
+@RequestMapping("/api/customer/transfers")
 @RequiredArgsConstructor
 public class P2PTransferController {
 
     private final P2PTransferService p2pTransferService;
 
+    @GetMapping("/lookup/{accountNumber}")
+    public ResponseEntity<AccountLookupResponseDto> lookupAccount(
+            @PathVariable String accountNumber) {
+        AccountLookupResponseDto response = p2pTransferService.lookupAccount(accountNumber);
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/p2p")
     public ResponseEntity<P2PTransferResponseDto> executeP2PTransfer(
-            @AuthenticationPrincipal UserDetails authenticatedUser,
+    		@AuthenticationPrincipal String customerId,
             @RequestHeader(value = "Idempotency-Key", required = false) String headerIdempotencyKey,
             @Valid @RequestBody P2PTransferRequestDto request) {
     	
@@ -28,7 +35,7 @@ public class P2PTransferController {
                 : request.getIdempotencyKey();
 
         P2PTransferResponseDto response = p2pTransferService.processP2PTransfer(
-        		authenticatedUser.getUsername(),
+        		 customerId,
                 request, 
                 idempotencyKey
         );

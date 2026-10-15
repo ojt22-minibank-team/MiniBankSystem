@@ -1,18 +1,29 @@
-export type AccountTypes = "SAVING" | "CURRENT";
+
+export type AccountType = "SAVINGS" | "CURRENT";
 
 export type AccountStatus =
   | "ACTIVE"
+  | "DORMANT"
   | "FROZEN"
-  | "SUSPENDED";
+  | "CLOSED";
 
-export interface Account {
-  id: string;
+export type AccountCategory =
+  | "RETAIL"
+  | "CORPORATE"
+  | "INTERNAL";
+
+export interface CustomerAccount {
   accountNumber: string;
-  accountType: AccountTypes;
-  accountName: string;
-  balance: number;
-  availableBalance: number;
+  accountCategory: AccountCategory;
+  accountType: AccountType;
   currency: string;
+  currentBalance: number;
+  availableBalance: number;
+  minimumBalance: number;
+  dailyTransferLimit: number;
   status: AccountStatus;
-  openDate: string;
+  jointAccount: boolean;
+  requiredApprovals: number;
+  openedAt: string;
+  closedAt: string | null;
 }

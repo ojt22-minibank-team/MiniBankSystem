@@ -9,6 +9,7 @@ import com.corebanking.entity.Roles;
 import com.corebanking.entity.StaffUserRoles;
 import com.corebanking.entity.StaffUsers;
 import com.corebanking.entity.enums.StaffUserStatus;
+import com.corebanking.repository.AuthSessionsRepository;
 import com.corebanking.repository.RolesRepository;
 import com.corebanking.repository.StaffUserRolesRepository;
 import com.corebanking.repository.StaffUsersRepository;
@@ -17,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -30,6 +32,7 @@ public class StaffManagementService {
     private final StaffUserRolesRepository staffUserRolesRepository;
     private final RolesRepository rolesRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuthSessionsRepository authSessionsRepository;
 
 
     // =====================================================
@@ -38,6 +41,13 @@ public class StaffManagementService {
 
     public StaffResponse createStaff(StaffCreateRequest request) {
 
+    	
+    	if (staffUsersRepository.existsByEmailIgnoreCase(
+    	        request.getEmail().trim())) {
+    	    throw new IllegalArgumentException(
+    	        "Email is already registered");
+    	}
+    	
         // Check username
         if (staffUsersRepository
                 .existsByUsernameCustom(request.getUsername())) {
@@ -76,12 +86,14 @@ public class StaffManagementService {
         staff.setEmail(request.getEmail());
         staff.setPhone(request.getPhone());
 
-        // Hash password
         staff.setPasswordHash(
-                passwordEncoder.encode(
-                        request.getPassword()
-                )
-        );
+        	    passwordEncoder.encode(
+        	        java.util.UUID.randomUUID().toString()
+        	    )
+        	);
+
+        	staff.setMustChangePassword(true);
+        	staff.setPasswordChangedAt(null);
 
         // New staff must change temporary password
         staff.setMustChangePassword(true);
@@ -213,49 +225,58 @@ public class StaffManagementService {
  // 5. CHANGE STAFF ROLE
  // =====================================================
 
- public StaffResponse changeRole(
-         UUID staffId,
-         ChangeStaffRoleRequest request
- ) {
-     // Check staff
-     StaffUsers staff =
-             staffUsersRepository.findById(staffId)
-                     .orElseThrow(() ->
-                             new RuntimeException("Staff not found")
-                     );
+    @Transactional // Transactional မဖြစ်မနေ ထည့်ပေးပါ
+    public StaffResponse changeRole(
+             UUID staffId,
+             ChangeStaffRoleRequest request
+     ) {
+         // Check staff
+         StaffUsers staff =
+                 staffUsersRepository.findById(staffId)
+                         .orElseThrow(() ->
+                                 new RuntimeException("Staff not found")
+                         );
 
-     // Check new role
-     Roles role =
-             rolesRepository.findById(
-                     request.getRoleId()
-             )
-             .orElseThrow(() ->
-                     new RuntimeException("Role not found")
-             );
+         // Check new role
+         Roles role =
+                 rolesRepository.findById(
+                         request.getRoleId()
+                 )
+                 .orElseThrow(() ->
+                         new RuntimeException("Role not found")
+                 );
 
-     // Find current role association
-     StaffUserRoles staffRole =
-             staffUserRolesRepository
-                     .findByStaffId(staffId)
-                     .orElseThrow(() ->
-                             new RuntimeException("Staff role not found")
-                     );
+         // Find current role association
+         StaffUserRoles staffRole =
+                 staffUserRolesRepository
+                         .findByStaffId(staffId)
+                         .orElseThrow(() ->
+                                 new RuntimeException("Staff role not found")
+                         );
 
-     // Primary Key ပြောင်းလို့မရတဲ့အတွက် အဟောင်းကို ဖျက်ပါ
-     staffUserRolesRepository.delete(staffRole);
-     staffUserRolesRepository.flush(); // Database ထဲသို့ ချက်ချင်းသက်ရောက်စေရန်
+         // Primary Key ပြောင်းလို့မရတဲ့အတွက် အဟောင်းကို ဖျက်ပါ
+         staffUserRolesRepository.delete(staffRole);
+         staffUserRolesRepository.flush(); // Database ထဲသို့ ချက်ချင်းသက်ရောက်စေရန်
 
-     // Role အသစ်ဖြင့် အသစ်ပြန်ဆောက်ပါ
-     StaffUserRoles newStaffRole = new StaffUserRoles();
-     newStaffRole.setStaffId(staffId);
-     newStaffRole.setRoleId(role.getRoleId());
-     newStaffRole.setAssignedAt(LocalDateTime.now());
-     newStaffRole.setUpdatedAt(LocalDateTime.now());
+         // Role အသစ်ဖြင့် အသစ်ပြန်ဆောက်ပါ
+         StaffUserRoles newStaffRole = new StaffUserRoles();
+         newStaffRole.setStaffId(staffId);
+         newStaffRole.setRoleId(role.getRoleId());
+         newStaffRole.setAssignedAt(LocalDateTime.now());
+         newStaffRole.setUpdatedAt(LocalDateTime.now());
 
-     staffUserRolesRepository.save(newStaffRole);
+         staffUserRolesRepository.save(newStaffRole);
 
-     return toResponse(staff);
- }
+         
+         staff.setTokenVersion(staff.getTokenVersion() + 1);
+         staff.setUpdatedAt(LocalDateTime.now());
+         staffUsersRepository.save(staff); // Staff Table ကို Update လုပ်ရန်
+
+         
+         authSessionsRepository.revokeAllActiveSessionsByStaffId(staffId);
+
+         return toResponse(staff);
+     }
 
 
     // =====================================================

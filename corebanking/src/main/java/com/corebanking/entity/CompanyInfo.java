@@ -52,6 +52,9 @@ public class CompanyInfo {
 
     @Column(name = "address", length = 255)
     private String address;
+    
+    @Column(name = "profile_image_url",length=500)
+    private String profileImageUrl;
 
     @Column(name = "city", length = 100)
     private String city;

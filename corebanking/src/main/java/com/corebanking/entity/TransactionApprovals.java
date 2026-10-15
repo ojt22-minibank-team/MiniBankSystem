@@ -33,9 +33,14 @@ public class TransactionApprovals {
     private BankTransactions transaction;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "approver_customer_id", nullable = false,
+    @JoinColumn(name = "approver_customer_id",
             foreignKey = @ForeignKey(name = "fk_appr_customer"))
     private Customers approverCustomer;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "approver_corporate_user_id",
+            foreignKey = @ForeignKey(name = "fk_appr_corporate_user"))
+    private CorporateUser approverCorporateUser;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "approval_status", nullable = false, length = 10)

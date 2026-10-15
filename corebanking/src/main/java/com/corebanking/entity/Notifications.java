@@ -30,6 +30,11 @@ public class Notifications {
     private Customers customer;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "corporate_user_id",
+            foreignKey = @ForeignKey(name = "fk_notifications_corporate_user"))
+    private CorporateUser corporateUser;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "transaction_id",
             foreignKey = @ForeignKey(name = "fk_notifications_transaction"))
     private BankTransactions transaction;
