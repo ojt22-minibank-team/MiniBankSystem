@@ -12,6 +12,7 @@ import { accountService } from '../services/accountService';
 import type { CorporateAccountCreateDTO } from '../types/account.types';
 import { useToast } from '../context/ToastContext';
 import { Modal } from '../components/common/Modal';
+import AdminLayout from '../components/layout/AdminLayout';
 
 export const CorporateAccountCreateView: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -80,7 +81,8 @@ export const CorporateAccountCreateView: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+    <AdminLayout pageTitle="Open Corporate Joint Account">
+      <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
       {/* Top Header */}
       <div className="pb-2 border-b border-slate-200">
         <h1 className="text-2xl font-black text-slate-900 tracking-tight">
@@ -257,27 +259,16 @@ export const CorporateAccountCreateView: React.FC = () => {
         subtitle="Multi-Signatory Ledger Configured"
         maxWidth="md"
         footer={
-          <div className="flex items-center justify-between w-full">
-            <button
-              type="button"
-              onClick={() => {
-                const accNum = createdResult?.accountNumber;
-                setCreatedResult(null);
-                navigate(`/accounts/deposit?accountNumber=${accNum}`);
-              }}
-              className="px-3.5 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl"
-            >
-              Credit Funds Now
-            </button>
+          <div className="flex items-center justify-end gap-3 w-full">
             <button
               type="button"
               onClick={() => {
                 setCreatedResult(null);
                 navigate('/accounts');
               }}
-              className="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl"
+              className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shadow-xs"
             >
-              Back to Accounts
+              View in Accounts Directory
             </button>
           </div>
         }
@@ -329,7 +320,8 @@ export const CorporateAccountCreateView: React.FC = () => {
         )}
       </Modal>
     </div>
-  );
+  </AdminLayout>
+);
 };
 
 export default CorporateAccountCreateView;

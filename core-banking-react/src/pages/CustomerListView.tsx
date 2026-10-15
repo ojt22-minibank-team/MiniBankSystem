@@ -16,6 +16,7 @@ import { StatusBadge, CustomerTypeBadge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
 import { TableSkeleton } from '../components/common/LoadingSkeleton';
 import { useToast } from '../context/ToastContext';
+import AdminLayout from '../components/layout/AdminLayout';
 
 export const CustomerListView: React.FC = () => {
   const [customers, setCustomers] = useState<CustomerResponseDTO[]>([]);
@@ -79,7 +80,8 @@ export const CustomerListView: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <AdminLayout pageTitle="Customer Directory">
+      <div className="space-y-6 animate-fade-in">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
         <div>
@@ -431,7 +433,8 @@ export const CustomerListView: React.FC = () => {
         ) : null}
       </Modal>
     </div>
-  );
+  </AdminLayout>
+);
 };
 
 export default CustomerListView;

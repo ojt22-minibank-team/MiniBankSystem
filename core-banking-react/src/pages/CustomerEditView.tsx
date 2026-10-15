@@ -12,6 +12,7 @@ import { customerService } from '../services/customerService';
 import type { CustomerDetailResponseDTO, CustomerUpdateDTO } from '../types/customer.types';
 import { StatusBadge, CustomerTypeBadge } from '../components/common/Badge';
 import { useToast } from '../context/ToastContext';
+import AdminLayout from '../components/layout/AdminLayout';
 
 export const CustomerEditView: React.FC = () => {
   const { customerCode } = useParams<{ customerCode: string }>();
@@ -119,7 +120,8 @@ export const CustomerEditView: React.FC = () => {
   const isCompany = customer.customerType?.toUpperCase() === 'COMPANY';
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
+    <AdminLayout pageTitle="Edit Customer Profile">
+      <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
       {/* Top Header */}
       <div className="flex items-center justify-between pb-2 border-b border-slate-200">
         <div className="flex items-center gap-3">
@@ -263,7 +265,8 @@ export const CustomerEditView: React.FC = () => {
         </form>
       </div>
     </div>
-  );
+  </AdminLayout>
+);
 };
 
 export default CustomerEditView;

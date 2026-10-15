@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   User,
   Building2,
@@ -12,13 +12,24 @@ import { customerService } from '../services/customerService';
 import type { PersonalCustomerCreateDTO, CompanyCustomerCreateDTO } from '../types/customer.types';
 import { useToast } from '../context/ToastContext';
 import { Modal } from '../components/common/Modal';
+import AdminLayout from '../components/layout/AdminLayout';
 
 export const CustomerRegistrationView: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const toast = useToast();
 
   const [activeTab, setActiveTab] = useState<'PERSONAL' | 'COMPANY'>('PERSONAL');
   const [submitting, setSubmitting] = useState<boolean>(false);
+
+  useEffect(() => {
+    const typeParam = searchParams.get('type')?.toUpperCase();
+    if (typeParam === 'COMPANY') {
+      setActiveTab('COMPANY');
+    } else if (typeParam === 'PERSONAL') {
+      setActiveTab('PERSONAL');
+    }
+  }, [searchParams]);
 
   // Personal Form Fields
   const [personalForm, setPersonalForm] = useState<PersonalCustomerCreateDTO>({
@@ -164,7 +175,8 @@ export const CustomerRegistrationView: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+    <AdminLayout pageTitle="New Customer Registration">
+      <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
       {/* Page Header */}
       <div className="pb-2 border-b border-slate-200">
         <h1 className="text-2xl font-black text-slate-900 tracking-tight">
@@ -600,6 +612,7 @@ export const CustomerRegistrationView: React.FC = () => {
         </div>
       </Modal>
     </div>
+  </AdminLayout>
   );
 };
 

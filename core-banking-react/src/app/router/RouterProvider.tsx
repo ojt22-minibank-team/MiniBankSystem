@@ -11,6 +11,15 @@ import TransfersPage from '../../features/operations/pages/TransfersPage';
 import UnauthorizedPage from '../../components/common/UnauthorizedPage';
 import ProtectedRoute from './ProtectedRoute';
 
+// Staff Operations Pages
+import StaffDashboard from '../../pages/StaffDashboard';
+import CustomerListView from '../../pages/CustomerListView';
+import CustomerRegistrationView from '../../pages/CustomerRegistrationView';
+import CustomerEditView from '../../pages/CustomerEditView';
+import AccountListView from '../../pages/AccountListView';
+import RetailAccountCreateView from '../../pages/RetailAccountCreateView';
+import CorporateAccountCreateView from '../../pages/CorporateAccountCreateView';
+
 export default function RouterProvider() {
   return (
     <BrowserRouter>
@@ -18,11 +27,28 @@ export default function RouterProvider() {
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/setup-password" element={<StaffPasswordSetupPage />} />
-
         <Route path="/set-password" element={<StaffPasswordSetupPage />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-        {/* Protected Dashboard (available to authenticated staff) */}
+        {/* Staff Dashboard (Primary for staff & operations) */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <StaffDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/staff/dashboard"
+          element={
+            <ProtectedRoute>
+              <StaffDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Protected Admin Dashboard (available to authenticated staff / admin) */}
         <Route
           path="/admin/dashboard"
           element={
@@ -62,7 +88,31 @@ export default function RouterProvider() {
           }
         />
 
-        {/* Customers (Accessible to staff) */}
+        {/* Customer Management */}
+        <Route
+          path="/customers"
+          element={
+            <ProtectedRoute>
+              <CustomerListView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/customers/new"
+          element={
+            <ProtectedRoute>
+              <CustomerRegistrationView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/customers/:customerCode/edit"
+          element={
+            <ProtectedRoute>
+              <CustomerEditView />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/admin/customers"
           element={
@@ -73,6 +123,30 @@ export default function RouterProvider() {
         />
 
         {/* Bank Accounts */}
+        <Route
+          path="/accounts"
+          element={
+            <ProtectedRoute>
+              <AccountListView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/accounts/new"
+          element={
+            <ProtectedRoute>
+              <RetailAccountCreateView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/accounts/corporate/new"
+          element={
+            <ProtectedRoute>
+              <CorporateAccountCreateView />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/admin/accounts"
           element={
@@ -93,13 +167,13 @@ export default function RouterProvider() {
         />
 
         {/* Default redirect */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
         {/* 404 fallback */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
   );
 }
 
-export default RouterProvider;
+export { RouterProvider };

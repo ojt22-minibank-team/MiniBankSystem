@@ -5,15 +5,16 @@ import {
   Search,
   Plus,
   RefreshCw,
-  ArrowDownCircle,
-  ShieldAlert,
   Building2,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { accountService } from '../services/accountService';
 import type { AccountResponseDTO } from '../types/account.types';
 import { StatusBadge } from '../components/common/Badge';
 import { TableSkeleton } from '../components/common/LoadingSkeleton';
 import { useToast } from '../context/ToastContext';
+import AdminLayout from '../components/layout/AdminLayout';
 
 export const AccountListView: React.FC = () => {
   const [accounts, setAccounts] = useState<AccountResponseDTO[]>([]);
@@ -60,7 +61,8 @@ export const AccountListView: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <AdminLayout pageTitle="Accounts Management">
+      <div className="space-y-6 animate-fade-in">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
         <div>
@@ -217,22 +219,11 @@ export const AccountListView: React.FC = () => {
                     </td>
                     <td className="px-4 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        {/* Deposit Shortcut */}
                         <Link
-                          to={`/accounts/deposit?accountNumber=${encodeURIComponent(acc.accountNumber)}`}
-                          title="Deposit Cash"
-                          className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+                          to="/customers"
+                          className="px-2.5 py-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/60 rounded-lg transition-colors"
                         >
-                          <ArrowDownCircle className="w-4 h-4" />
-                        </Link>
-
-                        {/* Status Change Shortcut */}
-                        <Link
-                          to={`/accounts/status?accountNumber=${encodeURIComponent(acc.accountNumber)}`}
-                          title="Update Status"
-                          className="p-1.5 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors"
-                        >
-                          <ShieldAlert className="w-4 h-4" />
+                          View CIF
                         </Link>
                       </div>
                     </td>
@@ -244,7 +235,8 @@ export const AccountListView: React.FC = () => {
         </div>
       </div>
     </div>
-  );
+  </AdminLayout>
+);
 };
 
 export default AccountListView;
