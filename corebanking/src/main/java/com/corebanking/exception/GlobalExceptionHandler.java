@@ -13,202 +13,138 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-@ExceptionHandler(InsufficientFundsException.class)
-public ResponseEntity<Map<String, Object>> handleInsufficientFunds(InsufficientFundsException ex) {
-return buildErrorResponse(HttpStatus.BAD_REQUEST, "INSUFFICIENT_FUNDS", ex.getMessage());
-}
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<Map<String, Object>> handleSecurityException(SecurityException ex) {
+        log.warn("Security validation failed: {}", ex.getMessage());
+        return buildErrorResponse(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage());
+    }
 
-@ExceptionHandler(InvalidPinException.class)
-public ResponseEntity<Map<String, Object>> handleInvalidPin(InvalidPinException ex) {
-return buildErrorResponse(HttpStatus.UNAUTHORIZED, "INVALID_PIN", ex.getMessage());
-}
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, Object>> handleBusinessExceptions(IllegalStateException ex) {
+        log.warn("Business rule violation: {}", ex.getMessage());
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "BAD_REQUEST", ex.getMessage());
+    }
 
-@ExceptionHandler(DuplicateTransactionException.class)
-public ResponseEntity<Map<String, Object>> handleDuplicateTransaction(DuplicateTransactionException ex) {
-return buildErrorResponse(HttpStatus.CONFLICT, "DUPLICATE_TRANSACTION", ex.getMessage());
-}
+    @ExceptionHandler(InsufficientFundsException.class)
+    public ResponseEntity<Map<String, Object>> handleInsufficientFunds(InsufficientFundsException ex) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "INSUFFICIENT_FUNDS", ex.getMessage());
+    }
 
-@ExceptionHandler(AccountNotFoundException.class)
-public ResponseEntity<Map<String, Object>> handleAccountNotFound(AccountNotFoundException ex) {
-return buildErrorResponse(HttpStatus.NOT_FOUND, "ACCOUNT_NOT_FOUND", ex.getMessage());
-}
+    @ExceptionHandler(InvalidPinException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidPin(InvalidPinException ex) {
+        return buildErrorResponse(HttpStatus.UNAUTHORIZED, "INVALID_PIN", ex.getMessage());
+    }
 
-@ExceptionHandler(TransactionException.class)
-public ResponseEntity<Map<String, Object>> handleTransactionException(TransactionException ex) {
-return buildErrorResponse(HttpStatus.BAD_REQUEST, "TRANSACTION_FAILED", ex.getMessage());
-}
+    @ExceptionHandler(DuplicateTransactionException.class)
+    public ResponseEntity<Map<String, Object>> handleDuplicateTransaction(DuplicateTransactionException ex) {
+        return buildErrorResponse(HttpStatus.CONFLICT, "DUPLICATE_TRANSACTION", ex.getMessage());
+    }
 
-@ExceptionHandler({CannotAcquireLockException.class, PessimisticLockingFailureException.class})
-public ResponseEntity<Map<String, Object>> handleConcurrencyLockFailure(Exception ex) {
-return buildErrorResponse(
-HttpStatus.SERVICE_UNAVAILABLE,
-"DEADLOCK_DETECTED",
-"Concurrent transaction conflict detected. Please retry your transfer."
-);
-}
+    @ExceptionHandler(AccountNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleAccountNotFound(AccountNotFoundException ex) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, "ACCOUNT_NOT_FOUND", ex.getMessage());
+    }
 
-@ExceptionHandler(MethodArgumentNotValidException.class)
-public ResponseEntity<Map<String, Object>> handleValidationError(MethodArgumentNotValidException ex) {
-String details = ex.getBindingResult().getFieldErrors().stream()
-.map(error -> error.getField() + ": " + error.getDefaultMessage())
-.collect(Collectors.joining(", "));
-return buildErrorResponse(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", details);
-}
+    @ExceptionHandler(TransactionException.class)
+    public ResponseEntity<Map<String, Object>> handleTransactionException(TransactionException ex) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "TRANSACTION_FAILED", ex.getMessage());
+    }
 
-@ExceptionHandler(Exception.class)
-public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
-return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", ex.getMessage());
-}
+    @ExceptionHandler({CannotAcquireLockException.class, PessimisticLockingFailureException.class})
+    public ResponseEntity<Map<String, Object>> handleConcurrencyLockFailure(Exception ex) {
+        return buildErrorResponse(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "DEADLOCK_DETECTED",
+                "Concurrent transaction conflict detected. Please retry your transfer."
+        );
+    }
 
-private ResponseEntity<Map<String, Object>> buildErrorResponse(HttpStatus status, String errorCode, String message) {
-Map<String, Object> body = new HashMap<>();
-body.put("timestamp", LocalDateTime.now());
-body.put("status", status.value());
-body.put("code", errorCode);
-body.put("message", message);
-return new ResponseEntity<>(body, status);
-}
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+        String errorMessage = ex.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .collect(Collectors.joining(", "));
+        
+        log.warn("Payload validation failed: {}", errorMessage);
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", errorMessage);
+    }
 
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleAllOtherExceptions(Exception ex) {
+        log.error("Unexpected error occurred", ex);
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "An unexpected system error occurred.");
+    }
 
-@ExceptionHandler(CusAuthenticationException.class)
-public ResponseEntity<Map<String, Object>>
-        handleCusAuthenticationException(
-                CusAuthenticationException ex) {
+    private ResponseEntity<Map<String, Object>> buildErrorResponse(HttpStatus status, String errorCode, String message) {
+        Map<String, Object> errorBody = new LinkedHashMap<>();
+        errorBody.put("success", status.is2xxSuccessful());
+        errorBody.put("timestamp", LocalDateTime.now());
+        errorBody.put("status", status.value());
+        errorBody.put("code", errorCode);
+        errorBody.put("error", status.getReasonPhrase());
+        errorBody.put("message", message);
 
-    Map<String, Object> response =
-            new LinkedHashMap<>();
+        return ResponseEntity.status(status).body(errorBody);
+    }
 
-    response.put(
-            "code",
-            "UNAUTHORIZED"
-    );
+    @ExceptionHandler(com.corebanking.exception.CusAuthenticationException.class)
+    public ResponseEntity<Map<String, Object>> handleCusAuthenticationException(com.corebanking.exception.CusAuthenticationException ex) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("code", "UNAUTHORIZED");
+        response.put("message", ex.getMessage());
+        response.put("timestamp", LocalDateTime.now());
+        response.put("status", HttpStatus.UNAUTHORIZED.value());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+    }
 
-    response.put(
-            "message",
-            ex.getMessage()
-    );
+    @ExceptionHandler(CusAccountLockedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccountLocked(CusAccountLockedException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("code", "ACCOUNT_LOCKED");
+        body.put("message", ex.getMessage());
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", 423);
+        return ResponseEntity.status(HttpStatus.LOCKED).body(body);
+    }
 
-    response.put(
-            "timestamp",
-            LocalDateTime.now()
-    );
+    @ExceptionHandler(CusOtpException.class)
+    public ResponseEntity<Map<String, Object>> handleOtpException(CusOtpException ex) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "OTP_ERROR", ex.getMessage());
+    }
 
-    response.put(
-            "status",
-            HttpStatus.UNAUTHORIZED.value()
-    );
+    @ExceptionHandler(CusSessionExpiredException.class)
+    public ResponseEntity<Map<String, Object>> handleSessionExpired(CusSessionExpiredException ex) {
+        return buildErrorResponse(HttpStatus.UNAUTHORIZED, "SESSION_EXPIRED", ex.getMessage());
+    }
 
-    return ResponseEntity
-            .status(HttpStatus.UNAUTHORIZED)
-            .body(response);
-}
-@ExceptionHandler(CusAccountLockedException.class)
-public ResponseEntity<Map<String, Object>> handleAccountLocked(
-        CusAccountLockedException ex) {
+    @ExceptionHandler(CusOtpResendLimitException.class)
+    public ResponseEntity<Map<String, Object>> handleOtpResendLimit(CusOtpResendLimitException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("code", "OTP_RESEND_LIMIT_REACHED");
+        body.put("message", ex.getMessage());
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", 429);
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(body);
+    }
 
-    Map<String, Object> body = new HashMap<>();
+    @ExceptionHandler(CusEmailException.class)
+    public ResponseEntity<Map<String, Object>> handleEmailException(CusEmailException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("code", "EMAIL_SERVICE_UNAVAILABLE");
+        body.put("message", ex.getMessage());
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", 503);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
+    }
 
-    body.put("code", "ACCOUNT_LOCKED");
-    body.put("message", ex.getMessage());
-    body.put("timestamp", LocalDateTime.now());
-    body.put("status", 423);
-
-    return ResponseEntity
-            .status(HttpStatus.LOCKED)
-            .body(body);
-}
-@ExceptionHandler(CusValidationException.class)
-public ResponseEntity<Map<String, Object>>
-        handleCusValidationException(
-                CusValidationException ex) {
-
-    return buildErrorResponse(
-            HttpStatus.BAD_REQUEST,
-            "VALIDATION_ERROR",
-            ex.getMessage()
-    );
-}
-
-@ExceptionHandler(CusOtpException.class)
-public ResponseEntity<Map<String, Object>> handleOtpException(
-        CusOtpException ex) {
-
-    return buildErrorResponse(
-            HttpStatus.BAD_REQUEST,
-            "OTP_ERROR",
-            ex.getMessage()
-    );
-}
-@ExceptionHandler(CusSessionExpiredException.class)
-public ResponseEntity<Map<String, Object>>
-        handleSessionExpired(
-                CusSessionExpiredException ex) {
-
-    return buildErrorResponse(
-            HttpStatus.UNAUTHORIZED,
-            "SESSION_EXPIRED",
-            ex.getMessage()
-    );
-}
-@ExceptionHandler(CusOtpResendLimitException.class)
-public ResponseEntity<Map<String, Object>> handleOtpResendLimit(
-        CusOtpResendLimitException ex) {
-
-    Map<String, Object> body = new HashMap<>();
-
-    body.put("code", "OTP_RESEND_LIMIT_REACHED");
-    body.put("message", ex.getMessage());
-    body.put("timestamp", LocalDateTime.now());
-    body.put("status", 429);
-
-    return ResponseEntity
-            .status(HttpStatus.TOO_MANY_REQUESTS)
-            .body(body);
-}
-
-
-@ExceptionHandler(CusEmailException.class)
-public ResponseEntity<Map<String, Object>>
-        handleEmailException(
-                CusEmailException ex) {
-
-    Map<String, Object> body =
-            new HashMap<>();
-
-    body.put(
-            "code",
-            "EMAIL_SERVICE_UNAVAILABLE"
-    );
-
-    body.put(
-            "message",
-            ex.getMessage()
-    );
-
-    body.put(
-            "timestamp",
-            LocalDateTime.now()
-    );
-
-    body.put(
-            "status",
-            503
-    );
-
-    return ResponseEntity
-            .status(
-                    HttpStatus.SERVICE_UNAVAILABLE
-            )
-            .body(body);
-}
-
-@ExceptionHandler(AuthException.class)
-public ResponseEntity<Map<String, Object>> handleAuthException(AuthException ex) {
-    return buildErrorResponse(HttpStatus.UNAUTHORIZED, "AUTH_FAILED", ex.getMessage());
-}
-
+    @ExceptionHandler(AuthException.class)
+    public ResponseEntity<Map<String, Object>> handleAuthException(AuthException ex) {
+        return buildErrorResponse(HttpStatus.UNAUTHORIZED, "AUTH_FAILED", ex.getMessage());
+    }
 }

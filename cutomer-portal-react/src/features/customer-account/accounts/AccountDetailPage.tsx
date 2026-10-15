@@ -61,7 +61,7 @@ function maskAccountNumber(accountNumber: string): string {
     return "•".repeat(accountNumber.length);
   }
 
-  return `•••• •••• ${accountNumber.slice(-4)}`;
+  return `**** **** ${accountNumber.slice(-4)}`;
 }
 
 function DetailRow({

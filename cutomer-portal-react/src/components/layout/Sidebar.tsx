@@ -10,6 +10,7 @@ import {
   LogOut,
   Building2,
   ChevronRight,
+  Megaphone,
 } from "lucide-react";
 
 import {
@@ -59,6 +60,11 @@ const mainMenuItems = [
     name: "Beneficiaries",
     path: "/beneficiaries",
     icon: Users,
+  },
+    {
+    name: "Announcements",
+    path: "/announcements",
+    icon: Megaphone,
   },
 ];
 

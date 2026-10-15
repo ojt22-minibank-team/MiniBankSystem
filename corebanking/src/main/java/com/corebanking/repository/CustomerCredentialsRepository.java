@@ -1,0 +1,14 @@
+package com.corebanking.repository;
+
+import com.corebanking.entity.CustomerCredentials;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+import java.util.UUID;
+
+@Repository
+public interface CustomerCredentialsRepository extends JpaRepository<CustomerCredentials, UUID> {
+
+    Optional<CustomerCredentials> findByCustomerId(UUID customerId);
+}

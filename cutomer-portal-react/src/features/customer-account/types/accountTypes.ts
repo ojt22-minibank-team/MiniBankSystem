@@ -27,3 +27,15 @@ export interface CustomerAccount {
   openedAt: string;
   closedAt: string | null;
 }
+
+export interface Account {
+  id: string;
+  accountNumber: string;
+  accountType: string;
+  accountName: string;
+  balance: number;
+  availableBalance: number;
+  currency: string;
+  status: string;
+  openDate: string;
+}

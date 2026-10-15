@@ -1,8 +1,11 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../lib/redux";
 import { submitP2PTransfer, resetTransferState } from "../store/transferSlice";
 import { fetchMyAccounts } from "../../customer-account/accounts/accountsSlice";
 import { lookupDestinationAccount } from "../services/transferService";
+import { getBeneficiaries, addBeneficiary } from "../../beneficiaries/services/beneficiaryService";
+import type { Beneficiary } from "../../beneficiaries/types/beneficiaryTypes";
 import type { P2PTransferRequest } from "../types/transferTypes";
 import {
   Loader2,
@@ -17,6 +20,10 @@ import {
   Send,
   Wallet,
   X,
+  Printer,
+  Home,
+  UserPlus,
+  Users,
 } from "lucide-react";
 
 
@@ -174,6 +181,7 @@ interface FormStepProps {
   setDescription: (v: string) => void;
   validationError: string;
   recentAccounts: string[];
+  beneficiaries?: Beneficiary[];
   onContinue: () => void;
 }
 
@@ -185,6 +193,7 @@ function FormStep({
   amount, setAmount,
   description, setDescription,
   validationError, recentAccounts,
+  beneficiaries = [],
   onContinue,
 }: FormStepProps) {
   const selectedAcc = accounts.find((a) => a.accountNumber === sourceAccount);
@@ -234,9 +243,47 @@ function FormStep({
 
       {/* To Account */}
       <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
-          To Account Number
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-sm font-semibold text-gray-700">
+            To Account Number
+          </label>
+          {beneficiaries.length > 0 && (
+            <span className="text-[11px] font-semibold text-blue-600 flex items-center gap-1">
+              <Users className="w-3 h-3" /> Saved Contacts
+            </span>
+          )}
+        </div>
+
+        {/* Saved Beneficiaries Quick Select Chips */}
+        {beneficiaries.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-2.5 mb-2 scrollbar-none">
+            {beneficiaries.map((b) => {
+              const isSelected = destinationAccount === b.beneficiaryAccountNumber;
+              const initial = (b.nickname || b.beneficiaryAccountName || "B")[0].toUpperCase();
+              return (
+                <button
+                  key={b.beneficiaryId}
+                  type="button"
+                  onClick={() => setDestinationAccount(b.beneficiaryAccountNumber)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all whitespace-nowrap flex items-center gap-1.5 shrink-0
+                    ${
+                      isSelected
+                        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                        : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
+                    }`}
+                >
+                  <span
+                    className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-bold
+                      ${isSelected ? "bg-white/20 text-white" : "bg-blue-100 text-blue-700"}`}
+                  >
+                    {initial}
+                  </span>
+                  <span>{b.nickname || b.beneficiaryAccountName}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
         <input
           type="text"
           inputMode="numeric"
@@ -446,9 +493,23 @@ interface ReceiptStepProps {
   result: any;
   recipientName?: string;
   onNewTransfer: () => void;
+  onGoDashboard: () => void;
+  isSavedBeneficiary: boolean;
+  onSaveBeneficiary: () => Promise<void>;
+  savingBeneficiary: boolean;
+  beneficiarySaved: boolean;
 }
 
-function ReceiptStep({ result, recipientName, onNewTransfer }: ReceiptStepProps) {
+function ReceiptStep({
+  result,
+  recipientName,
+  onNewTransfer,
+  onGoDashboard,
+  isSavedBeneficiary,
+  onSaveBeneficiary,
+  savingBeneficiary,
+  beneficiarySaved,
+}: ReceiptStepProps) {
   const [copied, setCopied] = useState(false);
 
   const completedDate = new Date(result.completedAt).toLocaleString("en-GB", {
@@ -530,22 +591,82 @@ function ReceiptStep({ result, recipientName, onNewTransfer }: ReceiptStepProps)
       </div>
 
       {/* Actions */}
-      <div className="px-4 pt-4 pb-2 space-y-3">
+      <div className="px-5 pt-4 pb-4 space-y-2.5">
+        {/* Quick Save as Beneficiary */}
+        {!isSavedBeneficiary && (
+          <button
+            type="button"
+            onClick={onSaveBeneficiary}
+            disabled={savingBeneficiary}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 text-xs font-bold text-amber-800 hover:from-amber-100 hover:to-orange-100 transition-all disabled:opacity-60 shadow-sm"
+          >
+            {savingBeneficiary ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
+                <span>Saving to Contacts...</span>
+              </>
+            ) : (
+              <>
+                <UserPlus className="w-4 h-4 text-amber-600" />
+                <span>Save this recipient to Beneficiaries</span>
+              </>
+            )}
+          </button>
+        )}
+
+        {beneficiarySaved && (
+          <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <span>Saved to your Beneficiaries!</span>
+          </div>
+        )}
+
+        {/* Copy Reference & Print Receipt */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="flex items-center justify-center gap-1.5 py-2.5 rounded-2xl border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all"
+          >
+            {copied ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-500" />
+                <span className="text-emerald-600">Copied!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5 text-gray-500" />
+                <span>Copy Ref</span>
+              </>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="flex items-center justify-center gap-1.5 py-2.5 rounded-2xl border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all"
+          >
+            <Printer className="w-3.5 h-3.5 text-gray-500" />
+            <span>Print Receipt</span>
+          </button>
+        </div>
+
+        {/* Primary: Make Another Transfer */}
         <button
-          onClick={handleCopy}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all"
-        >
-          {copied ? (
-            <><Check className="w-4 h-4 text-emerald-500" /><span className="text-emerald-600">Copied!</span></>
-          ) : (
-            <><Copy className="w-4 h-4" /> Copy Reference ID</>
-          )}
-        </button>
-        <button
+          type="button"
           onClick={onNewTransfer}
           className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-200 transition-all"
         >
-          <PlusCircle className="w-4 h-4" /> New Transfer
+          <PlusCircle className="w-4 h-4" /> Make Another Transfer
+        </button>
+
+        {/* Secondary: Return to Dashboard */}
+        <button
+          type="button"
+          onClick={onGoDashboard}
+          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl font-semibold text-xs text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          <Home className="w-3.5 h-3.5" /> Return to Dashboard
         </button>
       </div>
     </div>
@@ -565,8 +686,12 @@ export const P2PTransferForm = () => {
   const [step, setStep] = useState<Step>("form");
   const [showPinModal, setShowPinModal] = useState(false);
 
+  const location = useLocation();
+  const navigate = useNavigate();
   const [sourceAccount, setSourceAccount] = useState("");
-  const [destinationAccount, setDestinationAccount] = useState("");
+  const [destinationAccount, setDestinationAccount] = useState<string>(
+    () => (location.state as any)?.destinationAccount || ""
+  );
   const [recipientName, setRecipientName] = useState("");
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState("");
@@ -574,6 +699,38 @@ export const P2PTransferForm = () => {
   const [description, setDescription] = useState("");
   const [validationError, setValidationError] = useState("");
   const [recentAccounts, setRecentAccounts] = useState<string[]>([]);
+  const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
+  const [savingBeneficiary, setSavingBeneficiary] = useState(false);
+  const [beneficiarySaved, setBeneficiarySaved] = useState(false);
+
+  // Load beneficiaries on mount
+  useEffect(() => {
+    getBeneficiaries().then(setBeneficiaries).catch(() => {});
+  }, []);
+
+  const isSavedBeneficiary = Boolean(
+    beneficiarySaved ||
+    (transactionResult && beneficiaries.some(
+      (b) => b.beneficiaryAccountNumber === transactionResult.destinationAccountNumber
+    ))
+  );
+
+  const handleSaveBeneficiary = async () => {
+    if (!transactionResult) return;
+    try {
+      setSavingBeneficiary(true);
+      const created = await addBeneficiary({
+        beneficiaryAccountNumber: transactionResult.destinationAccountNumber,
+        nickname: recipientName || undefined,
+      });
+      setBeneficiaries((prev) => [created, ...prev]);
+      setBeneficiarySaved(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingBeneficiary(false);
+    }
+  };
 
   // Auto-select first active account
   useEffect(() => {
@@ -667,6 +824,8 @@ export const P2PTransferForm = () => {
         saveDestination(destinationAccount);
         dispatch(fetchMyAccounts());
       }
+      // Refresh notifications immediately for both success and failure
+      window.dispatchEvent(new Event("new-notification-event"));
     });
   };
 
@@ -680,6 +839,7 @@ export const P2PTransferForm = () => {
     setDescription("");
     setValidationError("");
     setShowPinModal(false);
+    setBeneficiarySaved(false);
     dispatch(resetTransferState());
     dispatch(fetchMyAccounts());
   };
@@ -746,6 +906,7 @@ export const P2PTransferForm = () => {
               setDescription={setDescription}
               validationError={validationError}
               recentAccounts={recentAccounts}
+              beneficiaries={beneficiaries}
               onContinue={handleContinue}
             />
           )}
@@ -767,6 +928,11 @@ export const P2PTransferForm = () => {
               result={transactionResult}
               recipientName={recipientName}
               onNewTransfer={handleReset}
+              onGoDashboard={() => navigate("/dashboard")}
+              isSavedBeneficiary={isSavedBeneficiary}
+              onSaveBeneficiary={handleSaveBeneficiary}
+              savingBeneficiary={savingBeneficiary}
+              beneficiarySaved={beneficiarySaved}
             />
           )}
         </div>
