@@ -16,6 +16,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/customers")
+@CrossOrigin(origins = "http://localhost:5173")
 @RequiredArgsConstructor
 public class CustomerController {
 
@@ -27,6 +28,24 @@ public class CustomerController {
      */
     @PostMapping
     public ResponseEntity<CustomerResponseDTO> createCustomer(@Valid @RequestBody CustomerDTO customerDto) {
+        CustomerResponseDTO response = customerService.createCustomer(customerDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/personal")
+    public ResponseEntity<CustomerResponseDTO> createPersonalCustomer(@Valid @RequestBody CustomerDTO customerDto) {
+        if (customerDto.getCustomerType() == null || customerDto.getCustomerType().isBlank()) {
+            customerDto.setCustomerType("PERSONAL");
+        }
+        CustomerResponseDTO response = customerService.createCustomer(customerDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/company")
+    public ResponseEntity<CustomerResponseDTO> createCompanyCustomer(@Valid @RequestBody CustomerDTO customerDto) {
+        if (customerDto.getCustomerType() == null || customerDto.getCustomerType().isBlank()) {
+            customerDto.setCustomerType("COMPANY");
+        }
         CustomerResponseDTO response = customerService.createCustomer(customerDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

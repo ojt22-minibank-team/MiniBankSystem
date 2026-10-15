@@ -21,6 +21,7 @@ public class CustomerDTO {
     private String status;
 
     // Personal Customer Fields
+    private String fullName;
     private String firstName;
     private String lastName;
     private String gender; // MALE, FEMALE, OTHER
@@ -33,9 +34,40 @@ public class CustomerDTO {
     private String registrationNumber;
     private String taxId;
     private String businessType;
+    private String officialEmail;
+    private String businessAddress;
+    private LocalDate establishedDate;
 
-    
-	
-	
+    public String getFirstName() {
+        if (firstName != null && !firstName.isBlank()) {
+            return firstName;
+        }
+        if (fullName != null && !fullName.isBlank()) {
+            String[] parts = fullName.trim().split("\\s+", 2);
+            return parts[0];
+        }
+        return firstName;
+    }
+
+    public String getLastName() {
+        if (lastName != null && !lastName.isBlank()) {
+            return lastName;
+        }
+        if (fullName != null && !fullName.isBlank()) {
+            String[] parts = fullName.trim().split("\\s+", 2);
+            return parts.length > 1 ? parts[1] : "";
+        }
+        return lastName;
+    }
+
+    public String getEmail() {
+        if (email != null && !email.isBlank()) return email;
+        return officialEmail;
+    }
+
+    public String getAddress() {
+        if (address != null && !address.isBlank()) return address;
+        return businessAddress;
+    }
 	
 }
