@@ -8,7 +8,7 @@ import profileReducer from "../features/customer-account/profile/ProfileSlice";
 import settingsReducer from "../features/customer-account/settings/store/SettingsSlice";
 import transferReducer from '../features/transfer/store/transferSlice';
 import accountsReducer from '../features/customer-account/accounts/accountsSlice';
-
+import announcementReducer from "../features/customer-account/announcements/store/announcementSlice";
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +16,7 @@ export const store = configureStore({
     settings: settingsReducer,
     transfer: transferReducer,
     accounts: accountsReducer,
+    announcements: announcementReducer,
   },
 });
 

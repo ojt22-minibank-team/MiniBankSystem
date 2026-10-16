@@ -226,10 +226,16 @@ export default function DashboardPage() {
       </section>
 
 
+  
       {/* QUICK ACTIONS */}
       <section>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-
+        <div
+          className={`grid grid-cols-1 gap-4 ${
+            dashboard?.customerType === "COMPANY"
+              ? "md:grid-cols-2"
+              : "md:grid-cols-3"
+          }`}
+        >
           {/* My Account */}
           <Link
             to="/accounts"
@@ -244,7 +250,6 @@ export default function DashboardPage() {
                 <h3 className="text-sm font-bold text-[#08295C]">
                   My Account
                 </h3>
-
                 <p className="mt-1 text-xs text-slate-400">
                   View account details
                 </p>
@@ -257,32 +262,33 @@ export default function DashboardPage() {
             />
           </Link>
 
-          {/* Transfer Money */}
-          <Link
-            to="/transfer"
-            className="group flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-md"
-          >
-            <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[#0878E8] transition-colors duration-200 group-hover:bg-[#0878E8] group-hover:text-white">
-                <Send size={24} />
+          {/* Transfer Money - Personal Only */}
+          {dashboard?.customerType === "PERSONAL" && (
+            <Link
+              to="/transfer"
+              className="group flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-md"
+            >
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[#0878E8] transition-colors duration-200 group-hover:bg-[#0878E8] group-hover:text-white">
+                  <Send size={24} />
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-bold text-[#08295C]">
+                    Transfer Money
+                  </h3>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Send money easily
+                  </p>
+                </div>
               </div>
 
-              <div>
-                <h3 className="text-sm font-bold text-[#08295C]">
-                  Transfer Money
-                </h3>
-
-                <p className="mt-1 text-xs text-slate-400">
-                  Send money easily
-                </p>
-              </div>
-            </div>
-
-            <ArrowRight
-              size={20}
-              className="shrink-0 text-slate-400 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-[#0878E8]"
-            />
-          </Link>
+              <ArrowRight
+                size={20}
+                className="shrink-0 text-slate-400 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-[#0878E8]"
+              />
+            </Link>
+          )}
 
           {/* Transaction History */}
           <Link
@@ -298,7 +304,6 @@ export default function DashboardPage() {
                 <h3 className="text-sm font-bold text-[#08295C]">
                   Transaction History
                 </h3>
-
                 <p className="mt-1 text-xs text-slate-400">
                   Check your past transactions
                 </p>
@@ -310,27 +315,18 @@ export default function DashboardPage() {
               className="shrink-0 text-slate-400 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-[#0878E8]"
             />
           </Link>
-
         </div>
       </section>
-      {/* =====================================================
-    MY ACCOUNTS
-====================================================== */}
+
+      {/* MY ACCOUNTS */}
       <section>
-
-
         <AccountSummary accounts={dashboard?.accounts ?? []} />
       </section>
 
-      {/* =====================================================
-          RECENT TRANSACTIONS
-      ====================================================== */}
+      {/* RECENT TRANSACTIONS */}
       <section>
-
-
         <RecentTransactions />
       </section>
-
-    </div>
-  );
+   </div>
+  )
 }

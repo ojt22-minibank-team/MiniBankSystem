@@ -6,11 +6,15 @@ export interface NotificationItem {
   title: string;
   message: string;
   isRead: boolean;
+  read?: boolean;
   readAt: string | null;
   createdAt: string;
   transactionRef?: string | null;
   amount?: number | null;
   currency?: string | null;
+  counterpartyName?: string | null;
+  counterpartyAccountNumber?: string | null;
+  transferDirection?: "SENT" | "RECEIVED" | null;
 }
 
 export interface UnreadCountResponse {

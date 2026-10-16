@@ -9,6 +9,7 @@ import {
   Sparkles,
   Loader2,
   X,
+  User,
 } from "lucide-react";
 import {
   getMyNotifications,
@@ -21,6 +22,7 @@ import { useNotificationWebSocket } from "../hooks/useNotificationWebSocket";
 
 export const NotificationDropdown: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"all" | "unread">("all");
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -130,6 +132,26 @@ export const NotificationDropdown: React.FC = () => {
     };
   }, [isOpen]);
 
+  // Listen to open-notification-dropdown event from Toast
+  useEffect(() => {
+    const handleOpenFromToast = () => {
+      setIsOpen(true);
+      fetchNotifications();
+      fetchUnreadCount();
+    };
+    window.addEventListener("open-notification-dropdown", handleOpenFromToast);
+    return () => {
+      window.removeEventListener("open-notification-dropdown", handleOpenFromToast);
+    };
+  }, []);
+
+  const formatAmount = (num: number | null | undefined) => {
+    if (num === null || num === undefined) return null;
+    return new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: 2,
+    }).format(num);
+  };
+
   // Handle outside click to close dropdown
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
@@ -158,15 +180,20 @@ export const NotificationDropdown: React.FC = () => {
     }
   };
 
+  // Helper to reliably check if a notification is unread (handling both isRead and read from API)
+  const isItemUnread = (item: NotificationItem) => {
+    return !(item.isRead ?? item.read);
+  };
+
   // Mark single as read
   const handleMarkAsRead = async (item: NotificationItem) => {
-    if (item.isRead) return;
+    if (!isItemUnread(item)) return;
     try {
       await markNotificationAsRead(item.notificationId);
       setNotifications((prev) =>
         prev.map((n) =>
           n.notificationId === item.notificationId
-            ? { ...n, isRead: true, readAt: new Date().toISOString() }
+            ? { ...n, isRead: true, read: true, readAt: new Date().toISOString() }
             : n
         )
       );
@@ -185,6 +212,7 @@ export const NotificationDropdown: React.FC = () => {
         prev.map((n) => ({
           ...n,
           isRead: true,
+          read: true,
           readAt: new Date().toISOString(),
         }))
       );
@@ -252,22 +280,24 @@ export const NotificationDropdown: React.FC = () => {
       {isOpen && (
         <div className="absolute right-0 mt-3 w-80 sm:w-96 rounded-2xl bg-white shadow-2xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-3 duration-200">
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/70">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-black text-slate-800 tracking-tight flex items-center gap-1.5">
-                Notifications
-                {isWsConnected && (
-                  <span
-                    className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"
-                    title="Real-time live WebSocket connected"
-                  />
-                )}
-              </h3>
-              {unreadCount > 0 && (
-                <span className="bg-blue-100 text-blue-700 text-[11px] font-bold px-2 py-0.5 rounded-full">
-                  {unreadCount} new
-                </span>
-              )}
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/70">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-black text-slate-800 tracking-tight flex items-center gap-1.5">
+                  Notifications
+                  {isWsConnected && (
+                    <span
+                      className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"
+                      title="Real-time live WebSocket connected"
+                    />
+                  )}
+                </h3>
+              </div>
+              <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                {unreadCount > 0
+                  ? `${unreadCount} unread • ${notifications.length} total`
+                  : `${notifications.length} total notifications`}
+              </p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -295,6 +325,44 @@ export const NotificationDropdown: React.FC = () => {
             </div>
           </div>
 
+          {/* Filter Tabs */}
+          <div className="flex items-center gap-1.5 px-4 py-2 bg-slate-50/90 border-b border-slate-100 text-xs">
+            <button
+              type="button"
+              onClick={() => setActiveTab("all")}
+              className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 ${
+                activeTab === "all"
+                  ? "bg-white text-blue-600 shadow-sm border border-slate-200/50"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <span>All</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600 font-bold">
+                {notifications.length}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("unread")}
+              className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 ${
+                activeTab === "unread"
+                  ? "bg-white text-blue-600 shadow-sm border border-slate-200/50"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <span>Unread</span>
+              {unreadCount > 0 ? (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-red-100 text-red-600 font-extrabold">
+                  {unreadCount}
+                </span>
+              ) : (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-500 font-bold">
+                  0
+                </span>
+              )}
+            </button>
+          </div>
+
           {/* Notifications List */}
           <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-100">
             {loading ? (
@@ -313,77 +381,121 @@ export const NotificationDropdown: React.FC = () => {
                   Try Again
                 </button>
               </div>
-            ) : notifications.length === 0 ? (
+            ) : (activeTab === "unread" ? notifications.filter(isItemUnread) : notifications).length === 0 ? (
               <div className="py-12 px-6 text-center flex flex-col items-center justify-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300">
                   <Sparkles className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-slate-700">No notifications yet</p>
+                  <p className="text-xs font-bold text-slate-700">
+                    {activeTab === "unread" ? "No unread notifications" : "No notifications yet"}
+                  </p>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    We will notify you when transfers or transactions occur.
+                    {activeTab === "unread"
+                      ? "You are all caught up!"
+                      : "We will notify you when transfers or transactions occur."}
                   </p>
                 </div>
               </div>
             ) : (
-              notifications.map((item) => (
-                <div
-                  key={item.notificationId}
-                  onClick={() => handleMarkAsRead(item)}
-                  className={`px-5 py-3.5 flex items-start gap-3.5 transition cursor-pointer select-none ${
-                    !item.isRead
-                      ? "bg-blue-50/40 hover:bg-blue-50/70"
-                      : "bg-white hover:bg-slate-50"
-                  }`}
-                >
-                  {renderIcon(item)}
+              (activeTab === "unread" ? notifications.filter(isItemUnread) : notifications).map((item) => {
+                const unread = isItemUnread(item);
+                return (
+                  <div
+                    key={item.notificationId}
+                    onClick={() => handleMarkAsRead(item)}
+                    className={`px-5 py-3.5 flex items-start gap-3.5 transition cursor-pointer select-none ${
+                      unread
+                        ? "bg-blue-50/40 hover:bg-blue-50/70"
+                        : "bg-white hover:bg-slate-50"
+                    }`}
+                  >
+                    {renderIcon(item)}
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-1">
-                      <p
-                        className={`text-xs tracking-tight truncate ${
-                          !item.isRead
-                            ? "font-black text-slate-900"
-                            : "font-semibold text-slate-700"
-                        }`}
-                      >
-                        {item.title}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <p
+                          className={`text-xs tracking-tight truncate ${
+                            unread
+                              ? "font-black text-slate-900"
+                              : "font-semibold text-slate-700"
+                          }`}
+                        >
+                          {item.title}
+                        </p>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Clock className="w-3 h-3 text-slate-300" />
+                          <span className="text-[10px] font-medium text-slate-400">
+                            {formatTimeAgo(item.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Prominent Account Holder Name + Account Number */}
+                      {item.counterpartyName && (
+                        <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                          <User className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                          <span className="truncate">
+                            {item.transferDirection === "RECEIVED"
+                              ? "From: "
+                              : item.transferDirection === "SENT"
+                              ? "To: "
+                              : ""}
+                            {item.counterpartyName}
+                            {item.counterpartyAccountNumber
+                              ? ` (${item.counterpartyAccountNumber})`
+                              : ""}
+                          </span>
+                        </div>
+                      )}
+
+                      <p className="text-[11px] text-slate-600 mt-1 leading-relaxed line-clamp-2">
+                        {item.message}
                       </p>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <Clock className="w-3 h-3 text-slate-300" />
-                        <span className="text-[10px] font-medium text-slate-400">
-                          {formatTimeAgo(item.createdAt)}
-                        </span>
+
+                      <div className="mt-1.5 flex items-center justify-between gap-2">
+                        {item.transactionRef ? (
+                          <span className="inline-block text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">
+                            Ref: {item.transactionRef}
+                          </span>
+                        ) : <span />}
+
+                        {item.amount !== undefined && item.amount !== null && (
+                          <span
+                            className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                              item.transferDirection === "RECEIVED"
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                                : item.transferDirection === "SENT"
+                                ? "bg-blue-50 text-blue-700 border border-blue-100"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {item.transferDirection === "RECEIVED"
+                              ? "+"
+                              : item.transferDirection === "SENT"
+                              ? "-"
+                              : ""}
+                            {formatAmount(item.amount)} {item.currency || "MMK"}
+                          </span>
+                        )}
                       </div>
                     </div>
 
-                    <p className="text-[11px] text-slate-600 mt-1 leading-relaxed line-clamp-2">
-                      {item.message}
-                    </p>
-
-                    {item.transactionRef && (
-                      <div className="mt-1.5 flex items-center gap-2">
-                        <span className="inline-block text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">
-                          Ref: {item.transactionRef}
-                        </span>
-                      </div>
+                    {unread && (
+                      <span className="w-2 h-2 rounded-full bg-blue-500 mt-2 shrink-0 ring-2 ring-blue-100" />
                     )}
                   </div>
-
-                  {!item.isRead && (
-                    <span className="w-2 h-2 rounded-full bg-blue-500 mt-2 shrink-0 ring-2 ring-blue-100" />
-                  )}
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 
           {/* Footer */}
           {notifications.length > 0 && (
-            <div className="px-5 py-2.5 bg-slate-50/80 border-t border-slate-100 text-center">
-              <span className="text-[11px] font-semibold text-slate-400">
-                All activities are securely encrypted and logged
-              </span>
+            <div className="px-5 py-2.5 bg-slate-50/80 border-t border-slate-100 text-center flex items-center justify-center gap-1.5 text-[11px] font-semibold text-slate-400">
+              <span>Showing latest 30 notifications</span>
+              <span>•</span>
+              <span>Encrypted & Logged</span>
             </div>
           )}
         </div>

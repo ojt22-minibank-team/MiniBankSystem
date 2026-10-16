@@ -16,7 +16,7 @@ import {
 import { Link, useParams } from "react-router-dom";
 
 import { getMyAccount } from "../api/customerAccountApi";
-import type { CustomerAccount } from "../types/accountTypes";
+import type { CustomerAccount, TransferLimitInfo } from "../types/accountTypes";
 import AccountStatus from "./components/AccountStatus";
 import { TransferLimitCard } from "./components/TransferLimitCard";
 
@@ -137,6 +137,9 @@ export default function AccountDetailPage() {
   const [account, setAccount] =
     useState<CustomerAccount | null>(null);
 
+  const [transferLimits, setTransferLimits] =
+    useState<TransferLimitInfo | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
@@ -153,6 +156,8 @@ export default function AccountDetailPage() {
     async function loadAccount() {
       setLoading(true);
       setError(null);
+      setTransferLimits(null);
+
       setShowAccountNumber(false);
       setCopied(false);
       setCopyError(null);
@@ -491,6 +496,28 @@ export default function AccountDetailPage() {
             )}
           />
 
+          {transferLimits && (
+            <>
+              <DetailRow
+                icon={CreditCard}
+                label="One-time Transfer Limit (Beneficiary)"
+                value={formatMoney(
+                  transferLimits.effectiveOneTimeLimitBeneficiary,
+                  account.currency
+                )}
+              />
+
+              <DetailRow
+                icon={CreditCard}
+                label="One-time Transfer Limit (Stranger)"
+                value={formatMoney(
+                  transferLimits.effectiveOneTimeLimitStranger,
+                  account.currency
+                )}
+              />
+            </>
+          )}
+
           <DetailRow
             icon={CreditCard}
             label="Joint Account"
@@ -517,6 +544,8 @@ export default function AccountDetailPage() {
       <TransferLimitCard
         accountNumber={account.accountNumber}
         currency={account.currency}
+        onLimitsLoaded={setTransferLimits}
+
       />
 
       {/* Security Note */}

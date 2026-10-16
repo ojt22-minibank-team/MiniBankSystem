@@ -17,6 +17,8 @@ public interface NotificationRepository extends JpaRepository<Notifications, Lon
 
     List<Notifications> findByCustomer_CustomerIdOrderByCreatedAtDesc(UUID customerId);
 
+    List<Notifications> findTop30ByCustomer_CustomerIdOrderByCreatedAtDesc(UUID customerId);
+
     long countByCustomer_CustomerIdAndIsReadFalse(UUID customerId);
 
     Optional<Notifications> findByNotificationIdAndCustomer_CustomerId(Long notificationId, UUID customerId);

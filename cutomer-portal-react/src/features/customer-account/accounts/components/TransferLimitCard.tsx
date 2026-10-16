@@ -19,12 +19,14 @@ import type { TransferLimitInfo } from "../../types/accountTypes";
 interface TransferLimitCardProps {
   accountNumber: string;
   currency: string;
+  onLimitsLoaded?: (limits: TransferLimitInfo) => void;
   onLimitsUpdated?: () => void;
 }
 
 export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
   accountNumber,
   currency,
+  onLimitsLoaded,
   onLimitsUpdated,
 }) => {
   const [limits, setLimits] = useState<TransferLimitInfo | null>(null);
@@ -47,6 +49,7 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
       setError(null);
       const data = await getAccountTransferLimits(accountNumber);
       setLimits(data);
+      onLimitsLoaded?.(data);
     } catch (err: any) {
       setError(err?.response?.data?.message || "Failed to load transfer limits.");
     } finally {

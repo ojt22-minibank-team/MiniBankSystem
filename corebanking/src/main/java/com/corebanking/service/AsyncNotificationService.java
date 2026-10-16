@@ -30,15 +30,25 @@ public class AsyncNotificationService {
 
             // 1. Sender Notification (Saved & Broadcasted via WebSocket)
             if (sender != null) {
+                String receiverName = (receiver != null && receiver.getFullName() != null && !receiver.getFullName().isBlank())
+                        ? receiver.getFullName()
+                        : "Account " + transaction.getDestinationAccount().getAccountNumber();
+                String destAccNo = (transaction.getDestinationAccount() != null)
+                        ? transaction.getDestinationAccount().getAccountNumber()
+                        : "";
+
+                String message = String.format("You have transferred %s %s to %s (%s). Ref: %s",
+                        totalDebited, transaction.getCurrency(),
+                        receiverName,
+                        destAccNo,
+                        transaction.getTransactionRef());
+
                 Notifications senderNotification = Notifications.builder()
                         .customer(sender)
                         .transaction(transaction)
                         .notificationType(NotificationType.TRANSFER)
                         .title("Transfer Sent")
-                        .message(String.format("You have transferred %s %s to account %s. Ref: %s",
-                                totalDebited, transaction.getCurrency(),
-                                transaction.getDestinationAccount().getAccountNumber(),
-                                transaction.getTransactionRef()))
+                        .message(message)
                         .build();
                 Notifications savedSender = notificationRepository.save(senderNotification);
 
@@ -53,21 +63,34 @@ public class AsyncNotificationService {
                         .transactionRef(transaction.getTransactionRef())
                         .amount(totalDebited)
                         .currency(transaction.getCurrency())
+                        .counterpartyName(receiverName)
+                        .counterpartyAccountNumber(destAccNo)
+                        .transferDirection("SENT")
                         .build();
                 notificationWebSocketHandler.sendNotification(sender.getCustomerId().toString(), senderDto);
             }
 
             // 2. Receiver Notification (Saved & Broadcasted via WebSocket)
             if (receiver != null) {
+                String senderName = (sender != null && sender.getFullName() != null && !sender.getFullName().isBlank())
+                        ? sender.getFullName()
+                        : "Account " + transaction.getSourceAccount().getAccountNumber();
+                String sourceAccNo = (transaction.getSourceAccount() != null)
+                        ? transaction.getSourceAccount().getAccountNumber()
+                        : "";
+
+                String message = String.format("You received %s %s from %s (%s). Ref: %s",
+                        transaction.getAmount(), transaction.getCurrency(),
+                        senderName,
+                        sourceAccNo,
+                        transaction.getTransactionRef());
+
                 Notifications receiverNotification = Notifications.builder()
                         .customer(receiver)
                         .transaction(transaction)
                         .notificationType(NotificationType.TRANSFER)
                         .title("Funds Received")
-                        .message(String.format("You received %s %s from account %s. Ref: %s",
-                                transaction.getAmount(), transaction.getCurrency(),
-                                transaction.getSourceAccount().getAccountNumber(),
-                                transaction.getTransactionRef()))
+                        .message(message)
                         .build();
                 Notifications savedReceiver = notificationRepository.save(receiverNotification);
 
@@ -82,6 +105,9 @@ public class AsyncNotificationService {
                         .transactionRef(transaction.getTransactionRef())
                         .amount(transaction.getAmount())
                         .currency(transaction.getCurrency())
+                        .counterpartyName(senderName)
+                        .counterpartyAccountNumber(sourceAccNo)
+                        .transferDirection("RECEIVED")
                         .build();
                 notificationWebSocketHandler.sendNotification(receiver.getCustomerId().toString(), receiverDto);
             }

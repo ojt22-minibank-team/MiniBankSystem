@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import {
   AlertCircle,
@@ -7,9 +6,9 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import { getMyAccounts } from "../api/customerAccountApi";
-import type { CustomerAccount } from "../types/accountTypes";
+import { useAppDispatch, useAppSelector } from "../../../lib/redux"; // store.ts ရှိရာ path ကို ကိုယ့် project ဖွဲ့စည်းပုံအလိုက် ညွှန်းပါimport { fetchMyAccounts } from "../store/accountsSlice";
 import AccountCard from "./components/AccountCard";
+import { fetchMyAccounts } from "./accountsSlice"; // accountsSlice.ts ရှိရာ path (ကိုယ့် project structure အတိုင်း ပြင်ပါ)
 
 function AccountsSkeleton() {
   return (
@@ -130,54 +129,16 @@ function AccountsEmptyState() {
 }
 
 export default function MyAccountsPage() {
-  const [accounts, setAccounts] = useState<CustomerAccount[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
+  const dispatch = useAppDispatch();
+  const { accounts, loading, error } = useAppSelector((state) => state.accounts);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function loadAccounts() {
-      setLoading(true);
-      setError(false);
-
-      try {
-        const data: unknown = await getMyAccounts();
-
-        // Validate the response shape before using array operations.
-        if (!Array.isArray(data)) {
-          throw new Error("Invalid accounts response");
-        }
-
-        if (cancelled) return;
-
-        setAccounts(data as CustomerAccount[]);
-      } catch (err: unknown) {
-        if (import.meta.env.DEV) {
-          console.error("Failed to load customer accounts:", err);
-        }
-
-        if (cancelled) return;
-
-        setError(true);
-        setAccounts([]);
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    void loadAccounts();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [retryCount]);
+    void dispatch(fetchMyAccounts());
+  }, [dispatch, retryKey]);
 
   function handleRetry() {
-    setRetryCount((count) => count + 1);
+    setRetryKey((key) => key + 1);
   }
 
   return (
@@ -185,16 +146,15 @@ export default function MyAccountsPage() {
       className="mx-auto max-w-7xl space-y-6 p-6 md:p-8"
       aria-busy={loading}
     >
-      {loading ? (
+      {loading && accounts.length === 0 ? (
         <AccountsSkeleton />
-      ) : error ? (
+      ) : error && accounts.length === 0 ? (
         <AccountsError onRetry={handleRetry} />
       ) : (
         <>
           {/* Page Header */}
           <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3.5">
-
               <div className="min-w-0">
                 {/* Breadcrumb */}
                 <nav

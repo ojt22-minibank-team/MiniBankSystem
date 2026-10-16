@@ -1,6 +1,7 @@
 package com.corebanking.service;
 
 import com.corebanking.dto.NotificationResponseDto;
+import com.corebanking.entity.BankTransactions;
 import com.corebanking.entity.Notifications;
 import com.corebanking.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,7 @@ public class CusNotificationService {
     @Transactional(readOnly = true)
     public List<NotificationResponseDto> getMyNotifications(String authCustomerId) {
         UUID customerId = UUID.fromString(authCustomerId);
-        List<Notifications> list = notificationRepository.findByCustomer_CustomerIdOrderByCreatedAtDesc(customerId);
+        List<Notifications> list = notificationRepository.findTop30ByCustomer_CustomerIdOrderByCreatedAtDesc(customerId);
         return list.stream()
                 .map(this::safeMapToDto)
                 .toList();
@@ -66,12 +67,36 @@ public class CusNotificationService {
 
             try {
                 if (n.getTransaction() != null) {
-                    builder.transactionRef(n.getTransaction().getTransactionRef());
-                    if (n.getTransaction().getAmount() != null) {
-                        builder.amount(n.getTransaction().getAmount());
+                    BankTransactions txn = n.getTransaction();
+                    builder.transactionRef(txn.getTransactionRef());
+                    if (txn.getAmount() != null) {
+                        builder.amount(txn.getAmount());
                     }
-                    if (n.getTransaction().getCurrency() != null) {
-                        builder.currency(n.getTransaction().getCurrency());
+                    if (txn.getCurrency() != null) {
+                        builder.currency(txn.getCurrency());
+                    }
+
+                    // Populate counterparty details
+                    UUID currentCustomerId = n.getCustomer() != null ? n.getCustomer().getCustomerId() : null;
+                    if (txn.getSourceAccount() != null && txn.getDestinationAccount() != null && currentCustomerId != null) {
+                        UUID sourceCustId = (txn.getSourceAccount().getCustomer() != null) ? txn.getSourceAccount().getCustomer().getCustomerId() : null;
+                        UUID destCustId = (txn.getDestinationAccount().getCustomer() != null) ? txn.getDestinationAccount().getCustomer().getCustomerId() : null;
+
+                        if (currentCustomerId.equals(sourceCustId)) {
+                            String destName = (txn.getDestinationAccount().getCustomer() != null && txn.getDestinationAccount().getCustomer().getFullName() != null)
+                                    ? txn.getDestinationAccount().getCustomer().getFullName()
+                                    : "Account " + txn.getDestinationAccount().getAccountNumber();
+                            builder.counterpartyName(destName);
+                            builder.counterpartyAccountNumber(txn.getDestinationAccount().getAccountNumber());
+                            builder.transferDirection("SENT");
+                        } else if (currentCustomerId.equals(destCustId)) {
+                            String srcName = (txn.getSourceAccount().getCustomer() != null && txn.getSourceAccount().getCustomer().getFullName() != null)
+                                    ? txn.getSourceAccount().getCustomer().getFullName()
+                                    : "Account " + txn.getSourceAccount().getAccountNumber();
+                            builder.counterpartyName(srcName);
+                            builder.counterpartyAccountNumber(txn.getSourceAccount().getAccountNumber());
+                            builder.transferDirection("RECEIVED");
+                        }
                     }
                 }
             } catch (Exception e) {

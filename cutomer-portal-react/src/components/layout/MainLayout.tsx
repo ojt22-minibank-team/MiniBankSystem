@@ -2,6 +2,7 @@
 import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
+import { ToastContainer } from "../../features/notifications/components/ToastContainer";
 import { setProfile } from "../../features/customer-account/profile/ProfileSlice";
 import { getMyProfile } from "../../features/customer-account/api/profileApi";
 import { fetchMyAccounts } from "../../features/customer-account/accounts/accountsSlice";
@@ -38,6 +39,9 @@ export default function MainLayout() {
 
   return (
     <div className="min-h-screen bg-[#F5F7FB]">
+      {/* Real-time Toast Notifications */}
+      <ToastContainer />
+
       {/* Sidebar */}
       <Sidebar />
 

@@ -49,9 +49,9 @@ function App() {
         />
 
         <Route
-  path="/announcements"
-  element={<AnnouncementsPage />}
-/>
+          path="/announcements"
+          element={<AnnouncementsPage />}
+        />
         {/* Transfer & Payments */}
         <Route
           path="/transfer"
@@ -80,9 +80,9 @@ function App() {
         element={<Navigate to="/" replace />}
       />
 
-      
+
     </Routes>
-    
+
   );
 }
 
