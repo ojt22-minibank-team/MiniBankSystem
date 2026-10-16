@@ -1,7 +1,7 @@
-package com.corebanking.security.audit.service;
+package com.corebanking.service;
 
+import com.corebanking.dto.AuditSearchCriteria;
 import com.corebanking.entity.AuditLogs;
-import com.corebanking.security.audit.dto.AuditSearchCriteria;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
