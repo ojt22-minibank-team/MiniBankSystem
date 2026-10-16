@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import ReduxProvider from "./app/providers/ReduxProvider";
+import ThemeProvider from "./app/providers/ThemeProvider";
 import AppRouterProvider from "./app/router/RouterProvider";
 
 import "./index.css";
@@ -11,6 +12,7 @@ createRoot(
 ).render(
   <StrictMode>
     <ReduxProvider>
+      <ThemeProvider />
       <AppRouterProvider />
     </ReduxProvider>
   </StrictMode>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type {
   AuditTrailLog,
   AuditTrailPage,
@@ -19,6 +19,7 @@ interface Props {
   auditEndDate: string;
   accountNo: string;
   searchKey?: number;
+  onLoadingChange?: (loading: boolean) => void;
 }
 
 const ACTION_BADGE_COLOR: Record<string, string> = {
@@ -41,6 +42,7 @@ const AuditTrailPanel: React.FC<Props> = ({
   auditEndDate,
   accountNo,
   searchKey,
+  onLoadingChange,
 }) => {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
@@ -64,9 +66,15 @@ const AuditTrailPanel: React.FC<Props> = ({
     pageSize: PAGE_SIZE,
   };
 
+  const onLoadingChangeRef = useRef(onLoadingChange);
+  useEffect(() => {
+    onLoadingChangeRef.current = onLoadingChange;
+  }, [onLoadingChange]);
+
   const load = useCallback(
     async (targetPage = 1) => {
       setLoading(true);
+      onLoadingChangeRef.current?.(true);
       setError(null);
       try {
         const result = await fetchAuditTrailLogs({
@@ -84,14 +92,17 @@ const AuditTrailPanel: React.FC<Props> = ({
         setError((e as Error).message || 'Failed to load audit trail');
       } finally {
         setLoading(false);
+        onLoadingChangeRef.current?.(false);
       }
     },
     [staffId, actionType, auditStartDate, auditEndDate, accountNo]
   );
 
   useEffect(() => {
+    if (!searchKey) return;
     load(1);
-  }, [load, searchKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchKey]);
 
   const handlePageChange = (p: number) => load(p);
 

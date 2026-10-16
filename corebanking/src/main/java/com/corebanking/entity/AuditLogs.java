@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
         indexes = {
                 @Index(name = "idx_audit_actor_staff", columnList = "actor_staff_id"),
                 @Index(name = "idx_audit_actor_customer", columnList = "actor_customer_id"),
+                @Index(name = "idx_audit_actor_corporate_user", columnList = "actor_corporate_user_id"),
                 @Index(name = "idx_audit_action_type", columnList = "action_type"),
                 @Index(name = "idx_audit_action_category", columnList = "action_category"),
                 @Index(name = "idx_audit_entity_type", columnList = "entity_type"),
@@ -29,9 +30,9 @@ import java.time.LocalDateTime;
         }
 )
 @Getter
-@Setter(AccessLevel.PROTECTED)
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PACKAGE)
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder(toBuilder = true)
 public class AuditLogs {
 
@@ -47,7 +48,7 @@ public class AuditLogs {
      * Classification of the actor performing the operation.
      */
     @Enumerated(EnumType.STRING)
-    @Column(name = "actor_type", nullable = false, length = 10, updatable = false)
+    @Column(name = "actor_type", nullable = false, length = 20, updatable = false)
     private ActorType actorType;
 
     /**

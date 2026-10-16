@@ -1,5 +1,6 @@
 
 package com.corebanking.service;
+import com.corebanking.dto.AccountLookupResponseDto;
 import com.corebanking.dto.P2PTransferRequestDto;
 import com.corebanking.dto.P2PTransferResponseDto;
 import com.corebanking.entity.*;
@@ -8,7 +9,6 @@ import com.corebanking.exception.*;
 import com.corebanking.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,7 +20,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
@@ -28,18 +27,18 @@ import java.util.concurrent.ThreadLocalRandom;
 @RequiredArgsConstructor
 public class P2PTransferService {
 
-    private static final BigDecimal DEFAULT_MINIMUM_BALANCE = new BigDecimal("50000.00"); 
-    private static final BigDecimal MIN_TRANSFER_AMOUNT = new BigDecimal("10000.00");
+  
+    private static final BigDecimal MIN_TRANSFER_AMOUNT = new BigDecimal("1.00");
 
     private final AccountRepository accountRepository;
     private final BankTransactionRepository bankTransactionRepository;
-    private final CustomerCredentialsRepository customerCredentialsRepository;
+  
     private final FeeScheduleRepository feeScheduleRepository;
     private final LedgerAccountRepository ledgerAccountRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
     private final AsyncNotificationService asyncNotificationService;
-    private final PasswordEncoder passwordEncoder;
-    private final CustomerSecurityService customerSecurityService;
+    private final TransferLimitService transferLimitService;
+    
 
     /**
      * Executes internal P2P fund transfer with authentication ownership verification,
@@ -65,11 +64,11 @@ public class P2PTransferService {
             throw new TransactionException("Source and destination accounts cannot be identical.");
         }
 
-        // Minimum Transfer Amount Check (100 MMK)
-        if (request.getAmount().compareTo(MIN_TRANSFER_AMOUNT) < 0) {
+        // Minimum Transfer Amount Check 
+        if (request.getAmount() == null || request.getAmount().compareTo(MIN_TRANSFER_AMOUNT) < 0) {
             throw new TransactionException(String.format("Transfer amount must be at least %s MMK.", MIN_TRANSFER_AMOUNT));
         }
-
+        
         BigDecimal serviceFee = calculateTransferFee(request.getAmount());
         BigDecimal totalDebitedAmount = request.getAmount().add(serviceFee);
 
@@ -102,14 +101,12 @@ public class P2PTransferService {
         
      // Account Status Check
        
-        if (!sourceAccount.getCustomer().getCustomerCode().equalsIgnoreCase(authenticatedUsername) &&
-            !sourceAccount.getCustomer().getEmail().equalsIgnoreCase(authenticatedUsername)) {
+        if (!sourceAccount.getCustomer().getCustomerId().toString().equalsIgnoreCase(authenticatedUsername)) {
             throw new TransactionException("Authenticated user does not own the source account.");
         }
 
-        // Secure PIN Verification
-        verifyTransactionPin(sourceAccount.getCustomer().getCustomerId(), request.getTransactionPin());
-        if (sourceAccount.getStatus() != AccountStatus.ACTIVE) {
+       
+              if (sourceAccount.getStatus() != AccountStatus.ACTIVE) {
             throw new TransactionException("Source account is not active. Status: " + sourceAccount.getStatus());
         }
         if (destAccount.getStatus() != AccountStatus.ACTIVE) {
@@ -123,10 +120,9 @@ public class P2PTransferService {
                     sourceAccount.getCurrency(), destAccount.getCurrency()));
         }
 
-        // Minimum Balance Check (Must maintain at least 50,000 MMK in account)
-        BigDecimal minBalance = (sourceAccount.getMinimumBalance() != null && sourceAccount.getMinimumBalance().compareTo(BigDecimal.ZERO) > 0)
+        BigDecimal minBalance = (sourceAccount.getMinimumBalance() != null)
                 ? sourceAccount.getMinimumBalance()
-                : DEFAULT_MINIMUM_BALANCE;
+                : BigDecimal.ZERO;
 
         BigDecimal netAvailable = sourceAccount.getAvailableBalance().subtract(minBalance);
         if (netAvailable.compareTo(totalDebitedAmount) < 0) {
@@ -135,27 +131,9 @@ public class P2PTransferService {
                     minBalance, totalDebitedAmount, request.getAmount(), serviceFee, netAvailable));
         }
 
-        // Cumulative Daily Transfer Limit Check
-        if (sourceAccount.getDailyTransferLimit() != null && sourceAccount.getDailyTransferLimit().compareTo(BigDecimal.ZERO) > 0) {
-            LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
-            LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
 
-            BigDecimal todayTransferred = bankTransactionRepository.findTodayTotalTransferredAmount(
-                    sourceAccount.getAccountId(), startOfDay, endOfDay);
-
-            BigDecimal newTotalDaily = todayTransferred.add(request.getAmount());
-
-            if (newTotalDaily.compareTo(sourceAccount.getDailyTransferLimit()) > 0) {
-                BigDecimal remainingLimit = sourceAccount.getDailyTransferLimit().subtract(todayTransferred);
-                if (remainingLimit.compareTo(BigDecimal.ZERO) < 0) {
-                    remainingLimit = BigDecimal.ZERO;
-                }
-
-                throw new TransactionException(String.format(
-                        "Transfer exceeds daily limit of %s MMK. Transferred today: %s MMK. Remaining limit for today: %s MMK.",
-                        sourceAccount.getDailyTransferLimit(), todayTransferred, remainingLimit));
-            }
-        }
+        // Multi-tier Transfer Limit Validations (Bank Max, One-Time Limit, Beneficiary vs Stranger, Cumulative Daily Limit)
+        transferLimitService.validateTransferLimits(sourceAccount, destAccount, request.getAmount());
 
         // =========================================================================
         // STEP 4: ATOMIC BALANCE UPDATES
@@ -192,7 +170,7 @@ public class P2PTransferService {
                 .channel(TransactionChannel.CUSTOMER_PORTAL)
                 .idempotencyKey(idempotencyKey)
                 .description(request.getDescription() != null ? request.getDescription() : "P2P Fund Transfer")
-                .auditNote("P2P transfer authorized via customer PIN verification.")
+                .auditNote("P2P transfer ")
                 .authorizedAt(now)
                 .completedAt(now)
                 .expiresAt(null)
@@ -223,27 +201,7 @@ public class P2PTransferService {
         return mapToResponseDto(bankTransaction);
     }
 
-    private void verifyTransactionPin(UUID customerId, String rawPin) {
-        CustomerCredentials credentials = customerCredentialsRepository.findByCustomerId(customerId)
-                .orElseThrow(() -> new InvalidPinException("Customer credentials record not found."));
-
-      
-        if (credentials.getPinLockedUntil() != null && credentials.getPinLockedUntil().isAfter(LocalDateTime.now())) {
-            throw new InvalidPinException("Transaction PIN is temporarily locked due to multiple invalid attempts.");
-        }
-        boolean pinValid = credentials.getTransactionPinHash() != null &&
-                passwordEncoder.matches(rawPin, credentials.getTransactionPinHash());
-
-        if (!pinValid) {
-            customerSecurityService.recordFailedPinAttemptAndCheckLock(customerId);
-
-            if (credentials.getFailedPinAttemptCount() + 1 >= 5) {
-                throw new InvalidPinException("Transaction PIN is temporarily locked due to multiple invalid attempts.");
-            }
-            throw new InvalidPinException("Invalid Transaction PIN.");
-        }
-        customerSecurityService.resetFailedPinCount(customerId);
-    }
+   
 
     /**
      * Calculates transfer fee solely from active FeeSchedules in the database.
@@ -345,6 +303,23 @@ public class P2PTransferService {
                 .currency(txn.getCurrency())
                 .completedAt(txn.getCompletedAt())
                 .description(txn.getDescription())
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public AccountLookupResponseDto lookupAccount(String accountNumber) {
+        Accounts account = accountRepository.findByAccountNumber(accountNumber)
+                .orElseThrow(() -> new AccountNotFoundException("Account not found: " + accountNumber));
+
+        String accountName = (account.getCustomer() != null && account.getCustomer().getFullName() != null)
+                ? account.getCustomer().getFullName()
+                : "N/A";
+
+        return AccountLookupResponseDto.builder()
+                .accountNumber(account.getAccountNumber())
+                .accountName(accountName)
+                .accountType(account.getAccountType() != null ? account.getAccountType().name() : null)
+                .status(account.getStatus() != null ? account.getStatus().name() : null)
                 .build();
     }
 }

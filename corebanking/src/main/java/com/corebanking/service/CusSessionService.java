@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.corebanking.entity.AuditLogs;
-import com.corebanking.entity.AuthSessions;
+import com.corebanking.entity.AuthSession;
 import com.corebanking.entity.CustomerCredentials;
 import com.corebanking.entity.enums.ActorType;
 import com.corebanking.entity.enums.CustomerStatus;
@@ -49,10 +49,10 @@ public class CusSessionService {
     @Transactional(
             noRollbackFor = CusSessionExpiredException.class
     )
-    public AuthSessions validateAccessSession(
+    public AuthSession validateAccessSession(
             Claims claims) {
 
-        AuthSessions session =
+        AuthSession session =
                 validateBaseSession(
                         claims,
                         "ACCESS"
@@ -84,7 +84,7 @@ public class CusSessionService {
     @Transactional(
             noRollbackFor = CusSessionExpiredException.class
     )
-    public AuthSessions validateRefreshSession(
+    public AuthSession validateRefreshSession(
             Claims claims,
             String rawRefreshToken) {
 
@@ -106,7 +106,7 @@ public class CusSessionService {
         // COMMON SESSION VALIDATION
         // =====================================================
 
-        AuthSessions session =
+        AuthSession session =
                 validateBaseSession(
                         claims,
                         "REFRESH"
@@ -173,7 +173,7 @@ public class CusSessionService {
     // 3. COMMON SESSION VALIDATION
     // =========================================================
 
-    private AuthSessions validateBaseSession(
+    private AuthSession validateBaseSession(
             Claims claims,
             String expectedTokenType) {
 
@@ -321,7 +321,7 @@ public class CusSessionService {
         // 6. FIND AUTH SESSION
         // =====================================================
 
-        AuthSessions session =
+        AuthSession session =
                 authSessionsRepository
                         .findBySessionUuid(
                                 sessionUuid
@@ -559,7 +559,7 @@ public class CusSessionService {
 
     @Transactional
     public void revokeSession(
-            AuthSessions session,
+            AuthSession session,
             String reason) {
 
 
@@ -687,7 +687,7 @@ public class CusSessionService {
 
     @Transactional
     public boolean revokeSession(
-            AuthSessions session,
+            AuthSession session,
             String reason,
             UpdatedByType updatedByType,
             UUID updatedById) {
@@ -731,7 +731,7 @@ public class CusSessionService {
     // =========================================================
 
     private void markSessionUpdatedByCustomer(
-            AuthSessions session) {
+            AuthSession session) {
 
 
         if (session == null
@@ -762,7 +762,7 @@ public class CusSessionService {
     // =========================================================
 
     private void saveSystemSessionRevokeAudit(
-            AuthSessions session,
+            AuthSession session,
             String reason) {
 
 
@@ -898,7 +898,7 @@ public class CusSessionService {
     @Transactional(
             noRollbackFor = CusSessionExpiredException.class
     )
-    public AuthSessions validateAccessSessionForLogout(
+    public AuthSession validateAccessSessionForLogout(
             Claims claims) {
 
         return validateBaseSession(

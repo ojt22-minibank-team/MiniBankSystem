@@ -1,6 +1,8 @@
 package com.corebanking.service;
 
 import com.corebanking.dto.CusAccountResponseDTO;
+import com.corebanking.dto.TransferLimitInfoResponseDto;
+import com.corebanking.dto.UpdateTransferLimitRequestDto;
 import com.corebanking.entity.Accounts;
 import com.corebanking.repository.AccountRepository;
 
@@ -18,6 +20,7 @@ import java.util.UUID;
 public class CusAccountService {
 
     private final AccountRepository accountRepository;
+    private final TransferLimitService transferLimitService;
 
     // =========================================================
     // GET LOGGED-IN CUSTOMER ID
@@ -136,6 +139,21 @@ public class CusAccountService {
         return mapToResponse(account);
     }
 
+    // =========================================================
+    // TRANSFER LIMIT MANAGEMENT
+    // =========================================================
+
+    public TransferLimitInfoResponseDto getAccountTransferLimits(String accountNumber) {
+        UUID customerId = getAuthenticatedCustomerId();
+        return transferLimitService.getTransferLimitInfo(customerId.toString(), accountNumber);
+    }
+
+    public TransferLimitInfoResponseDto updateAccountTransferLimits(
+            String accountNumber,
+            UpdateTransferLimitRequestDto request) {
+        UUID customerId = getAuthenticatedCustomerId();
+        return transferLimitService.updateCustomLimits(customerId.toString(), accountNumber, request);
+    }
 
     // =========================================================
     // ENTITY → CUSTOMER RESPONSE DTO

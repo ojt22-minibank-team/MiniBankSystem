@@ -73,6 +73,7 @@ body.put("message", message);
 return new ResponseEntity<>(body, status);
 }
 
+
 @ExceptionHandler(CusAuthenticationException.class)
 public ResponseEntity<Map<String, Object>>
         handleCusAuthenticationException(
@@ -205,14 +206,9 @@ public ResponseEntity<Map<String, Object>>
             .body(body);
 }
 
-
-
-
-
-
-
-
-
-
+@ExceptionHandler(AuthException.class)
+public ResponseEntity<Map<String, Object>> handleAuthException(AuthException ex) {
+    return buildErrorResponse(HttpStatus.UNAUTHORIZED, "AUTH_FAILED", ex.getMessage());
+}
 
 }

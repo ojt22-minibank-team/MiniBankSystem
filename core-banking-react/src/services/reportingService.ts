@@ -1,4 +1,5 @@
 import axiosInstance from '../lib/axios';
+import { STORAGE_KEYS } from '../config/api.config';
 import type {
   DailyLedgerSummary,
   AccountStatusReport,
@@ -11,7 +12,9 @@ import type {
 const BASE = '/api/v1/reports';
 
 function authHeaders(): Record<string, string> {
-  const token = localStorage.getItem('token');
+  const token =
+    localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN) ||
+    localStorage.getItem('token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 

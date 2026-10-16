@@ -10,7 +10,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.corebanking.entity.AuthSessions;
+import com.corebanking.entity.AuthSession;
 import com.corebanking.repository.CusJwtRevokedTokensRepository;
 import com.corebanking.service.CusJwtService;
 import com.corebanking.service.CusSessionService;
@@ -196,7 +196,7 @@ public class CusJwtAuthenticationFilter
             // 7. VALIDATE DB SESSION
             // =================================================
 
-            AuthSessions session =
+            AuthSession session =
                     cusSessionService
                             .validateAccessSession(
                                     claims

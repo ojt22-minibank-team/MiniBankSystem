@@ -129,7 +129,8 @@ BEGIN
     FROM audit_logs al
     LEFT JOIN staff_users s ON s.staff_id = al.actor_staff_id
     LEFT JOIN customers c ON c.customer_id = al.actor_customer_id
-    WHERE (p_staff_id    IS NULL OR p_staff_id    = '' OR al.request_id = p_staff_id OR s.staff_no = p_staff_id OR c.customer_code = p_staff_id)
+    LEFT JOIN corporate_users cu ON cu.corporate_user_id = al.actor_corporate_user_id
+    WHERE (p_staff_id    IS NULL OR p_staff_id    = '' OR al.request_id = p_staff_id OR s.staff_no = p_staff_id OR c.customer_code = p_staff_id OR cu.corporate_user_code = p_staff_id)
       AND (p_action_type IS NULL OR p_action_type = '' OR al.action_type  = p_action_type)
       AND (p_account_no  IS NULL OR p_account_no  = '' OR al.entity_id    = p_account_no)
       AND (p_start_date  IS NULL OR al.created_at >= p_start_date)
@@ -137,24 +138,25 @@ BEGIN
 
     -- RS2: paginated rows
     SELECT
-        al.audit_id                                 AS log_id,
-        al.actor_type                               AS actor_type,
-        COALESCE(al.action_category, '')            AS action_category,
-        COALESCE(s.staff_no, c.customer_code, '')   AS staff_id,
-        COALESCE(s.username, c.email, '')           AS staff_username,
-        COALESCE(s.full_name, c.full_name, '')       AS staff_full_name,
-        al.action_type                              AS action_type,
-        al.entity_type                              AS entity_type,
-        al.entity_id                                AS entity_id,
-        al.old_values                               AS old_value,
-        al.new_values                               AS new_value,
-        al.ip_address                               AS ip_address,
-        COALESCE(al.description, al.user_agent, '') AS description,
-        al.created_at                               AS created_at
+        al.audit_id                                                         AS log_id,
+        al.actor_type                                                       AS actor_type,
+        COALESCE(al.action_category, '')                                    AS action_category,
+        COALESCE(s.staff_no, c.customer_code, cu.corporate_user_code, '')   AS staff_id,
+        COALESCE(s.username, c.email, cu.email, '')                         AS staff_username,
+        COALESCE(s.full_name, c.full_name, cu.full_name, '')                 AS staff_full_name,
+        al.action_type                                                      AS action_type,
+        al.entity_type                                                      AS entity_type,
+        al.entity_id                                                        AS entity_id,
+        al.old_values                                                       AS old_value,
+        al.new_values                                                       AS new_value,
+        al.ip_address                                                       AS ip_address,
+        COALESCE(al.description, al.user_agent, '')                         AS description,
+        al.created_at                                                       AS created_at
     FROM audit_logs al
     LEFT JOIN staff_users s ON s.staff_id = al.actor_staff_id
     LEFT JOIN customers c ON c.customer_id = al.actor_customer_id
-    WHERE (p_staff_id    IS NULL OR p_staff_id    = '' OR al.request_id = p_staff_id OR s.staff_no = p_staff_id OR c.customer_code = p_staff_id)
+    LEFT JOIN corporate_users cu ON cu.corporate_user_id = al.actor_corporate_user_id
+    WHERE (p_staff_id    IS NULL OR p_staff_id    = '' OR al.request_id = p_staff_id OR s.staff_no = p_staff_id OR c.customer_code = p_staff_id OR cu.corporate_user_code = p_staff_id)
       AND (p_action_type IS NULL OR p_action_type = '' OR al.action_type  = p_action_type)
       AND (p_account_no  IS NULL OR p_account_no  = '' OR al.entity_id    = p_account_no)
       AND (p_start_date  IS NULL OR al.created_at >= p_start_date)

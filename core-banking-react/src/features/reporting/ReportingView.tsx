@@ -52,7 +52,19 @@ const ReportingView: React.FC = () => {
   const [appliedActionType, setAppliedActionType] = useState('');
   const [appliedAccountNo, setAppliedAccountNo] = useState('');
 
-  const [searchKey, setSearchKey] = useState(0);
+  const [hasSearched, setHasSearched] = useState<Record<ReportTab, boolean>>({
+    ledger: false,
+    account: false,
+    audit: false,
+  });
+
+  const [searchKeys, setSearchKeys] = useState<Record<ReportTab, number>>({
+    ledger: 0,
+    account: 0,
+    audit: 0,
+  });
+
+  const [isSearching, setIsSearching] = useState(false);
 
   const handleSearch = () => {
     setAppliedStartDate(startDate);
@@ -65,32 +77,62 @@ const ReportingView: React.FC = () => {
     setAppliedStaffId(staffId);
     setAppliedActionType(actionType);
     setAppliedAccountNo(accountNo);
-    setSearchKey((k) => k + 1);
+
+    setHasSearched((prev) => ({ ...prev, [activeTab]: true }));
+    setSearchKeys((prev) => ({ ...prev, [activeTab]: prev[activeTab] + 1 }));
   };
 
   const handleReset = () => {
-    setStartDate(monthAgo);
-    setEndDate(today);
-    setLedgerStatus('');
-    setLedgerTransactionType('');
-    setAccountStatus('');
-    setAuditStartDate(monthAgoDt);
-    setAuditEndDate(todayDt);
-    setStaffId('');
-    setActionType('');
-    setAccountNo('');
+    if (activeTab === 'ledger') {
+      setStartDate(monthAgo);
+      setEndDate(today);
+      setLedgerStatus('');
+      setLedgerTransactionType('');
+      setAppliedStartDate(monthAgo);
+      setAppliedEndDate(today);
+      setAppliedLedgerStatus('');
+      setAppliedLedgerTransactionType('');
+    } else if (activeTab === 'account') {
+      setStartDate(monthAgo);
+      setEndDate(today);
+      setAccountStatus('');
+      setAppliedStartDate(monthAgo);
+      setAppliedEndDate(today);
+      setAppliedAccountStatus('');
+    } else if (activeTab === 'audit') {
+      setAuditStartDate(monthAgoDt);
+      setAuditEndDate(todayDt);
+      setStaffId('');
+      setActionType('');
+      setAccountNo('');
+      setAppliedAuditStartDate(monthAgoDt);
+      setAppliedAuditEndDate(todayDt);
+      setAppliedStaffId('');
+      setAppliedActionType('');
+      setAppliedAccountNo('');
+    }
 
-    setAppliedStartDate(monthAgo);
-    setAppliedEndDate(today);
-    setAppliedLedgerStatus('');
-    setAppliedLedgerTransactionType('');
-    setAppliedAccountStatus('');
-    setAppliedAuditStartDate(monthAgoDt);
-    setAppliedAuditEndDate(todayDt);
-    setAppliedStaffId('');
-    setAppliedActionType('');
-    setAppliedAccountNo('');
-    setSearchKey((k) => k + 1);
+    setHasSearched((prev) => ({ ...prev, [activeTab]: false }));
+    setSearchKeys((prev) => ({ ...prev, [activeTab]: 0 }));
+    setIsSearching(false);
+  };
+
+  const tabInfo: Record<ReportTab, { title: string; description: string }> = {
+    ledger: {
+      title: 'Ready to Generate Daily Ledger Summary',
+      description:
+        'Select your date range and filters above, then click the "Search" button to view transaction volumes and ledger summaries.',
+    },
+    account: {
+      title: 'Ready to Generate Account Status Report',
+      description:
+        'Select your date range and status filters above, then click the "Search" button to inspect account statuses and balance brackets.',
+    },
+    audit: {
+      title: 'Ready to View Audit Trail Logs',
+      description:
+        'Specify your desired time window, staff ID, or account number above, then click the "Search" button to retrieve audit logs.',
+    },
   };
 
   return (
@@ -159,34 +201,119 @@ const ReportingView: React.FC = () => {
         onAuditEndDateChange={setAuditEndDate}
         onSearch={handleSearch}
         onReset={handleReset}
+        loading={isSearching}
       />
 
-      {activeTab === 'ledger' && (
-        <DailyLedgerPanel
-          startDate={appliedStartDate}
-          endDate={appliedEndDate}
-          ledgerStatus={appliedLedgerStatus}
-          transactionType={appliedLedgerTransactionType}
-          searchKey={searchKey}
-        />
+      {hasSearched.ledger && (
+        <div style={{ display: activeTab === 'ledger' ? 'block' : 'none' }}>
+          <DailyLedgerPanel
+            startDate={appliedStartDate}
+            endDate={appliedEndDate}
+            ledgerStatus={appliedLedgerStatus}
+            transactionType={appliedLedgerTransactionType}
+            searchKey={searchKeys.ledger}
+            onLoadingChange={(l) => {
+              if (activeTab === 'ledger') setIsSearching(l);
+            }}
+          />
+        </div>
       )}
-      {activeTab === 'account' && (
-        <AccountStatusPanel
-          startDate={appliedStartDate}
-          endDate={appliedEndDate}
-          accountStatus={appliedAccountStatus}
-          searchKey={searchKey}
-        />
+      {hasSearched.account && (
+        <div style={{ display: activeTab === 'account' ? 'block' : 'none' }}>
+          <AccountStatusPanel
+            startDate={appliedStartDate}
+            endDate={appliedEndDate}
+            accountStatus={appliedAccountStatus}
+            searchKey={searchKeys.account}
+            onLoadingChange={(l) => {
+              if (activeTab === 'account') setIsSearching(l);
+            }}
+          />
+        </div>
       )}
-      {activeTab === 'audit' && (
-        <AuditTrailPanel
-          staffId={appliedStaffId}
-          actionType={appliedActionType}
-          auditStartDate={appliedAuditStartDate}
-          auditEndDate={appliedAuditEndDate}
-          accountNo={appliedAccountNo}
-          searchKey={searchKey}
-        />
+      {hasSearched.audit && (
+        <div style={{ display: activeTab === 'audit' ? 'block' : 'none' }}>
+          <AuditTrailPanel
+            staffId={appliedStaffId}
+            actionType={appliedActionType}
+            auditStartDate={appliedAuditStartDate}
+            auditEndDate={appliedAuditEndDate}
+            accountNo={appliedAccountNo}
+            searchKey={searchKeys.audit}
+            onLoadingChange={(l) => {
+              if (activeTab === 'audit') setIsSearching(l);
+            }}
+          />
+        </div>
+      )}
+
+      {!hasSearched[activeTab] && (
+        <div
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '10px',
+            border: '1px dashed #cbd5e1',
+            padding: '56px 24px',
+            textAlign: 'center',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+          }}
+        >
+          <div
+            style={{
+              width: '52px',
+              height: '52px',
+              borderRadius: '50%',
+              backgroundColor: '#eff6ff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px',
+              fontSize: '22px',
+            }}
+          >
+            🔍
+          </div>
+          <h3
+            style={{
+              fontSize: '15px',
+              fontWeight: 700,
+              color: '#1e293b',
+              margin: '0 0 8px 0',
+            }}
+          >
+            {tabInfo[activeTab].title}
+          </h3>
+          <p
+            style={{
+              fontSize: '13px',
+              color: '#64748b',
+              maxWidth: '460px',
+              margin: '0 auto 20px',
+              lineHeight: '1.5',
+            }}
+          >
+            {tabInfo[activeTab].description}
+          </p>
+          <button
+            type="button"
+            onClick={handleSearch}
+            disabled={isSearching}
+            style={{
+              padding: '9px 24px',
+              backgroundColor: '#2563EB',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              fontWeight: 600,
+              fontSize: '13px',
+              cursor: isSearching ? 'not-allowed' : 'pointer',
+              opacity: isSearching ? 0.7 : 1,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+            }}
+          >
+            {isSearching ? 'Searching...' : 'Search Report'}
+          </button>
+        </div>
       )}
     </div>
   );

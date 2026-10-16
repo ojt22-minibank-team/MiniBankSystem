@@ -4,6 +4,8 @@ import com.corebanking.entity.AuditLogs;
 import com.corebanking.entity.enums.ActorType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -22,6 +24,17 @@ import java.util.UUID;
  */
 @Repository
 public interface AuditLogsRepository extends JpaRepository<AuditLogs, Long>, JpaSpecificationExecutor<AuditLogs> {
+
+    /**
+     * Retrieve paginated audit logs matching specification with eager loading of actors.
+     *
+     * @param spec     search specification
+     * @param pageable pagination parameters
+     * @return paginated audit entries
+     */
+    @Override
+    @EntityGraph(attributePaths = {"actorStaff", "actorCustomer", "actorCorporateUser"})
+    Page<AuditLogs> findAll(Specification<AuditLogs> spec, Pageable pageable);
 
     /**
      * Retrieve paginated audit logs for a specific staff user ID.
