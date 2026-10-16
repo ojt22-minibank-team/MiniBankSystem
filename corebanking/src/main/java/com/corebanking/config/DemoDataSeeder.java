@@ -5,7 +5,7 @@ import com.corebanking.entity.AccountSignatories;
 import com.corebanking.entity.AccountStatusHistory;
 import com.corebanking.entity.Accounts;
 import com.corebanking.entity.Announcements;
-import com.corebanking.entity.AuthSessions;
+import com.corebanking.entity.AuthSession;
 import com.corebanking.entity.BankTransactions;
 import com.corebanking.entity.Beneficiaries;
 import com.corebanking.entity.CompanyContactPersons;
@@ -16,10 +16,10 @@ import com.corebanking.entity.FeeSchedules;
 import com.corebanking.entity.JwtRevokedTokens;
 import com.corebanking.entity.LedgerAccounts;
 import com.corebanking.entity.LedgerEntries;
-import com.corebanking.entity.LoginAttempts;
+import com.corebanking.entity.LoginAttempt;
 import com.corebanking.entity.ManualTransactions;
 import com.corebanking.entity.Notifications;
-import com.corebanking.entity.OtpChallenges;
+import com.corebanking.entity.OtpChallenge;
 import com.corebanking.entity.Permissions;
 import com.corebanking.entity.PersonalInfo;
 import com.corebanking.entity.RolePermissions;
@@ -1021,8 +1021,8 @@ public class DemoDataSeeder implements CommandLineRunner {
             return;
         }
 
-        List<AuthSessions> list = List.of(
-                AuthSessions.builder()
+        List<AuthSession> list = List.of(
+                AuthSession.builder()
                         .sessionUuid(UUID.randomUUID().toString())
                         .subjectType(SessionSubjectType.STAFF)
                         .staff(staff1)
@@ -1037,7 +1037,7 @@ public class DemoDataSeeder implements CommandLineRunner {
                         .updatedByType(UpdatedByType.STAFF)
                         .updatedAt(now.minusHours(1))
                         .build(),
-                AuthSessions.builder()
+                AuthSession.builder()
                         .sessionUuid(UUID.randomUUID().toString())
                         .subjectType(SessionSubjectType.CUSTOMER)
                         .customer(cust1)
@@ -1052,7 +1052,7 @@ public class DemoDataSeeder implements CommandLineRunner {
                         .updatedByType(UpdatedByType.CUSTOMER)
                         .updatedAt(now.minusMinutes(30))
                         .build(),
-                AuthSessions.builder()
+                AuthSession.builder()
                         .sessionUuid(UUID.randomUUID().toString())
                         .subjectType(SessionSubjectType.STAFF)
                         .staff(staff2)
@@ -1085,7 +1085,7 @@ public class DemoDataSeeder implements CommandLineRunner {
             return;
         }
 
-        List<LoginAttempts> list = List.of(
+        List<LoginAttempt> list = List.of(
                 attempt(SessionSubjectType.STAFF, "admin.nay", true, null, staff1, null, now.minusDays(4), now),
                 attempt(SessionSubjectType.STAFF, "admin.nay", false, "Bad credentials", staff1, null, now.minusDays(3), now),
                 attempt(SessionSubjectType.CUSTOMER, "CUS-001", true, null, null, cust1, now.minusDays(2), now),
@@ -1096,10 +1096,10 @@ public class DemoDataSeeder implements CommandLineRunner {
         log.info("[DemoDataSeeder] login attempts seeded ({}).", list.size());
     }
 
-    private LoginAttempts attempt(SessionSubjectType actorType, String identifier, boolean success,
+    private LoginAttempt attempt(SessionSubjectType actorType, String identifier, boolean success,
                                   String reason, StaffUsers staff, Customers customer,
                                   LocalDateTime at, LocalDateTime now) {
-        return LoginAttempts.builder()
+        return LoginAttempt.builder()
                 .actorType(actorType)
                 .loginIdentifier(identifier)
                 .customer(customer)
@@ -1125,8 +1125,8 @@ public class DemoDataSeeder implements CommandLineRunner {
             return;
         }
 
-        List<OtpChallenges> list = List.of(
-                OtpChallenges.builder()
+        List<OtpChallenge> list = List.of(
+                OtpChallenge.builder()
                         .customer(cust1)
                         .purpose(OtpPurpose.LOGIN)
                         .otpHash(passwordEncoder.encode("123456"))
@@ -1140,7 +1140,7 @@ public class DemoDataSeeder implements CommandLineRunner {
                         .maxResendAttempts(5)
                         .updatedAt(now.minusMinutes(1))
                         .build(),
-                OtpChallenges.builder()
+                OtpChallenge.builder()
                         .customer(cust1)
                         .purpose(OtpPurpose.PASSWORD_RESET)
                         .otpHash(passwordEncoder.encode("654321"))
@@ -1154,7 +1154,7 @@ public class DemoDataSeeder implements CommandLineRunner {
                         .maxResendAttempts(5)
                         .updatedAt(now.minusHours(1))
                         .build(),
-                OtpChallenges.builder()
+                OtpChallenge.builder()
                         .customer(cust2)
                         .purpose(OtpPurpose.LOGIN)
                         .otpHash(passwordEncoder.encode("111222"))
@@ -1169,7 +1169,7 @@ public class DemoDataSeeder implements CommandLineRunner {
                         .maxResendAttempts(5)
                         .updatedAt(now.minusDays(1).plusMinutes(1))
                         .build(),
-                OtpChallenges.builder()
+                OtpChallenge.builder()
                         .customer(cust1)
                         .transaction(pendingTransfer)
                         .purpose(OtpPurpose.TRANSFER)

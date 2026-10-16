@@ -10,6 +10,7 @@ import {
   LogOut,
   Building2,
   ChevronRight,
+  Megaphone,
 } from "lucide-react";
 
 import {
@@ -18,6 +19,7 @@ import {
 } from "react-router-dom";
 
 import {
+  useEffect,
   useState,
 } from "react";
 
@@ -28,6 +30,8 @@ import {
 import {
   clearTokens,
 } from "../../utils/tokenStorage";
+import { useAppDispatch ,useAppSelector } from "../../lib/redux";
+import { fetchAnnouncements } from "../../features/customer-account/announcements/store/announcementSlice";
 
 
 // ======================================================
@@ -59,6 +63,11 @@ const mainMenuItems = [
     name: "Beneficiaries",
     path: "/beneficiaries",
     icon: Users,
+  },
+    {
+    name: "Announcements",
+    path: "/announcements",
+    icon: Megaphone,
   },
 ];
 
@@ -95,11 +104,24 @@ export default function Sidebar() {
   const navigate =
     useNavigate();
 
+   const dispatch = useAppDispatch();
 
   const [
     loggingOut,
     setLoggingOut,
   ] = useState(false);
+
+
+    useEffect(() => {
+    void dispatch(fetchAnnouncements());
+  }, [dispatch]);
+
+  // Redux ထဲက မဖတ်ရသေးတဲ့ announcement အရေအတွက်ကိုတွက်မယ်။
+  const unreadAnnouncementCount = useAppSelector((state) =>
+    state.announcements.announcements.filter(
+      (announcement) => !announcement.isRead,
+    ).length,
+  );
 
 
   // ====================================================
@@ -428,6 +450,18 @@ export default function Sidebar() {
                           {item.name}
                         </span>
 
+                                         {/* Announcements unread count badge */}
+                        {item.path === "/announcements" &&
+                          unreadAnnouncementCount > 0 && (
+                            <span
+                              aria-label={`${unreadAnnouncementCount} unread announcements`}
+                              className="inline-flex min-w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold leading-4 text-white"
+                            >
+                              {unreadAnnouncementCount > 99
+                                ? "99+"
+                                : unreadAnnouncementCount}
+                            </span>
+                          )}
 
                         {/* Active Indicator */}
 

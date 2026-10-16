@@ -6,8 +6,21 @@ import com.corebanking.dto.AuditTrailLogDTO;
 import com.corebanking.dto.AuditTrailPageDTO;
 import com.corebanking.dto.BalanceBracketDTO;
 import com.corebanking.dto.DailyLedgerSummaryDTO;
+import com.corebanking.entity.AuditLogs;
+import com.corebanking.entity.CorporateUser;
+import com.corebanking.entity.Customers;
+import com.corebanking.entity.StaffUsers;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.CallableStatement;
 import java.sql.Connection;
@@ -16,18 +29,22 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * ReportRepository ? Group 2 Reporting Subsystem.
- * All queries are executed via dedicated MySQL Stored Procedures.
+ * Ledger and Account Status queries execute via MySQL Stored Procedures,
+ * while Audit Trail queries use the modernized immutable AuditLogs JPA Entity.
  */
 @Repository
 public class ReportRepository {
 
     private final JdbcTemplate jdbcTemplate;
+    private final AuditLogsRepository auditLogsRepository;
 
-    public ReportRepository(JdbcTemplate jdbcTemplate) {
+    public ReportRepository(JdbcTemplate jdbcTemplate, AuditLogsRepository auditLogsRepository) {
         this.jdbcTemplate = jdbcTemplate;
+        this.auditLogsRepository = auditLogsRepository;
     }
 
     // -------------------------------------------------------
@@ -120,71 +137,122 @@ public class ReportRepository {
     }
 
     // -------------------------------------------------------
-    // SP 3: Audit Trail Log (paginated)
+    // Audit Trail Log (paginated via AuditLogs entity)
     // -------------------------------------------------------
+    @Transactional(readOnly = true)
     public AuditTrailPageDTO getAuditTrailLog(
             String staffId, String actionType,
             LocalDateTime startDate, LocalDateTime endDate,
             String accountNo, int page, int pageSize) {
 
-        return jdbcTemplate.execute((Connection con) -> {
-            CallableStatement cs = con.prepareCall("{CALL sp_get_system_audit_trail_log(?, ?, ?, ?, ?, ?, ?)}");
-            cs.setString(1, (staffId    == null || staffId.isBlank())    ? null : staffId);
-            cs.setString(2, (actionType == null || actionType.isBlank()) ? null : actionType);
-            cs.setObject(3, startDate);
-            cs.setObject(4, endDate);
-            cs.setString(5, (accountNo  == null || accountNo.isBlank())  ? null : accountNo);
-            cs.setInt(6, page);
-            cs.setInt(7, pageSize);
-            return cs;
-        }, (CallableStatement cs) -> {
-            long totalCount = 0;
-            List<AuditTrailLogDTO> logs = new ArrayList<>();
+        int validPage = (page <= 0) ? 1 : page;
+        int validPageSize = (pageSize <= 0) ? 20 : pageSize;
+        Pageable pageable = PageRequest.of(validPage - 1, validPageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
 
-            boolean hasRs = cs.execute();
+        Specification<AuditLogs> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
 
-            // RS1: total count
-            if (hasRs) {
-                try (ResultSet rs = cs.getResultSet()) {
-                    if (rs.next()) {
-                        totalCount = rs.getLong("total_count");
-                    }
+            if (staffId != null && !staffId.isBlank()) {
+                String trimmed = staffId.trim();
+                Join<AuditLogs, StaffUsers> staffJoin = root.join("actorStaff", JoinType.LEFT);
+                Join<AuditLogs, Customers> customerJoin = root.join("actorCustomer", JoinType.LEFT);
+                Join<AuditLogs, CorporateUser> corpJoin = root.join("actorCorporateUser", JoinType.LEFT);
+
+                List<Predicate> actorPreds = new ArrayList<>();
+                actorPreds.add(cb.equal(staffJoin.get("staffNo"), trimmed));
+                actorPreds.add(cb.equal(staffJoin.get("username"), trimmed));
+                actorPreds.add(cb.equal(customerJoin.get("customerCode"), trimmed));
+                actorPreds.add(cb.equal(customerJoin.get("email"), trimmed));
+                actorPreds.add(cb.equal(corpJoin.get("corporateUserCode"), trimmed));
+                actorPreds.add(cb.equal(corpJoin.get("email"), trimmed));
+                actorPreds.add(cb.equal(root.get("requestId"), trimmed));
+
+                try {
+                    UUID uuid = UUID.fromString(trimmed);
+                    actorPreds.add(cb.equal(staffJoin.get("staffId"), uuid));
+                    actorPreds.add(cb.equal(customerJoin.get("customerId"), uuid));
+                    actorPreds.add(cb.equal(corpJoin.get("corporateUserId"), uuid));
+                } catch (IllegalArgumentException ignored) {
                 }
-                hasRs = cs.getMoreResults();
+
+                predicates.add(cb.or(actorPreds.toArray(new Predicate[0])));
             }
 
-            // RS2: log rows
-            if (hasRs) {
-                try (ResultSet rs = cs.getResultSet()) {
-                    while (rs.next()) {
-                        logs.add(AuditTrailLogDTO.builder()
-                                .logId(String.valueOf(rs.getLong("log_id")))
-                                .actorType(rs.getString("actor_type"))
-                                .actionCategory(rs.getString("action_category"))
-                                .staffId(rs.getString("staff_id"))
-                                .staffUsername(rs.getString("staff_username"))
-                                .staffFullName(rs.getString("staff_full_name"))
-                                .actionType(rs.getString("action_type"))
-                                .entityType(rs.getString("entity_type"))
-                                .entityId(rs.getString("entity_id"))
-                                .oldValue(rs.getString("old_value"))
-                                .newValue(rs.getString("new_value"))
-                                .ipAddress(rs.getString("ip_address"))
-                                .description(rs.getString("description"))
-                                .createdAt(rs.getObject("created_at", LocalDateTime.class))
-                                .build());
-                    }
-                }
+            if (actionType != null && !actionType.isBlank()) {
+                predicates.add(cb.equal(root.get("actionType"), actionType.trim()));
             }
 
-            int totalPages = (pageSize > 0) ? (int) Math.ceil((double) totalCount / pageSize) : 1;
-            return AuditTrailPageDTO.builder()
-                    .logs(logs)
-                    .totalCount(totalCount)
-                    .page(page)
-                    .pageSize(pageSize)
-                    .totalPages(totalPages)
-                    .build();
-        });
+            if (accountNo != null && !accountNo.isBlank()) {
+                predicates.add(cb.equal(root.get("entityId"), accountNo.trim()));
+            }
+
+            if (startDate != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), startDate));
+            }
+
+            if (endDate != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), endDate));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<AuditLogs> pageResult = auditLogsRepository.findAll(spec, pageable);
+
+        List<AuditTrailLogDTO> logs = pageResult.getContent().stream()
+                .map(this::mapToAuditTrailLogDTO)
+                .toList();
+
+        return AuditTrailPageDTO.builder()
+                .logs(logs)
+                .totalCount(pageResult.getTotalElements())
+                .page(validPage)
+                .pageSize(validPageSize)
+                .totalPages(pageResult.getTotalPages())
+                .build();
+    }
+
+    private AuditTrailLogDTO mapToAuditTrailLogDTO(AuditLogs al) {
+        String staffId = "";
+        String staffUsername = "";
+        String staffFullName = "";
+
+        if (al.getActorStaff() != null) {
+            staffId = (al.getActorStaff().getStaffNo() != null) ? al.getActorStaff().getStaffNo() : "";
+            staffUsername = (al.getActorStaff().getUsername() != null) ? al.getActorStaff().getUsername() : "";
+            staffFullName = (al.getActorStaff().getFullName() != null) ? al.getActorStaff().getFullName() : "";
+        } else if (al.getActorCustomer() != null) {
+            staffId = (al.getActorCustomer().getCustomerCode() != null) ? al.getActorCustomer().getCustomerCode() : "";
+            staffUsername = (al.getActorCustomer().getEmail() != null) ? al.getActorCustomer().getEmail() : "";
+            staffFullName = (al.getActorCustomer().getFullName() != null) ? al.getActorCustomer().getFullName() : "";
+        } else if (al.getActorCorporateUser() != null) {
+            staffId = (al.getActorCorporateUser().getCorporateUserCode() != null) ? al.getActorCorporateUser().getCorporateUserCode() : "";
+            staffUsername = (al.getActorCorporateUser().getEmail() != null) ? al.getActorCorporateUser().getEmail() : "";
+            staffFullName = (al.getActorCorporateUser().getFullName() != null) ? al.getActorCorporateUser().getFullName() : "";
+        } else if (al.getRequestId() != null) {
+            staffId = al.getRequestId();
+        }
+
+        String description = al.getDescription();
+        if ((description == null || description.isBlank()) && al.getUserAgent() != null) {
+            description = al.getUserAgent();
+        }
+
+        return AuditTrailLogDTO.builder()
+                .logId(al.getAuditId() != null ? String.valueOf(al.getAuditId()) : "")
+                .actorType(al.getActorType() != null ? al.getActorType().name() : "")
+                .actionCategory(al.getActionCategory() != null ? al.getActionCategory() : "")
+                .staffId(staffId)
+                .staffUsername(staffUsername)
+                .staffFullName(staffFullName)
+                .actionType(al.getActionType() != null ? al.getActionType() : "")
+                .entityType(al.getEntityType() != null ? al.getEntityType() : "")
+                .entityId(al.getEntityId() != null ? al.getEntityId() : "")
+                .oldValue(al.getOldValues())
+                .newValue(al.getNewValues())
+                .ipAddress(al.getIpAddress())
+                .description(description != null ? description : "")
+                .createdAt(al.getCreatedAt())
+                .build();
     }
 }

@@ -27,3 +27,38 @@ export interface CustomerAccount {
   openedAt: string;
   closedAt: string | null;
 }
+
+export interface Account {
+  id: string;
+  accountNumber: string;
+  accountType: string;
+  accountName: string;
+  balance: number;
+  availableBalance: number;
+  currency: string;
+  status: string;
+  openDate: string;
+}
+
+export interface TransferLimitInfo {
+  accountNumber: string;
+  accountType: string;
+  accountCategory: string;
+  currency: string;
+  bankMaxOneTimeLimit: number;
+  bankStrangerOneTimeLimit: number;
+  bankMaxDailyLimit: number;
+  userCustomOneTimeLimit: number | null;
+  userCustomDailyLimit: number | null;
+  effectiveOneTimeLimitBeneficiary: number;
+  effectiveOneTimeLimitStranger: number;
+  effectiveDailyLimit: number;
+  todayTransferredAmount: number;
+  remainingDailyLimit: number;
+}
+
+export interface UpdateTransferLimitPayload {
+  transactionPin: string;
+  customOneTimeLimit?: number | null;
+  customDailyLimit?: number | null;
+}

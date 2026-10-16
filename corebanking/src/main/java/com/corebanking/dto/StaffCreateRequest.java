@@ -1,4 +1,10 @@
+
 package com.corebanking.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -7,13 +13,26 @@ import lombok.Setter;
 @Setter
 public class StaffCreateRequest {
 
+    @NotBlank(message = "Staff number is required")
+    @Size(max = 32)
     private String staffNo;
+
+    @NotBlank(message = "Username is required")
+    @Size(max = 64)
     private String username;
+
+    @NotBlank(message = "Full name is required")
+    @Size(max = 150)
     private String fullName;
+
+    @NotBlank(message = "Email is required")
+    @Email(message = "Invalid email format")
+    @Size(max = 191)
     private String email;
+
+    @Size(max = 32)
     private String phone;
 
-    private String password;
-
+    @NotNull(message = "Role is required")
     private Integer roleId;
 }

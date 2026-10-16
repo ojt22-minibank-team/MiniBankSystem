@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { DailyLedgerSummary, LedgerFilterParams } from '../../../types/reports/reporting.types';
 import {
   fetchDailyLedgerSummary,
@@ -14,6 +14,7 @@ interface Props {
   ledgerStatus: string;
   transactionType?: string;
   searchKey?: number;
+  onLoadingChange?: (loading: boolean) => void;
 }
 
 const typeColors: Record<string, string> = {
@@ -31,6 +32,7 @@ const DailyLedgerPanel: React.FC<Props> = ({
   ledgerStatus,
   transactionType = '',
   searchKey,
+  onLoadingChange,
 }) => {
   const [data, setData] = useState<DailyLedgerSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -43,12 +45,22 @@ const DailyLedgerPanel: React.FC<Props> = ({
 
   const params: LedgerFilterParams = { startDate, endDate, status: ledgerStatus };
 
+  const onLoadingChangeRef = useRef(onLoadingChange);
+  useEffect(() => {
+    onLoadingChangeRef.current = onLoadingChange;
+  }, [onLoadingChange]);
+
   const load = useCallback(async () => {
     setLoading(true);
+    onLoadingChangeRef.current?.(true);
     setError(null);
     const startTime = performance.now();
     try {
-      const result = await fetchDailyLedgerSummary(params);
+      const result = await fetchDailyLedgerSummary({
+        startDate,
+        endDate,
+        status: ledgerStatus,
+      });
       const elapsedSec = (performance.now() - startTime) / 1000;
       setLoadDuration(elapsedSec);
       setData(result);
@@ -59,12 +71,15 @@ const DailyLedgerPanel: React.FC<Props> = ({
       setError((e as Error).message || 'Failed to load data');
     } finally {
       setLoading(false);
+      onLoadingChangeRef.current?.(false);
     }
   }, [startDate, endDate, ledgerStatus]);
 
   useEffect(() => {
+    if (!searchKey) return;
     load();
-  }, [load, searchKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchKey]);
 
   useEffect(() => {
     setPage(1);

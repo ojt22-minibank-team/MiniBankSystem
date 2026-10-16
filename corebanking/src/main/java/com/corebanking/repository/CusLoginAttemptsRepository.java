@@ -1,8 +1,8 @@
 package com.corebanking.repository;
 
-import com.corebanking.entity.LoginAttempts;
+import com.corebanking.entity.LoginAttempt;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CusLoginAttemptsRepository
-        extends JpaRepository<LoginAttempts, Long> {
+        extends JpaRepository<LoginAttempt, Long> {
 }

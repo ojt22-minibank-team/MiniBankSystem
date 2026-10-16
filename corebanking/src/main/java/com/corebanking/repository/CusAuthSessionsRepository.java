@@ -9,15 +9,15 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import com.corebanking.entity.AuthSessions;
+import com.corebanking.entity.AuthSession;
 import com.corebanking.entity.enums.UpdatedByType;
 
 
 public interface CusAuthSessionsRepository
-        extends JpaRepository<AuthSessions, UUID> {
+        extends JpaRepository<AuthSession, UUID> {
 
 
-    Optional<AuthSessions> findBySessionUuid(
+    Optional<AuthSession> findBySessionUuid(
             String sessionUuid
     );
 
@@ -31,7 +31,7 @@ public interface CusAuthSessionsRepository
             clearAutomatically = true
     )
     @Query("""
-            UPDATE AuthSessions s
+            UPDATE AuthSession s
                SET s.revokedAt = :revokedAt,
                    s.revokeReason = :reason,
                    s.updatedByType = :updatedByType,
@@ -71,7 +71,7 @@ public interface CusAuthSessionsRepository
             clearAutomatically = true
     )
     @Query("""
-            UPDATE AuthSessions s
+            UPDATE AuthSession s
                SET s.refreshTokenHash = :newRefreshTokenHash,
                    s.refreshExpiresAt = :newRefreshExpiresAt,
                    s.lastSeenAt = :now,
@@ -126,7 +126,7 @@ public interface CusAuthSessionsRepository
             flushAutomatically = true
     )
     @Query("""
-            UPDATE AuthSessions s
+            UPDATE AuthSession s
                SET s.revokedAt = :revokedAt,
                    s.revokeReason = :reason,
                    s.updatedByType = :updatedByType,

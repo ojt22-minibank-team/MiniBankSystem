@@ -61,6 +61,7 @@ public class CusDashboardService {
         return CusDashboardResponseDTO.builder()
                 .customerCode(customer.getCustomerCode())
                 .fullName(customer.getFullName())
+                .customerType(customer.getCustomerType())
                 .totalBalance(totalBalance)
                 .accountCount(accounts.size())
                 .accounts(accounts)

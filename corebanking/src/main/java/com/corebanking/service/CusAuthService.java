@@ -26,12 +26,12 @@ import com.corebanking.dto.CusRefreshTokenRequest;
 import com.corebanking.dto.CusTokenResponse;
 import com.corebanking.entity.Accounts;
 import com.corebanking.entity.AuditLogs;
-import com.corebanking.entity.AuthSessions;
+import com.corebanking.entity.AuthSession;
 import com.corebanking.entity.CustomerCredentials;
 import com.corebanking.entity.Customers;
 import com.corebanking.entity.JwtRevokedTokens;
-import com.corebanking.entity.LoginAttempts;
-import com.corebanking.entity.OtpChallenges;
+import com.corebanking.entity.LoginAttempt;
+import com.corebanking.entity.OtpChallenge;
 import com.corebanking.entity.enums.ActorType;
 import com.corebanking.entity.enums.CustomerStatus;
 import com.corebanking.entity.enums.DeliveryChannel;
@@ -274,7 +274,7 @@ public class CusAuthService {
 
         long createOtpStart = System.currentTimeMillis();
 
-        OtpChallenges otpChallenge =
+        OtpChallenge otpChallenge =
                 createLoginOtp(customer);
 
         System.out.println(
@@ -450,8 +450,8 @@ public class CusAuthService {
             boolean success,
             String failureReason) {
 
-        LoginAttempts attempt =
-                LoginAttempts.builder()
+        LoginAttempt attempt =
+                LoginAttempt.builder()
 
                         .actorType(
                                 SessionSubjectType.CUSTOMER
@@ -486,8 +486,8 @@ public class CusAuthService {
             String identifier,
             String failureReason) {
 
-        LoginAttempts attempt =
-                LoginAttempts.builder()
+        LoginAttempt attempt =
+                LoginAttempt.builder()
 
                         .actorType(
                                 SessionSubjectType.CUSTOMER
@@ -535,7 +535,7 @@ public class CusAuthService {
     // 8. CREATE LOGIN OTP
     // =========================================================
 
-    private OtpChallenges createLoginOtp(
+    private OtpChallenge createLoginOtp(
             Customers customer) {
 
         // TEMPORARY PERFORMANCE TIMING - remove after testing
@@ -615,8 +615,8 @@ public class CusAuthService {
         // OTP Challenge create
         // -----------------------------------------
 
-        OtpChallenges otpChallenge =
-                OtpChallenges.builder()
+        OtpChallenge otpChallenge =
+                OtpChallenge.builder()
 
                         .customer(
                                 customer
@@ -683,7 +683,7 @@ public class CusAuthService {
 
         long otpDbSaveStart = System.currentTimeMillis();
 
-        OtpChallenges savedOtp =
+        OtpChallenge savedOtp =
                 otpChallengesRepository.save(
                         otpChallenge
                 );
@@ -720,14 +720,14 @@ public class CusAuthService {
             );
 
         } catch (MailException ex) {
-           
+           // ex.printStackTrace();
 
             System.out.println(
                     "[TIMING] Gmail SMTP failed after: "
                             + (System.currentTimeMillis() - emailSendStart)
                             + " ms"
             );
-            ex.printStackTrace();
+
             // Email မရောက်တဲ့ OTP ကို usable မဖြစ်အောင်
             savedOtp.setStatus(
                     OtpStatus.EXPIRED
@@ -784,7 +784,7 @@ public class CusAuthService {
                         );
 
 
-        for (OtpChallenges otp
+        for (OtpChallenge otp
                 : activeOtps) {
 
             otp.setStatus(
@@ -828,7 +828,7 @@ public class CusAuthService {
                 request.getOtp().trim();
 
         // 2. OTP Challenge ရှာ
-        OtpChallenges otpChallenge =
+        OtpChallenge otpChallenge =
                 otpChallengesRepository
                         .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
                                 challengeGroupId,
@@ -1053,7 +1053,7 @@ public class CusAuthService {
     // =========================================================
 
     private void handleFailedOtpAttempt(
-            OtpChallenges otpChallenge) {
+            OtpChallenge otpChallenge) {
 
         int failedAttempts =
                 otpChallenge.getAttemptCount() + 1;
@@ -1128,7 +1128,7 @@ public class CusAuthService {
 
 
         // 2. Latest OTP challenge ရှာ
-        OtpChallenges latestOtp =
+        OtpChallenge latestOtp =
                 otpChallengesRepository
                         .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
                                 challengeGroupId,
@@ -1209,8 +1209,8 @@ public class CusAuthService {
 
 
         // 8. Same challengeGroupId နဲ့ new OTP create
-        OtpChallenges newOtp =
-                OtpChallenges.builder()
+        OtpChallenge newOtp =
+                OtpChallenge.builder()
 
                         .customer(customer)
 
@@ -1276,7 +1276,7 @@ public class CusAuthService {
                         .build();
 
 
-        OtpChallenges savedOtp =
+        OtpChallenge savedOtp =
                 otpChallengesRepository.save(
                         newOtp
                 );
@@ -1416,7 +1416,7 @@ public class CusAuthService {
                      );
 
 
-     for (OtpChallenges otp : activeResetOtps) {
+     for (OtpChallenge otp : activeResetOtps) {
 
          otp.setStatus(
                  OtpStatus.EXPIRED
@@ -1468,8 +1468,8 @@ public class CusAuthService {
      // 9. CREATE PASSWORD RESET OTP CHALLENGE
      // =====================================================
 
-     OtpChallenges otpChallenge =
-             OtpChallenges.builder()
+     OtpChallenge otpChallenge =
+             OtpChallenge.builder()
 
                      .customer(
                              customer
@@ -1534,7 +1534,7 @@ public class CusAuthService {
                      .build();
 
 
-     OtpChallenges savedOtp =
+     OtpChallenge savedOtp =
              otpChallengesRepository.save(
                      otpChallenge
              );
@@ -1687,7 +1687,7 @@ public CusPinResetStartResponse requestPinReset(
   // 4. VALIDATE ACTIVE SESSION
   // =====================================================
 
-  AuthSessions session =
+  AuthSession session =
           cusSessionService
                   .validateAccessSession(
                           claims
@@ -1742,7 +1742,7 @@ public CusPinResetStartResponse requestPinReset(
                   );
 
 
-  for (OtpChallenges otp : activePinResetOtps) {
+  for (OtpChallenge otp : activePinResetOtps) {
 
       otp.setStatus(
               OtpStatus.EXPIRED
@@ -1786,8 +1786,8 @@ public CusPinResetStartResponse requestPinReset(
   // 9. CREATE PIN RESET OTP
   // =====================================================
 
-  OtpChallenges otpChallenge =
-          OtpChallenges.builder()
+  OtpChallenge otpChallenge =
+          OtpChallenge.builder()
 
                   .customer(
                           customer
@@ -1852,7 +1852,7 @@ public CusPinResetStartResponse requestPinReset(
                   .build();
 
 
-  OtpChallenges savedOtp =
+  OtpChallenge savedOtp =
           otpChallengesRepository.save(
                   otpChallenge
           );
@@ -1995,7 +1995,7 @@ public CusOtpResendResponse resendPinResetOtp(
  // 3. VALIDATE CURRENT SESSION
  // =====================================================
 
- AuthSessions session =
+ AuthSession session =
          cusSessionService
                  .validateAccessSession(
                          claims
@@ -2038,7 +2038,7 @@ public CusOtpResendResponse resendPinResetOtp(
  // 5. FIND LATEST PIN RESET OTP
  // =====================================================
 
- OtpChallenges latestOtp =
+ OtpChallenge latestOtp =
          otpChallengesRepository
                  .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
                          challengeGroupId,
@@ -2167,8 +2167,8 @@ public CusOtpResendResponse resendPinResetOtp(
  // Same challengeGroupId
  // =====================================================
 
- OtpChallenges newOtp =
-         OtpChallenges.builder()
+ OtpChallenge newOtp =
+         OtpChallenge.builder()
 
                  .customer(
                          customer
@@ -2235,7 +2235,7 @@ public CusOtpResendResponse resendPinResetOtp(
                  .build();
 
 
- OtpChallenges savedOtp =
+ OtpChallenge savedOtp =
          otpChallengesRepository.save(
                  newOtp
          );
@@ -2374,7 +2374,7 @@ public CusPinResetOtpVerifyResponse verifyPinResetOtp(
  // 2. VALIDATE SESSION
  // =====================================================
 
- AuthSessions session =
+ AuthSession session =
          cusSessionService
                  .validateAccessSession(
                          claims
@@ -2424,7 +2424,7 @@ public CusPinResetOtpVerifyResponse verifyPinResetOtp(
  // 4. FIND PIN RESET OTP
  // =====================================================
 
- OtpChallenges otpChallenge =
+ OtpChallenge otpChallenge =
          otpChallengesRepository
                  .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
                          challengeGroupId,
@@ -2781,7 +2781,7 @@ public void resetTransactionPin(
  // 2. VALIDATE CURRENT SESSION
  // =====================================================
 
- AuthSessions session =
+ AuthSession session =
          cusSessionService
                  .validateAccessSession(
                          claims
@@ -2866,7 +2866,7 @@ public void resetTransactionPin(
  // 6. FIND VERIFIED PIN RESET CHALLENGE
  // =====================================================
 
- OtpChallenges verifiedChallenge =
+ OtpChallenge verifiedChallenge =
          otpChallengesRepository
                  .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
                          verifiedChallengeGroupId,
@@ -3127,7 +3127,7 @@ public CusOtpResendResponse resendPasswordResetOtp(
   // 2. FIND LATEST PASSWORD RESET OTP
   // =====================================================
 
-  OtpChallenges latestOtp =
+  OtpChallenge latestOtp =
           otpChallengesRepository
                   .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
                           challengeGroupId,
@@ -3261,8 +3261,8 @@ public CusOtpResendResponse resendPasswordResetOtp(
   // 10. CREATE NEW PASSWORD RESET OTP
   // =====================================================
 
-  OtpChallenges newOtp =
-          OtpChallenges.builder()
+  OtpChallenge newOtp =
+          OtpChallenge.builder()
 
                   .customer(
                           customer
@@ -3333,7 +3333,7 @@ public CusOtpResendResponse resendPasswordResetOtp(
                   .build();
 
 
-  OtpChallenges savedOtp =
+  OtpChallenge savedOtp =
           otpChallengesRepository.save(
                   newOtp
           );
@@ -3471,7 +3471,7 @@ public CusPasswordResetOtpVerifyResponse
  // 2. FIND PASSWORD RESET OTP
  // =====================================================
 
- OtpChallenges otpChallenge =
+ OtpChallenge otpChallenge =
          otpChallengesRepository
                  .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
                          challengeGroupId,
@@ -3783,7 +3783,7 @@ public void resetPassword(
  // 4. FIND VERIFIED PASSWORD RESET CHALLENGE
  // =====================================================
 
- OtpChallenges verifiedChallenge =
+ OtpChallenge verifiedChallenge =
          otpChallengesRepository
                  .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
                          verifiedChallengeGroupId,
@@ -4342,8 +4342,8 @@ public void resetPassword(
     	        );
 
      // 5. Auth Session
-     AuthSessions authSession =
-             AuthSessions.builder()
+     AuthSession authSession =
+             AuthSession.builder()
 
                      .sessionUuid(
                              sessionUuid
@@ -4487,7 +4487,7 @@ public CusTokenResponse refreshToken(
   // DB refresh hash ကို ဒီနေရာမှာ မပြောင်းသေးဘူး.
   // =====================================================
 
-  AuthSessions session =
+  AuthSession session =
           cusSessionService
                   .validateRefreshSession(
                           claims,
@@ -4787,7 +4787,7 @@ private boolean isValidPassword(
             );
         }
 
-        OtpChallenges otpChallenge =
+        OtpChallenge otpChallenge =
                 otpChallengesRepository
                         .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
                                 challengeGroupId.trim(),
@@ -4904,7 +4904,7 @@ private boolean isValidPassword(
      // 6. VALIDATE AUTH SESSION
      // =====================================================
 
-     AuthSessions session =
+     AuthSession session =
     	        cusSessionService
     	                .validateAccessSessionForLogout(
     	                        claims
@@ -5048,7 +5048,7 @@ private boolean isValidPassword(
  // =========================================================
 
  private void markOtpUpdatedByCustomer(
-         OtpChallenges otpChallenge) {
+         OtpChallenge otpChallenge) {
 
      if (otpChallenge == null
              || otpChallenge.getCustomer() == null
@@ -5070,7 +5070,7 @@ private boolean isValidPassword(
 
 
  private void markOtpUpdatedBySystem(
-         OtpChallenges otpChallenge) {
+         OtpChallenge otpChallenge) {
 
      if (otpChallenge == null) {
          return;
@@ -5088,7 +5088,7 @@ private boolean isValidPassword(
 
 
 private void handleFailedPasswordResetOtpAttempt(
-        OtpChallenges otpChallenge) {
+        OtpChallenge otpChallenge) {
 
     int failedAttempts =
             otpChallenge.getAttemptCount() + 1;

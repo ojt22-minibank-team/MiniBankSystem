@@ -9,6 +9,8 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.util.List;
 
+import com.corebanking.entity.enums.CustomerType;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,6 +21,8 @@ public class CusDashboardResponseDTO {
     private String customerCode;
 
     private String fullName;
+    
+    private CustomerType customerType;
 
     private BigDecimal totalBalance;
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type {
   AccountStatusSummary,
   BalanceBracket,
@@ -18,6 +18,7 @@ interface Props {
   endDate: string;
   accountStatus: string;
   searchKey?: number;
+  onLoadingChange?: (loading: boolean) => void;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -32,6 +33,7 @@ const AccountStatusPanel: React.FC<Props> = ({
   endDate,
   accountStatus,
   searchKey,
+  onLoadingChange,
 }) => {
   const [report, setReport] = useState<AccountStatusReport>({
     statusSummaries: [],
@@ -43,8 +45,14 @@ const AccountStatusPanel: React.FC<Props> = ({
 
   const params: AccountFilterParams = { startDate, endDate, accountStatus };
 
+  const onLoadingChangeRef = useRef(onLoadingChange);
+  useEffect(() => {
+    onLoadingChangeRef.current = onLoadingChange;
+  }, [onLoadingChange]);
+
   const load = useCallback(async () => {
     setLoading(true);
+    onLoadingChangeRef.current?.(true);
     setError(null);
     try {
       const result = await fetchAccountStatusSummary(params);
@@ -54,12 +62,15 @@ const AccountStatusPanel: React.FC<Props> = ({
       setError((e as Error).message || 'Failed to load data');
     } finally {
       setLoading(false);
+      onLoadingChangeRef.current?.(false);
     }
   }, [startDate, endDate, accountStatus]);
 
   useEffect(() => {
+    if (!searchKey) return;
     load();
-  }, [load, searchKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchKey]);
 
   const totalAccounts = report.statusSummaries.reduce((s, r) => s + Number(r.accountCount || 0), 0);
   const totalNew = report.statusSummaries.reduce((s, r) => s + Number(r.newAccountsInRange || 0), 0);

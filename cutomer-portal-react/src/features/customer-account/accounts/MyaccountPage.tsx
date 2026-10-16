@@ -1,24 +1,27 @@
-
 import { useEffect, useState } from "react";
 import {
   AlertCircle,
   RefreshCw,
   WalletCards,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
-import { getMyAccounts } from "../api/customerAccountApi";
-import type { CustomerAccount } from "../types/accountTypes";
+import { useAppDispatch, useAppSelector } from "../../../lib/redux"; // store.ts ရှိရာ path ကို ကိုယ့် project ဖွဲ့စည်းပုံအလိုက် ညွှန်းပါimport { fetchMyAccounts } from "../store/accountsSlice";
 import AccountCard from "./components/AccountCard";
+import { fetchMyAccounts } from "./accountsSlice"; // accountsSlice.ts ရှိရာ path (ကိုယ့် project structure အတိုင်း ပြင်ပါ)
 
 function AccountsSkeleton() {
   return (
     <div
-      className="mx-auto max-w-7xl space-y-6 p-6 md:p-8"
-      role="status"
+      className="space-y-6"
+      aria-busy="true"
       aria-label="Loading accounts"
     >
       {/* Header Skeleton */}
-      <div className="flex animate-pulse items-center gap-3.5">
+      <div
+        className="flex animate-pulse items-center gap-3.5"
+        aria-hidden="true"
+      >
         <div className="h-12 w-12 rounded-2xl bg-slate-200" />
 
         <div className="space-y-2">
@@ -28,12 +31,14 @@ function AccountsSkeleton() {
       </div>
 
       {/* Account Cards Skeleton */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <div
+        className="grid grid-cols-1 gap-5 lg:grid-cols-2"
+        aria-hidden="true"
+      >
         {[1, 2, 3, 4].map((item) => (
           <div
             key={item}
             className="h-56 animate-pulse rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-            aria-hidden="true"
           >
             <div className="flex justify-between">
               <div className="h-12 w-12 rounded-xl bg-slate-200" />
@@ -55,48 +60,49 @@ function AccountsSkeleton() {
         ))}
       </div>
 
-      <span className="sr-only">Loading your accounts. Please wait.</span>
+      {/* Single screen-reader loading announcement */}
+      <p className="sr-only" role="status">
+        Loading your accounts. Please wait.
+      </p>
     </div>
   );
 }
 
-function AccountsError({
-  onRetry,
-}: {
+interface AccountsErrorProps {
   onRetry: () => void;
-}) {
+}
+
+function AccountsError({ onRetry }: AccountsErrorProps) {
   return (
-    <div className="mx-auto max-w-7xl p-6 md:p-8">
-      <section
-        className="flex flex-col items-center justify-center rounded-2xl border border-red-200 bg-white p-8 text-center shadow-sm sm:p-10"
-        role="alert"
+    <section
+      className="flex flex-col items-center justify-center rounded-2xl border border-red-200 bg-white p-8 text-center shadow-sm sm:p-10"
+      role="alert"
+    >
+      <div
+        className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-red-600"
+        aria-hidden="true"
       >
-        <div
-          className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-red-600"
-          aria-hidden="true"
-        >
-          <AlertCircle size={24} />
-        </div>
+        <AlertCircle size={24} />
+      </div>
 
-        <h1 className="mt-4 text-base font-bold text-slate-900">
-          Unable to Load Accounts
-        </h1>
+      <h1 className="mt-4 text-base font-bold text-slate-900">
+        Unable to Load Accounts
+      </h1>
 
-        <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
-          We couldn't retrieve your account information right now.
-          Please check your connection and try again.
-        </p>
+      <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
+        We couldn't retrieve your account information right now.
+        Please try again. If the problem continues, contact your bank.
+      </p>
 
-        <button
-          type="button"
-          onClick={onRetry}
-          className="mt-5 inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#0878E8] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0878E8] focus-visible:ring-offset-2"
-        >
-          <RefreshCw size={15} aria-hidden="true" />
-          Try Again
-        </button>
-      </section>
-    </div>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-5 inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#0878E8] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0878E8] focus-visible:ring-offset-2"
+      >
+        <RefreshCw size={15} aria-hidden="true" />
+        Try Again
+      </button>
+    </section>
   );
 }
 
@@ -123,103 +129,80 @@ function AccountsEmptyState() {
 }
 
 export default function MyAccountsPage() {
-  const [accounts, setAccounts] = useState<CustomerAccount[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
+  const dispatch = useAppDispatch();
+  const { accounts, loading, error } = useAppSelector((state) => state.accounts);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
-    let cancelled = false;
+    void dispatch(fetchMyAccounts());
+  }, [dispatch, retryKey]);
 
-    async function loadAccounts() {
-      setLoading(true);
-      setError(false);
-
-      try {
-        const data = await getMyAccounts();
-
-        if (cancelled) return;
-
-        setAccounts(data);
-      } catch (err) {
-        console.error("Failed to load customer accounts:", err);
-
-        if (cancelled) return;
-
-        setError(true);
-        setAccounts([]);
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    void loadAccounts();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [retryCount]);
-
-  if (loading) {
-    return <AccountsSkeleton />;
-  }
-
-  if (error) {
-    return (
-      <AccountsError
-        onRetry={() => setRetryCount((count) => count + 1)}
-      />
-    );
+  function handleRetry() {
+    setRetryKey((key) => key + 1);
   }
 
   return (
-    <main className="mx-auto max-w-7xl space-y-6 p-6 md:p-8">
-      {/* Page Header */}
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3.5">
-          <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[#0878E8] shadow-sm"
-            aria-hidden="true"
-          >
-            <WalletCards size={24} />
-          </div>
-
-          <div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-2xl font-bold tracking-tight text-[#172033]">
-                My Accounts
-              </h1>
-
-              <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-[#0878E8]">
-                {accounts.length}{" "}
-                {accounts.length === 1 ? "Account" : "Accounts"}
-              </span>
-            </div>
-
-            <p className="mt-1 text-sm font-medium text-slate-500">
-              View your bank account balances and details.
-            </p>
-          </div>
-        </div>
-      </header>
-
-      {/* Accounts Grid or Empty State */}
-      {accounts.length === 0 ? (
-        <AccountsEmptyState />
+    <main
+      className="mx-auto max-w-7xl space-y-6 p-6 md:p-8"
+      aria-busy={loading}
+    >
+      {loading && accounts.length === 0 ? (
+        <AccountsSkeleton />
+      ) : error && accounts.length === 0 ? (
+        <AccountsError onRetry={handleRetry} />
       ) : (
-        <section
-          className="grid grid-cols-1 gap-5 lg:grid-cols-2"
-          aria-label="Your bank accounts"
-        >
-          {accounts.map((account) => (
-            <AccountCard
-              key={account.accountNumber}
-              account={account}
-            />
-          ))}
-        </section>
+        <>
+          {/* Page Header */}
+          <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3.5">
+              <div className="min-w-0">
+                {/* Breadcrumb */}
+                <nav
+                  aria-label="Breadcrumb"
+                  className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold"
+                >
+                  <Link
+                    to="/dashboard"
+                    className="text-slate-500 transition-colors hover:text-[#0878E8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0878E8] focus-visible:ring-offset-2"
+                  >
+                    Dashboard
+                  </Link>
+
+                  <span
+                    className="text-slate-300"
+                    aria-hidden="true"
+                  >
+                    /
+                  </span>
+
+                  <span
+                    className="text-[#0878E8]"
+                    aria-current="page"
+                  >
+                    My Accounts
+                  </span>
+                </nav>
+              </div>
+            </div>
+          </header>
+
+          {/* Accounts Grid or Empty State */}
+          {accounts.length === 0 ? (
+            <AccountsEmptyState />
+          ) : (
+            <section
+              className="grid grid-cols-1 gap-5 lg:grid-cols-2"
+              aria-label="Your bank accounts"
+            >
+              {accounts.map((account) => (
+                <AccountCard
+                  key={account.accountNumber}
+                  account={account}
+                />
+              ))}
+            </section>
+          )}
+        </>
       )}
     </main>
   );

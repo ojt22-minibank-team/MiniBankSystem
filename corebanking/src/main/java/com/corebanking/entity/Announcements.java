@@ -32,9 +32,11 @@ public class Announcements {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "audience", nullable = false, length = 15)
+    @Builder.Default
     private AnnouncementAudience audience = AnnouncementAudience.ALL;
 
     @Column(name = "is_active", nullable = false)
+    @Builder.Default
     private boolean isActive = true;
 
     @Column(name = "starts_at", nullable = false)
