@@ -38,6 +38,10 @@ function clearPersistedAuth(): void {
   localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
   localStorage.removeItem(STORAGE_KEYS.USERNAME);
   localStorage.removeItem(STORAGE_KEYS.ROLES);
+  localStorage.removeItem('token');
+  localStorage.removeItem('cb_access_token');
+  localStorage.removeItem('cb_refresh_token');
+  localStorage.removeItem('staff_user');
 }
 
 function loadAuthFromStorage(): {
@@ -78,6 +82,7 @@ export const loginThunk = createAsyncThunk<
   { rejectValue: string }
 >('auth/login', async (credentials, { rejectWithValue }) => {
   try {
+    clearPersistedAuth();
     const response = await axiosInstance.post<CoreApiResponse<LoginResponse> | LoginResponse>(
       API_ENDPOINTS.AUTH.LOGIN,
       credentials,

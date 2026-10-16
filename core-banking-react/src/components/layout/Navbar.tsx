@@ -6,7 +6,7 @@ interface NavbarProps {
   pageTitle?: string;
 }
 
-export default function Navbar({ onToggleSidebar, pageTitle = 'Dashboard' }: NavbarProps) {
+export function Navbar({ onToggleSidebar, pageTitle = 'Dashboard' }: NavbarProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -71,3 +71,5 @@ export default function Navbar({ onToggleSidebar, pageTitle = 'Dashboard' }: Nav
     </header>
   );
 }
+
+export default Navbar;

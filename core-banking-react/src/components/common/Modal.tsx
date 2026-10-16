@@ -1,13 +1,15 @@
 import { type ReactNode, useEffect } from 'react';
 import Button from './Button';
 
-interface ModalProps {
+export interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
+  subtitle?: string;
   children: ReactNode;
   footer?: ReactNode;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | string;
+  maxWidth?: string;
 }
 
 const sizeClasses: Record<string, string> = {
@@ -16,13 +18,15 @@ const sizeClasses: Record<string, string> = {
   lg: 'max-w-2xl',
 };
 
-export default function Modal({
+export function Modal({
   isOpen,
   onClose,
   title,
+  subtitle,
   children,
   footer,
   size = 'md',
+  maxWidth,
 }: ModalProps) {
   // Close on Escape key
   useEffect(() => {
@@ -54,14 +58,19 @@ export default function Modal({
       <div
         className={[
           'relative z-10 w-full rounded-xl bg-white shadow-xl',
-          sizeClasses[size],
+          maxWidth || sizeClasses[size] || 'max-w-lg',
         ].join(' ')}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-          <h2 id="modal-title" className="text-lg font-semibold text-gray-900">
-            {title}
-          </h2>
+          <div>
+            <h2 id="modal-title" className="text-lg font-semibold text-gray-900">
+              {title}
+            </h2>
+            {subtitle && (
+              <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>
+            )}
+          </div>
           <Button
             variant="ghost"
             size="sm"
@@ -88,3 +97,5 @@ export default function Modal({
     </div>
   );
 }
+
+export default Modal;

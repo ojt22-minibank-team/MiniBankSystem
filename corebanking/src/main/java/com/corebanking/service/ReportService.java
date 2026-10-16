@@ -11,17 +11,6 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 
-import com.lowagie.text.Document;
-import com.lowagie.text.Element;
-import com.lowagie.text.FontFactory;
-import com.lowagie.text.PageSize;
-import com.lowagie.text.Paragraph;
-import com.lowagie.text.Phrase;
-import com.lowagie.text.pdf.PdfPCell;
-import com.lowagie.text.pdf.PdfPTable;
-import com.lowagie.text.pdf.PdfWriter;
-import java.awt.Color;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -32,7 +21,7 @@ import java.util.List;
 
 /**
  * ReportService ? Group 2 Reporting Subsystem.
- * Handles report data fetching and streamed CSV / Excel exports.
+ * Handles report data fetching, streamed CSV / Excel exports, and JasperReports PDF exports.
  */
 @Service
 public class ReportService {
@@ -41,9 +30,11 @@ public class ReportService {
     private static final DateTimeFormatter DT_FMT   = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final ReportRepository reportRepository;
+    private final JasperReportService jasperReportService;
 
-    public ReportService(ReportRepository reportRepository) {
+    public ReportService(ReportRepository reportRepository, JasperReportService jasperReportService) {
         this.reportRepository = reportRepository;
+        this.jasperReportService = jasperReportService;
     }
 
     // -------------------------------------------------------
@@ -240,127 +231,19 @@ public class ReportService {
     }
 
     // -------------------------------------------------------
-    // PDF Export helpers (OpenPDF)
+    // PDF Export helpers (JasperReports)
     // -------------------------------------------------------
 
     public byte[] exportDailyLedgerPdf(
             LocalDate startDate, LocalDate endDate, String status) throws IOException {
         List<DailyLedgerSummaryDTO> rows = getDailyLedgerSummary(startDate, endDate, status);
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            Document doc = new Document(PageSize.A4, 36, 36, 36, 36);
-            PdfWriter.getInstance(doc, out);
-            doc.open();
-
-            addPdfHeader(doc, "Daily Ledger Summary Report",
-                    "Period: " + fmt(startDate) + " to " + fmt(endDate)
-                            + (status != null && !status.isBlank() ? " | Status: " + status : ""));
-
-            PdfPTable table = new PdfPTable(7);
-            table.setWidthPercentage(100);
-            table.setWidths(new float[]{0.8f, 2.6f, 2.0f, 1.4f, 2.2f, 2.0f, 1.4f});
-            table.setHeaderRows(1);
-
-            String[] headers = {"No", "Transaction Type", "Date", "Count", "Total Amount", "Total Fee", "Currency"};
-            for (String h : headers) {
-                table.addCell(createPdfHeaderCell(h));
-            }
-
-            int count = 0;
-            BigDecimal totalAmount = BigDecimal.ZERO;
-            BigDecimal totalFee = BigDecimal.ZERO;
-            int totalCount = 0;
-
-            for (DailyLedgerSummaryDTO r : rows) {
-                Color bg = (count % 2 == 1) ? new Color(248, 250, 252) : Color.WHITE;
-                table.addCell(createPdfCell(String.valueOf(count + 1), bg, Element.ALIGN_CENTER));
-                table.addCell(createPdfCell(safe(r.getTransactionType()), bg, Element.ALIGN_LEFT));
-                table.addCell(createPdfCell(fmt(r.getReportDate()), bg, Element.ALIGN_LEFT));
-                table.addCell(createPdfCell(String.valueOf(r.getTransactionCount()), bg, Element.ALIGN_RIGHT));
-                table.addCell(createPdfCell(r.getTotalAmount() != null ? String.format("%,.2f", r.getTotalAmount()) : "0.00", bg, Element.ALIGN_RIGHT));
-                table.addCell(createPdfCell(r.getTotalFee() != null ? String.format("%,.2f", r.getTotalFee()) : "0.00", bg, Element.ALIGN_RIGHT));
-                table.addCell(createPdfCell(safe(r.getCurrency()), bg, Element.ALIGN_CENTER));
-
-                if (r.getTotalAmount() != null) totalAmount = totalAmount.add(r.getTotalAmount());
-                if (r.getTotalFee() != null) totalFee = totalFee.add(r.getTotalFee());
-                totalCount += r.getTransactionCount();
-                count++;
-            }
-
-            Color summaryBg = new Color(241, 245, 249);
-            table.addCell(createPdfCellBold("-", summaryBg, Element.ALIGN_CENTER));
-            table.addCell(createPdfCellBold("Total Summary", summaryBg, Element.ALIGN_LEFT));
-            table.addCell(createPdfCellBold("-", summaryBg, Element.ALIGN_LEFT));
-            table.addCell(createPdfCellBold(String.valueOf(totalCount), summaryBg, Element.ALIGN_RIGHT));
-            table.addCell(createPdfCellBold(String.format("%,.2f", totalAmount), summaryBg, Element.ALIGN_RIGHT));
-            table.addCell(createPdfCellBold(String.format("%,.2f", totalFee), summaryBg, Element.ALIGN_RIGHT));
-            table.addCell(createPdfCellBold("-", summaryBg, Element.ALIGN_CENTER));
-
-            doc.add(table);
-            doc.close();
-            return out.toByteArray();
-        }
+        return jasperReportService.generateDailyLedgerPdf(rows, startDate, endDate, status);
     }
 
     public byte[] exportAccountStatusPdf(
             LocalDate startDate, LocalDate endDate, String accountStatus) throws IOException {
         AccountStatusReportDTO report = getAccountStatusSummary(startDate, endDate, accountStatus);
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            Document doc = new Document(PageSize.A4, 36, 36, 36, 36);
-            PdfWriter.getInstance(doc, out);
-            doc.open();
-
-            addPdfHeader(doc, "Account Status Summary Report",
-                    "Period: " + fmt(startDate) + " to " + fmt(endDate)
-                            + (accountStatus != null && !accountStatus.isBlank() ? " | Filter: " + accountStatus : ""));
-
-            Paragraph s1Title = new Paragraph("1. Status Summary", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, new Color(30, 64, 175)));
-            s1Title.setSpacingAfter(8);
-            doc.add(s1Title);
-
-            PdfPTable t1 = new PdfPTable(6);
-            t1.setWidthPercentage(100);
-            t1.setWidths(new float[]{2f, 1.8f, 1.8f, 2.2f, 2.2f, 2.2f});
-            t1.setHeaderRows(1);
-            for (String h : new String[]{"Status", "Total Accounts", "New In Range", "Avg Balance", "Min Balance", "Max Balance"}) {
-                t1.addCell(createPdfHeaderCell(h));
-            }
-            int idx = 0;
-            for (AccountStatusSummaryDTO r : report.getStatusSummaries()) {
-                Color bg = (idx++ % 2 == 1) ? new Color(248, 250, 252) : Color.WHITE;
-                t1.addCell(createPdfCell(safe(r.getAccountStatus()), bg, Element.ALIGN_LEFT));
-                t1.addCell(createPdfCell(String.valueOf(r.getAccountCount()), bg, Element.ALIGN_RIGHT));
-                t1.addCell(createPdfCell(String.valueOf(r.getNewAccountsInRange()), bg, Element.ALIGN_RIGHT));
-                t1.addCell(createPdfCell(r.getAvgBalance() != null ? String.format("%,.2f", r.getAvgBalance()) : "0.00", bg, Element.ALIGN_RIGHT));
-                t1.addCell(createPdfCell(r.getMinBalance() != null ? String.format("%,.2f", r.getMinBalance()) : "0.00", bg, Element.ALIGN_RIGHT));
-                t1.addCell(createPdfCell(r.getMaxBalance() != null ? String.format("%,.2f", r.getMaxBalance()) : "0.00", bg, Element.ALIGN_RIGHT));
-            }
-            doc.add(t1);
-
-            Paragraph s2Title = new Paragraph("2. Balance Bracket Distribution", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, new Color(30, 64, 175)));
-            s2Title.setSpacingBefore(16);
-            s2Title.setSpacingAfter(8);
-            doc.add(s2Title);
-
-            PdfPTable t2 = new PdfPTable(4);
-            t2.setWidthPercentage(100);
-            t2.setWidths(new float[]{3f, 2f, 2f, 3f});
-            t2.setHeaderRows(1);
-            for (String h : new String[]{"Balance Bracket", "Account Status", "Account Count", "Total Balance"}) {
-                t2.addCell(createPdfHeaderCell(h));
-            }
-            idx = 0;
-            for (BalanceBracketDTO b : report.getBracketDistribution()) {
-                Color bg = (idx++ % 2 == 1) ? new Color(248, 250, 252) : Color.WHITE;
-                t2.addCell(createPdfCell(safe(b.getBalanceBracket()), bg, Element.ALIGN_LEFT));
-                t2.addCell(createPdfCell(safe(b.getAccountStatus()), bg, Element.ALIGN_LEFT));
-                t2.addCell(createPdfCell(String.valueOf(b.getBracketCount()), bg, Element.ALIGN_RIGHT));
-                t2.addCell(createPdfCell(b.getBracketTotalBalance() != null ? String.format("%,.2f", b.getBracketTotalBalance()) : "0.00", bg, Element.ALIGN_RIGHT));
-            }
-            doc.add(t2);
-
-            doc.close();
-            return out.toByteArray();
-        }
+        return jasperReportService.generateAccountStatusPdf(report, startDate, endDate, accountStatus);
     }
 
     public byte[] exportAuditTrailPdf(
@@ -368,86 +251,8 @@ public class ReportService {
             LocalDateTime startDate, LocalDateTime endDate,
             String accountNo, int page, int pageSize) throws IOException {
         AuditTrailPageDTO pageData = getAuditTrailLog(staffId, actionType, startDate, endDate, accountNo, page, pageSize);
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            Document doc = new Document(PageSize.A4.rotate(), 36, 36, 36, 36);
-            PdfWriter.getInstance(doc, out);
-            doc.open();
-
-            addPdfHeader(doc, "System Audit Trail Logs",
-                    "Generated on: " + LocalDateTime.now().format(DT_FMT)
-                            + (staffId != null && !staffId.isBlank() ? " | Staff ID: " + staffId : "")
-                            + (actionType != null && !actionType.isBlank() ? " | Action: " + actionType : "")
-                            + (accountNo != null && !accountNo.isBlank() ? " | Account: " + accountNo : ""));
-
-            PdfPTable table = new PdfPTable(9);
-            table.setWidthPercentage(100);
-            table.setWidths(new float[]{2.0f, 1.4f, 1.6f, 1.8f, 1.8f, 1.6f, 1.6f, 1.6f, 3.2f});
-            table.setHeaderRows(1);
-
-            String[] headers = {"Timestamp", "Actor Type", "Category", "Username", "Full Name", "Action", "Entity Type", "Entity ID", "Description"};
-            for (String h : headers) {
-                table.addCell(createPdfHeaderCell(h));
-            }
-
-            int idx = 0;
-            for (AuditTrailLogDTO r : pageData.getLogs()) {
-                Color bg = (idx++ % 2 == 1) ? new Color(248, 250, 252) : Color.WHITE;
-                table.addCell(createPdfCell(fmt(r.getCreatedAt()), bg, Element.ALIGN_LEFT));
-                table.addCell(createPdfCell(safe(r.getActorType()), bg, Element.ALIGN_CENTER));
-                table.addCell(createPdfCell(safe(r.getActionCategory()), bg, Element.ALIGN_CENTER));
-                table.addCell(createPdfCell(safe(r.getStaffUsername()), bg, Element.ALIGN_LEFT));
-                table.addCell(createPdfCell(safe(r.getStaffFullName()), bg, Element.ALIGN_LEFT));
-                table.addCell(createPdfCell(safe(r.getActionType()), bg, Element.ALIGN_CENTER));
-                table.addCell(createPdfCell(safe(r.getEntityType()), bg, Element.ALIGN_LEFT));
-                table.addCell(createPdfCell(safe(r.getEntityId()), bg, Element.ALIGN_LEFT));
-                table.addCell(createPdfCell(safe(r.getDescription()), bg, Element.ALIGN_LEFT));
-            }
-
-            doc.add(table);
-            doc.close();
-            return out.toByteArray();
-        }
-    }
-
-    private void addPdfHeader(Document doc, String title, String subtitle) {
-        Paragraph titleP = new Paragraph(title, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, new Color(30, 64, 175)));
-        titleP.setSpacingAfter(4);
-        doc.add(titleP);
-
-        if (subtitle != null && !subtitle.isBlank()) {
-            Paragraph subP = new Paragraph(subtitle, FontFactory.getFont(FontFactory.HELVETICA, 9, new Color(100, 116, 139)));
-            subP.setSpacingAfter(14);
-            doc.add(subP);
-        }
-    }
-
-    private PdfPCell createPdfHeaderCell(String text) {
-        com.lowagie.text.Font font = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, Color.WHITE);
-        PdfPCell cell = new PdfPCell(new Phrase(text, font));
-        cell.setBackgroundColor(new Color(30, 64, 175));
-        cell.setPadding(6);
-        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
-        return cell;
-    }
-
-    private PdfPCell createPdfCell(String text, Color bg, int alignment) {
-        com.lowagie.text.Font font = FontFactory.getFont(FontFactory.HELVETICA, 8, new Color(51, 65, 85));
-        PdfPCell cell = new PdfPCell(new Phrase(text, font));
-        cell.setBackgroundColor(bg);
-        cell.setPadding(5);
-        cell.setHorizontalAlignment(alignment);
-        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
-        return cell;
-    }
-
-    private PdfPCell createPdfCellBold(String text, Color bg, int alignment) {
-        com.lowagie.text.Font font = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, new Color(15, 23, 42));
-        PdfPCell cell = new PdfPCell(new Phrase(text, font));
-        cell.setBackgroundColor(bg);
-        cell.setPadding(5);
-        cell.setHorizontalAlignment(alignment);
-        cell.setVerticalAlignment(Element.ALIGN_MIDDLE);
-        return cell;
+        return jasperReportService.generateAuditTrailPdf(
+                pageData.getLogs(), staffId, actionType, startDate, endDate, accountNo);
     }
 
     // -------------------------------------------------------

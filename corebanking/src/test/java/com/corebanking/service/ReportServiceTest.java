@@ -39,6 +39,9 @@ class ReportServiceTest {
     @Mock
     private ReportRepository reportRepository;
 
+    @org.mockito.Spy
+    private JasperReportService jasperReportService = new JasperReportService();
+
     @InjectMocks
     private ReportService reportService;
 

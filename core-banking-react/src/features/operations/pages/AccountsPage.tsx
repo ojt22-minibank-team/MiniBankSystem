@@ -1,15 +1,20 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import AdminLayout from '../../../components/layout/AdminLayout';
 import Button from '../../../components/common/Button';
 import Input from '../../../components/common/Input';
 import Modal from '../../../components/common/Modal';
 import { accountsApi } from '../../../services/apiClient';
+import { useAuth } from '../../auth/hooks/useAuth';
 import type { AccountResponse } from '../../../types/api.types';
 import { formatCurrency } from '../../../utils/formatCurrency';
 import { formatDateTime } from '../../../utils/formatDate';
 import type { AxiosError } from 'axios';
 
 export default function AccountsPage() {
+  const { isTeller, isAdmin } = useAuth();
+  const canCreate = isTeller || isAdmin;
+
   const [searchType, setSearchType] = useState<'accountNumber' | 'customerCode'>('accountNumber');
   const [searchValue, setSearchValue] = useState('');
   const [accounts, setAccounts] = useState<AccountResponse[]>([]);
@@ -85,13 +90,44 @@ export default function AccountsPage() {
 
   return (
     <AdminLayout pageTitle="Accounts Management">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Bank Accounts</h2>
           <p className="mt-0.5 text-sm text-gray-500">
-            Query and manage customer savings, current, and depository accounts.
+            Query and manage customer savings, current, and corporate accounts.
           </p>
         </div>
+        {canCreate && (
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <Link
+              to="/admin/accounts/new"
+              className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              New Retail Account
+            </Link>
+            <Link
+              to="/admin/accounts/corporate/new"
+              className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+            >
+              <svg className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+              New Corporate Account
+            </Link>
+            <Link
+              to="/admin/accounts/deposit"
+              className="flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3.5 py-2 text-sm font-semibold text-emerald-800 shadow-sm hover:bg-emerald-100 transition-colors"
+            >
+              <svg className="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Deposit Funds
+            </Link>
+          </div>
+        )}
       </div>
 
       {successMessage && (

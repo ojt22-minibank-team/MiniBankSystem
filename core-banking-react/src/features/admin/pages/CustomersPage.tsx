@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import AdminLayout from '../../../components/layout/AdminLayout';
 import DataTable from '../../../components/common/DataTable';
 import { customersApi } from '../../../services/apiClient';
+import { useAuth } from '../../auth/hooks/useAuth';
 import type { CustomerResponse } from '../../../types/api.types';
 import type { AxiosError } from 'axios';
 
 export default function CustomersPage() {
+  const { isTeller, isAdmin } = useAuth();
+  const canCreate = isTeller || isAdmin;
+
   const [customers, setCustomers] = useState<CustomerResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,24 +57,54 @@ export default function CustomersPage() {
       render: (row: CustomerResponse) =>
         new Date(row.createdAt).toLocaleDateString(),
     },
+    ...(canCreate
+      ? [
+          {
+            key: 'actions',
+            header: 'Action',
+            render: (row: CustomerResponse) => (
+              <Link
+                to={`/admin/accounts/new?customerCode=${encodeURIComponent(row.customerCode)}`}
+                className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+                title="Open a new account for this customer"
+              >
+                + Open Account
+              </Link>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
     <AdminLayout pageTitle="Customers">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Customers</h2>
-          <p className="mt-0.5 text-sm text-gray-500">All registered customers.</p>
+          <p className="mt-0.5 text-sm text-gray-500">All registered customers in Core Banking.</p>
         </div>
-        <button
-          onClick={load}
-          className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={load}
+            className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Refresh
+          </button>
+          {canCreate && (
+            <Link
+              to="/admin/customers/new"
+              className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Register Customer
+            </Link>
+          )}
+        </div>
       </div>
 
       {error ? (
