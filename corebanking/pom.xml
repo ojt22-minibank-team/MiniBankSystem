@@ -61,14 +61,8 @@
     <artifactId>spring-boot-starter-aspectj</artifactId>
 </dependency>
 
-		<dependency>
-    <groupId>org.springdoc</groupId>
-    <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-    <version>2.5.0</version> <!-- သင့် Spring Boot Version အပေါ် မူတည်၍ Version ပြောင်းနိုင်ပါသည် -->
-</dependency>
 		<!-- 2 Spring Security -->
 		<dependency>
-
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-security</artifactId>
 </dependency>
@@ -154,11 +148,6 @@
         <artifactId>poi-ooxml</artifactId>
         <version>5.3.0</version>
     </dependency>
-
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-mail</artifactId>
-</dependency>
 
 </dependencies>
 

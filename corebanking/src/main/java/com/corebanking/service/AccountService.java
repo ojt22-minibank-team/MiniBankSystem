@@ -5,6 +5,7 @@ import com.corebanking.dto.AccountCreateDTO;
 import com.corebanking.dto.AccountResponseDTO;
 import com.corebanking.dto.AccountStatusUpdateDTO;
 import com.corebanking.dto.CorporateAccountCreateDTO;
+import com.corebanking.dto.DepositRequestDTO;
 import com.corebanking.dto.JointHolderAddDTO;
 import com.corebanking.entity.AccountSignatories;
 import com.corebanking.entity.Accounts;
@@ -354,8 +355,11 @@ public class AccountService {
         }
 
         // ၄။ Balance ပေါင်းထည့်ခြင်း
-        BigDecimal updatedCurrentBalance = account.getCurrentBalance().add(dto.getAmount());
-        BigDecimal updatedAvailableBalance = account.getAvailableBalance().add(dto.getAmount());
+        BigDecimal currentBalance = (account.getCurrentBalance() != null) ? account.getCurrentBalance() : BigDecimal.ZERO;
+        BigDecimal availableBalance = (account.getAvailableBalance() != null) ? account.getAvailableBalance() : BigDecimal.ZERO;
+
+        BigDecimal updatedCurrentBalance = currentBalance.add(dto.getAmount());
+        BigDecimal updatedAvailableBalance = availableBalance.add(dto.getAmount());
 
         account.setCurrentBalance(updatedCurrentBalance);
         account.setAvailableBalance(updatedAvailableBalance);
@@ -383,14 +387,17 @@ public class AccountService {
         // ၁။ မိမိ၏ ကိုယ်ပိုင် Personal Accounts များကို ထည့်သွင်းခြင်း
         List<Accounts> personalAccounts = accountRepository.findByCustomer(customer);
         for (Accounts acc : personalAccounts) {
+            String accType = (acc.getAccountType() != null) ? acc.getAccountType().name() : "SAVINGS";
+            String accCategory = (acc.getAccountCategory() != null) ? acc.getAccountCategory().name() : "RETAIL";
+
             accountList.add(AccessibleAccountDTO.builder()
                     .accountNumber(acc.getAccountNumber())
-                    .accountType(acc.getAccountType().name())
-                    .accountCategory("PERSONAL")
+                    .accountType(accType)
+                    .accountCategory(accCategory)
                     .companyName(null)
                     .role("OWNER")
-                    .currentBalance(acc.getCurrentBalance())
-                    .availableBalance(acc.getAvailableBalance())
+                    .currentBalance(acc.getCurrentBalance() != null ? acc.getCurrentBalance() : BigDecimal.ZERO)
+                    .availableBalance(acc.getAvailableBalance() != null ? acc.getAvailableBalance() : BigDecimal.ZERO)
                     .currency(acc.getCurrency())
                     .canInitiate(true)
                     .canApprove(true)
@@ -403,14 +410,21 @@ public class AccountService {
 
         for (AccountSignatories sig : corporateSignatories) {
             Accounts compAcc = sig.getAccount();
+            if (compAcc == null) {
+                continue;
+            }
+            String companyName = (compAcc.getCustomer() != null) ? compAcc.getCustomer().getFullName() : null;
+            String accType = (compAcc.getAccountType() != null) ? compAcc.getAccountType().name() : "CURRENT";
+            String roleStr = (sig.getSignatoryRole() != null) ? sig.getSignatoryRole().name() : "SIGNATORY";
+
             accountList.add(AccessibleAccountDTO.builder()
                     .accountNumber(compAcc.getAccountNumber())
-                    .accountType(compAcc.getAccountType().name())
+                    .accountType(accType)
                     .accountCategory("CORPORATE")
-                    .companyName(compAcc.getCustomer().getFullName()) // ကုမ္ပဏီ အမည်
-                    .role(sig.getSignatoryRole().name())
-                    .currentBalance(compAcc.getCurrentBalance())
-                    .availableBalance(compAcc.getAvailableBalance())
+                    .companyName(companyName)
+                    .role(roleStr)
+                    .currentBalance(compAcc.getCurrentBalance() != null ? compAcc.getCurrentBalance() : BigDecimal.ZERO)
+                    .availableBalance(compAcc.getAvailableBalance() != null ? compAcc.getAvailableBalance() : BigDecimal.ZERO)
                     .currency(compAcc.getCurrency())
                     .canInitiate(sig.isCanInitiate()) // Accountant ဆိုလျှင် true
                     .canApprove(sig.isCanApprove())   // CEO ဆိုလျှင် true
