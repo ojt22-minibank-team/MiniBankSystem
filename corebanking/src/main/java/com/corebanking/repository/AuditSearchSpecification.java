@@ -1,7 +1,7 @@
-package com.corebanking.security.audit.specification;
+package com.corebanking.repository;
 
+import com.corebanking.dto.AuditSearchCriteria;
 import com.corebanking.entity.AuditLogs;
-import com.corebanking.security.audit.dto.AuditSearchCriteria;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 

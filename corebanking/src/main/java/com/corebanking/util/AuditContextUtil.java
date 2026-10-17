@@ -1,4 +1,4 @@
-package com.corebanking.security.audit.util;
+package com.corebanking.util;
 
 import com.corebanking.entity.enums.ActorType;
 import jakarta.servlet.http.HttpServletRequest;

@@ -1,16 +1,15 @@
-package com.corebanking.security.audit.service;
+package com.corebanking.service;
 
+import com.corebanking.dto.AuditSearchCriteria;
 import com.corebanking.entity.AuditLogs;
 import com.corebanking.entity.Customers;
 import com.corebanking.entity.StaffUsers;
 import com.corebanking.entity.enums.ActorType;
 import com.corebanking.repository.AuditLogsRepository;
+import com.corebanking.repository.AuditSearchSpecification;
 import com.corebanking.repository.CustomerRepository;
 import com.corebanking.repository.StaffUsersRepository;
-import com.corebanking.security.audit.dto.AuditSearchCriteria;
-import com.corebanking.security.audit.specification.AuditSearchSpecification;
-import com.corebanking.security.audit.util.AuditContextUtil;
-//import com.fasterxml.jackson.databind.ObjectMapper;
+import com.corebanking.util.AuditContextUtil;
 import tools.jackson.databind.json.JsonMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +40,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
     private final AuditLogsRepository auditLogsRepository;
     private final StaffUsersRepository staffUsersRepository;
     private final CustomerRepository customerRepository;
-    //private final ObjectMapper objectMapper;
     private final JsonMapper objectMapper;
 
     /**

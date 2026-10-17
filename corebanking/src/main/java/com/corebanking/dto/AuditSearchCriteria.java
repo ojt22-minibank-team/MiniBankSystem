@@ -1,4 +1,4 @@
-package com.corebanking.security.audit.dto;
+package com.corebanking.dto;
 
 import com.corebanking.entity.enums.ActorType;
 import lombok.AllArgsConstructor;
