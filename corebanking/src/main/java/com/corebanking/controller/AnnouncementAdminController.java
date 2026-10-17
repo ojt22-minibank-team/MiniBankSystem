@@ -148,4 +148,26 @@ public class AnnouncementAdminController {
                 )
         );
     }
+    
+ // =====================================================
+    // 1. SOFT DELETE (Single)
+    // DELETE /api/admin/announcements/{id}/soft-delete
+    // =====================================================
+    @DeleteMapping("/{id}/soft-delete")
+    public ResponseEntity<String> softDeleteAnnouncement(
+            @PathVariable Integer id
+    ) {
+        announcementService.deleteAnnouncement(id);
+        return ResponseEntity.ok("Announcement deleted successfully");
+    }
+
+    // =====================================================
+    // 2. BULK SOFT DELETE EXPIRED
+    // DELETE /api/admin/announcements/bulk-soft-delete-expired
+    // =====================================================
+    @DeleteMapping("/bulk-soft-delete-expired")
+    public ResponseEntity<Void> bulkDeleteExpiredAnnouncements() {
+        announcementService.bulkDeleteExpiredAnnouncements();
+        return ResponseEntity.noContent().build();
+    }
 }

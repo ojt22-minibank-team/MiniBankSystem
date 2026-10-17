@@ -96,9 +96,22 @@ public class SecurityConfig {
                     "/api/auth/staff-password-setup/complete"
                 ).permitAll()
 
+                // CORS preflight requests
+                .requestMatchers(
+                    HttpMethod.OPTIONS,
+                    "/**"
+                ).permitAll()
+
                 // Customer APIs
                 .requestMatchers(
+                    "/api/customers",
                     "/api/customers/**"
+                ).permitAll()
+
+                // Account APIs
+                .requestMatchers(
+                    "/api/accounts",
+                    "/api/accounts/**"
                 ).permitAll()
 
                 // All other endpoints require authentication

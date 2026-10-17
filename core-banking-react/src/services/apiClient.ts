@@ -19,8 +19,11 @@ import type {
   AnnouncementUpdateRequest,
   CustomerResponse,
   CustomerDetailResponse,
+  CustomerCreateDTO,
+  CustomerCreateResponse,
   AccountResponse,
   AccountCreateDTO,
+  CorporateAccountCreateDTO,
   AccountStatusUpdateDTO,
   P2PTransferRequestDto,
   P2PTransferResponseDto,
@@ -159,13 +162,16 @@ export const announcementsApi = {
   update: (id: number, data: AnnouncementUpdateRequest) =>
     axiosInstance.put<AnnouncementResponse>(API_ENDPOINTS.ADMIN.ANNOUNCEMENT_BY_ID(id), data),
 
-  delete: (id: number) =>
-    axiosInstance.delete<string>(API_ENDPOINTS.ADMIN.ANNOUNCEMENT_BY_ID(id)),
+  // ပြင်ဆင်ထားသော အပိုင်း (patch အစား delete ကို အသုံးပြုထားပါသည်)
+  softDelete: (id: number) =>
+    axiosInstance.delete(API_ENDPOINTS.ADMIN.ANNOUNCEMENT_SOFT_DELETE(id)),
+
+  bulkSoftDeleteExpired: () =>
+    axiosInstance.delete(API_ENDPOINTS.ADMIN.ANNOUNCEMENT_BULK_SOFT_DELETE_EXPIRED),
 
   deactivate: (id: number) =>
     axiosInstance.patch<AnnouncementResponse>(API_ENDPOINTS.ADMIN.ANNOUNCEMENT_DEACTIVATE(id)),
 };
-
 // ============================================================
 // Customers API
 // ============================================================
@@ -176,6 +182,9 @@ export const customersApi = {
 
   getByCode: (code: string) =>
     axiosInstance.get<CustomerDetailResponse>(API_ENDPOINTS.CUSTOMER_BY_CODE(code)),
+
+  create: (data: CustomerCreateDTO) =>
+    axiosInstance.post<CustomerCreateResponse>(API_ENDPOINTS.CUSTOMERS, data),
 };
 
 // ============================================================
@@ -183,8 +192,17 @@ export const customersApi = {
 // ============================================================
 
 export const accountsApi = {
+  getAll: () =>
+    axiosInstance.get<AccountResponse[]>(API_ENDPOINTS.ACCOUNTS),
+
   create: (data: AccountCreateDTO) =>
     axiosInstance.post<AccountResponse>(API_ENDPOINTS.ACCOUNTS, data),
+
+  createCorporate: (data: CorporateAccountCreateDTO) =>
+    axiosInstance.post<{ status: string; message: string; accountNumber: string }>(
+      `${API_ENDPOINTS.ACCOUNTS}/corporate`,
+      data,
+    ),
 
   getByNumber: (accountNumber: string) =>
     axiosInstance.get<AccountResponse>(API_ENDPOINTS.ACCOUNT_BY_NUMBER(accountNumber)),

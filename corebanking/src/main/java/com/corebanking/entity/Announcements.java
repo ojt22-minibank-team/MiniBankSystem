@@ -5,9 +5,12 @@ import com.corebanking.entity.enums.UpdatedByType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
 
 @Entity
@@ -17,7 +20,12 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+// Add Soft Delete Annotations
+@SQLDelete(sql = "UPDATE announcements SET is_deleted = true WHERE announcement_id=?")
+@SQLRestriction("is_deleted = false") 
 public class Announcements {
+
+    private static final ZoneId MYANMAR_ZONE = ZoneId.of("Asia/Rangoon");
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,6 +46,10 @@ public class Announcements {
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private boolean isActive = true;
+
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    private boolean isDeleted = false;
 
     @Column(name = "starts_at", nullable = false)
     private LocalDateTime startsAt;
@@ -66,12 +78,12 @@ public class Announcements {
 
     @PrePersist
     protected void onCreate() {
-        if (createdAt == null) createdAt = LocalDateTime.now();
-        if (updatedAt == null) updatedAt = LocalDateTime.now();
+        if (createdAt == null) createdAt = LocalDateTime.now(MYANMAR_ZONE);
+        if (updatedAt == null) updatedAt = LocalDateTime.now(MYANMAR_ZONE);
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now(MYANMAR_ZONE);
     }
 }

@@ -27,6 +27,10 @@ export const API_ENDPOINTS = {
     ANNOUNCEMENT_BY_ID: (id: number) => `/api/admin/announcements/${id}`,
     ANNOUNCEMENT_DEACTIVATE: (id: number) =>
       `/api/admin/announcements/${id}/deactivate`,
+    ANNOUNCEMENT_SOFT_DELETE: (id: number) =>
+      `/api/admin/announcements/${id}/soft-delete`,
+    ANNOUNCEMENT_BULK_SOFT_DELETE_EXPIRED:
+      "/api/admin/announcements/bulk-soft-delete-expired",
 
     // System Rules Configuration
     SYSTEM_RULES: {

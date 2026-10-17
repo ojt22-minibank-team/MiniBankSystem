@@ -21,13 +21,24 @@ public class CorporateAccountCreateDTO {
     @NotBlank(message = "Account type is required (CURRENT or SAVINGS)")
     private String accountType;
 
-    // Approver ဖြစ်မည့် CEO ၏ Customer Code (PRIMARY_HOLDER အဖြစ် စာရင်းသွင်းမည်)
-    @NotBlank(message = "CEO customer code is required")
+    // Approver ဖြစ်မည့် CEO ၏ Customer Code
     private String ceoCustomerCode;
 
-    // Initiator ဖြစ်မည့် ငွေကိုင် (Accountant) ၏ Customer Code (JOINT_HOLDER အဖြစ် စာရင်းသွင်းမည်)
-    @NotBlank(message = "Accountant customer code is required")
+    // Initiator ဖြစ်မည့် ငွေကိုင် (Accountant) ၏ Customer Code
     private String accountantCustomerCode;
+
+    // Initiator ဖြစ်မည့် Maker ၏ Customer Code (Alias)
+    private String makerCustomerCode;
+
+    // CEO ၏ အချက်အလက်များ တိုက်ရိုက်ထည့်သွင်းနိုင်ရန် (Optional)
+    private String ceoFullName;
+    private String ceoEmail;
+    private String ceoPhone;
+
+    // Maker ၏ အချက်အလက်များ တိုက်ရိုက်ထည့်သွင်းနိုင်ရန် (Optional)
+    private String makerFullName;
+    private String makerEmail;
+    private String makerPhone;
 
     // စတင်ထည့်သွင်းမည့် အပ်ငွေ (အနည်းဆုံး 0 သို့မဟုတ် ထို့ထက်ပိုရမည်)
     @DecimalMin(value = "0.0", inclusive = true, message = "Initial deposit must be greater than or equal to 0")
@@ -36,6 +47,13 @@ public class CorporateAccountCreateDTO {
     // ငွေကြေးအမျိုးအစား (မထည့်ပါက Default "MMK" အဖြစ် သတ်မှတ်နိုင်သည်)
     private String currency;
 
-    // အကောင့်စကားဝှက် (Group 1 Password လိုအပ်ချက်အတွက် ထည့်သွင်းနိုင်သည်)
+    // အကောင့်စကားဝှက်
     private String accountPassword;
+
+    public String getResolvedMakerCustomerCode() {
+        if (makerCustomerCode != null && !makerCustomerCode.isBlank()) {
+            return makerCustomerCode;
+        }
+        return accountantCustomerCode;
+    }
 }

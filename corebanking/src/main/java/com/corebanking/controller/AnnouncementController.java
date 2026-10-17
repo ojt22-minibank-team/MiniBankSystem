@@ -15,31 +15,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AnnouncementController {
 
-
     private final AnnouncementService announcementService;
 
-
-    // =====================================================
     // GET ACTIVE ANNOUNCEMENTS
-    //
-    // ADMIN / TELLER / AUDITOR
-    // =====================================================
-
     @GetMapping
-    public ResponseEntity<List<AnnouncementResponse>>
-    getActiveAnnouncements() {
-
-        return ResponseEntity.ok(
-                announcementService
-                        .getActiveAnnouncements()
-        );
+    public ResponseEntity<List<AnnouncementResponse>> getActiveAnnouncements() {
+        return ResponseEntity.ok(announcementService.getActiveAnnouncements());
     }
-    @GetMapping("/customer")
-    public ResponseEntity<List<AnnouncementResponse>>
-    getCustomerAnnouncements() {
-
-        return ResponseEntity.ok(
-                announcementService.getAnnouncementsForCustomers()
-        );
-    }
+    
 }

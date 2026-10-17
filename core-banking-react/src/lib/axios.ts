@@ -9,7 +9,7 @@ export const apiClient = axios.create({
     'Content-Type': 'application/json',
     Accept: 'application/json',
   },
-  timeout: 15000,
+  timeout: 30000,
 });
 
 // Request Interceptor: Attach Bearer Token & Staff Identifier

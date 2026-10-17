@@ -160,6 +160,7 @@ export interface AnnouncementResponse {
   message: string;
   audience: AnnouncementAudience;
   isActive: boolean;
+  isDeleted: boolean;
   startsAt: string | null;
   endsAt: string | null;
   createdByStaffId: string | null;
@@ -212,15 +213,26 @@ export interface CustomerDetailResponse extends CustomerResponse {
 }
 
 export interface CustomerCreateDTO {
-  customerType: 'INDIVIDUAL' | 'CORPORATE';
+  customerType: 'PERSONAL' | 'COMPANY';
   email: string;
   phone: string;
-  fullName: string;
-  nrc?: string;
-  dateOfBirth?: string;
   address?: string;
+  // Personal
+  firstName?: string;
+  lastName?: string;
+  gender?: 'MALE' | 'FEMALE' | 'OTHER';
+  dateOfBirth?: string;
+  nrc?: string;
+  occupation?: string;
+  // Company
   companyName?: string;
   registrationNumber?: string;
+  taxId?: string;
+  businessType?: string;
+}
+
+export interface CustomerCreateResponse extends CustomerResponse {
+  temporaryPassword?: string;
 }
 
 // --- Account DTOs ---
@@ -241,9 +253,27 @@ export interface AccountResponse {
 
 export interface AccountCreateDTO {
   customerCode: string;
-  accountType: string;
+  accountType: 'SAVINGS' | 'CURRENT' | string;
   currency: string;
   initialDeposit?: number;
+  isJointAccount?: boolean;
+}
+
+export interface CorporateAccountCreateDTO {
+  companyCustomerCode: string;
+  accountType: 'CURRENT' | 'SAVINGS' | string;
+  ceoCustomerCode?: string;
+  accountantCustomerCode?: string;
+  makerCustomerCode?: string;
+  ceoFullName?: string;
+  ceoEmail?: string;
+  ceoPhone?: string;
+  makerFullName?: string;
+  makerEmail?: string;
+  makerPhone?: string;
+  initialDeposit?: number;
+  currency?: string;
+  accountPassword?: string;
 }
 
 export interface AccountStatusUpdateDTO {

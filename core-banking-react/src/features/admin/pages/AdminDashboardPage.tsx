@@ -55,35 +55,42 @@ function StatCard({ title, value, icon, color, subtitle, onClick }: StatCardProp
 // ============================================================
 
 export default function AdminDashboardPage() {
-  const { user, isAdmin, isAuditor } = useAuth();
+  const { user, isAdmin, isAuditor, isTeller } = useAuth();
   const navigate = useNavigate();
 
   const [staff, setStaff] = useState<StaffResponse[]>([]);
   const [announcements, setAnnouncements] = useState<AnnouncementResponse[]>([]);
   const [parameters, setParameters] = useState<SystemParameterResponse[]>([]);
-  const [staffLoading, setStaffLoading] = useState(true);
+  // Tellers cannot access admin-only endpoints — skip loading them
+  const [staffLoading, setStaffLoading] = useState(!isTeller);
   const [announcementsLoading, setAnnouncementsLoading] = useState(true);
-  const [rulesLoading, setRulesLoading] = useState(true);
+  const [rulesLoading, setRulesLoading] = useState(!isTeller);
   const [staffError, setStaffError] = useState<string | null>(null);
   const [announcementsError, setAnnouncementsError] = useState<string | null>(null);
 
   useEffect(() => {
-    setStaffLoading(true);
-    staffApi
-      .getAll()
-      .then((res) => setStaff(res.data))
-      .catch((err: AxiosError) => {
-        setStaffError(
-          err.response?.status === 403
-            ? 'Access denied.'
-            : 'Failed to load staff data.',
-        );
-      })
-      .finally(() => setStaffLoading(false));
+    // Staff list — ADMIN/AUDITOR only
+    if (!isTeller) {
+      setStaffLoading(true);
+      staffApi
+        .getAll()
+        .then((res) => setStaff(res.data))
+        .catch((err: AxiosError) => {
+          setStaffError(
+            err.response?.status === 403
+              ? 'Access denied.'
+              : 'Failed to load staff data.',
+          );
+        })
+        .finally(() => setStaffLoading(false));
+    }
 
+    // Announcements — Tellers use the public endpoint; Admins use the admin endpoint
     setAnnouncementsLoading(true);
-    announcementsApi
-      .getAll()
+    const announcementFetch = isTeller
+      ? announcementsApi.getActive()
+      : announcementsApi.getAll();
+    announcementFetch
       .then((res) => setAnnouncements(res.data))
       .catch((err: AxiosError) => {
         setAnnouncementsError(
@@ -94,13 +101,16 @@ export default function AdminDashboardPage() {
       })
       .finally(() => setAnnouncementsLoading(false));
 
-    setRulesLoading(true);
-    systemRulesApi
-      .getAllParameters()
-      .then((res) => setParameters(res.data))
-      .catch(() => {})
-      .finally(() => setRulesLoading(false));
-  }, []);
+    // System rules — ADMIN/AUDITOR only
+    if (!isTeller) {
+      setRulesLoading(true);
+      systemRulesApi
+        .getAllParameters()
+        .then((res) => setParameters(res.data))
+        .catch(() => {})
+        .finally(() => setRulesLoading(false));
+    }
+  }, [isTeller]);
 
   const activeStaff = staff.filter((s) => s.status === 'ACTIVE').length;
   const activeAnnouncements = announcements.filter((a) => a.isActive).length;
@@ -168,7 +178,7 @@ export default function AdminDashboardPage() {
           value={announcementsLoading ? '—' : announcements.length}
           subtitle={announcementsLoading ? undefined : `${activeAnnouncements} active`}
           color="bg-purple-100 text-purple-700"
-          onClick={() => navigate('/admin/announcements')}
+          onClick={!isTeller ? () => navigate('/admin/announcements') : undefined}
           icon={
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
@@ -264,12 +274,14 @@ export default function AdminDashboardPage() {
         <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
             <h3 className="text-sm font-semibold text-gray-800">Announcements</h3>
-            <button
-              onClick={() => navigate('/admin/announcements')}
-              className="text-xs font-medium text-blue-600 hover:underline"
-            >
-              Manage →
-            </button>
+            {!isTeller && (
+              <button
+                onClick={() => navigate('/admin/announcements')}
+                className="text-xs font-medium text-blue-600 hover:underline"
+              >
+                Manage →
+              </button>
+            )}
           </div>
 
           <div className="divide-y divide-gray-50">
