@@ -26,6 +26,7 @@ import com.corebanking.exception.CusValidationException;
 import com.corebanking.repository.CusAuditLogsRepository;
 import com.corebanking.repository.CusAuthSessionsRepository;
 import com.corebanking.repository.CusCorporateCredentialRepository;
+import com.corebanking.repository.CusCorporateSessionActivityRepository;
 import com.corebanking.repository.CusLoginAttemptsRepository;
 import com.corebanking.repository.CusJwtRevokedTokensRepository;
 import com.corebanking.repository.CusOtpChallengesRepository;
@@ -56,6 +57,7 @@ public class CusCorporateSessionService {
     private final CusLoginAttemptsRepository loginAttemptsRepository;
     private final CusAuditLogsRepository auditLogsRepository;
     private final CusJwtRevokedTokensRepository jwtRevokedTokensRepository;
+    private final CusCorporateSessionActivityRepository corporateActivityRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -335,7 +337,13 @@ public class CusCorporateSessionService {
     }
 
     public AuthSession validateAccessSession(Claims claims) {
-        return cusSessionService.validateCorporateAccessSession(claims);
+        // Reuse authoritative ACCESS validation without its shared entity-save path.
+        AuthSession session = cusSessionService.validateCorporateAccessSessionForLogout(claims);
+        if (corporateActivityRepository.touchIfActive(session.getSessionUuid(), session.getTokenVersionAtIssue()) != 1) {
+            throw new CusSessionExpiredException("Authentication session has expired.");
+        }
+        // Do not mutate or save this entity: it may predate a concurrent rotation/revoke.
+        return session;
     }
 
     public AuthSession validateRefreshSession(Claims claims, String rawRefreshToken) {

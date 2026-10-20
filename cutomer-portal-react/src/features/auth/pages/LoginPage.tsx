@@ -4,6 +4,7 @@ import {
 } from "react";
 
 import {
+  Link,
   useNavigate,
 } from "react-router-dom";
 
@@ -877,6 +878,11 @@ function LoginPage() {
                 </button>
 
               </form>
+
+              <p className="mt-6 text-center text-sm text-slate-500">
+                Corporate Banking?{" "}
+                <Link to="/corporate/login" className="font-semibold text-cyan-600 hover:text-cyan-700">Corporate Login</Link>
+              </p>
 
 
               {/* =================================================

@@ -8,6 +8,9 @@ import {
   getRefreshToken,
   saveTokens,
   clearTokens,
+  getAuthenticationGeneration,
+  isAuthenticationGenerationCurrent,
+  invalidateAuthenticationGeneration,
 } from "../utils/tokenStorage";
 
 import {
@@ -62,6 +65,7 @@ interface RetryableRequestConfig
   extends InternalAxiosRequestConfig {
 
   _retry?: boolean;
+  _authGeneration?: number;
 
 }
 
@@ -157,6 +161,18 @@ api.interceptors.request.use(
 
   (config) => {
 
+    if (config.url === "/auth/login") {
+      invalidateAuthenticationGeneration();
+    }
+
+    if (!isPublicEndpoint(config.url) && config.url !== "/auth/logout") {
+      const request = config as RetryableRequestConfig;
+      request._authGeneration ??= getAuthenticationGeneration();
+      if (request._retry && !isAuthenticationGenerationCurrent(request._authGeneration)) {
+        return Promise.reject(new Error("Authentication changed before retrying the request."));
+      }
+    }
+
     const accessToken =
       getAccessToken();
 
@@ -238,13 +254,19 @@ let refreshPromise:
   Promise<string> | null =
     null;
 
+let refreshGeneration: number | null = null;
+
 
 // ======================================================
 // REFRESH ACCESS TOKEN
 // ======================================================
 
 const refreshAccessToken =
-  async (): Promise<string> => {
+  async (generation: number): Promise<string> => {
+
+    if (!isAuthenticationGenerationCurrent(generation)) {
+      throw new Error("Authentication changed before refreshing the session.");
+    }
 
 
     // ==================================================
@@ -252,7 +274,7 @@ const refreshAccessToken =
     // ==================================================
 
     if (
-      refreshPromise
+      refreshPromise && refreshGeneration === generation
     ) {
 
       // Existing refresh request ကို
@@ -267,7 +289,7 @@ const refreshAccessToken =
     // CREATE ONE REFRESH REQUEST
     // ==================================================
 
-    refreshPromise =
+    const currentRefreshPromise =
       (async () => {
 
 
@@ -353,7 +375,8 @@ const refreshAccessToken =
 
         saveTokens(
           newAccessToken,
-          newRefreshToken
+          newRefreshToken,
+          generation
         );
 
 
@@ -361,10 +384,12 @@ const refreshAccessToken =
 
       })();
 
+    refreshPromise = currentRefreshPromise;
+    refreshGeneration = generation;
 
     try {
 
-      return await refreshPromise;
+      return await currentRefreshPromise;
 
     } finally {
 
@@ -373,8 +398,10 @@ const refreshAccessToken =
       // RELEASE SINGLE REFRESH LOCK
       // ==================================================
 
-      refreshPromise =
-        null;
+      if (refreshPromise === currentRefreshPromise) {
+        refreshPromise = null;
+        refreshGeneration = null;
+      }
 
     }
 
@@ -465,7 +492,7 @@ api.interceptors.response.use(
     if (
       isPublicEndpoint(
         originalRequest.url
-      )
+      ) || originalRequest.url === "/auth/logout"
     ) {
 
       return Promise.reject(
@@ -474,6 +501,10 @@ api.interceptors.response.use(
 
     }
 
+    const generation = originalRequest._authGeneration;
+    if (generation === undefined || !isAuthenticationGenerationCurrent(generation)) {
+      return Promise.reject(error);
+    }
 
     // ==================================================
     // SESSION EXPIRED DUE TO INACTIVITY
@@ -511,6 +542,8 @@ api.interceptors.response.use(
       responseData?.code ===
       "SESSION_EXPIRED"
     ) {
+
+      invalidateAuthenticationGeneration();
 
       dispatchSessionTimeout(
 
@@ -585,7 +618,11 @@ api.interceptors.response.use(
 
 
       const newAccessToken =
-        await refreshAccessToken();
+        await refreshAccessToken(generation);
+
+      if (!isAuthenticationGenerationCurrent(generation)) {
+        return Promise.reject(new Error("Authentication changed while refreshing the session."));
+      }
 
 
       // ==================================================
@@ -623,6 +660,9 @@ api.interceptors.response.use(
       refreshError
     ) {
 
+      if (!isAuthenticationGenerationCurrent(generation)) {
+        return Promise.reject(refreshError);
+      }
 
       // ==================================================
       // REFRESH TOKEN INVALID / EXPIRED / REVOKED

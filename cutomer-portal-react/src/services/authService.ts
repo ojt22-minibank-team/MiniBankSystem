@@ -155,7 +155,9 @@ export const logoutCustomer = async (): Promise<string> => {
 
   const response =
     await api.post<string>(
-      "/auth/logout"
+      "/auth/logout",
+      undefined,
+      { timeout: 10_000 }
     );
 
   return response.data;

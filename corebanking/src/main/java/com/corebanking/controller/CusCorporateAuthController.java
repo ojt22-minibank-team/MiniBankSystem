@@ -15,6 +15,7 @@ import com.corebanking.service.CusCorporateFirstLoginService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -78,6 +79,15 @@ public class CusCorporateAuthController {
     public ResponseEntity<CusTokenResponse> refreshToken(
             @RequestBody CusRefreshTokenRequest request) {
         return ResponseEntity.ok(corporateAuthService.refreshToken(request));
+    }
+
+    // The Corporate security chain validates and touches the session before dispatch.
+    @GetMapping("/session/keep-alive")
+    public ResponseEntity<Map<String, Object>> keepAlive() {
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Corporate session is active."
+        ));
     }
 
     @PostMapping("/logout")
