@@ -3,6 +3,8 @@ package com.corebanking.controller;
 import com.corebanking.dto.AccountLookupResponseDto;
 import com.corebanking.dto.P2PTransferRequestDto;
 import com.corebanking.dto.P2PTransferResponseDto;
+import com.corebanking.exception.CusAccountLockedException;
+import com.corebanking.exception.InvalidPinException;
 import com.corebanking.repository.CustomerRepository;
 import com.corebanking.service.AsyncNotificationService;
 import com.corebanking.service.P2PTransferService;
@@ -42,22 +44,24 @@ public class P2PTransferController {
 
         try {
             P2PTransferResponseDto response = p2pTransferService.processP2PTransfer(
-            		 customerId,
+            		customerId,
                     request, 
                     idempotencyKey
             );
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             try {
-                customerRepository.findById(UUID.fromString(customerId)).ifPresent(sender -> {
-                    asyncNotificationService.sendFailedTransferNotificationAsync(
-                            sender,
-                            request.getDestinationAccountNumber(),
-                            request.getAmount(),
-                            request.getCurrency(),
-                            e.getMessage()
-                    );
-                });
+                if (!(e instanceof InvalidPinException || e instanceof CusAccountLockedException)) {
+                    customerRepository.findById(UUID.fromString(customerId)).ifPresent(sender -> {
+                        asyncNotificationService.sendFailedTransferNotificationAsync(
+                                sender,
+                                request.getDestinationAccountNumber(),
+                                request.getAmount(),
+                                request.getCurrency(),
+                                e.getMessage()
+                        );
+                    });
+                }
             } catch (Exception notifEx) {
                 // Ignore notification dispatch failure so original exception is returned
             }

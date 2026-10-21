@@ -1,0 +1,10 @@
+﻿{
+  "name": "mock-server",
+  "version": "1.0.0",
+  "description": "Mock Group 3 Payment Gateway",
+  "main": "mock-gateway.js",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}

@@ -3,6 +3,7 @@ import {
 } from "react";
 
 import {
+  Navigate,
   useNavigate,
 } from "react-router-dom";
 
@@ -22,6 +23,7 @@ import {
 
 import {
   saveTokens,
+  hasTokens,
 } from "../../../utils/tokenStorage";
 
 import PublicAuthLayout
@@ -244,7 +246,8 @@ function OtpPage() {
 
 
           navigate(
-            "/dashboard"
+            "/dashboard",
+            { replace: true }
           );
 
           return;
@@ -432,6 +435,23 @@ function OtpPage() {
   // =========================================
   // UI
   // =========================================
+
+  // Verification removes the challenge before the Dashboard transition commits.
+  // Completed verification must never compete with that transition; after logout,
+  // cleared tokens still send any restored completed page to Login.
+  if (completed) {
+    return <Navigate to={hasTokens() ? "/dashboard" : "/login"} replace />;
+  }
+
+  // Login challenges are UUIDs. Never restore the form from browser history
+  // after successful verification or logout has removed the challenge.
+  const challengeGroupId = sessionStorage.getItem("challengeGroupId");
+  if (
+    !challengeGroupId ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(challengeGroupId)
+  ) {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
 

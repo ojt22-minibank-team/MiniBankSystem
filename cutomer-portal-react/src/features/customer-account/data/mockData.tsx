@@ -1,5 +1,5 @@
-import type { Account } from "../types/accountTypes";
 import type {
+  Account,
   Customer,
   Transaction,
 } from "../types/customerTypes";

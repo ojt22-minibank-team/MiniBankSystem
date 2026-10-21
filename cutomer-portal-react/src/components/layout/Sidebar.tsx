@@ -16,21 +16,15 @@ import {
 
 import {
   NavLink,
-  useNavigate,
 } from "react-router-dom";
 
 import {
   useEffect,
-  useState,
+  useSyncExternalStore,
 } from "react";
 
-import {
-  logoutCustomer,
-} from "../../services/authService";
-
-import {
-  clearTokens,
-} from "../../utils/tokenStorage";
+import { isIndividualLogoutInProgress, useIndividualLogout } from "../../features/auth/hooks/useIndividualLogout";
+import { getAuthenticationGeneration, subscribeToAuthenticationChanges } from "../../utils/tokenStorage";
 import { useAppDispatch ,useAppSelector } from "../../lib/redux";
 import { fetchAnnouncements } from "../../features/customer-account/announcements/store/announcementSlice";
 
@@ -107,16 +101,12 @@ const accountMenuItems = [
 
 export default function Sidebar() {
 
-  const navigate =
-    useNavigate();
+  const handleLogout = useIndividualLogout();
+  // A previous session's pending logout must not disable this session's button.
+  useSyncExternalStore(subscribeToAuthenticationChanges, getAuthenticationGeneration);
+  const loggingOut = isIndividualLogoutInProgress();
 
    const dispatch = useAppDispatch();
-
-  const [
-    loggingOut,
-    setLoggingOut,
-  ] = useState(false);
-
 
     useEffect(() => {
     void dispatch(fetchAnnouncements());
@@ -128,92 +118,6 @@ export default function Sidebar() {
       (announcement) => !announcement.isRead,
     ).length,
   );
-
-
-  // ====================================================
-  // LOGOUT
-  // ====================================================
-
-  const handleLogout =
-    async () => {
-
-      // Double click မဖြစ်အောင်
-      if (loggingOut) {
-        return;
-      }
-
-
-      setLoggingOut(true);
-
-
-      try {
-
-        // ----------------------------------------------
-        // Backend Logout API
-        //
-        // POST /api/customer/auth/logout
-        //
-        // api.ts interceptor က
-        // Authorization: Bearer <accessToken>
-        // ကို automatically ထည့်ပေးမယ်
-        // ----------------------------------------------
-
-        await logoutCustomer();
-
-
-        console.log(
-          "Logout successful."
-        );
-
-
-      } catch (error) {
-
-        // Backend logout fail ဖြစ်သော်လည်း
-        // browser ထဲက local authentication data
-        // ကိုတော့ clear လုပ်ပေးမယ်
-
-        console.error(
-          "Logout API failed:",
-          error
-        );
-
-
-      } finally {
-
-        // ----------------------------------------------
-        // ACCESS TOKEN + REFRESH TOKEN CLEAR
-        // ----------------------------------------------
-
-        clearTokens();
-
-
-        // ----------------------------------------------
-        // Temporary login / OTP data CLEAR
-        // ----------------------------------------------
-
-        sessionStorage.removeItem(
-          "challengeGroupId"
-        );
-
-        sessionStorage.removeItem(
-          "maskedEmail"
-        );
-
-
-        // ----------------------------------------------
-        // LOGIN PAGE ပြန်ပို့
-        // ----------------------------------------------
-
-        navigate(
-          "/login",
-          {
-            replace: true,
-          }
-        );
-
-      }
-
-    };
 
 
   // ====================================================

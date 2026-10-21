@@ -90,10 +90,10 @@ export default function RecentTransactions() {
                   className={`text-sm font-semibold ${
                     isCredit
                       ? "text-green-600"
-                      : "text-slate-800"
+                      : "text-rose-600"
                   }`}
                 >
-                  {isCredit ? "+" : ""}
+                  {isCredit ? "+ " : "- "}
                   {Math.abs(transaction.amount).toLocaleString()} MMK
                 </p>
 

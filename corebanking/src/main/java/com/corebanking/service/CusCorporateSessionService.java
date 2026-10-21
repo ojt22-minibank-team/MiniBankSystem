@@ -1,5 +1,7 @@
 package com.corebanking.service;
 
+import com.corebanking.dto.CusSessionClientMetadata;
+
 import com.corebanking.dto.CusTokenResponse;
 import com.corebanking.dto.CusRefreshTokenRequest;
 import com.corebanking.entity.AuditLogs;
@@ -26,6 +28,7 @@ import com.corebanking.exception.CusValidationException;
 import com.corebanking.repository.CusAuditLogsRepository;
 import com.corebanking.repository.CusAuthSessionsRepository;
 import com.corebanking.repository.CusCorporateCredentialRepository;
+import com.corebanking.repository.CusCorporateSessionActivityRepository;
 import com.corebanking.repository.CusLoginAttemptsRepository;
 import com.corebanking.repository.CusJwtRevokedTokensRepository;
 import com.corebanking.repository.CusOtpChallengesRepository;
@@ -56,12 +59,19 @@ public class CusCorporateSessionService {
     private final CusLoginAttemptsRepository loginAttemptsRepository;
     private final CusAuditLogsRepository auditLogsRepository;
     private final CusJwtRevokedTokensRepository jwtRevokedTokensRepository;
+    private final CusCorporateSessionActivityRepository corporateActivityRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public CusTokenResponse createAuthenticatedSession(String challengeGroupId) {
+        return createAuthenticatedSession(challengeGroupId, CusSessionClientMetadata.EMPTY);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public CusTokenResponse createAuthenticatedSession(String challengeGroupId, CusSessionClientMetadata metadata) {
+        metadata = metadata == null ? CusSessionClientMetadata.EMPTY : metadata;
         if (challengeGroupId == null || challengeGroupId.isBlank()) {
             throw new CusValidationException("OTP challenge information is required.");
         }
@@ -119,6 +129,8 @@ public class CusCorporateSessionService {
         );
         AuthSession session = AuthSession.builder()
                 .sessionUuid(sessionUuid)
+                .ipAddress(metadata.ipAddress())
+                .userAgent(metadata.userAgent())
                 .subjectType(SessionSubjectType.CORPORATE_USER)
                 .corporateUser(user)
                 .customer(null)
@@ -140,6 +152,8 @@ public class CusCorporateSessionService {
         corporateCredentialRepository.saveAndFlush(credentials);
 
         loginAttemptsRepository.saveAndFlush(LoginAttempt.builder()
+                .ipAddress(metadata == null ? null : metadata.ipAddress())
+                .userAgent(metadata == null ? null : metadata.userAgent())
                 .actorType(SessionSubjectType.CORPORATE_USER)
                 .corporateUser(user)
                 .customer(null)
@@ -152,6 +166,8 @@ public class CusCorporateSessionService {
                 .build());
 
         auditLogsRepository.saveAndFlush(AuditLogs.builder()
+                .ipAddress(metadata == null ? null : metadata.ipAddress())
+                .userAgent(metadata == null ? null : metadata.userAgent())
                 .actorType(ActorType.CORPORATE_USER)
                 .actorCorporateUser(user)
                 .actorCustomer(null)
@@ -173,6 +189,11 @@ public class CusCorporateSessionService {
 
     @Transactional(noRollbackFor = CusSessionExpiredException.class)
     public CusTokenResponse refreshToken(CusRefreshTokenRequest request) {
+        return refreshToken(request, CusSessionClientMetadata.EMPTY);
+    }
+
+    @Transactional(noRollbackFor = CusSessionExpiredException.class)
+    public CusTokenResponse refreshToken(CusRefreshTokenRequest request, CusSessionClientMetadata metadata) {
         if (request == null
                 || request.getRefreshToken() == null
                 || request.getRefreshToken().isBlank()) {
@@ -225,6 +246,8 @@ public class CusCorporateSessionService {
             );
         }
         auditLogsRepository.save(AuditLogs.builder()
+                .ipAddress(metadata == null ? null : metadata.ipAddress())
+                .userAgent(metadata == null ? null : metadata.userAgent())
                 .actorType(ActorType.CORPORATE_USER)
                 .actorCorporateUser(user)
                 .actorCustomer(null)
@@ -241,6 +264,11 @@ public class CusCorporateSessionService {
 
     @Transactional(noRollbackFor = CusSessionExpiredException.class)
     public void logout(String authorizationHeader) {
+        logout(authorizationHeader, CusSessionClientMetadata.EMPTY);
+    }
+
+    @Transactional(noRollbackFor = CusSessionExpiredException.class)
+    public void logout(String authorizationHeader, CusSessionClientMetadata metadata) {
         if (authorizationHeader == null || authorizationHeader.isBlank()
                 || !authorizationHeader.startsWith("Bearer ")) {
             throw new CusAuthenticationException("Access token is required.");
@@ -282,6 +310,8 @@ public class CusCorporateSessionService {
                     .build());
         }
         auditLogsRepository.save(AuditLogs.builder()
+                .ipAddress(metadata == null ? null : metadata.ipAddress())
+                .userAgent(metadata == null ? null : metadata.userAgent())
                 .actorType(ActorType.CORPORATE_USER)
                 .actorCorporateUser(user)
                 .actorCustomer(null)
@@ -335,7 +365,13 @@ public class CusCorporateSessionService {
     }
 
     public AuthSession validateAccessSession(Claims claims) {
-        return cusSessionService.validateCorporateAccessSession(claims);
+        // Reuse authoritative ACCESS validation without its shared entity-save path.
+        AuthSession session = cusSessionService.validateCorporateAccessSessionForLogout(claims);
+        if (corporateActivityRepository.touchIfActive(session.getSessionUuid(), session.getTokenVersionAtIssue()) != 1) {
+            throw new CusSessionExpiredException("Authentication session has expired.");
+        }
+        // Do not mutate or save this entity: it may predate a concurrent rotation/revoke.
+        return session;
     }
 
     public AuthSession validateRefreshSession(Claims claims, String rawRefreshToken) {

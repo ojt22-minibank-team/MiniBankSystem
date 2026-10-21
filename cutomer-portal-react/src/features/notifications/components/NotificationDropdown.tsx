@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { isAxiosError } from "axios";
 import {
   Bell,
   CheckCheck,
@@ -19,6 +20,16 @@ import {
 } from "../services/notificationService";
 import type { NotificationItem } from "../types/notificationTypes";
 import { useNotificationWebSocket } from "../hooks/useNotificationWebSocket";
+import {
+  getAuthenticationGeneration,
+  hasTokens,
+  isAuthenticationGenerationCurrent,
+  subscribeToAuthenticationChanges,
+} from "../../../utils/tokenStorage";
+
+interface NotificationRequestScope {
+  generation: number;
+}
 
 export const NotificationDropdown: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -29,9 +40,18 @@ export const NotificationDropdown: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [markingAll, setMarkingAll] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  // Own pending work, including across effect cleanup/remount in the same generation.
+  const requestScopeRef = useRef<NotificationRequestScope | null>(null);
+  const isOpenRef = useRef(isOpen);
+  useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
+
+  const isCurrent = useCallback((scope: NotificationRequestScope | null) =>
+    scope !== null && requestScopeRef.current === scope && hasTokens() &&
+    isAuthenticationGenerationCurrent(scope.generation), []);
 
   // Real-time WebSocket hook integration
   const handleRealtimeNotification = useCallback((newNoti: NotificationItem) => {
+    if (!isCurrent(requestScopeRef.current)) return;
     // Increment unread count in real-time
     setUnreadCount((prev) => prev + 1);
 
@@ -42,7 +62,7 @@ export const NotificationDropdown: React.FC = () => {
       }
       return [newNoti, ...prev];
     });
-  }, []);
+  }, [isCurrent]);
 
   const { isConnected: isWsConnected } = useNotificationWebSocket({
     onNotificationReceived: handleRealtimeNotification,
@@ -74,76 +94,103 @@ export const NotificationDropdown: React.FC = () => {
   };
 
   // Fetch unread count
-  const fetchUnreadCount = async () => {
+  const fetchUnreadCount = useCallback(async () => {
+    const scope = requestScopeRef.current;
+    if (!isCurrent(scope)) return;
     try {
       const count = await getUnreadNotificationCount();
-      setUnreadCount(count);
-    } catch (err) {
+      if (isCurrent(scope)) setUnreadCount(count);
+    } catch {
       // Silently catch in polling
     }
-  };
+  }, [isCurrent]);
 
   // Fetch full notifications list
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
+    const scope = requestScopeRef.current;
+    if (!isCurrent(scope)) return;
     try {
       setLoading(true);
       setError(null);
       const data = await getMyNotifications();
+      if (!isCurrent(scope)) return;
       if (Array.isArray(data)) {
         setNotifications(data);
       } else {
         setNotifications([]);
       }
-    } catch (err: any) {
-      console.error("Failed to fetch notifications", err);
+    } catch (err: unknown) {
+      if (!isCurrent(scope)) return;
       setError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Failed to load notifications."
+        (isAxiosError<{ message?: string }>(err) ? err.response?.data?.message : undefined) ||
+        (err instanceof Error ? err.message : "Failed to load notifications.")
       );
     } finally {
-      setLoading(false);
+      if (isCurrent(scope)) setLoading(false);
     }
-  };
+  }, [isCurrent]);
 
-  // Initial fetch and polling every 20 seconds
+  // The existing auth store owns validity; this effect only owns notification work.
   useEffect(() => {
-    fetchUnreadCount();
+    let intervalId: number | undefined;
+    const stopPolling = () => {
+      window.clearInterval(intervalId);
+      intervalId = undefined;
+    };
+    const synchronize = () => {
+      const generation = getAuthenticationGeneration();
+      const authenticated = hasTokens() && isAuthenticationGenerationCurrent(generation);
+      if (authenticated && requestScopeRef.current?.generation === generation) return;
 
-    const intervalId = setInterval(() => {
-      fetchUnreadCount();
-      if (isOpen) {
-        fetchNotifications();
-      }
-    }, 20000);
+      requestScopeRef.current = null;
+      stopPolling();
+      setIsOpen(false);
+      setUnreadCount(0);
+      setNotifications([]);
+      setLoading(false);
+      setMarkingAll(false);
+      setError(null);
+      if (!authenticated) return;
+
+      const scope = { generation };
+      requestScopeRef.current = scope;
+      void fetchUnreadCount();
+      intervalId = window.setInterval(() => {
+        if (!isCurrent(scope)) return;
+        void fetchUnreadCount();
+        if (isOpenRef.current) void fetchNotifications();
+      }, 20000);
+    };
 
     // Listen to custom notification trigger (e.g. from P2P transfer)
     const handleCustomNotify = () => {
-      fetchUnreadCount();
-      if (isOpen) {
-        fetchNotifications();
+      if (!isCurrent(requestScopeRef.current)) return;
+      void fetchUnreadCount();
+      if (isOpenRef.current) {
+        void fetchNotifications();
       }
     };
-    window.addEventListener("new-notification-event", handleCustomNotify);
-
-    return () => {
-      clearInterval(intervalId);
-      window.removeEventListener("new-notification-event", handleCustomNotify);
-    };
-  }, [isOpen]);
-
-  // Listen to open-notification-dropdown event from Toast
-  useEffect(() => {
     const handleOpenFromToast = () => {
+      if (!isCurrent(requestScopeRef.current)) return;
       setIsOpen(true);
-      fetchNotifications();
-      fetchUnreadCount();
+      void fetchNotifications();
+      void fetchUnreadCount();
     };
+    const unsubscribe = subscribeToAuthenticationChanges(synchronize);
+    window.addEventListener("new-notification-event", handleCustomNotify);
     window.addEventListener("open-notification-dropdown", handleOpenFromToast);
+    window.addEventListener("storage", synchronize);
+    synchronize();
+
     return () => {
+      requestScopeRef.current = null;
+      stopPolling();
+      unsubscribe();
+      window.removeEventListener("new-notification-event", handleCustomNotify);
       window.removeEventListener("open-notification-dropdown", handleOpenFromToast);
+      window.removeEventListener("storage", synchronize);
     };
-  }, []);
+  }, [fetchNotifications, fetchUnreadCount, isCurrent]);
 
   const formatAmount = (num: number | null | undefined) => {
     if (num === null || num === undefined) return null;
@@ -172,6 +219,7 @@ export const NotificationDropdown: React.FC = () => {
 
   // Open/Close toggle
   const handleToggle = () => {
+    if (!isCurrent(requestScopeRef.current)) return;
     const nextState = !isOpen;
     setIsOpen(nextState);
     if (nextState) {
@@ -187,9 +235,12 @@ export const NotificationDropdown: React.FC = () => {
 
   // Mark single as read
   const handleMarkAsRead = async (item: NotificationItem) => {
+    const scope = requestScopeRef.current;
+    if (!isCurrent(scope)) return;
     if (!isItemUnread(item)) return;
     try {
       await markNotificationAsRead(item.notificationId);
+      if (!isCurrent(scope)) return;
       setNotifications((prev) =>
         prev.map((n) =>
           n.notificationId === item.notificationId
@@ -198,16 +249,19 @@ export const NotificationDropdown: React.FC = () => {
         )
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch (err) {
-      console.error("Failed to mark as read", err);
+    } catch {
+      // A failed or obsolete request must not affect another session.
     }
   };
 
   // Mark all as read
   const handleMarkAllAsRead = async () => {
+    const scope = requestScopeRef.current;
+    if (!isCurrent(scope)) return;
     try {
       setMarkingAll(true);
       await markAllNotificationsAsRead();
+      if (!isCurrent(scope)) return;
       setNotifications((prev) =>
         prev.map((n) => ({
           ...n,
@@ -217,10 +271,10 @@ export const NotificationDropdown: React.FC = () => {
         }))
       );
       setUnreadCount(0);
-    } catch (err) {
-      console.error("Failed to mark all as read", err);
+    } catch {
+      // A failed or obsolete request must not affect another session.
     } finally {
-      setMarkingAll(false);
+      if (isCurrent(scope)) setMarkingAll(false);
     }
   };
 
@@ -466,14 +520,14 @@ export const NotificationDropdown: React.FC = () => {
                               item.transferDirection === "RECEIVED"
                                 ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
                                 : item.transferDirection === "SENT"
-                                ? "bg-blue-50 text-blue-700 border border-blue-100"
+                                ? "bg-rose-50 text-rose-700 border border-rose-100"
                                 : "bg-slate-100 text-slate-600"
                             }`}
                           >
                             {item.transferDirection === "RECEIVED"
-                              ? "+"
+                              ? "+ "
                               : item.transferDirection === "SENT"
-                              ? "-"
+                              ? "- "
                               : ""}
                             {formatAmount(item.amount)} {item.currency || "MMK"}
                           </span>

@@ -1,5 +1,7 @@
 package com.corebanking.service;
 
+import com.corebanking.dto.CusSessionClientMetadata;
+
 import com.corebanking.dto.CusTokenResponse;
 import com.corebanking.entity.AuditLogs;
 import com.corebanking.entity.AuthSession;
@@ -38,6 +40,12 @@ public class CusCustomerSessionIssuanceService {
  public CusTokenResponse createAuthenticatedSession(
          Customers customer,
          CustomerCredentials credentials) {
+     return createAuthenticatedSession(customer, credentials, CusSessionClientMetadata.EMPTY);
+ }
+
+ public CusTokenResponse createAuthenticatedSession(
+         Customers customer, CustomerCredentials credentials, CusSessionClientMetadata metadata) {
+     metadata = metadata == null ? CusSessionClientMetadata.EMPTY : metadata;
 
      LocalDateTime now =
              LocalDateTime.now();
@@ -83,6 +91,9 @@ public class CusCustomerSessionIssuanceService {
                      .sessionUuid(
                              sessionUuid
                      )
+
+                     .ipAddress(metadata.ipAddress())
+                     .userAgent(metadata.userAgent())
 
                      .subjectType(
                              SessionSubjectType.CUSTOMER
@@ -143,7 +154,7 @@ public class CusCustomerSessionIssuanceService {
              "AUTH_SESSION",
              authSession.getSessionUuid(),
              null,
-             "{\"status\":\"ACTIVE\",\"idleTimeoutMinutes\":5}"
+             "{\"status\":\"ACTIVE\",\"idleTimeoutMinutes\":5}", metadata
      );
 
 
@@ -162,7 +173,7 @@ public class CusCustomerSessionIssuanceService {
              customer.getCustomerCode(),
              customer,
              true,
-             null
+             null, metadata
      );
 
 
@@ -183,9 +194,22 @@ public class CusCustomerSessionIssuanceService {
          String entityId,
          String oldValues,
          String newValues) {
+        saveAuditLog(actorType, actorCustomer, actionType, entityType, entityId, oldValues, newValues, CusSessionClientMetadata.EMPTY);
+    }
+
+    private void saveAuditLog(
+         ActorType actorType,
+         Customers actorCustomer,
+         String actionType,
+         String entityType,
+         String entityId,
+         String oldValues,
+         String newValues, CusSessionClientMetadata metadata) {
 
      AuditLogs auditLog =
              AuditLogs.builder()
+                     .ipAddress(metadata == null ? null : metadata.ipAddress())
+                     .userAgent(metadata == null ? null : metadata.userAgent())
 
                      .actorType(
                              actorType

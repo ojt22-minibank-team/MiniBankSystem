@@ -1,4 +1,3 @@
-
 package com.corebanking.dto;
 
 import jakarta.validation.constraints.DecimalMin;
@@ -26,22 +25,24 @@ public class P2PTransferRequestDto {
     @Size(max = 34, message = "Destination account number must not exceed 34 characters")
     private String destinationAccountNumber;
 
-   
     @NotNull(message = "Transfer amount is required")
     @DecimalMin(value = "1.00", inclusive = true, message = "Transfer amount must be at least 1 MMK")
     @Digits(integer = 14, fraction = 4, message = "Invalid amount format")
     private BigDecimal amount;
-   
+
     @Builder.Default
     @NotBlank(message = "Currency is required")
     @Pattern(regexp = "^[A-Z]{3}$", message = "Invalid currency code format")
     private String currency = "MMK";
 
-
     @Size(max = 255, message = "Description must not exceed 255 characters")
     private String description;
 
-	@NotBlank(message = "Idempotency key is required")
-	@Size(max = 64, message = "Idempotency key must not exceed 64 characters")
+    @NotBlank(message = "Idempotency key is required")
+    @Size(max = 64, message = "Idempotency key must not exceed 64 characters")
     private String idempotencyKey;
-}	
+
+    @NotBlank(message = "Transaction PIN is required")
+    @Pattern(regexp = "^[0-9]{6}$", message = "Transaction PIN must be 6 digits")
+    private String transactionPin;
+}
