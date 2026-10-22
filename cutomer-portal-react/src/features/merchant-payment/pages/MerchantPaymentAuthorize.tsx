@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { hasTokens } from '../../../utils/tokenStorage';
+import { clearPendingPaymentRedirect } from '../../auth/utils/pendingPaymentRedirect';
 import { fetchPaymentDetails, fetchCustomerAccounts, authorizePayment } from '../api/merchantPaymentService';
 import type { PaymentDetails, CustomerAccount, PaymentReceipt as ReceiptType } from '../types/merchantPayment';
 
@@ -24,7 +25,7 @@ type CheckoutFormData = z.infer<typeof checkoutSchema>;
 export const MerchantPaymentAuthorize: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const token = searchParams.get('token');
+  const token = searchParams.get('token') || sessionStorage.getItem('paymentToken');
 
   const [details, setDetails] = useState<PaymentDetails | null>(null);
   const [accounts, setAccounts] = useState<CustomerAccount[]>([]);
@@ -41,46 +42,71 @@ export const MerchantPaymentAuthorize: React.FC = () => {
   });
 
   useEffect(() => {
+    let isCancelled = false;
+
+    // Immediately reset all state when token changes (Token A -> Token B fix)
+    setDetails(null);
+    setAccounts([]);
+    setSelectedAccountId('');
+    setReceipt(null);
+    setErrorMessage('');
+    setErrorCode('');
+    setLoading(true);
+    reset({ transactionPin: '' });
+
+    if (!token) {
+      setErrorMessage('Invalid Payment Link. No token provided.');
+      setErrorCode('INVALID_TOKEN');
+      setLoading(false);
+      return;
+    }
+
+    // Keep sessionStorage synchronized so Token B overwrites Token A in sessionStorage
+    const returnUrl = `/checkout?token=${encodeURIComponent(token)}`;
+    sessionStorage.setItem('paymentToken', token);
+    sessionStorage.setItem('redirectUrl', returnUrl);
+
+    if (!hasTokens()) {
+      window.location.href = `/login?redirect=${encodeURIComponent(returnUrl)}`;
+      return;
+    }
+
     const loadData = async () => {
-      if (!token) {
-        setErrorMessage('Invalid Payment Link. No token provided.');
-        setErrorCode('INVALID_TOKEN');
-        setLoading(false);
-        return;
-      }
-
-      if (!hasTokens()) {
-        const returnUrl = `/checkout?token=${encodeURIComponent(token)}`;
-        sessionStorage.setItem("redirectUrl", returnUrl);
-        sessionStorage.setItem("paymentToken", token);
-        window.location.href = `/login?redirect=${encodeURIComponent(returnUrl)}`;
-        return; 
-      }
-
       try {
         const [paymentData, accountsData] = await Promise.all([
           fetchPaymentDetails(token),
           fetchCustomerAccounts()
         ]);
-        
+
+        if (isCancelled) return;
+
         // Business Rule: Payments can only be made from CURRENT accounts
         const currentAccounts = accountsData.filter(acc => acc.accountType === 'CURRENT');
-        
+
         setDetails(paymentData);
         setAccounts(currentAccounts);
-        
+
         if (currentAccounts.length > 0) {
           setSelectedAccountId(currentAccounts[0].accountNumber);
         }
       } catch {
-        setErrorMessage('Failed to load payment details. Invalid or expired token.');
-        setErrorCode('SYSTEM_ERROR');
+        if (!isCancelled) {
+          setErrorMessage('Failed to load payment details. Invalid or expired token.');
+          setErrorCode('SYSTEM_ERROR');
+        }
       } finally {
-        setLoading(false);
+        if (!isCancelled) {
+          setLoading(false);
+        }
       }
     };
+
     loadData();
-  }, [token]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [token, reset]);
 
   const onSubmit = async (data: CheckoutFormData) => {
     if (!selectedAccountId) {
@@ -98,6 +124,7 @@ export const MerchantPaymentAuthorize: React.FC = () => {
         amount: details!.amount,
         transactionPin: data.transactionPin
       });
+      clearPendingPaymentRedirect();
       setReceipt(receiptData);
     } catch (err) {
       if (axios.isAxiosError(err)) {
@@ -107,14 +134,14 @@ export const MerchantPaymentAuthorize: React.FC = () => {
         setErrorMessage('An unexpected system error occurred.');
         setErrorCode('SYSTEM_ERROR');
       }
-      reset(); // Clear PIN field on failure
+      reset({ transactionPin: '' }); // Clear PIN field on failure
     }
   };
 
   const handleRetry = () => {
     setErrorMessage('');
     setErrorCode('');
-    reset(); // Clear PIN field
+    reset({ transactionPin: '' });
   };
 
   if (!hasTokens()) {
@@ -218,7 +245,10 @@ export const MerchantPaymentAuthorize: React.FC = () => {
           <div className="flex gap-3 mt-6">
             <button 
               type="button"
-              onClick={() => navigate('/dashboard')}
+              onClick={() => {
+                clearPendingPaymentRedirect();
+                navigate('/dashboard');
+              }}
               disabled={isSubmitting}
               className="flex-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-3.5 transition-colors text-sm"
             >
