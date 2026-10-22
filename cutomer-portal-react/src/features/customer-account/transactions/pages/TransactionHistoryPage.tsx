@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { History, AlertCircle, RefreshCw, AlertTriangle } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../../../../lib/redux";
-import { fetchMyAccounts } from "../../accounts/accountsSlice";
+import { fetchMyAccounts } from "../../accounts/stores/accountsSlice";
 import type {
   CusTransactionHistoryResponseDTO,
   TransactionFilterDraft,
