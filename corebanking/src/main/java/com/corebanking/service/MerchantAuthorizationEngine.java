@@ -40,6 +40,7 @@ public class MerchantAuthorizationEngine {
     public PaymentReceiptResponse processPaymentAuthorization(MerchantPaymentRequest request) {
         String token = request.getPaymentToken();
 
+        // 1. Duplicate payment prevention: In-flight token concurrency lock
         if (!inFlightTokens.add(token)) {
             throw new DuplicateTransactionException("This payment request is already being processed.");
         }
@@ -47,30 +48,40 @@ public class MerchantAuthorizationEngine {
         boolean shouldNotifyGatewayOnTxError = false;
 
         try {
-            // Check for Duplicate Payment early to save processing
+            // Check ledger for previously completed payment to avoid duplicate charges
             if (ledgerFacadePort.isDuplicatePayment(token)) {
                 throw new DuplicateTransactionException("This payment token has already been processed.");
             }
 
+            // 2. Fetching the REAL amount and status from Group 3 Gateway (GET)
             PaymentDetailsResponse realDetails = gatewayOutboundPort.fetchPaymentDetails(token);
             shouldNotifyGatewayOnTxError = true;
 
-            BigDecimal realAmount = realDetails.getAmount();
+            if (realDetails.getStatus() != null &&
+                    ("COMPLETED".equalsIgnoreCase(realDetails.getStatus()) ||
+                     "PAID".equalsIgnoreCase(realDetails.getStatus()) ||
+                     "EXPIRED".equalsIgnoreCase(realDetails.getStatus()) ||
+                     "CANCELLED".equalsIgnoreCase(realDetails.getStatus()))) {
+                throw new TransactionException("This payment link is no longer valid (Status: " + realDetails.getStatus() + ")");
+            }
 
+            BigDecimal realAmount = realDetails.getAmount();
             if (realAmount == null || realAmount.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new TransactionException("Payment amount from gateway must be greater than zero");
             }
 
-            // 1. Security: PIN Validation (Group 1's main job)
+            // 3. Security: PIN Validation (Group 1's main job)
             merchantSecurityValidationService.validateTransactionPin(request.getCustomerId(), request.getTransactionPin());
 
-            // 2. UX Pre-Check: Read-only balance check using the REAL amount for the selected account
+            // 4. UX Pre-Check: Read-only balance and daily limits check using the REAL amount for the selected account
             ledgerFacadePort.validateSufficientFundsAndLimits(request.getCustomerId(), request.getAccountId(), realAmount);
 
-            // 3. Dispatch AUTHORIZED outcome to Group 3 and obtain real transaction reference
+            // 5. Dispatching the AUTHORIZED status to Group 3 Gateway (POST) and obtaining transaction reference
             shouldNotifyGatewayOnTxError = false;
-            String ledgerReference = gatewayOutboundPort.dispatchAuthorizationOutcome(token, "AUTHORIZED", request.getAccountId(), null, null);
+            String ledgerReference = gatewayOutboundPort.dispatchAuthorizationOutcome(
+                    token, "AUTHORIZED", request.getAccountId(), null, null);
 
+            // 6. Writing the Audit Log
             safeAuditLog("TRANSACTION", "MERCHANT_PAYMENT_AUTHORIZED", token,
                     "Authorized merchant payment of " + realAmount + " MMK from account " + request.getAccountId());
 
@@ -91,35 +102,35 @@ public class MerchantAuthorizationEngine {
             throw pinEx;
 
         } catch (CusAccountLockedException lockEx) {
-            // 3rd wrong attempt locked the PIN -> notify Group 3 that the payment failed
+            // 3rd wrong attempt locked the PIN -> notify Group 3 that the payment failed to cancel invoice
             log.error("Payment authorization failed (Account Locked) for token {}. Reason: {}", token, lockEx.getMessage());
             safeAuditLog("SECURITY", "MERCHANT_PAYMENT_ACCOUNT_LOCKED", token, lockEx.getMessage());
-            notifyGatewayFailure(token, "ACCOUNT_LOCKED", lockEx.getMessage());
+            notifyGatewayFailure(token, request.getAccountId(), "ACCOUNT_LOCKED", lockEx.getMessage());
             throw lockEx;
 
         } catch (AccountNotFoundException accEx) {
             log.error("Payment authorization failed (Account Not Found) for token {}. Reason: {}", token, accEx.getMessage());
             safeAuditLog("TRANSACTION", "MERCHANT_PAYMENT_ACCOUNT_NOT_FOUND", token, accEx.getMessage());
-            notifyGatewayFailure(token, "ACCOUNT_NOT_FOUND", accEx.getMessage());
+            notifyGatewayFailure(token, request.getAccountId(), "ACCOUNT_NOT_FOUND", accEx.getMessage());
             throw accEx;
 
         } catch (InsufficientFundsException fundEx) {
             log.error("Payment authorization failed (Insufficient Funds) for token {}. Reason: {}", token, fundEx.getMessage());
             safeAuditLog("TRANSACTION", "MERCHANT_PAYMENT_INSUFFICIENT_FUNDS", token, fundEx.getMessage());
-            notifyGatewayFailure(token, "INSUFFICIENT_FUNDS", fundEx.getMessage());
+            notifyGatewayFailure(token, request.getAccountId(), "INSUFFICIENT_FUNDS", fundEx.getMessage());
             throw fundEx;
 
         } catch (SecurityException secEx) {
             log.error("Payment authorization failed (Security) for token {}. Reason: {}", token, secEx.getMessage());
             safeAuditLog("SECURITY", "MERCHANT_PAYMENT_SECURITY_ERROR", token, secEx.getMessage());
-            notifyGatewayFailure(token, "INVALID_PIN", secEx.getMessage());
+            notifyGatewayFailure(token, request.getAccountId(), "SECURITY_ERROR", secEx.getMessage());
             throw secEx;
 
         } catch (TransactionException transEx) {
             log.error("Payment authorization failed (Transaction) for token {}. Reason: {}", token, transEx.getMessage());
             safeAuditLog("TRANSACTION", "MERCHANT_PAYMENT_FAILED", token, transEx.getMessage());
             if (shouldNotifyGatewayOnTxError) {
-                notifyGatewayFailure(token, "TRANSACTION_FAILED", transEx.getMessage());
+                notifyGatewayFailure(token, request.getAccountId(), "TRANSACTION_FAILED", transEx.getMessage());
             }
             throw transEx;
 
@@ -130,16 +141,18 @@ public class MerchantAuthorizationEngine {
         } catch (Exception e) {
             log.error("Payment authorization failed (System) for token {}. Reason: {}", token, e.getMessage());
             safeAuditLog("SYSTEM", "MERCHANT_PAYMENT_SYSTEM_ERROR", token, e.getMessage());
-            notifyGatewayFailure(token, "SYSTEM_ERROR", "An internal error occurred.");
+            if (shouldNotifyGatewayOnTxError) {
+                notifyGatewayFailure(token, request.getAccountId(), "SYSTEM_ERROR", "An internal error occurred.");
+            }
             throw e;
         } finally {
             inFlightTokens.remove(token);
         }
     }
 
-    private void notifyGatewayFailure(String token, String errorCode, String message) {
+    private void notifyGatewayFailure(String token, String sourceAccountNumber, String errorCode, String message) {
         try {
-            gatewayOutboundPort.dispatchAuthorizationOutcome(token, "FAILED", null, errorCode, message);
+            gatewayOutboundPort.dispatchAuthorizationOutcome(token, "FAILED", sourceAccountNumber, errorCode, message);
         } catch (Exception webhookEx) {
             log.error("Failed to notify Group 3 of failure ({}): {}", errorCode, webhookEx.getMessage());
         }
