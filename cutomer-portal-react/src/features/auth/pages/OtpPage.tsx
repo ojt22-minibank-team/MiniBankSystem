@@ -584,7 +584,7 @@ function OtpPage() {
                     "
                   >
 
-                    MiniBank
+                    ACE Bank
 
                   </h1>
 
@@ -635,7 +635,7 @@ function OtpPage() {
 
                 Email verification adds an
                 additional security layer before
-                you access your MiniBank account.
+                you access your ACE Bank account.
 
               </p>
 
@@ -925,7 +925,7 @@ function OtpPage() {
                     "
                   >
 
-                    MiniBank
+                    ACE Bank
 
                   </h1>
 
@@ -1365,7 +1365,7 @@ function OtpPage() {
                   "
                 >
 
-                  MiniBank will never ask you to share
+                  ACE Bank will never ask you to share
                   your OTP by phone, message, or email.
 
                 </p>

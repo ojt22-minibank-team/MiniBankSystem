@@ -395,7 +395,7 @@ function ChangePasswordPage() {
                     "
                   >
 
-                    MiniBank
+                    ACE Bank
 
                   </h1>
 
@@ -445,7 +445,7 @@ function ChangePasswordPage() {
               >
 
                 Complete your security setup before
-                accessing the MiniBank Customer Portal.
+                accessing the ACE Bank Customer Portal.
 
               </p>
 
@@ -715,7 +715,7 @@ function ChangePasswordPage() {
                     "
                   >
 
-                    MiniBank
+                    ACE Bank
 
                   </h1>
 

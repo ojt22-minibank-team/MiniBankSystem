@@ -200,7 +200,7 @@ export default function Sidebar() {
                 text-[#08295C]
               "
             >
-              MiniBank
+              ACE Bank
             </h1>
 
             <p
