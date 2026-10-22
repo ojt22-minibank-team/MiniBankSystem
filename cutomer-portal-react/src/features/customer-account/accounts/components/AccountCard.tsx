@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -8,25 +7,18 @@ import {
   Eye,
   EyeOff,
   PiggyBank,
+  WalletCards,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
-import type { MouseEvent } from "react";
-import type { CustomerAccount } from "../../types/accountTypes";
+import type { CustomerAccount } from "../types/accountTypes";
 
 interface AccountCardProps {
   account: CustomerAccount;
 }
 
-function getAccountIcon(accountType: string) {
-  const type = accountType.toUpperCase();
-
-  if (type.includes("SAVING")) {
-    return PiggyBank;
-  }
-
-  return CreditCard;
-}
+type CopyStatus = "idle" | "success" | "error";
 
 const statusStyles: Record<CustomerAccount["status"], string> = {
   ACTIVE: "bg-emerald-50 text-emerald-700",
@@ -35,11 +27,22 @@ const statusStyles: Record<CustomerAccount["status"], string> = {
   CLOSED: "bg-red-50 text-red-700",
 };
 
+const copyFeedbackDuration = 2000;
+
+function getAccountIcon(accountType: string) {
+  const type = accountType.toUpperCase();
+
+  if (type.includes("SAVING")) return PiggyBank;
+  if (type.includes("CURRENT")) return CreditCard;
+
+  return WalletCards;
+}
+
 function formatMoney(amount: number): string {
-  return amount.toLocaleString("en-US", {
+  return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  });
+  }).format(Number.isFinite(amount) ? amount : 0);
 }
 
 function maskAccountNumber(accountNumber: string): string {
@@ -50,88 +53,94 @@ function maskAccountNumber(accountNumber: string): string {
   return `**** **** ${accountNumber.slice(-4)}`;
 }
 
-export default function AccountCard({
-  account,
-}: AccountCardProps) {
-  const AccountIcon = getAccountIcon(account.accountType);
+export default function AccountCard({ account }: AccountCardProps) {
+  const { t } = useTranslation("accounts");
 
   const [showAccountNumber, setShowAccountNumber] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [copyError, setCopyError] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
 
-  const copyTimeoutRef =
-    useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  const AccountIcon = getAccountIcon(account.accountType);
+
+  const accountDetailsPath = `/accounts/${encodeURIComponent(
+    account.accountNumber,
+  )}`;
+
+  const statusClass =
+    statusStyles[account.status] ?? "bg-slate-100 text-slate-600";
+
+  const accountTypeLabel =
+    account.accountType.toUpperCase().includes("SAVING")
+      ? t("accountTypeSavings")
+      : account.accountType.toUpperCase().includes("CURRENT")
+        ? t("accountTypeCurrent")
+        : account.accountType;
+
+  const statusLabels: Record<CustomerAccount["status"], string> = {
+    ACTIVE: t("statusActive"),
+    DORMANT: t("statusDormant"),
+    FROZEN: t("statusFrozen"),
+    CLOSED: t("statusClosed"),
+  };
+
+  const statusLabel = statusLabels[account.status] ?? account.status;
 
   useEffect(() => {
     return () => {
-      if (copyTimeoutRef.current) {
+      if (copyTimeoutRef.current !== null) {
         clearTimeout(copyTimeoutRef.current);
       }
     };
   }, []);
 
-  async function handleCopyAccountNumber(
-    event: MouseEvent<HTMLButtonElement>,
-  ) {
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (copyTimeoutRef.current) {
+  async function handleCopyAccountNumber() {
+    if (copyTimeoutRef.current !== null) {
       clearTimeout(copyTimeoutRef.current);
       copyTimeoutRef.current = null;
     }
 
-    setCopied(false);
-    setCopyError(false);
+    setCopyStatus("idle");
 
     try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard API is unavailable.");
+      }
+
       await navigator.clipboard.writeText(account.accountNumber);
-
-      setCopied(true);
-
-      copyTimeoutRef.current = setTimeout(() => {
-        setCopied(false);
-        copyTimeoutRef.current = null;
-      }, 1500);
+      setCopyStatus("success");
     } catch (error) {
       console.error("Failed to copy account number:", error);
-      setCopyError(true);
-
-      copyTimeoutRef.current = setTimeout(() => {
-        setCopyError(false);
-        copyTimeoutRef.current = null;
-      }, 2000);
+      setCopyStatus("error");
     }
-  }
 
-  function handleToggleAccountNumber(
-    event: MouseEvent<HTMLButtonElement>,
-  ) {
-    event.preventDefault();
-    event.stopPropagation();
-
-    setShowAccountNumber((previous) => !previous);
+    copyTimeoutRef.current = setTimeout(() => {
+      setCopyStatus("idle");
+      copyTimeoutRef.current = null;
+    }, copyFeedbackDuration);
   }
 
   return (
-    <Link
-      to={`/accounts/${encodeURIComponent(account.accountNumber)}`}
-      aria-label={`View details for ${account.accountType} account ending ${account.accountNumber.slice(-4)}`}
-      className="group block min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0878E8] focus-visible:ring-offset-2 sm:p-5"
-    >
-      {/* Account Header */}
+    <article className="group min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md sm:p-5">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#0878E8] transition-colors duration-200 group-hover:bg-[#0878E8] group-hover:text-white">
-            <AccountIcon size={22} strokeWidth={1.8} />
+            <AccountIcon size={22} strokeWidth={1.8} aria-hidden="true" />
           </div>
 
           <div className="min-w-0">
             <h2 className="truncate text-sm font-semibold text-[#08295C] sm:text-base">
-              {account.accountType}
+              <Link
+                to={accountDetailsPath}
+                aria-label={`${t("viewDetails")}: ${accountTypeLabel}, ${account.accountNumber.slice(-4)}`}
+                className="rounded-sm hover:text-[#0878E8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0878E8]"
+              >
+                {accountTypeLabel}
+              </Link>
             </h2>
 
-            {/* Account Number + Eye + Copy */}
             <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
               <p className="min-w-0 break-all font-mono text-xs tracking-wide text-slate-500">
                 {showAccountNumber
@@ -141,16 +150,19 @@ export default function AccountCard({
 
               <button
                 type="button"
-                onClick={handleToggleAccountNumber}
+                onClick={() =>
+                  setShowAccountNumber((previous) => !previous)
+                }
                 aria-label={
                   showAccountNumber
-                    ? "Hide account number"
-                    : "Show account number"
+                    ? t("hideAccountNumber")
+                    : t("showAccountNumber")
                 }
+                aria-pressed={showAccountNumber}
                 title={
                   showAccountNumber
-                    ? "Hide account number"
-                    : "Show account number"
+                    ? t("hideAccountNumber")
+                    : t("showAccountNumber")
                 }
                 className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-blue-50 hover:text-[#0878E8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0878E8]"
               >
@@ -164,11 +176,21 @@ export default function AccountCard({
               <button
                 type="button"
                 onClick={handleCopyAccountNumber}
-                aria-label="Copy account number"
-                title={copied ? "Copied!" : "Copy account number"}
+                aria-label={
+                  copyStatus === "success"
+                    ? t("accountNumberCopied")
+                    : t("copyAccountNumber")
+                }
+                title={
+                  copyStatus === "success"
+                    ? t("copied")
+                    : copyStatus === "error"
+                      ? t("copyFailed")
+                      : t("copyAccountNumber")
+                }
                 className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-blue-50 hover:text-[#0878E8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0878E8]"
               >
-                {copied ? (
+                {copyStatus === "success" ? (
                   <Check
                     size={14}
                     className="text-emerald-600"
@@ -179,21 +201,21 @@ export default function AccountCard({
                 )}
               </button>
 
-              {copied && (
+              {copyStatus === "success" && (
                 <span
                   className="whitespace-nowrap text-xs font-medium text-emerald-600"
                   role="status"
                 >
-                  Copied!
+                  {t("copied")}
                 </span>
               )}
 
-              {copyError && (
+              {copyStatus === "error" && (
                 <span
                   className="whitespace-nowrap text-xs text-red-600"
                   role="status"
                 >
-                  Copy failed
+                  {t("copyFailed")}
                 </span>
               )}
             </div>
@@ -201,20 +223,15 @@ export default function AccountCard({
         </div>
 
         <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold sm:text-xs ${
-            statusStyles[account.status] ??
-            "bg-slate-100 text-slate-600"
-          }`}
+          className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold sm:text-xs ${statusClass}`}
         >
-          {account.status.charAt(0) +
-            account.status.slice(1).toLowerCase()}
+          {statusLabel}
         </span>
       </div>
 
-      {/* Available Balance */}
       <div className="mt-5">
         <p className="text-xs font-medium text-slate-500 sm:text-sm">
-          Available Balance
+          {t("availableBalance")}
         </p>
 
         <div className="mt-1.5 flex min-w-0 flex-wrap items-baseline gap-x-2">
@@ -228,29 +245,27 @@ export default function AccountCard({
         </div>
       </div>
 
-      {/* Footer */}
       <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
         <div className="min-w-0">
-          <p className="text-xs text-slate-500">
-            Account Type
-          </p>
-
+          <p className="text-xs text-slate-500">{t("accountType")}</p>
           <p className="mt-1 truncate text-sm font-medium text-slate-700">
-            {account.accountType}
+            {accountTypeLabel}
           </p>
         </div>
 
-        <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-[#0878E8] transition-colors group-hover:text-[#0668ca] sm:text-sm">
-          View Details
-
+        <Link
+          to={accountDetailsPath}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-md text-xs font-semibold text-[#0878E8] transition-colors hover:text-[#0668ca] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0878E8] sm:text-sm"
+        >
+          {t("viewDetails")}
           <ArrowRight
             size={16}
             strokeWidth={1.8}
             aria-hidden="true"
-            className="transition-transform duration-200 group-hover:translate-x-1"
+            className="transition-transform duration-200 group-hover:translate-x-0.5"
           />
-        </span>
+        </Link>
       </div>
-    </Link>
+    </article>
   );
 }

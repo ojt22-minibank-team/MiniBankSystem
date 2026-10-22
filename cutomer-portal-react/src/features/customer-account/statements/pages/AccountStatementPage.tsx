@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { FileText, AlertCircle, RefreshCw, AlertTriangle } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../../../../lib/redux";
-import { fetchMyAccounts } from "../../accounts/accountsSlice";
+import { fetchMyAccounts } from "../../accounts/stores/accountsSlice";
 import { StatementForm } from "../components/StatementForm";
 import { StatementVerify } from "../components/StatementVerify";
 import { StatementDownload } from "../components/StatementDownload";

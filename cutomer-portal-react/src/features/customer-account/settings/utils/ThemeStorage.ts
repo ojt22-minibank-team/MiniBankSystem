@@ -1,4 +1,4 @@
-import type { ThemePreference } from "../../types/settingsTypes";
+import type { ThemePreference } from "../types/settingsTypes";
 
 const THEME_STORAGE_KEY = "customer-portal-theme";
 

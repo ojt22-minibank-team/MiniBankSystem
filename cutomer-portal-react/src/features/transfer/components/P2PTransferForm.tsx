@@ -2,13 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../lib/redux";
 import { submitP2PTransfer, resetTransferState } from "../store/transferSlice";
-import { fetchMyAccounts } from "../../customer-account/accounts/accountsSlice";
+import { fetchMyAccounts } from "../../customer-account/accounts/stores/accountsSlice";
 import { lookupDestinationAccount } from "../services/transferService";
 import { getBeneficiaries, addBeneficiary } from "../../beneficiaries/services/beneficiaryService";
 import type { Beneficiary } from "../../beneficiaries/types/beneficiaryTypes";
 import type { P2PTransferRequest } from "../types/transferTypes";
-import { getAccountTransferLimits } from "../../customer-account/api/customerAccountApi";
-import type { TransferLimitInfo } from "../../customer-account/types/accountTypes";
+import { getAccountTransferLimits } from "../../customer-account/accounts/api/customerAccountApi";
+import type { TransferLimitInfo } from "../../customer-account/accounts/types/accountTypes";
 import { QRCodeView } from "../../../components/common/QRCodeView";
 import {
   Loader2,

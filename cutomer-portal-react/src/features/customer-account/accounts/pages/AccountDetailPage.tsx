@@ -1,6 +1,5 @@
-
 import { useEffect, useState } from "react";
-import type { MouseEvent } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeft,
   CalendarDays,
@@ -14,11 +13,16 @@ import {
   Wallet,
 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { getMyAccount } from "../api/customerAccountApi";
-import type { CustomerAccount, TransferLimitInfo } from "../types/accountTypes";
-import AccountStatus from "./components/AccountStatus";
-import { TransferLimitCard } from "./components/TransferLimitCard";
+import type {
+  CustomerAccount,
+  TransferLimitInfo,
+  AccountStatus as AccountStatusType,
+} from "../types/accountTypes";
+import AccountStatus from "../components/AccountStatus";
+import { TransferLimitCard } from "../components/TransferLimitCard";
 
 function formatLabel(value: string): string {
   return value
@@ -27,11 +31,39 @@ function formatLabel(value: string): string {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+function getAccountTypeLabel(
+  accountType: string,
+  t: (key: string) => string,
+): string {
+  const type = accountType.toUpperCase();
+
+  if (type.includes("SAVING")) return t("accountTypeSavings");
+  if (type.includes("CURRENT")) return t("accountTypeCurrent");
+
+  return formatLabel(accountType);
+}
+
+function getStatusLabel(
+  status: AccountStatusType,
+  t: (key: string) => string,
+): string {
+  const labels: Record<AccountStatusType, string> = {
+    ACTIVE: t("statusActive"),
+    DORMANT: t("statusDormant"),
+    FROZEN: t("statusFrozen"),
+    CLOSED: t("statusClosed"),
+  };
+
+  return labels[status] ?? status;
+}
+
 function formatMoney(amount: number, currency: string): string {
-  return `${new Intl.NumberFormat("en-US", {
+  const formattedAmount = new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount)} ${currency}`;
+  }).format(Number.isFinite(amount) ? amount : 0);
+
+  return `${formattedAmount} ${currency}`;
 }
 
 function formatDate(value: string | null): string {
@@ -70,7 +102,7 @@ function DetailRow({
   label,
   value,
 }: {
-  icon: typeof Wallet;
+  icon: LucideIcon;
   label: string;
   value: string;
 }) {
@@ -92,11 +124,13 @@ function DetailRow({
 }
 
 function AccountDetailSkeleton() {
+  const { t } = useTranslation("accounts");
+
   return (
     <div
       className="mx-auto max-w-5xl space-y-4 p-4 md:p-6"
       role="status"
-      aria-label="Loading account details"
+      aria-label={t("loadingAccountDetails")}
     >
       <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
 
@@ -122,21 +156,16 @@ function AccountDetailSkeleton() {
         </div>
       </div>
 
-      <span className="sr-only">
-        Loading your account details.
-      </span>
+      <span className="sr-only">{t("loadingAccountDetails")}</span>
     </div>
   );
 }
 
 export default function AccountDetailPage() {
-  const { accountNumber } = useParams<{
-    accountNumber: string;
-  }>();
+  const { t } = useTranslation("accounts");
+  const { accountNumber } = useParams<{ accountNumber: string }>();
 
-  const [account, setAccount] =
-    useState<CustomerAccount | null>(null);
-
+  const [account, setAccount] = useState<CustomerAccount | null>(null);
   const [transferLimits, setTransferLimits] =
     useState<TransferLimitInfo | null>(null);
 
@@ -144,9 +173,7 @@ export default function AccountDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
 
-  const [showAccountNumber, setShowAccountNumber] =
-    useState(false);
-
+  const [showAccountNumber, setShowAccountNumber] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
 
@@ -157,14 +184,13 @@ export default function AccountDetailPage() {
       setLoading(true);
       setError(null);
       setTransferLimits(null);
-
+      setAccount(null);
       setShowAccountNumber(false);
       setCopied(false);
       setCopyError(null);
 
       if (!accountNumber) {
-        setAccount(null);
-        setError("The account number is missing from the URL.");
+        setError(t("missingAccountNumber"));
         setLoading(false);
         return;
       }
@@ -180,10 +206,7 @@ export default function AccountDetailPage() {
 
         if (cancelled) return;
 
-        setAccount(null);
-        setError(
-          "We couldn't load this account's details. Please try again."
-        );
+        setError(t("accountLoadError"));
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -196,25 +219,24 @@ export default function AccountDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [accountNumber, retryKey]);
+  }, [accountNumber, retryKey, t]);
 
-  async function handleCopyAccountNumber(
-    event: MouseEvent<HTMLButtonElement>
-  ) {
-    event.preventDefault();
-    event.stopPropagation();
-
+  async function handleCopyAccountNumber() {
     if (!account) return;
 
     setCopied(false);
     setCopyError(null);
 
     try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard API is unavailable.");
+      }
+
       await navigator.clipboard.writeText(account.accountNumber);
       setCopied(true);
     } catch (err) {
       console.error("Failed to copy account number:", err);
-      setCopyError("Unable to copy. Please select the number manually.");
+      setCopyError(t("copyFailedDescription"));
     }
   }
 
@@ -230,7 +252,7 @@ export default function AccountDetailPage() {
           className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition-colors hover:text-[#0878E8]"
         >
           <ArrowLeft size={16} aria-hidden="true" />
-          My Accounts
+          {t("title")}
         </Link>
 
         <section
@@ -244,11 +266,11 @@ export default function AccountDetailPage() {
           />
 
           <h1 className="mt-3 text-lg font-bold text-slate-900">
-            Unable to Load Account
+            {t("unableToLoadAccount")}
           </h1>
 
           <p className="mt-2 text-sm text-slate-500">
-            {error ?? "This account could not be found."}
+            {error ?? t("accountNotFound")}
           </p>
 
           <button
@@ -257,7 +279,7 @@ export default function AccountDetailPage() {
             className="mt-4 inline-flex min-h-9 items-center gap-2 rounded-lg bg-[#0878E8] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0878E8] focus-visible:ring-offset-2"
           >
             <RefreshCw size={14} aria-hidden="true" />
-            Try Again
+            {t("tryAgain")}
           </button>
         </section>
       </main>
@@ -266,10 +288,11 @@ export default function AccountDetailPage() {
 
   const AccountIcon = getAccountIcon(account.accountType);
   const maskedAccountNumber = maskAccountNumber(account.accountNumber);
+  const accountTypeLabel = getAccountTypeLabel(account.accountType, t);
+  const statusLabel = getStatusLabel(account.status, t);
 
   return (
     <main className="mx-auto max-w-5xl space-y-4 p-4 md:p-6">
-      {/* Breadcrumb */}
       <nav
         aria-label="Breadcrumb"
         className="flex items-center gap-2 text-sm"
@@ -278,7 +301,7 @@ export default function AccountDetailPage() {
           to="/accounts"
           className="font-medium text-slate-500 transition-colors hover:text-[#0878E8]"
         >
-          My Accounts
+          {t("title")}
         </Link>
 
         <span className="text-slate-300" aria-hidden="true">
@@ -289,13 +312,11 @@ export default function AccountDetailPage() {
           className="truncate font-medium text-[#08295C]"
           aria-current="page"
         >
-          {formatLabel(account.accountType)} Account
+          {accountTypeLabel}
         </span>
       </nav>
 
-      {/* Account Overview */}
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        {/* Header */}
         <div className="border-b border-blue-100 bg-gradient-to-r from-[#f5f9ff] to-[#edf5ff] px-4 py-4 sm:px-5">
           <div className="flex items-center gap-3">
             <div
@@ -307,10 +328,9 @@ export default function AccountDetailPage() {
 
             <div className="min-w-0 flex-1">
               <h1 className="text-lg font-bold tracking-tight text-[#08295C]">
-                {formatLabel(account.accountType)} Account
+                {accountTypeLabel}
               </h1>
 
-              {/* Account Number Controls */}
               <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
                 <p className="break-all text-xs font-medium tracking-wide text-slate-600">
                   {showAccountNumber
@@ -325,38 +345,39 @@ export default function AccountDetailPage() {
                   }
                   aria-label={
                     showAccountNumber
-                      ? "Hide account number"
-                      : "Show account number"
+                      ? t("hideAccountNumber")
+                      : t("showAccountNumber")
                   }
                   aria-pressed={showAccountNumber}
                   title={
                     showAccountNumber
-                      ? "Hide account number"
-                      : "Show account number"
+                      ? t("hideAccountNumber")
+                      : t("showAccountNumber")
                   }
                   className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-blue-100 hover:text-[#0878E8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0878E8]"
                 >
                   {showAccountNumber ? (
-                    <EyeOff size={15} />
+                    <EyeOff size={15} aria-hidden="true" />
                   ) : (
-                    <Eye size={15} />
+                    <Eye size={15} aria-hidden="true" />
                   )}
                 </button>
 
                 <button
                   type="button"
                   onClick={handleCopyAccountNumber}
-                  aria-label="Copy account number"
-                  title={copied ? "Copied" : "Copy account number"}
+                  aria-label={t("copyAccountNumber")}
+                  title={copied ? t("copied") : t("copyAccountNumber")}
                   className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-blue-100 hover:text-[#0878E8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0878E8]"
                 >
                   {copied ? (
                     <Check
                       size={15}
                       className="text-emerald-600"
+                      aria-hidden="true"
                     />
                   ) : (
-                    <Copy size={15} />
+                    <Copy size={15} aria-hidden="true" />
                   )}
                 </button>
               </div>
@@ -369,7 +390,7 @@ export default function AccountDetailPage() {
 
               {copied && (
                 <p className="mt-1 text-xs text-emerald-700" role="status">
-                  Account number copied.
+                  {t("accountNumberCopied")}
                 </p>
               )}
             </div>
@@ -381,82 +402,70 @@ export default function AccountDetailPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr]">
-          {/* Balances */}
           <div className="min-w-0 p-4 sm:p-5">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Available Balance
+              {t("availableBalance")}
             </p>
 
             <p className="mt-1.5 break-words text-2xl font-bold tracking-tight text-[#08295C] sm:text-[27px]">
-              {formatMoney(
-                account.availableBalance,
-                account.currency
-              )}
+              {formatMoney(account.availableBalance, account.currency)}
             </p>
 
             <p className="mt-1 text-xs text-slate-500">
-              Funds available for transactions
+              {t("fundsAvailableDescription")}
             </p>
 
             <div className="my-4 border-t border-slate-100" />
 
             <p className="text-xs font-medium text-slate-500">
-              Current Balance
+              {t("currentBalance")}
             </p>
 
             <p className="mt-1 break-words text-lg font-semibold text-slate-800">
-              {formatMoney(
-                account.currentBalance,
-                account.currency
-              )}
+              {formatMoney(account.currentBalance, account.currency)}
             </p>
 
             <p className="mt-3 text-xs leading-5 text-slate-500">
               {account.accountType.toUpperCase().includes("SAVING")
-                ? "Save for your future and manage your savings securely."
-                : "Manage your account and available funds securely."}
+                ? t("savingsDescription")
+                : t("generalAccountDescription")}
             </p>
           </div>
 
-          {/* Account Metadata */}
           <div className="min-w-0 border-t border-slate-100 bg-slate-50/50 px-4 py-2 sm:px-5 lg:border-l lg:border-t-0">
             <h2 className="pb-1 pt-2 text-sm font-bold text-[#08295C]">
-              Account Details
+              {t("accountDetails")}
             </h2>
 
             <dl>
               <DetailRow
                 icon={CreditCard}
-                label="Account Type"
-                value={formatLabel(account.accountType)}
+                label={t("accountType")}
+                value={accountTypeLabel}
               />
 
               <DetailRow
                 icon={Wallet}
-                label="Currency"
+                label={t("currency")}
                 value={account.currency}
               />
 
               <DetailRow
                 icon={CalendarDays}
-                label="Opened Date"
+                label={t("openedDate")}
                 value={formatDate(account.openedAt)}
               />
 
               <DetailRow
                 icon={Wallet}
-                label="Minimum Balance"
-                value={formatMoney(
-                  account.minimumBalance,
-                  account.currency
-                )}
+                label={t("minimumBalance")}
+                value={formatMoney(account.minimumBalance, account.currency)}
               />
             </dl>
           </div>
         </div>
       </section>
 
-      {/* Additional Account Information */}
       <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-[#0878E8]">
@@ -465,11 +474,11 @@ export default function AccountDetailPage() {
 
           <div className="min-w-0">
             <h2 className="text-base font-bold text-[#08295C]">
-              Account Information
+              {t("accountInformation")}
             </h2>
 
             <p className="mt-0.5 text-xs text-slate-500">
-              Account configuration and transfer limits
+              {t("transferLimitsDescription")}
             </p>
           </div>
         </div>
@@ -477,42 +486,39 @@ export default function AccountDetailPage() {
         <dl className="mt-3 divide-y divide-slate-100">
           <DetailRow
             icon={CreditCard}
-            label="Account Category"
+            label={t("accountCategory")}
             value={formatLabel(account.accountCategory)}
           />
 
           <DetailRow
             icon={Wallet}
-            label="Account Status"
-            value={formatLabel(account.status)}
+            label={t("accountStatus")}
+            value={statusLabel}
           />
 
           <DetailRow
             icon={Wallet}
-            label="Daily Transfer Limit"
-            value={formatMoney(
-              account.dailyTransferLimit,
-              account.currency
-            )}
+            label={t("dailyTransferLimit")}
+            value={formatMoney(account.dailyTransferLimit, account.currency)}
           />
 
           {transferLimits && (
             <>
               <DetailRow
                 icon={CreditCard}
-                label="One-time Transfer Limit (Beneficiary)"
+                label={t("oneTimeTransferLimitBeneficiary")}
                 value={formatMoney(
                   transferLimits.effectiveOneTimeLimitBeneficiary,
-                  account.currency
+                  account.currency,
                 )}
               />
 
               <DetailRow
                 icon={CreditCard}
-                label="One-time Transfer Limit (Stranger)"
+                label={t("oneTimeTransferLimitStranger")}
                 value={formatMoney(
                   transferLimits.effectiveOneTimeLimitStranger,
-                  account.currency
+                  account.currency,
                 )}
               />
             </>
@@ -520,35 +526,32 @@ export default function AccountDetailPage() {
 
           <DetailRow
             icon={CreditCard}
-            label="Joint Account"
-            value={account.jointAccount ? "Yes" : "No"}
+            label={t("jointAccount")}
+            value={account.jointAccount ? t("yes") : t("no")}
           />
 
           <DetailRow
             icon={CreditCard}
-            label="Required Approvals"
+            label={t("requiredApprovals")}
             value={String(account.requiredApprovals)}
           />
 
           {account.closedAt && (
             <DetailRow
               icon={CalendarDays}
-              label="Closed Date"
+              label={t("closedDate")}
               value={formatDate(account.closedAt)}
             />
           )}
         </dl>
       </section>
 
-      {/* Transfer Limits & Security Management */}
       <TransferLimitCard
         accountNumber={account.accountNumber}
         currency={account.currency}
         onLimitsLoaded={setTransferLimits}
-
       />
 
-      {/* Security Note */}
       <div className="flex items-start gap-2.5 rounded-lg border border-blue-100 bg-blue-50/60 p-3">
         <CreditCard
           size={16}
@@ -557,8 +560,7 @@ export default function AccountDetailPage() {
         />
 
         <p className="text-xs leading-5 text-slate-600">
-          Account availability and transaction permissions depend
-          on your bank's account status and policies.
+          {t("securityNote")}
         </p>
       </div>
     </main>

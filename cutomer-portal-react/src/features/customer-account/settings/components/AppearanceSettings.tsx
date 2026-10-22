@@ -1,6 +1,6 @@
 import { useAppDispatch, useAppSelector } from "../../../../lib/redux";
 import { setTheme } from "../store/SettingsSlice";
-import type { ThemePreference } from "../../types/settingsTypes";
+import type { ThemePreference } from "../types/settingsTypes";
 import SettingsSection from "./SettingsSection";
 import ThemeOption from "./ThemeOption";
 

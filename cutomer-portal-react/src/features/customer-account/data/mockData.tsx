@@ -1,8 +1,8 @@
+import type { Account } from "../accounts/types/accountTypes";
 import type {
-  Account,
   Customer,
   Transaction,
-} from "../types/customerTypes";
+} from "../accounts/types/customerTypes";
 
 export const customer: Customer = {
   id: "CUS001",

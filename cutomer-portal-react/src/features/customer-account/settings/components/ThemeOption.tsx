@@ -1,6 +1,6 @@
 import { Check, Monitor, Moon, Sun } from "lucide-react";
 
-import type { ThemePreference } from "../../types/settingsTypes";
+import type { ThemePreference } from "../types/settingsTypes";
 
 interface ThemeOptionProps {
   value: ThemePreference;

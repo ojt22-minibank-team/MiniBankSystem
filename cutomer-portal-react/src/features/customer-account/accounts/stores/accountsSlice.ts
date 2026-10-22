@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { getMyAccounts } from '../api/customerAccountApi';
 import type { CustomerAccount } from '../types/accountTypes';
-import { submitP2PTransfer } from '../../transfer/store/transferSlice';
+import { submitP2PTransfer } from '../../../transfer/store/transferSlice';
 
 interface AccountsState {
   accounts: CustomerAccount[];
