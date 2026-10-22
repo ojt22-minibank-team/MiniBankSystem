@@ -1,6 +1,7 @@
 import React from 'react';
 import { ShieldAlert, RotateCcw, KeyRound, LayoutDashboard } from 'lucide-react';
 import type { PaymentDetails } from '../types/merchantPayment';
+import { clearPendingPaymentRedirect } from '../../auth/utils/pendingPaymentRedirect';
 
 interface Props {
   details?: PaymentDetails | null;
@@ -48,7 +49,10 @@ export const PaymentFailure: React.FC<Props> = ({ details, errorMessage, onRetry
           {isPinLocked ? (
             <button
               type="button"
-              onClick={() => window.location.href = '/pin-reset/otp'}
+              onClick={() => {
+                clearPendingPaymentRedirect();
+                window.location.href = '/pin-reset/otp';
+              }}
               className="flex items-center justify-center gap-2 w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 transition-colors shadow-xs text-sm"
             >
               <KeyRound className="h-4 w-4" />
@@ -67,7 +71,10 @@ export const PaymentFailure: React.FC<Props> = ({ details, errorMessage, onRetry
 
           <button
             type="button"
-            onClick={() => window.location.href = '/dashboard'}
+            onClick={() => {
+              clearPendingPaymentRedirect();
+              window.location.href = '/dashboard';
+            }}
             className="flex items-center justify-center gap-2 w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-3.5 transition-colors text-sm"
           >
             <LayoutDashboard className="h-4 w-4" />
