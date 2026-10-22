@@ -2,15 +2,15 @@
 
 import LoginPage from "./features/auth/pages/LoginPage";
 
-import DashboardPage from "./features/customer-account/dashboard/DashboardPage";
-import MyAccountsPage from "./features/customer-account/accounts/MyaccountPage";
+import DashboardPage from "./features/customer-account/dashboard/pages/DashboardPage";
+import MyAccountsPage from "./features/customer-account/accounts/pages/MyaccountPage";
 //import AccountDetailPage from "./features/customer-account/accounts/AccountDetailPage";
-import ProfilePage from "./features/customer-account/profile/ProfilePage";
+import ProfilePage from "./features/customer-account/profile/pages/ProfilePage";
 import TransferPage from "./features/transfer/pages/TransferPage";
 import BeneficiariesPage from "./features/beneficiaries/pages/BeneficiariesPage";
 import MainLayout from "./components/layout/MainLayout";
-import AccountDetailPage from "./features/customer-account/accounts/AccountDetailPage";
-import AnnouncementsPage from "./features/customer-account/announcements/AnnouncementsPage";
+import AccountDetailPage from "./features/customer-account/accounts/pages/AccountDetailPage";
+import AnnouncementsPage from "./features/customer-account/announcements/pages/AnnouncementsPage";
 
 function App() {
   return (

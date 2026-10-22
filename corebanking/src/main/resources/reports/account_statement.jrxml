@@ -89,7 +89,7 @@
     <!-- =================================================================== -->
     <title>
         <band height="120" splitType="Stretch">
-            <!-- Top Center: Logo Image + MiniBank Brand Text -->
+            <!-- Top Center: Logo Image + ACE Bank Brand Text -->
             <image onErrorType="Blank">
                 <reportElement x="216" y="2" width="26" height="26" uuid="7cf2be41-bb89-4911-a831-29177a33bb58"/>
                 <imageExpression><![CDATA[$P{LOGO} != null ? $P{LOGO} : "reports/assets/logo.png"]]></imageExpression>
@@ -99,7 +99,7 @@
                 <textElement verticalAlignment="Middle">
                     <font fontName="SansSerif" size="18" isBold="true"/>
                 </textElement>
-                <text><![CDATA[MiniBank]]></text>
+                <text><![CDATA[ACE Bank]]></text>
             </staticText>
 
             <!-- Top Right: Report Generated Date -->
@@ -249,7 +249,7 @@
                 <textElement verticalAlignment="Middle">
                     <font fontName="SansSerif" size="8"/>
                 </textElement>
-                <textFieldExpression><![CDATA["MiniBank Account Statement | Acc: " + $P{ACCOUNT_NUMBER} + " (" + $P{ACCOUNT_TYPE} + ")"]]></textFieldExpression>
+                <textFieldExpression><![CDATA["ACE Bank Account Statement | Acc: " + $P{ACCOUNT_NUMBER} + " (" + $P{ACCOUNT_TYPE} + ")"]]></textFieldExpression>
             </textField>
             <textField>
                 <reportElement x="350" y="0" width="205" height="14" forecolor="#64748B" uuid="559d814f-3760-482a-a92c-c5e317c2a7db"/>

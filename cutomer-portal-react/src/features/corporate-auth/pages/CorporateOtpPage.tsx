@@ -44,7 +44,7 @@ export default function CorporateOtpPage() {
       <CorporateSubmit variant="verification" busy={action.busy}>Verify OTP</CorporateSubmit>
     </form>
     <p className="mt-6 text-center text-sm text-slate-500">Didn’t receive the code? <button type="button" onClick={resend} disabled={action.busy} className="font-semibold text-blue-600 transition hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50">Resend OTP</button></p>
-    <p className="mt-7 rounded-xl bg-slate-50 px-4 py-3 text-center text-xs leading-5 text-slate-500">MiniBank will never ask you to share your OTP by phone, message, or email.</p>
+    <p className="mt-7 rounded-xl bg-slate-50 px-4 py-3 text-center text-xs leading-5 text-slate-500">ACE Bank will never ask you to share your OTP by phone, message, or email.</p>
     <Link to="/corporate/login" replace className="mt-5 block text-center text-sm font-semibold text-blue-600">Return to Corporate Login</Link>
   </CorporateAuthCard>;
 }

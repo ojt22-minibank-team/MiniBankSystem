@@ -31,17 +31,17 @@ import PinResetNewPinPage from "../../features/auth/pages/PinResetNewPinPage";
 // CUSTOMER PAGES
 // ======================================================
 
-import DashboardPage from "../../features/customer-account/dashboard/DashboardPage";
+import DashboardPage from "../../features/customer-account/dashboard/pages/DashboardPage";
 import MainLayout from "../../components/layout/MainLayout";
-import MyAccountsPage from "../../features/customer-account/accounts/MyaccountPage";
+import MyAccountsPage from "../../features/customer-account/accounts/pages/MyaccountPage";
 import { MerchantPaymentAuthorize } from "../../features/merchant-payment/pages/MerchantPaymentAuthorize";
 import { MerchantPaymentRouteGuard } from "../../features/merchant-payment/components/MerchantPaymentRouteGuard";
-
-import ProfilePage from "../../features/customer-account/profile/ProfilePage";
+import ProfilePage from "../../features/customer-account/profile/pages/ProfilePage";
 import { P2PTransferForm } from "../../features/transfer/components/P2PTransferForm";
-import AccountDetailPage from "../../features/customer-account/accounts/AccountDetailPage";
+import AccountDetailPage from "../../features/customer-account/accounts/pages/AccountDetailPage";
 import SettingsPage from "../../features/customer-account/settings/pages/SettingsPage";
-import AnnouncementsPage from "../../features/customer-account/announcements/AnnouncementsPage";
+import AnnouncementsPage from "../../features/customer-account/announcements/pages/AnnouncementsPage";
+
 import BeneficiariesPage from "../../features/beneficiaries/pages/BeneficiariesPage";
 import AccountStatementPage from "../../features/customer-account/statements/pages/AccountStatementPage";
 import TransactionHistoryPage from "../../features/customer-account/transactions/pages/TransactionHistoryPage";

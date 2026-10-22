@@ -7,16 +7,16 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-import { useAppDispatch, useAppSelector } from "../../../lib/redux";
+import { useAppDispatch, useAppSelector } from "../../../../lib/redux";
 
 import {
   clearAnnouncementErrors,
   fetchAnnouncements,
   markAllAnnouncementsRead,
   toggleAnnouncementRead,
-} from "./store/announcementSlice";
+} from "../store/announcementSlice";
 
-import AnnouncementList from "./components/AnnouncementList";
+import AnnouncementList from "../components/AnnouncementList";
 
 import type { AnnouncementFilter } from "../types/announcementTypes";
 

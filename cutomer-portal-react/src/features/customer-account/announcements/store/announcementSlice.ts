@@ -6,9 +6,9 @@ import {
   markAllAnnouncementsAsRead,
   markAnnouncementAsRead,
   markAnnouncementAsUnread,
-} from "../../api/announcementApi";
+} from "../api/announcementApi";
 
-import type { Announcement } from "../../types/announcementTypes";
+import type { Announcement } from "../types/announcementTypes";
 
 interface AnnouncementState {
   announcements: Announcement[];

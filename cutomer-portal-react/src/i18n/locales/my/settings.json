@@ -1,0 +1,17 @@
+
+{
+  "title": "ဆက်တင်များ",
+  "description": "သင့်စိတ်ကြိုက် ဘဏ်လုပ်ငန်းအတွေ့အကြုံကို ပြင်ဆင်ပါ။",
+  "appearance": "အသွင်အပြင်",
+  "theme": "အပြင်အဆင်",
+  "lightTheme": "အလင်းရောင်",
+  "darkTheme": "အမှောင်",
+  "systemTheme": "စနစ်အတိုင်း",
+  "notifications": "အသိပေးချက်များ",
+  "notificationsDescription": "App အတွင်း အသိပေးချက်များကို ဖွင့်ရန် သို့မဟုတ် ပိတ်ရန်။",
+  "notificationsEnabled": "အသိပေးချက်များ ဖွင့်ထားသည်",
+  "language": "ဘာသာစကား",
+  "languageDescription": "သင်နှစ်သက်သော ပြသမည့်ဘာသာစကားကို ရွေးချယ်ပါ။",
+  "english": "English",
+  "myanmar": "မြန်မာ"
+}

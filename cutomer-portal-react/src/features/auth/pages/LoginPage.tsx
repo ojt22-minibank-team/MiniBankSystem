@@ -224,7 +224,7 @@ function LoginPage() {
 
             <img
               src="/images.jfif"
-              alt="MiniBank Building"
+              alt="ACE Bank Building"
               className="
                 absolute
                 inset-0
@@ -315,7 +315,7 @@ function LoginPage() {
                   lg:text-4xl
                 "
               >
-                WELCOME TO MINIBANK
+                WELCOME TO ACE BANK
               </h1>
 
 
@@ -346,7 +346,7 @@ function LoginPage() {
               >
                 Securely access your account, manage
                 your banking services, and stay
-                connected with MiniBank.
+                connected with ACE Bank.
               </p>
 
 
@@ -460,7 +460,7 @@ function LoginPage() {
                       text-[#08295C]
                     "
                   >
-                    MiniBank
+                    ACE Bank
                   </h1>
 
 
@@ -498,7 +498,7 @@ function LoginPage() {
                     text-cyan-600
                   "
                 >
-                  Mini Banking
+                  ACE Bank
                 </p>
 
 

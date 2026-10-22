@@ -199,7 +199,7 @@
 //           <div className="setup-pin-brand-content">
 
 //             <h1>
-//               MiniBank
+//               ACE Bank
 //             </h1>
 
 //             <h3>
@@ -945,7 +945,7 @@ function SetupPinPage() {
                     "
                   >
 
-                    MiniBank
+                    ACE Bank
 
                   </h1>
 
@@ -1274,7 +1274,7 @@ function SetupPinPage() {
                     "
                   >
 
-                    MiniBank
+                    ACE Bank
 
                   </h1>
 

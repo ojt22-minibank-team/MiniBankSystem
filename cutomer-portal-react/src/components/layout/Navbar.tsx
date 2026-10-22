@@ -23,11 +23,11 @@ import { useIndividualLogout } from "../../features/auth/hooks/useIndividualLogo
 
 import {
   getMyAccounts,
-} from "../../features/customer-account/api/customerAccountApi";
+} from "../../features/customer-account/accounts/api/customerAccountApi";
 
 import type {
   CustomerAccount,
-} from "../../features/customer-account/types/accountTypes";
+} from "../../features/customer-account/accounts/types/accountTypes";
 
 import {
   useAppSelector,

@@ -1,6 +1,6 @@
 import type { FC } from "react";
 import { CheckCircle2, ArrowLeft, ArrowRight, Wallet, Calendar, ShieldCheck } from "lucide-react";
-import type { CustomerAccount } from "../../types/accountTypes";
+import type { CustomerAccount } from "../../accounts/types/accountTypes";
 import type { StatementFilterForm } from "../types/statementTypes";
 import { isoToDisplay } from "../types/statementTypes";
 

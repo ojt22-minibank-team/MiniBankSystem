@@ -24,7 +24,7 @@ function PublicAuthFooter() {
       ">
 
         <p className="text-xs text-slate-400">
-          © 2026 MiniBank. All rights reserved.
+          © 2026 ACE Bank. All rights reserved.
         </p>
 
         <p className="text-xs text-slate-400">

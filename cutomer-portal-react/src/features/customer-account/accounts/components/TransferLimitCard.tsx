@@ -13,8 +13,8 @@ import {
 import {
   getAccountTransferLimits,
   updateAccountTransferLimits,
-} from "../../api/customerAccountApi";
-import type { TransferLimitInfo } from "../../types/accountTypes";
+} from "../api/customerAccountApi";
+import type { TransferLimitInfo } from "../types/accountTypes";
 
 interface TransferLimitCardProps {
   accountNumber: string;
