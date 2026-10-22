@@ -1,5 +1,6 @@
 package com.corebanking.service;
 
+import com.corebanking.dto.CusSessionClientMetadata;
 import com.corebanking.dto.CusCorporateLoginRequest;
 import com.corebanking.entity.CorporateCredential;
 import com.corebanking.entity.CorporateUser;
@@ -49,6 +50,11 @@ public class CusCorporateCredentialService {
             }
     )
     public UUID authenticateCredentials(CusCorporateLoginRequest request) {
+        return authenticateCredentials(request, CusSessionClientMetadata.EMPTY);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = {CusAuthenticationException.class, CusAccountLockedException.class})
+    public UUID authenticateCredentials(CusCorporateLoginRequest request, CusSessionClientMetadata metadata) {
         if (request == null
                 || request.getCompanyCustomerCode() == null
                 || request.getCompanyCustomerCode().isBlank()
@@ -64,7 +70,7 @@ public class CusCorporateCredentialService {
         String identifier = loginIdentifier(companyCode, userCode);
         CorporateUser user = corporateUserRepository.findForLogin(companyCode, userCode)
                 .orElseThrow(() -> {
-                    saveFailedAttempt(identifier, null, "INVALID_IDENTIFIER");
+                    saveFailedAttempt(identifier, null, "INVALID_IDENTIFIER", metadata);
                     return new CusAuthenticationException("Invalid login credentials.");
                 });
 
@@ -74,19 +80,19 @@ public class CusCorporateCredentialService {
                 || company == null
                 || company.getCustomerType() != CustomerType.COMPANY
                 || company.getStatus() != CustomerStatus.ACTIVE) {
-            saveFailedAttempt(identifier, user, "ACCOUNT_INACTIVE");
+            saveFailedAttempt(identifier, user, "ACCOUNT_INACTIVE", metadata);
             throw new CusAuthenticationException("Invalid login credentials.");
         }
 
         CorporateCredential credentials = corporateCredentialRepository
                 .findByCorporateUserIdForUpdate(user.getCorporateUserId())
                 .orElseThrow(() -> {
-                    saveFailedAttempt(identifier, user, "INVALID_CREDENTIALS");
+                    saveFailedAttempt(identifier, user, "INVALID_CREDENTIALS", metadata);
                     return new CusAuthenticationException("Invalid login credentials.");
                 });
 
         LocalDateTime now = LocalDateTime.now();
-        checkLoginLock(credentials, identifier, user, now);
+        checkLoginLock(credentials, identifier, user, now, metadata);
 
         if (!passwordEncoder.matches(request.getPassword(), credentials.getPasswordHash())) {
             int failedCount = credentials.getFailedLoginCount() + 1;
@@ -96,7 +102,7 @@ public class CusCorporateCredentialService {
                 credentials.setLockedUntil(LocalDateTime.now().plusMinutes(LOCK_MINUTES));
             }
             saveCredentials(credentials, user);
-            saveFailedAttempt(identifier, user, locked ? "ACCOUNT_LOCKED" : "INVALID_PASSWORD");
+            saveFailedAttempt(identifier, user, locked ? "ACCOUNT_LOCKED" : "INVALID_PASSWORD", metadata);
             if (locked) {
                 throw new CusAccountLockedException("Account is temporarily locked for 15 minutes.");
             }
@@ -111,11 +117,16 @@ public class CusCorporateCredentialService {
 
     private void checkLoginLock(CorporateCredential credentials, String identifier,
                                 CorporateUser user, LocalDateTime now) {
+        checkLoginLock(credentials, identifier, user, now, CusSessionClientMetadata.EMPTY);
+    }
+
+    private void checkLoginLock(CorporateCredential credentials, String identifier,
+                                CorporateUser user, LocalDateTime now, CusSessionClientMetadata metadata) {
         if (credentials.getLockedUntil() == null) {
             return;
         }
         if (credentials.getLockedUntil().isAfter(now)) {
-            saveFailedAttempt(identifier, user, "ACCOUNT_LOCKED");
+            saveFailedAttempt(identifier, user, "ACCOUNT_LOCKED", metadata);
             throw new CusAccountLockedException("Account is temporarily locked. Please try again later.");
         }
         credentials.setFailedLoginCount(0);
@@ -130,7 +141,13 @@ public class CusCorporateCredentialService {
     }
 
     private void saveFailedAttempt(String identifier, CorporateUser user, String reason) {
+        saveFailedAttempt(identifier, user, reason, CusSessionClientMetadata.EMPTY);
+    }
+
+    private void saveFailedAttempt(String identifier, CorporateUser user, String reason, CusSessionClientMetadata metadata) {
         loginAttemptsRepository.save(LoginAttempt.builder()
+                .ipAddress(metadata == null ? null : metadata.ipAddress())
+                .userAgent(metadata == null ? null : metadata.userAgent())
                 .actorType(SessionSubjectType.CORPORATE_USER)
                 .corporateUser(user)
                 .loginIdentifier(identifier)

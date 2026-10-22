@@ -1,6 +1,9 @@
 
 package com.corebanking.controller;
 
+import com.corebanking.dto.CusSessionClientMetadata;
+import jakarta.servlet.http.HttpServletRequest;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -46,11 +49,11 @@ public class CusAuthController {
 
     @PostMapping("/login")
     public ResponseEntity<CusLoginResponse> login(
-            @RequestBody CusLoginRequest request) {
+            @RequestBody CusLoginRequest request, HttpServletRequest servletRequest) {
 
         CusLoginResponse response =
                 cusAuthService.authenticateCredentials(
-                        request
+                        request, CusSessionClientMetadata.from(servletRequest)
                 );
 
         return ResponseEntity.ok(
@@ -65,11 +68,11 @@ public class CusAuthController {
 
     @PostMapping("/verify-otp")
     public ResponseEntity<CusOtpVerifyResponse> verifyOtp(
-            @RequestBody CusOtpVerifyRequest request) {
+            @RequestBody CusOtpVerifyRequest request, HttpServletRequest servletRequest) {
 
         CusOtpVerifyResponse response =
                 cusAuthService.verifyLoginOtp(
-                        request
+                        request, CusSessionClientMetadata.from(servletRequest)
                 );
 
         return ResponseEntity.ok(
@@ -84,11 +87,11 @@ public class CusAuthController {
 
     @PostMapping("/resend-otp")
     public ResponseEntity<CusOtpResendResponse> resendOtp(
-            @RequestBody CusOtpResendRequest request) {
+            @RequestBody CusOtpResendRequest request, HttpServletRequest servletRequest) {
 
         CusOtpResendResponse response =
                 cusAuthService.resendLoginOtp(
-                        request
+                        request, CusSessionClientMetadata.from(servletRequest)
                 );
 
         return ResponseEntity.ok(
@@ -103,12 +106,12 @@ public class CusAuthController {
 
     @PostMapping("/first-login/change-password")
     public ResponseEntity<String> changeFirstLoginPassword(
-            @RequestBody CusFirstLoginPasswordRequest request) {
+            @RequestBody CusFirstLoginPasswordRequest request, HttpServletRequest servletRequest) {
 
         cusAuthService.changeFirstLoginPassword(
                 request.getChallengeGroupId(),
                 request.getNewPassword(),
-                request.getConfirmPassword()
+                request.getConfirmPassword(), CusSessionClientMetadata.from(servletRequest)
         );
 
         return ResponseEntity.ok(
@@ -123,13 +126,13 @@ public class CusAuthController {
 
     @PostMapping("/first-login/setup-pin")
     public ResponseEntity<CusTokenResponse> setupTransactionPin(
-            @RequestBody CusPinSetupRequest request) {
+            @RequestBody CusPinSetupRequest request, HttpServletRequest servletRequest) {
 
         CusTokenResponse response =
                 cusAuthService.setupTransactionPin(
                         request.getChallengeGroupId(),
                         request.getPin(),
-                        request.getConfirmPin()
+                        request.getConfirmPin(), CusSessionClientMetadata.from(servletRequest)
                 );
 
         return ResponseEntity.ok(
@@ -334,11 +337,11 @@ public ResponseEntity<String>
 
     @PostMapping("/refresh")
     public ResponseEntity<CusTokenResponse> refreshToken(
-            @RequestBody CusRefreshTokenRequest request) {
+            @RequestBody CusRefreshTokenRequest request, HttpServletRequest servletRequest) {
 
         CusTokenResponse response =
                 cusAuthService.refreshToken(
-                        request
+                        request, CusSessionClientMetadata.from(servletRequest)
                 );
 
         return ResponseEntity.ok(
@@ -354,10 +357,10 @@ public ResponseEntity<String>
     @PostMapping("/logout")
     public ResponseEntity<String> logout(
             @RequestHeader("Authorization")
-            String authorizationHeader) {
+            String authorizationHeader, HttpServletRequest servletRequest) {
 
         cusAuthService.logout(
-                authorizationHeader
+                authorizationHeader, CusSessionClientMetadata.from(servletRequest)
         );
 
         return ResponseEntity.ok(

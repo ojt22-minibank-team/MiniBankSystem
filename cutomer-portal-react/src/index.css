@@ -71,36 +71,51 @@ button:hover {
 
 @media print {
   @page {
-    margin: 12mm;
-    size: auto;
+    size: A4 portrait;
+    margin: 0;
   }
-  body {
+  html, body {
+    height: 100% !important;
+    min-height: 100% !important;
     background: #ffffff !important;
     color: #0f172a !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   header,
   aside,
   nav,
   input[type="search"],
   .no-print,
+  [aria-live="polite"],
   button:not(.print-include) {
     display: none !important;
   }
-  main {
+  #root,
+  #root > div,
+  main,
+  main > div {
+    height: 100% !important;
+    min-height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
   }
-  main > div {
-    padding: 0 !important;
-    margin: 0 !important;
-  }
   .print-receipt-container {
     box-shadow: none !important;
     border: 1px solid #cbd5e1 !important;
-    border-radius: 20px !important;
-    max-width: 620px !important;
-    margin: 0 auto !important;
+    border-radius: 16px !important;
+    max-width: 530px !important;
+    width: 100% !important;
+    margin: auto !important;
     overflow: hidden !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 }

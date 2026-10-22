@@ -19,6 +19,7 @@ import {
 } from "react";
 
 import { useNavigate } from "react-router-dom";
+import { useIndividualLogout } from "../../features/auth/hooks/useIndividualLogout";
 
 import {
   getMyAccounts,
@@ -37,6 +38,7 @@ import { NotificationDropdown } from "../../features/notifications/components/No
 
 export default function Navbar() {
   const navigate = useNavigate();
+  const logoutIndividual = useIndividualLogout();
 
   const profileMenuRef =
     useRef<HTMLDivElement | null>(null);
@@ -264,15 +266,7 @@ export default function Navbar() {
 
   const handleLogout = () => {
     setIsProfileMenuOpen(false);
-
-    /**
-     * Keep your existing authentication
-     * logout implementation here.
-     *
-     * Do not clear Redux manually unless
-     * your authentication flow requires it.
-     */
-    navigate("/");
+    void logoutIndividual();
   };
 
   return (

@@ -1,5 +1,5 @@
-
 package com.corebanking.service;
+
 import com.corebanking.dto.AccountLookupResponseDto;
 import com.corebanking.dto.P2PTransferRequestDto;
 import com.corebanking.dto.P2PTransferResponseDto;
@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
@@ -27,18 +28,16 @@ import java.util.concurrent.ThreadLocalRandom;
 @RequiredArgsConstructor
 public class P2PTransferService {
 
-  
     private static final BigDecimal MIN_TRANSFER_AMOUNT = new BigDecimal("1.00");
 
     private final AccountRepository accountRepository;
     private final BankTransactionRepository bankTransactionRepository;
-  
     private final FeeScheduleRepository feeScheduleRepository;
     private final LedgerAccountRepository ledgerAccountRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
     private final AsyncNotificationService asyncNotificationService;
     private final TransferLimitService transferLimitService;
-    
+    private final MerchantSecurityValidationService merchantSecurityValidationService;
 
     /**
      * Executes internal P2P fund transfer with authentication ownership verification,
@@ -68,7 +67,21 @@ public class P2PTransferService {
         if (request.getAmount() == null || request.getAmount().compareTo(MIN_TRANSFER_AMOUNT) < 0) {
             throw new TransactionException(String.format("Transfer amount must be at least %s MMK.", MIN_TRANSFER_AMOUNT));
         }
-        
+
+        // =========================================================================
+        // STEP 1.1: TRANSACTION PIN VALIDATION (USING MerchantSecurityValidationService)
+        // =========================================================================
+        if (request.getTransactionPin() == null || request.getTransactionPin().trim().isEmpty()) {
+            throw new InvalidPinException("Transaction PIN is required.");
+        }
+        UUID customerUuid;
+        try {
+            customerUuid = UUID.fromString(authenticatedUsername);
+        } catch (IllegalArgumentException e) {
+            throw new SecurityException("Invalid customer authentication principal");
+        }
+        merchantSecurityValidationService.validateTransactionPin(customerUuid, request.getTransactionPin().trim());
+
         BigDecimal serviceFee = calculateTransferFee(request.getAmount());
         BigDecimal totalDebitedAmount = request.getAmount().add(serviceFee);
 
@@ -97,21 +110,18 @@ public class P2PTransferService {
         // STEP 3: SECURITY & BUSINESS RULE VERIFICATIONS
         // =========================================================================
         // Account Ownership Check (IDOR Security Protection)
-        
-        
-     // Account Status Check
-       
         if (!sourceAccount.getCustomer().getCustomerId().toString().equalsIgnoreCase(authenticatedUsername)) {
             throw new TransactionException("Authenticated user does not own the source account.");
         }
 
-       
-              if (sourceAccount.getStatus() != AccountStatus.ACTIVE) {
+        // Account Status Check
+        if (sourceAccount.getStatus() != AccountStatus.ACTIVE) {
             throw new TransactionException("Source account is not active. Status: " + sourceAccount.getStatus());
         }
         if (destAccount.getStatus() != AccountStatus.ACTIVE) {
             throw new TransactionException("Destination account is not active. Status: " + destAccount.getStatus());
         }
+
         // Currency Consistency Check
         String reqCurrency = request.getCurrency() != null ? request.getCurrency() : "MMK";
         if (!sourceAccount.getCurrency().equalsIgnoreCase(destAccount.getCurrency()) || 
@@ -130,7 +140,6 @@ public class P2PTransferService {
                     "Insufficient available funds. You must maintain a minimum balance of %s MMK. Required: %s (Amount: %s + Fee: %s), Net available: %s",
                     minBalance, totalDebitedAmount, request.getAmount(), serviceFee, netAvailable));
         }
-
 
         // Multi-tier Transfer Limit Validations (Bank Max, One-Time Limit, Beneficiary vs Stranger, Cumulative Daily Limit)
         transferLimitService.validateTransferLimits(sourceAccount, destAccount, request.getAmount());
@@ -200,8 +209,6 @@ public class P2PTransferService {
 
         return mapToResponseDto(bankTransaction);
     }
-
-   
 
     /**
      * Calculates transfer fee solely from active FeeSchedules in the database.

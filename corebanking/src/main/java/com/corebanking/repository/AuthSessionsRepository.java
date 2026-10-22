@@ -27,7 +27,6 @@ public interface AuthSessionsRepository
             String refreshTokenHash
     );
     
-    
     @Modifying
     @Query("UPDATE AuthSession a SET a.revokedAt = CURRENT_TIMESTAMP, a.revokeReason = 'Security Breach: Token Reuse Detected' WHERE a.staff.staffId = :staffId AND a.revokedAt IS NULL")
     void revokeAllActiveSessionsByStaffId(@Param("staffId") UUID staffId);

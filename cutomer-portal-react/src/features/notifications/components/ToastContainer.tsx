@@ -7,8 +7,12 @@ import {
   Bell,
   User,
   ExternalLink,
+  Store,
+  CreditCard,
 } from "lucide-react";
 import type { NotificationItem } from "../types/notificationTypes";
+import { SESSION_TIMEOUT_EVENT } from "../../../utils/sessionEvents";
+import { hasTokens, subscribeToAuthenticationChanges } from "../../../utils/tokenStorage";
 
 export interface ToastData {
   id: string;
@@ -112,12 +116,26 @@ export const ToastContainer: React.FC = () => {
       }
     };
 
+    // 3. Clear active toasts on Session Timeout or Logout
+    const clearAllToasts = () => {
+      setToasts([]);
+    };
+
+    const unsubscribeAuth = subscribeToAuthenticationChanges(() => {
+      if (!hasTokens()) {
+        clearAllToasts();
+      }
+    });
+
     window.addEventListener("ws-notification-received", handleWsNotification);
     window.addEventListener("show-toast-notification", handleCustomToast);
+    window.addEventListener(SESSION_TIMEOUT_EVENT, clearAllToasts);
 
     return () => {
       window.removeEventListener("ws-notification-received", handleWsNotification);
       window.removeEventListener("show-toast-notification", handleCustomToast);
+      window.removeEventListener(SESSION_TIMEOUT_EVENT, clearAllToasts);
+      unsubscribeAuth();
     };
   }, [addToast]);
 
@@ -187,6 +205,9 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
     toast.transferDirection === "SENT" ||
     titleLower.includes("transfer sent") ||
     titleLower.includes("sent");
+  const isPayment =
+    toast.type === "PAYMENT" ||
+    titleLower.includes("payment");
 
   const formatAmount = (num: number | null | undefined) => {
     if (num === null || num === undefined) return null;
@@ -226,7 +247,11 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
               : "bg-slate-100 text-slate-600"
           }`}
         >
-          {isReceived ? (
+          {isPayment && isReceived ? (
+            <Store className="w-5 h-5" />
+          ) : isPayment && isSent ? (
+            <CreditCard className="w-5 h-5" />
+          ) : isReceived ? (
             <ArrowDownLeft className="w-5 h-5" />
           ) : isSent ? (
             <ArrowUpRight className="w-5 h-5" />
@@ -252,11 +277,11 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
                   isReceived
                     ? "bg-emerald-100 text-emerald-800"
                     : isSent
-                    ? "bg-blue-100 text-blue-800"
+                    ? "bg-rose-100 text-rose-800"
                     : "bg-slate-100 text-slate-700"
                 }`}
               >
-                {isReceived ? "+" : isSent ? "-" : ""}
+                {isReceived ? "+ " : isSent ? "- " : ""}
                 {formatAmount(toast.amount)} {toast.currency || "MMK"}
               </span>
             )}

@@ -27,6 +27,8 @@ import {
 import SessionTimeoutModal
   from "./SessionTimeoutModal";
 
+import { isIndividualLogoutInProgress } from "../hooks/useIndividualLogout";
+
 
 interface SessionTimeoutProviderProps {
   children: ReactNode;
@@ -75,6 +77,9 @@ function SessionTimeoutProvider({
   const lastKeepAliveRef =
     useRef(0);
 
+  const keepAliveInFlightRef = useRef(false);
+  const expiredRef = useRef(false);
+
 
   // ======================================================
   // SHOW TIMEOUT
@@ -85,6 +90,12 @@ function SessionTimeoutProvider({
       (
         message?: string
       ) => {
+
+        expiredRef.current = true;
+        if (idleTimerRef.current !== null) {
+          window.clearTimeout(idleTimerRef.current);
+          idleTimerRef.current = null;
+        }
 
         setTimeoutMessage(
           message ||
@@ -138,6 +149,8 @@ function SessionTimeoutProvider({
           window.setTimeout(
             () => {
 
+              if (!hasTokens() || isIndividualLogoutInProgress()) return;
+
               showTimeout(
                 "Your session has expired after 5 minutes of inactivity."
               );
@@ -163,7 +176,10 @@ function SessionTimeoutProvider({
       async () => {
 
         if (
-          !hasTokens()
+          !hasTokens() ||
+          expiredRef.current ||
+          isIndividualLogoutInProgress() ||
+          keepAliveInFlightRef.current
         ) {
           return;
         }
@@ -187,8 +203,9 @@ function SessionTimeoutProvider({
         }
 
 
-       // lastKeepAliveRef.current =
-          //now;
+        // Throttle attempts, including failures, before starting the request.
+        lastKeepAliveRef.current = now;
+        keepAliveInFlightRef.current = true;
 
 
         try {
@@ -200,6 +217,8 @@ function SessionTimeoutProvider({
           // SESSION_EXPIRED ဖြစ်ရင်
           // api.ts interceptor က
           // timeout event trigger လုပ်မယ်.
+        } finally {
+          keepAliveInFlightRef.current = false;
         }
 
       },
@@ -221,10 +240,13 @@ function SessionTimeoutProvider({
 
 
     const handleActivity =
-      () => {
+      (event: Event) => {
 
         if (
-          !hasTokens()
+          !event.isTrusted ||
+          !hasTokens() ||
+          expiredRef.current ||
+          isIndividualLogoutInProgress()
         ) {
           return;
         }
@@ -243,31 +265,16 @@ function SessionTimeoutProvider({
     resetIdleTimer();
 
 
-    window.addEventListener(
-      "pointerdown",
-      handleActivity
-    );
-
-    window.addEventListener(
-      "keydown",
-      handleActivity
-    );
-
-    window.addEventListener(
-      "scroll",
-      handleActivity,
-      {
+    // Capture also sees non-bubbling scroll events inside Dashboard containers.
+    const activityEvents = [
+      "pointerdown", "click", "keydown", "input", "scroll", "touchstart",
+    ];
+    for (const event of activityEvents) {
+      window.addEventListener(event, handleActivity, {
         passive: true,
-      }
-    );
-
-    window.addEventListener(
-      "touchstart",
-      handleActivity,
-      {
-        passive: true,
-      }
-    );
+        capture: true,
+      });
+    }
 
 
     return () => {
@@ -284,25 +291,9 @@ function SessionTimeoutProvider({
       }
 
 
-      window.removeEventListener(
-        "pointerdown",
-        handleActivity
-      );
-
-      window.removeEventListener(
-        "keydown",
-        handleActivity
-      );
-
-      window.removeEventListener(
-        "scroll",
-        handleActivity
-      );
-
-      window.removeEventListener(
-        "touchstart",
-        handleActivity
-      );
+      for (const event of activityEvents) {
+        window.removeEventListener(event, handleActivity, true);
+      }
 
     };
 

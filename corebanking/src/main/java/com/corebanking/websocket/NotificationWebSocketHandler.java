@@ -1,6 +1,9 @@
 package com.corebanking.websocket;
 
 import com.corebanking.dto.NotificationResponseDto;
+import com.corebanking.exception.CusAuthenticationException;
+import com.corebanking.exception.CusSessionExpiredException;
+import io.jsonwebtoken.JwtException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
@@ -11,7 +14,6 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,49 +24,39 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
 
     // Thread-safe map: CustomerId (UUID string) -> Set of active WebSocket sessions
     private final Map<String, Set<WebSocketSession>> userSessions = new ConcurrentHashMap<>();
+    private final Map<WebSocketSession, CustomerWebSocketSessionValidator.Connection> connections = new ConcurrentHashMap<>();
 
     private final ObjectMapper objectMapper;
+    private final CustomerWebSocketSessionValidator validator;
 
-    public NotificationWebSocketHandler() {
+    public NotificationWebSocketHandler(CustomerWebSocketSessionValidator validator) {
+        this.validator = validator;
         this.objectMapper = new ObjectMapper();
         this.objectMapper.registerModule(new JavaTimeModule());
     }
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        String customerId = (String) session.getAttributes().get("customerId");
-        if (customerId != null) {
-            userSessions.computeIfAbsent(customerId, k -> ConcurrentHashMap.newKeySet()).add(session);
-            log.info("WebSocket connected for CustomerId: {} [SessionId: {}, Total active sessions for user: {}]",
-                    customerId, session.getId(), userSessions.get(customerId).size());
-
-            // Send initial connection acknowledgement
-            sendDirectMessage(session, Map.of(
-                    "type", "CONNECTED",
-                    "message", "Real-time notification channel established."
-            ));
-        } else {
-            log.warn("WebSocket session {} rejected: customerId attribute missing", session.getId());
-            try {
-                session.close(CloseStatus.POLICY_VIOLATION);
-            } catch (IOException ignored) {}
+        synchronized (session) {
+            if (!(session.getAttributes().get(CustomerWebSocketSessionValidator.AUTHENTICATION_ATTRIBUTE)
+                    instanceof CustomerWebSocketSessionValidator.Connection connection)) {
+                close(session, CloseStatus.POLICY_VIOLATION);
+                return;
+            }
+            connections.put(session, connection);
+            userSessions.compute(connection.customerId(), (id, sessions) -> {
+                if (sessions == null) sessions = ConcurrentHashMap.newKeySet();
+                sessions.add(session);
+                return sessions;
+            });
+            sendAuthorized(session, connection.customerId(), Map.of(
+                    "type", "CONNECTED", "message", "Real-time notification channel established."));
         }
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        String customerId = (String) session.getAttributes().get("customerId");
-        if (customerId != null) {
-            Set<WebSocketSession> sessions = userSessions.get(customerId);
-            if (sessions != null) {
-                sessions.remove(session);
-                if (sessions.isEmpty()) {
-                    userSessions.remove(customerId);
-                }
-            }
-            log.info("WebSocket disconnected for CustomerId: {} [SessionId: {}, CloseStatus: {}]",
-                    customerId, session.getId(), status);
-        }
+        synchronized (session) { remove(session); }
     }
 
     @Override
@@ -72,16 +64,13 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
         String payload = message.getPayload().trim();
         // Client heartbeat handling (PING -> PONG)
         if ("PING".equalsIgnoreCase(payload)) {
-            sendDirectMessage(session, Map.of("type", "PONG"));
+            sendAuthorized(session, null, Map.of("type", "PONG"));
         }
     }
 
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) {
-        log.error("WebSocket transport error for session {}: {}", session.getId(), exception.getMessage());
-        try {
-            session.close(CloseStatus.SERVER_ERROR);
-        } catch (IOException ignored) {}
+        close(session, CloseStatus.SERVER_ERROR);
     }
 
     /**
@@ -101,45 +90,49 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        try {
-            Map<String, Object> messagePayload = Map.of(
-                    "type", "NOTIFICATION",
-                    "data", notification
-            );
-            String json = objectMapper.writeValueAsString(messagePayload);
-            TextMessage textMessage = new TextMessage(json);
-
-            for (WebSocketSession session : sessions) {
-                if (session.isOpen()) {
-                    try {
-                        synchronized (session) {
-                            session.sendMessage(textMessage);
-                        }
-                        log.info("Dispatched real-time notification to CustomerId: {} [SessionId: {}]", customerId, session.getId());
-                    } catch (IOException e) {
-                        log.error("Failed to send WebSocket message to session {}: {}", session.getId(), e.getMessage());
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.error("Failed to serialize and dispatch notification for CustomerId: {}", customerId, e);
+        for (WebSocketSession session : sessions) {
+            sendAuthorized(session, customerId, Map.of("type", "NOTIFICATION", "data", notification));
         }
     }
 
-    private void sendDirectMessage(WebSocketSession session, Object payload) {
-        try {
-            String json = objectMapper.writeValueAsString(payload);
-            synchronized (session) {
-                if (session.isOpen()) {
-                    session.sendMessage(new TextMessage(json));
-                }
+    private void sendAuthorized(WebSocketSession session, String customerId, Object payload) {
+        synchronized (session) {
+            var connection = connections.get(session);
+            if (!session.isOpen() || connection == null
+                    || (customerId != null && !customerId.equals(connection.customerId()))) {
+                close(session, CloseStatus.POLICY_VIOLATION);
+                return;
             }
-        } catch (Exception e) {
-            log.error("Failed to send direct message to session {}: {}", session.getId(), e.getMessage());
+            try {
+                validator.revalidate(connection);
+                session.sendMessage(new TextMessage(objectMapper.writeValueAsString(payload)));
+            } catch (CusAuthenticationException | CusSessionExpiredException | JwtException | IllegalArgumentException authenticationFailure) {
+                close(session, CloseStatus.POLICY_VIOLATION);
+            } catch (IOException | RuntimeException temporaryFailure) {
+                close(session, CloseStatus.SERVER_ERROR);
+            }
         }
+    }
+
+    private void close(WebSocketSession session, CloseStatus status) {
+        synchronized (session) {
+            remove(session);
+            try { session.close(status); }
+            catch (IOException | RuntimeException ignored) { /* Registry already cleared. */ }
+        }
+    }
+
+    private void remove(WebSocketSession session) {
+        var connection = connections.remove(session);
+        if (connection == null) return;
+        userSessions.computeIfPresent(connection.customerId(), (id, sessions) -> {
+            sessions.remove(session);
+            return sessions.isEmpty() ? null : sessions;
+        });
     }
 
     public Set<WebSocketSession> getActiveSessions(String customerId) {
-        return userSessions.getOrDefault(customerId, Collections.emptySet());
+        var sessions = userSessions.get(customerId);
+        return sessions == null ? Set.of() : Set.copyOf(sessions);
     }
 }

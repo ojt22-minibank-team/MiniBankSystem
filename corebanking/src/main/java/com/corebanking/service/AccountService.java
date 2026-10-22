@@ -406,7 +406,7 @@ public class AccountService {
         Customers customer = customerRepository.findByCustomerCode(customerCode)
                 .orElseThrow(() -> new RuntimeException("Customer not found with code: " + customerCode));
 
-        List<Accounts> accounts = accountRepository.findByCustomerCustomerCode(customerCode);
+        List<Accounts> accounts = accountRepository.findByCustomer(customer);
 
         return accounts.stream()
                 .map(this::mapToResponseDTO)

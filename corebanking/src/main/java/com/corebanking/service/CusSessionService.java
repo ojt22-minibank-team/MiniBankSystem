@@ -72,6 +72,12 @@ public class CusSessionService {
         return updateSessionActivity(session, UpdatedByType.CUSTOMER);
     }
 
+    // Background reads still validate the full session and may revoke it on expiry.
+    @Transactional(noRollbackFor = CusSessionExpiredException.class)
+    public AuthSession validateAccessSessionWithoutActivity(Claims claims) {
+        return validateBaseSession(claims, "ACCESS");
+    }
+
 
     // =========================================================
     // 2. VALIDATE REFRESH TOKEN SESSION

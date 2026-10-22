@@ -1,5 +1,7 @@
 package com.corebanking.service;
 
+import com.corebanking.dto.CusSessionClientMetadata;
+
 import java.security.SecureRandom;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -211,6 +213,12 @@ public class CusAuthService {
     )
     public CusLoginResponse authenticateCredentials(
             CusLoginRequest request) {
+        return authenticateCredentials(request, CusSessionClientMetadata.EMPTY);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = {CusAuthenticationException.class, CusAccountLockedException.class, CusEmailException.class})
+    public CusLoginResponse authenticateCredentials(
+            CusLoginRequest request, CusSessionClientMetadata metadata) {
 
         // TEMPORARY PERFORMANCE TIMING - remove after testing
         long loginStartTime = System.currentTimeMillis();
@@ -253,7 +261,7 @@ public class CusAuthService {
 
             saveInvalidLoginAttempt(
                     identifier,
-                    "INVALID_IDENTIFIER"
+                    "INVALID_IDENTIFIER", metadata
             );
 
             throw ex;
@@ -268,7 +276,7 @@ public class CusAuthService {
         // Customer status စစ်
      
 
-        validateCustomerStatus(customer);
+        validateLoginCustomerStatus(customer, identifier, metadata);
 
         // Customer Credentials ရှာ
        
@@ -291,7 +299,7 @@ public class CusAuthService {
         if (customer == null || !customerId.equals(customer.getCustomerId())) {
             throw new CusAuthenticationException("Invalid login credentials.");
         }
-        validateCustomerStatus(customer);
+        validateLoginCustomerStatus(customer, identifier, metadata);
 
         System.out.println(
                 "[TIMING] Credentials lookup: "
@@ -307,7 +315,7 @@ public class CusAuthService {
         checkLoginLock(
                 credentials,
                 identifier,
-                customer
+                customer, metadata
         );
 
 
@@ -348,7 +356,7 @@ public class CusAuthService {
                         identifier,
                         customer,
                         false,
-                        "ACCOUNT_LOCKED"
+                        "ACCOUNT_LOCKED", metadata
                 );
 
                 throw new CusAccountLockedException(
@@ -361,7 +369,7 @@ public class CusAuthService {
                     identifier,
                     customer,
                     false,
-                    "INVALID_PASSWORD"
+                    "INVALID_PASSWORD", metadata
             );
 
             throw new CusAuthenticationException(
@@ -390,7 +398,7 @@ public class CusAuthService {
         long createOtpStart = System.currentTimeMillis();
 
         OtpChallenge otpChallenge =
-                createLoginOtp(customer);
+                createLoginOtp(customer, metadata);
 
         System.out.println(
                 "[TIMING] createLoginOtp() total: "
@@ -453,6 +461,15 @@ public class CusAuthService {
     // 3. CUSTOMER STATUS CHECK
     // =========================================================
 
+    // Preserve the status decision while recording the previously missing inactive attempt.
+    private void validateLoginCustomerStatus(Customers customer, String identifier, CusSessionClientMetadata metadata) {
+        try { validateCustomerStatus(customer); }
+        catch (CusAuthenticationException ex) {
+            saveLoginAttempt(identifier, customer, false, "ACCOUNT_INACTIVE", metadata);
+            throw ex;
+        }
+    }
+
     private void validateCustomerStatus(
             Customers customer) {
 
@@ -474,6 +491,13 @@ public class CusAuthService {
             CustomerCredentials credentials,
             String identifier,
             Customers customer) {
+        checkLoginLock(credentials, identifier, customer, CusSessionClientMetadata.EMPTY);
+    }
+
+    private void checkLoginLock(
+            CustomerCredentials credentials,
+            String identifier,
+            Customers customer, CusSessionClientMetadata metadata) {
 
         LocalDateTime now =
                 LocalDateTime.now();
@@ -495,7 +519,7 @@ public class CusAuthService {
                     identifier,
                     customer,
                     false,
-                    "ACCOUNT_LOCKED"
+                    "ACCOUNT_LOCKED", metadata
             );
 
 
@@ -564,14 +588,28 @@ public class CusAuthService {
             Customers customer,
             boolean success,
             String failureReason) {
-        customerLoginAttemptService.saveLoginAttempt(identifier, customer, success, failureReason);
+        saveLoginAttempt(identifier, customer, success, failureReason, CusSessionClientMetadata.EMPTY);
+    }
+
+    private void saveLoginAttempt(
+            String identifier,
+            Customers customer,
+            boolean success,
+            String failureReason, CusSessionClientMetadata metadata) {
+        customerLoginAttemptService.saveLoginAttempt(identifier, customer, success, failureReason, metadata);
     }
 
 
     private void saveInvalidLoginAttempt(
             String identifier,
             String failureReason) {
-        customerLoginAttemptService.saveInvalidLoginAttempt(identifier, failureReason);
+        saveInvalidLoginAttempt(identifier, failureReason, CusSessionClientMetadata.EMPTY);
+    }
+
+    private void saveInvalidLoginAttempt(
+            String identifier,
+            String failureReason, CusSessionClientMetadata metadata) {
+        customerLoginAttemptService.saveInvalidLoginAttempt(identifier, failureReason, metadata);
     }
 
 
@@ -600,6 +638,11 @@ public class CusAuthService {
 
     private OtpChallenge createLoginOtp(
             Customers customer) {
+        return createLoginOtp(customer, CusSessionClientMetadata.EMPTY);
+    }
+
+    private OtpChallenge createLoginOtp(
+            Customers customer, CusSessionClientMetadata metadata) {
 
         // TEMPORARY PERFORMANCE TIMING - remove after testing
         long otpMethodStart = System.currentTimeMillis();
@@ -787,7 +830,7 @@ public class CusAuthService {
                     "OTP_CHALLENGE",
                     String.valueOf(savedOtp.getOtpId()),
                     null,
-                    "{\"purpose\":\"LOGIN\",\"status\":\"ACTIVE\",\"resendNo\":0}"
+                    "{\"purpose\":\"LOGIN\",\"status\":\"ACTIVE\",\"resendNo\":0}", metadata
             );
 
         } catch (MailException ex) {
@@ -819,7 +862,7 @@ public class CusAuthService {
                     "OTP_CHALLENGE",
                     String.valueOf(savedOtp.getOtpId()),
                     "{\"status\":\"ACTIVE\"}",
-                    "{\"status\":\"EXPIRED\",\"reason\":\"EMAIL_SEND_FAILED\"}"
+                    "{\"status\":\"EXPIRED\",\"reason\":\"EMAIL_SEND_FAILED\"}", metadata
             );
 
             throw new CusEmailException(
@@ -878,8 +921,13 @@ public class CusAuthService {
 //verify login otp
     
     @Transactional(noRollbackFor = CusOtpException.class)
+    public CusOtpVerifyResponse verifyLoginOtp(CusOtpVerifyRequest request) {
+        return verifyLoginOtp(request, CusSessionClientMetadata.EMPTY);
+    }
+
+    @Transactional(noRollbackFor = CusOtpException.class)
     public CusOtpVerifyResponse verifyLoginOtp(
-            CusOtpVerifyRequest request) {
+            CusOtpVerifyRequest request, CusSessionClientMetadata metadata) {
 
         // 1. Request validation
         if (request == null
@@ -960,7 +1008,7 @@ public class CusAuthService {
                     "OTP_CHALLENGE",
                     String.valueOf(otpChallenge.getOtpId()),
                     "{\"status\":\"ACTIVE\"}",
-                    "{\"status\":\"EXPIRED\",\"reason\":\"TIME_EXPIRED\"}"
+                    "{\"status\":\"EXPIRED\",\"reason\":\"TIME_EXPIRED\"}", metadata
             );
 
             throw new CusOtpException(
@@ -991,7 +1039,7 @@ public class CusAuthService {
                     "OTP_CHALLENGE",
                     String.valueOf(otpChallenge.getOtpId()),
                     null,
-                    "{\"status\":\"BLOCKED\",\"reason\":\"MAX_ATTEMPTS_REACHED\"}"
+                    "{\"status\":\"BLOCKED\",\"reason\":\"MAX_ATTEMPTS_REACHED\"}", metadata
             );
 
             throw new CusOtpException(
@@ -1015,7 +1063,7 @@ public class CusAuthService {
         if (!otpMatches) {
 
             handleFailedOtpAttempt(
-                    otpChallenge
+                    otpChallenge, metadata
             );
 
             throw new CusOtpException(
@@ -1047,7 +1095,7 @@ public class CusAuthService {
                 "OTP_CHALLENGE",
                 String.valueOf(otpChallenge.getOtpId()),
                 "{\"status\":\"ACTIVE\"}",
-                "{\"status\":\"CONSUMED\"}"
+                "{\"status\":\"CONSUMED\"}", metadata
         );
 
         // 10. Customer
@@ -1096,7 +1144,7 @@ public class CusAuthService {
         CusTokenResponse tokenResponse =
                 createAuthenticatedSession(
                         customer,
-                        credentials
+                        credentials, metadata
                 );
 
         return new CusOtpVerifyResponse(
@@ -1117,6 +1165,11 @@ public class CusAuthService {
 
     private void handleFailedOtpAttempt(
             OtpChallenge otpChallenge) {
+        handleFailedOtpAttempt(otpChallenge, CusSessionClientMetadata.EMPTY);
+    }
+
+    private void handleFailedOtpAttempt(
+            OtpChallenge otpChallenge, CusSessionClientMetadata metadata) {
 
         int failedAttempts =
                 otpChallenge.getAttemptCount() + 1;
@@ -1155,7 +1208,7 @@ public class CusAuthService {
                 String.valueOf(otpChallenge.getOtpId()),
                 null,
                 "{\"attemptCount\":" + failedAttempts
-                        + ",\"status\":\"" + otpChallenge.getStatus().name() + "\"}"
+                        + ",\"status\":\"" + otpChallenge.getStatus().name() + "\"}", metadata
         );
 
 
@@ -1169,13 +1222,19 @@ public class CusAuthService {
                     "OTP_CHALLENGE",
                     String.valueOf(otpChallenge.getOtpId()),
                     null,
-                    "{\"status\":\"BLOCKED\",\"reason\":\"MAX_ATTEMPTS_REACHED\"}"
+                    "{\"status\":\"BLOCKED\",\"reason\":\"MAX_ATTEMPTS_REACHED\"}", metadata
             );
         }
     }
     @Transactional(noRollbackFor = CusEmailException.class)
     public CusOtpResendResponse resendLoginOtp(
             CusOtpResendRequest request) {
+        return resendLoginOtp(request, CusSessionClientMetadata.EMPTY);
+    }
+
+    @Transactional(noRollbackFor = CusEmailException.class)
+    public CusOtpResendResponse resendLoginOtp(
+            CusOtpResendRequest request, CusSessionClientMetadata metadata) {
 
         // 1. Request validation
         if (request == null
@@ -1358,7 +1417,7 @@ public class CusAuthService {
                     String.valueOf(savedOtp.getOtpId()),
                     null,
                     "{\"purpose\":\"LOGIN\",\"status\":\"ACTIVE\",\"resendNo\":"
-                            + savedOtp.getResendNo() + "}"
+                            + savedOtp.getResendNo() + "}", metadata
             );
 
 //OTP don't reach to customer, email service unavailabel
@@ -1383,7 +1442,7 @@ public class CusAuthService {
                     "OTP_CHALLENGE",
                     String.valueOf(savedOtp.getOtpId()),
                     "{\"status\":\"ACTIVE\"}",
-                    "{\"status\":\"EXPIRED\",\"reason\":\"EMAIL_SEND_FAILED\"}"
+                    "{\"status\":\"EXPIRED\",\"reason\":\"EMAIL_SEND_FAILED\"}", metadata
             );
 
             throw new CusEmailException(
@@ -1511,6 +1570,14 @@ public void resetPassword(
             String challengeGroupId,
             String newPassword,
             String confirmPassword) {
+        changeFirstLoginPassword(challengeGroupId, newPassword, confirmPassword, CusSessionClientMetadata.EMPTY);
+    }
+
+    @Transactional
+    public void changeFirstLoginPassword(
+            String challengeGroupId,
+            String newPassword,
+            String confirmPassword, CusSessionClientMetadata metadata) {
 
         // 1. Required fields
         if (challengeGroupId == null
@@ -1615,7 +1682,7 @@ public void resetPassword(
                 "CUSTOMER_CREDENTIALS",
                 customer.getCustomerId().toString(),
                 null,
-                "{\"passwordChanged\":true}"
+                "{\"passwordChanged\":true}", metadata
         );
     }
     
@@ -1624,10 +1691,15 @@ public void resetPassword(
     // 13. FIRST LOGIN - CREATE TRANSACTION PIN
     // =========================================================
     @Transactional
+    public CusTokenResponse setupTransactionPin(String challengeGroupId, String pin, String confirmPin) {
+        return setupTransactionPin(challengeGroupId, pin, confirmPin, CusSessionClientMetadata.EMPTY);
+    }
+
+    @Transactional
     public CusTokenResponse setupTransactionPin(
             String challengeGroupId,
             String pin,
-            String confirmPin) {
+            String confirmPin, CusSessionClientMetadata metadata) {
 
         // =====================================================
         // 1. REQUIRED FIELDS
@@ -1766,7 +1838,7 @@ public void resetPassword(
 
         return createAuthenticatedSession(
                 customer,
-                credentials
+                credentials, metadata
         );
     }
     
@@ -1779,6 +1851,12 @@ public void resetPassword(
          CustomerCredentials credentials) {
      return customerSessionIssuanceService.createAuthenticatedSession(customer, credentials);
  }
+
+ private CusTokenResponse createAuthenticatedSession(
+         Customers customer, CustomerCredentials credentials, CusSessionClientMetadata metadata) {
+     return customerSessionIssuanceService.createAuthenticatedSession(customer, credentials, metadata);
+ }
+
  
 //=========================================================
 //REFRESH TOKEN - ATOMIC ROTATION
@@ -1790,6 +1868,12 @@ public void resetPassword(
 public CusTokenResponse refreshToken(
       CusRefreshTokenRequest request) {
         return customerSessionService.refreshToken(request);
+    }
+
+    @Transactional(noRollbackFor = CusSessionExpiredException.class)
+    public CusTokenResponse refreshToken(
+      CusRefreshTokenRequest request, CusSessionClientMetadata metadata) {
+        return customerSessionService.refreshToken(request, metadata);
 }
     // =========================================================
     // 14. PASSWORD POLICY HELPER
@@ -1997,6 +2081,12 @@ private boolean isValidPassword(
  public void logout(
          String authorizationHeader) {
         customerSessionService.logout(authorizationHeader);
+    }
+
+    @Transactional(noRollbackFor = CusSessionExpiredException.class)
+    public void logout(
+         String authorizationHeader, CusSessionClientMetadata metadata) {
+        customerSessionService.logout(authorizationHeader, metadata);
 }
 
 
@@ -2057,9 +2147,22 @@ private boolean isValidPassword(
          String entityId,
          String oldValues,
          String newValues) {
+        saveAuditLog(actorType, actorCustomer, actionType, entityType, entityId, oldValues, newValues, CusSessionClientMetadata.EMPTY);
+    }
+
+    private void saveAuditLog(
+         ActorType actorType,
+         Customers actorCustomer,
+         String actionType,
+         String entityType,
+         String entityId,
+         String oldValues,
+         String newValues, CusSessionClientMetadata metadata) {
 
      AuditLogs auditLog =
              AuditLogs.builder()
+                     .ipAddress(metadata == null ? null : metadata.ipAddress())
+                     .userAgent(metadata == null ? null : metadata.userAgent())
 
                      .actorType(
                              actorType

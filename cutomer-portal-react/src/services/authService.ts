@@ -1,4 +1,5 @@
 import api from "../config/api";
+import { getAccessToken } from "../utils/tokenStorage";
 
 import type {
   LoginRequest,
@@ -151,11 +152,18 @@ export const refreshCustomerToken = async (
 };
 
 
-export const logoutCustomer = async (): Promise<string> => {
+export const logoutCustomer = async (
+  accessToken: string | null = getAccessToken()
+): Promise<string> => {
 
   const response =
     await api.post<string>(
-      "/auth/logout"
+      "/auth/logout",
+      undefined,
+      {
+        timeout: 10_000,
+        headers: { Authorization: accessToken ? `Bearer ${accessToken}` : undefined },
+      }
     );
 
   return response.data;

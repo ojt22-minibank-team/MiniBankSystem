@@ -1,0 +1,5 @@
+Generated 27 basic JPA entities from MySQL Workbench model. Review relationships,
+enum types,
+lengths, 
+defaults, 
+and indexes before production use.

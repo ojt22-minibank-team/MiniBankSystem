@@ -559,6 +559,7 @@ import {
 
 import PublicAuthLayout
   from "../components/PublicAuthLayout";
+import { consumePendingPaymentRedirect } from "../utils/pendingPaymentRedirect";
 
 
 function SetupPinPage() {
@@ -757,6 +758,8 @@ function SetupPinPage() {
         response.refreshToken
       );
 
+      const destination = consumePendingPaymentRedirect();
+
 
       // =====================================
       // FIRST LOGIN FLOW FINISHED
@@ -783,11 +786,11 @@ function SetupPinPage() {
 
 
       // =====================================
-      // GO TO DASHBOARD
+      // GO TO THE VALIDATED CHECKOUT OR DASHBOARD
       // =====================================
 
       navigate(
-        "/dashboard",
+        destination,
         {
           replace: true,
         }

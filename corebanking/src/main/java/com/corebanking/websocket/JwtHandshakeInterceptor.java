@@ -1,12 +1,11 @@
 package com.corebanking.websocket;
 
-import com.corebanking.service.CusJwtService;
-import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
@@ -18,7 +17,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 
-    private final CusJwtService cusJwtService;
+    private final CustomerWebSocketSessionValidator validator;
 
     @Override
     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
@@ -41,24 +40,20 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 
             if (token == null || token.isBlank()) {
                 log.warn("WebSocket handshake rejected: Missing authentication token");
+                response.setStatusCode(HttpStatus.UNAUTHORIZED);
                 return false;
             }
 
-            Claims claims = cusJwtService.getClaims(token);
-            String customerId = claims.getSubject();
-
-            if (customerId == null || customerId.isBlank()) {
-                log.warn("WebSocket handshake rejected: Token does not contain customer identifier");
-                return false;
-            }
-
-            attributes.put("customerId", customerId);
-            attributes.put("customerCode", claims.get("customerCode"));
-            log.info("WebSocket handshake authenticated successfully for CustomerId: {}", customerId);
+            var connection = validator.authenticate(token);
+            attributes.put(CustomerWebSocketSessionValidator.AUTHENTICATION_ATTRIBUTE, connection);
+            attributes.put("customerId", connection.customerId());
+            if (connection.customerCode() != null) attributes.put("customerCode", connection.customerCode());
             return true;
 
         } catch (Exception e) {
-            log.warn("WebSocket handshake rejected - Token validation failed: {}", e.getMessage());
+            // JWT parser errors may contain sensitive token data; never log the exception.
+            log.warn("WebSocket handshake rejected: Invalid customer authentication");
+            response.setStatusCode(HttpStatus.UNAUTHORIZED);
             return false;
         }
     }
