@@ -30,6 +30,7 @@ public class MerchantAuthorizationEngine {
     private final LedgerFacadePort ledgerFacadePort;
     private final GatewayOutboundPort gatewayOutboundPort;
     private final AuditTrailService auditTrailService;
+    private final AsyncNotificationService asyncNotificationService;
 
     private final Set<String> inFlightTokens = ConcurrentHashMap.newKeySet();
 
@@ -73,6 +74,24 @@ public class MerchantAuthorizationEngine {
 
             safeAuditLog("TRANSACTION", "MERCHANT_PAYMENT_AUTHORIZED", token,
                     "Authorized merchant payment of " + realAmount + " MMK from account " + request.getAccountId());
+
+            // 4. Asynchronous real-time notification dispatch to both Payer and Merchant
+            try {
+                if (asyncNotificationService != null) {
+                    asyncNotificationService.sendMerchantPaymentNotificationAsync(
+                            request.getCustomerId(),
+                            request.getAccountId(),
+                            realDetails.getMerchantAccountNumber(),
+                            realDetails.getMerchantName(),
+                            realDetails.getOrderId(),
+                            realAmount,
+                            realDetails.getCurrency() != null ? realDetails.getCurrency() : "MMK",
+                            ledgerReference
+                    );
+                }
+            } catch (Exception notiEx) {
+                log.warn("Could not dispatch merchant payment notification for token {}: {}", token, notiEx.getMessage());
+            }
 
             return PaymentReceiptResponse.builder()
                     .success(true)

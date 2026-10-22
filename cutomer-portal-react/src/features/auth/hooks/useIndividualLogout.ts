@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { logoutCustomer } from "../../../services/authService";
+import { clearPendingPaymentRedirect } from "../utils/pendingPaymentRedirect";
 import {
   clearTokens,
   getAccessToken,
@@ -18,6 +19,8 @@ function logoutIndividualCustomer(): Promise<number | null> {
   if (logoutLock?.generation === getAuthenticationGeneration()) return logoutLock.promise;
 
   const accessToken = getAccessToken();
+  // End the old intent immediately, even while backend revocation is pending.
+  clearPendingPaymentRedirect();
   // Invalidate synchronously, while retaining credentials for backend revocation.
   const generation = invalidateAuthenticationGeneration();
 

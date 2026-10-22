@@ -1,3 +1,5 @@
+import { clearPendingPaymentRedirect } from "../features/auth/utils/pendingPaymentRedirect";
+
 const ACCESS_TOKEN_KEY = "accessToken";
 const REFRESH_TOKEN_KEY = "refreshToken";
 
@@ -76,6 +78,7 @@ export const getRefreshToken = () => {
 export const clearTokens = () => {
 
   invalidateAuthenticationGeneration();
+  clearPendingPaymentRedirect();
 
   sessionStorage.removeItem(
     ACCESS_TOKEN_KEY

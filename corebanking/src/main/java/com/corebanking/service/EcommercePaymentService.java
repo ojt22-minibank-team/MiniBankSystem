@@ -173,10 +173,15 @@ public class EcommercePaymentService {
         // =========================================================================
         // STEP 8: ASYNCHRONOUS NOTIFICATIONS (NON-BLOCKING)
         // =========================================================================
-        asyncNotificationService.sendTransferNotificationsAsync(
-                customerAccount.getCustomer(),
-                merchantAccount.getCustomer(),
-                transaction
+        asyncNotificationService.sendMerchantPaymentNotificationAsync(
+                customerAccount.getCustomer() != null ? customerAccount.getCustomer().getCustomerId() : null,
+                customerAccount.getAccountNumber(),
+                merchantAccount.getAccountNumber(),
+                merchantAccount.getCustomer() != null ? merchantAccount.getCustomer().getFullName() : "Merchant",
+                request.getOrderId(),
+                request.getAmount(),
+                request.getCurrency(),
+                transaction.getTransactionRef()
         );
 
         log.info("E-Commerce Payment completed successfully. Ref: {}, OrderId: {}, Amount: {}",

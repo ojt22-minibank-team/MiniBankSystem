@@ -104,17 +104,79 @@ public class CusNotificationService {
                 log.warn("Skipping associated transaction for notification id {}: {}", n.getNotificationId(), e.getMessage());
             }
 
+            // Fallback enrichment: Ensure details are never lost on HTTP fetch even if transaction entity is detached
+            enrichFromMessageFallback(n, builder);
+
             return builder.build();
         } catch (Exception ex) {
             log.error("Error mapping notification id {}: {}", n.getNotificationId(), ex.getMessage());
-            return NotificationResponseDto.builder()
+            NotificationResponseDto.NotificationResponseDtoBuilder fallbackBuilder = NotificationResponseDto.builder()
                     .notificationId(n.getNotificationId())
                     .notificationType(com.corebanking.entity.enums.NotificationType.SYSTEM)
                     .title("Notification")
                     .message(n.getMessage() != null ? n.getMessage() : "")
                     .isRead(n.isRead())
-                    .createdAt(n.getCreatedAt())
-                    .build();
+                    .createdAt(n.getCreatedAt());
+            enrichFromMessageFallback(n, fallbackBuilder);
+            return fallbackBuilder.build();
+        }
+    }
+
+    private void enrichFromMessageFallback(Notifications n, NotificationResponseDto.NotificationResponseDtoBuilder builder) {
+        String msg = n.getMessage();
+        if (msg == null || msg.isBlank()) return;
+
+        NotificationResponseDto current = builder.build();
+
+        // 1. Transaction Ref fallback: "Ref: <reference>"
+        if (current.getTransactionRef() == null || current.getTransactionRef().isBlank()) {
+            java.util.regex.Matcher refMatcher = java.util.regex.Pattern.compile("Ref:\\s*([^\\s,;.]+)").matcher(msg);
+            if (refMatcher.find()) {
+                builder.transactionRef(refMatcher.group(1).trim());
+            }
+        }
+
+        // 2. Amount and Currency fallback: "(?:You paid|You have transferred|You received)\s+([0-9]+(?:\.[0-9]+)?)\s+([A-Za-z]{3})"
+        if (current.getAmount() == null) {
+            java.util.regex.Matcher amtMatcher = java.util.regex.Pattern.compile("(?:You paid|You have transferred|You received)\\s+([0-9]+(?:\\.[0-9]+)?)\\s+([A-Za-z]{3})").matcher(msg);
+            if (amtMatcher.find()) {
+                try {
+                    builder.amount(new java.math.BigDecimal(amtMatcher.group(1)));
+                    if (current.getCurrency() == null || current.getCurrency().isBlank()) {
+                        builder.currency(amtMatcher.group(2).toUpperCase());
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+
+        // 3. Transfer Direction fallback
+        if (current.getTransferDirection() == null || current.getTransferDirection().isBlank()) {
+            String title = n.getTitle() != null ? n.getTitle().toLowerCase() : "";
+            String msgLower = msg.toLowerCase();
+            if (title.contains("sent") || msgLower.startsWith("you paid") || msgLower.startsWith("you have transferred")) {
+                builder.transferDirection("SENT");
+            } else if (title.contains("received") || msgLower.startsWith("you received")) {
+                builder.transferDirection("RECEIVED");
+            }
+        }
+
+        // 4. Counterparty Name & Account Number fallback
+        if (current.getCounterpartyName() == null || current.getCounterpartyName().isBlank()) {
+            java.util.regex.Matcher toMatcher = java.util.regex.Pattern.compile("\\bto\\s+([^.(]+?)(?:\\s*\\(([^)]+)\\)|\\s+for Order|\\.\\s*Ref:|$)").matcher(msg);
+            if (toMatcher.find()) {
+                builder.counterpartyName(toMatcher.group(1).trim());
+                if (toMatcher.group(2) != null && !toMatcher.group(2).isBlank() && (current.getCounterpartyAccountNumber() == null || current.getCounterpartyAccountNumber().isBlank())) {
+                    builder.counterpartyAccountNumber(toMatcher.group(2).trim());
+                }
+            } else {
+                java.util.regex.Matcher fromMatcher = java.util.regex.Pattern.compile("\\bfrom\\s+([^.(]+?)(?:\\s*\\(([^)]+)\\)|\\s+for Order|\\.\\s*Ref:|$)").matcher(msg);
+                if (fromMatcher.find()) {
+                    builder.counterpartyName(fromMatcher.group(1).trim());
+                    if (fromMatcher.group(2) != null && !fromMatcher.group(2).isBlank() && (current.getCounterpartyAccountNumber() == null || current.getCounterpartyAccountNumber().isBlank())) {
+                        builder.counterpartyAccountNumber(fromMatcher.group(2).trim());
+                    }
+                }
+            }
         }
     }
 }
