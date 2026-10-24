@@ -127,5 +127,3 @@ export default function RouterProvider() {
     </BrowserRouter>
   );
 }
-
-export default RouterProvider;

@@ -4,6 +4,7 @@ import com.corebanking.dto.AccountCreateDTO;
 import com.corebanking.dto.AccountResponseDTO;
 import com.corebanking.dto.AccountStatusUpdateDTO;
 import com.corebanking.dto.CorporateAccountCreateDTO;
+import com.corebanking.dto.DepositRequestDTO;
 import com.corebanking.dto.JointHolderAddDTO;
 import com.corebanking.entity.AccountSignatories;
 import com.corebanking.entity.Accounts;
@@ -522,5 +523,117 @@ public class AccountService {
                 .status(account.getStatus() != null ? account.getStatus().name() : null)
                 .openedAt(account.getOpenedAt())
                 .build();
+    }
+    /**
+     * Teller/Staff မှ ငွေသားသွင်းပေးခြင်း (Cash Deposit)
+     * Account Number ဖြင့်ဖြစ်စေ၊ Customer Code ဖြင့်ဖြစ်စေ ငွေသွင်းနိုင်သည်
+     */
+    @Transactional
+    public AccountResponseDTO depositFunds(DepositRequestDTO dto) {
+        Accounts account;
+
+        // ၁။ Account Number ဖြင့် ရှာဖွေခြင်း (Account Number ပေးထားပါက)
+        if (dto.getAccountNumber() != null && !dto.getAccountNumber().isBlank()) {
+            account = accountRepository.findByAccountNumber(dto.getAccountNumber().trim())
+                    .orElseThrow(() -> new RuntimeException("Account not found with number: " + dto.getAccountNumber()));
+        } 
+        // ၂။ Customer Code သာ ပေးထားပါက ထို Customer ၏ ပထမဆုံး Active ဖြစ်သော Account ကို ရှာဖွေခြင်း
+        else if (dto.getCustomerCode() != null && !dto.getCustomerCode().isBlank()) {
+            List<Accounts> customerAccounts = accountRepository.findByCustomerCustomerCode(dto.getCustomerCode().trim());
+            if (customerAccounts.isEmpty()) {
+                throw new RuntimeException("No bank accounts found for customer code: " + dto.getCustomerCode());
+            }
+            // Active ဖြစ်နေသော အကောင့်ကို ဦးစားပေး ရွေးချယ်ခြင်း
+            account = customerAccounts.stream()
+                    .filter(acc -> acc.getStatus() == AccountStatus.ACTIVE)
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("No active account found for customer code: " + dto.getCustomerCode()));
+        } else {
+            throw new IllegalArgumentException("Either accountNumber or customerCode must be provided for deposit.");
+        }
+
+        // ၃။ အကောင့် အခြေအနေ စစ်ဆေးခြင်း
+        if (account.getStatus() != AccountStatus.ACTIVE) {
+            throw new IllegalStateException("Cannot deposit funds to an account that is " + account.getStatus());
+        }
+
+        // ၄။ Balance ပေါင်းထည့်ခြင်း
+        BigDecimal currentBalance = (account.getCurrentBalance() != null) ? account.getCurrentBalance() : BigDecimal.ZERO;
+        BigDecimal availableBalance = (account.getAvailableBalance() != null) ? account.getAvailableBalance() : BigDecimal.ZERO;
+
+        BigDecimal updatedCurrentBalance = currentBalance.add(dto.getAmount());
+        BigDecimal updatedAvailableBalance = availableBalance.add(dto.getAmount());
+
+        account.setCurrentBalance(updatedCurrentBalance);
+        account.setAvailableBalance(updatedAvailableBalance);
+        account.setUpdatedAt(LocalDateTime.now());
+
+        Accounts savedAccount = accountRepository.save(account);
+
+        System.out.println("✅ Successfully deposited " + dto.getAmount() + " MMK into Account: " + savedAccount.getAccountNumber());
+
+        return mapToResponseDTO(savedAccount);
+    }
+    
+    /**
+     * Group 2 Logic:
+     * Customer တစ်ဦးတည်း၏ Login ဖြင့် Personal Account ရော Company Account ပါ
+     * တစ်ခါတည်း ကြည့်ရှုခွင့်ပြုသော Method
+     */
+    @Transactional(readOnly = true)
+    public List<AccessibleAccountDTO> getAccessibleAccountsForCustomer(String customerCode) {
+        Customers customer = customerRepository.findByCustomerCode(customerCode)
+                .orElseThrow(() -> new RuntimeException("Customer not found: " + customerCode));
+
+        List<AccessibleAccountDTO> accountList = new ArrayList<>();
+
+        // ၁။ မိမိ၏ ကိုယ်ပိုင် Personal Accounts များကို ထည့်သွင်းခြင်း
+        List<Accounts> personalAccounts = accountRepository.findByCustomer(customer);
+        for (Accounts acc : personalAccounts) {
+            String accType = (acc.getAccountType() != null) ? acc.getAccountType().name() : "SAVINGS";
+            String accCategory = (acc.getAccountCategory() != null) ? acc.getAccountCategory().name() : "RETAIL";
+
+            accountList.add(AccessibleAccountDTO.builder()
+                    .accountNumber(acc.getAccountNumber())
+                    .accountType(accType)
+                    .accountCategory(accCategory)
+                    .companyName(null)
+                    .role("OWNER")
+                    .currentBalance(acc.getCurrentBalance() != null ? acc.getCurrentBalance() : BigDecimal.ZERO)
+                    .availableBalance(acc.getAvailableBalance() != null ? acc.getAvailableBalance() : BigDecimal.ZERO)
+                    .currency(acc.getCurrency())
+                    .canInitiate(true)
+                    .canApprove(true)
+                    .build());
+        }
+
+        // ၂။ မိမိအား Signatory (CEO/Accountant) အဖြစ် ချိတ်ဆက်ထားသော Company Accounts များကို ထည့်သွင်းခြင်း
+        List<AccountSignatories> corporateSignatories = 
+                accountSignatoriesRepository.findByCustomerAndStatus(customer, SignatoryStatus.ACTIVE);
+
+        for (AccountSignatories sig : corporateSignatories) {
+            Accounts compAcc = sig.getAccount();
+            if (compAcc == null) {
+                continue;
+            }
+            String companyName = (compAcc.getCustomer() != null) ? compAcc.getCustomer().getFullName() : null;
+            String accType = (compAcc.getAccountType() != null) ? compAcc.getAccountType().name() : "CURRENT";
+            String roleStr = (sig.getSignatoryRole() != null) ? sig.getSignatoryRole().name() : "SIGNATORY";
+
+            accountList.add(AccessibleAccountDTO.builder()
+                    .accountNumber(compAcc.getAccountNumber())
+                    .accountType(accType)
+                    .accountCategory("CORPORATE")
+                    .companyName(companyName)
+                    .role(roleStr)
+                    .currentBalance(compAcc.getCurrentBalance() != null ? compAcc.getCurrentBalance() : BigDecimal.ZERO)
+                    .availableBalance(compAcc.getAvailableBalance() != null ? compAcc.getAvailableBalance() : BigDecimal.ZERO)
+                    .currency(compAcc.getCurrency())
+                    .canInitiate(sig.isCanInitiate()) // Accountant ဆိုလျှင် true
+                    .canApprove(sig.isCanApprove())   // CEO ဆိုလျှင် true
+                    .build());
+        }
+
+        return accountList;
     }
 }
