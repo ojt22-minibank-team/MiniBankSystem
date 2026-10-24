@@ -1,8 +1,13 @@
-import {  Settings2 } from "lucide-react";
+
+import { Settings2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import AppearanceSettings from "../components/AppearanceSettings";
+import LanguageSettings from "../components/LanguageSettings";
 
 export default function SettingsPage() {
+  const { t } = useTranslation("settings");
+
   return (
     <main className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <header className="flex items-start gap-4">
@@ -12,17 +17,18 @@ export default function SettingsPage() {
 
         <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Settings
+            {t("Settings")}
           </h1>
 
           <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-            Manage your preferences and personalize your banking experience.
+            {t("description")}
           </p>
         </div>
       </header>
 
       <div className="space-y-5">
         <AppearanceSettings />
+        <LanguageSettings />
       </div>
     </main>
   );

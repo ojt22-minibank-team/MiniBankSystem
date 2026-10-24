@@ -121,9 +121,9 @@ public class BankTransactions {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @Version
-    @Column(name = "version", nullable = false)
-    private Integer version = 0;
+//    @Version
+//    @Column(name = "version", nullable = false)
+//    private Integer version = 0;
 
     @PrePersist
     protected void onCreate() {

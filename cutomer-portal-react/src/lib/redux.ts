@@ -4,11 +4,12 @@ import {
   useSelector,
 } from "react-redux";
 
-import profileReducer from "../features/customer-account/profile/ProfileSlice";
+import profileReducer from "../features/customer-account/profile/store/ProfileSlice";
 import settingsReducer from "../features/customer-account/settings/store/SettingsSlice";
 import transferReducer from '../features/transfer/store/transferSlice';
-import accountsReducer from '../features/customer-account/accounts/accountsSlice';
+import accountsReducer from '../features/customer-account/accounts/stores/accountsSlice';
 import announcementReducer from "../features/customer-account/announcements/store/announcementSlice";
+import dashboardReducer from "../features/customer-account/dashboard/store/dashboardSlice";
 
 export const store = configureStore({
   reducer: {
@@ -17,6 +18,7 @@ export const store = configureStore({
     transfer: transferReducer,
     accounts: accountsReducer,
     announcements: announcementReducer,
+    dashboard: dashboardReducer,
   },
 });
 
@@ -30,5 +32,5 @@ export const useAppDispatch =
 export const useAppSelector =
   useSelector.withTypes<RootState>();
 
-  
+
 

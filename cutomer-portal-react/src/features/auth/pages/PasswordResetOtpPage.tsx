@@ -506,7 +506,7 @@ function PasswordResetOtpPage() {
                     "
                   >
 
-                    MiniBank
+                    ACE Bank
 
                   </h1>
 
@@ -851,7 +851,7 @@ function PasswordResetOtpPage() {
                     "
                   >
 
-                    MiniBank
+                    ACE Bank
 
                   </h1>
 

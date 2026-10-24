@@ -35,6 +35,9 @@ const transferSlice = createSlice({
   name: 'transfer',
   initialState,
   reducers: {
+    clearTransferError: (state) => {
+      state.error = null;
+    },
     resetTransferState: (state) => {
       state.loading = false;
       state.success = false;
@@ -61,5 +64,5 @@ const transferSlice = createSlice({
   },
 });
 
-export const { resetTransferState } = transferSlice.actions;
+export const { resetTransferState, clearTransferError } = transferSlice.actions;
 export default transferSlice.reducer;

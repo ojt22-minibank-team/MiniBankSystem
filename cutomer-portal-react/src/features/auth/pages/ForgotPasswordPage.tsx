@@ -283,7 +283,7 @@ function ForgotPasswordPage() {
                     "
                   >
 
-                    MiniBank
+                    ACE Bank
 
                   </h1>
 
@@ -627,7 +627,7 @@ function ForgotPasswordPage() {
                     "
                   >
 
-                    MiniBank
+                    ACE Bank
 
                   </h1>
 
@@ -998,7 +998,7 @@ function ForgotPasswordPage() {
 
                     The verification code will only be
                     sent to the email address registered
-                    with your MiniBank account.
+                    with your ACE Bank account.
 
                   </p>
 

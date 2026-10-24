@@ -11,6 +11,8 @@ import {
   Loader2,
   X,
   User,
+  Store,
+  CreditCard,
 } from "lucide-react";
 import {
   getMyNotifications,
@@ -21,11 +23,13 @@ import {
 import type { NotificationItem } from "../types/notificationTypes";
 import { useNotificationWebSocket } from "../hooks/useNotificationWebSocket";
 import {
+  getAccessToken,
   getAuthenticationGeneration,
   hasTokens,
   isAuthenticationGenerationCurrent,
   subscribeToAuthenticationChanges,
 } from "../../../utils/tokenStorage";
+import { SESSION_TIMEOUT_EVENT } from "../../../utils/sessionEvents";
 
 interface NotificationRequestScope {
   generation: number;
@@ -44,6 +48,8 @@ export const NotificationDropdown: React.FC = () => {
   const requestScopeRef = useRef<NotificationRequestScope | null>(null);
   const isOpenRef = useRef(isOpen);
   useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
+  const stopPollingRef = useRef<() => void>(() => {});
+  const startPollingRef = useRef<() => void>(() => {});
 
   const isCurrent = useCallback((scope: NotificationRequestScope | null) =>
     scope !== null && requestScopeRef.current === scope && hasTokens() &&
@@ -97,11 +103,24 @@ export const NotificationDropdown: React.FC = () => {
   const fetchUnreadCount = useCallback(async () => {
     const scope = requestScopeRef.current;
     if (!isCurrent(scope)) return;
+    const requestToken = getAccessToken();
+    if (!requestToken) return;
+
     try {
       const count = await getUnreadNotificationCount();
-      if (isCurrent(scope)) setUnreadCount(count);
-    } catch {
-      // Silently catch in polling
+      if (isCurrent(scope) && requestToken === getAccessToken()) {
+        setUnreadCount(count);
+        // Recovery: If previous 403 or error stopped polling, but this fetch succeeded, safely resume polling
+        startPollingRef.current();
+      }
+    } catch (err: unknown) {
+      if (!isCurrent(scope)) return;
+      // Token Rotation Guard: If token was rotated while in flight, ignore 401/403 from the old token!
+      if (requestToken !== getAccessToken()) return;
+
+      if (isAxiosError(err) && (err.response?.status === 401 || err.response?.status === 403)) {
+        stopPollingRef.current();
+      }
     }
   }, [isCurrent]);
 
@@ -109,18 +128,31 @@ export const NotificationDropdown: React.FC = () => {
   const fetchNotifications = useCallback(async () => {
     const scope = requestScopeRef.current;
     if (!isCurrent(scope)) return;
+    const requestToken = getAccessToken();
+    if (!requestToken) return;
+
     try {
       setLoading(true);
       setError(null);
       const data = await getMyNotifications();
       if (!isCurrent(scope)) return;
-      if (Array.isArray(data)) {
-        setNotifications(data);
-      } else {
-        setNotifications([]);
+      if (requestToken === getAccessToken()) {
+        if (Array.isArray(data)) {
+          setNotifications(data);
+        } else {
+          setNotifications([]);
+        }
+        // Recovery: If manual fetch succeeded, safely resume polling
+        startPollingRef.current();
       }
     } catch (err: unknown) {
       if (!isCurrent(scope)) return;
+      // Token Rotation Guard: If token was rotated while in flight, ignore 401/403 from the old token!
+      if (requestToken !== getAccessToken()) return;
+
+      if (isAxiosError(err) && (err.response?.status === 401 || err.response?.status === 403)) {
+        stopPollingRef.current();
+      }
       setError(
         (isAxiosError<{ message?: string }>(err) ? err.response?.data?.message : undefined) ||
         (err instanceof Error ? err.message : "Failed to load notifications.")
@@ -134,13 +166,29 @@ export const NotificationDropdown: React.FC = () => {
   useEffect(() => {
     let intervalId: number | undefined;
     const stopPolling = () => {
-      window.clearInterval(intervalId);
-      intervalId = undefined;
+      if (intervalId !== undefined) {
+        window.clearInterval(intervalId);
+        intervalId = undefined;
+      }
     };
+    stopPollingRef.current = stopPolling;
+
+    const startPolling = (targetScope = requestScopeRef.current) => {
+      if (!isCurrent(targetScope)) return;
+      if (intervalId !== undefined) return; // Prevent duplicate intervals
+
+      intervalId = window.setInterval(() => {
+        if (!isCurrent(targetScope)) return;
+        void fetchUnreadCount();
+        if (isOpenRef.current) void fetchNotifications();
+      }, 20000);
+    };
+    startPollingRef.current = () => startPolling();
+
     const synchronize = () => {
       const generation = getAuthenticationGeneration();
       const authenticated = hasTokens() && isAuthenticationGenerationCurrent(generation);
-      if (authenticated && requestScopeRef.current?.generation === generation) return;
+      if (authenticated && requestScopeRef.current?.generation === generation && intervalId !== undefined) return;
 
       requestScopeRef.current = null;
       stopPolling();
@@ -155,11 +203,13 @@ export const NotificationDropdown: React.FC = () => {
       const scope = { generation };
       requestScopeRef.current = scope;
       void fetchUnreadCount();
-      intervalId = window.setInterval(() => {
-        if (!isCurrent(scope)) return;
-        void fetchUnreadCount();
-        if (isOpenRef.current) void fetchNotifications();
-      }, 20000);
+      startPolling(scope);
+    };
+
+    const handleSessionTimeout = () => {
+      requestScopeRef.current = null;
+      stopPolling();
+      setIsOpen(false);
     };
 
     // Listen to custom notification trigger (e.g. from P2P transfer)
@@ -177,6 +227,7 @@ export const NotificationDropdown: React.FC = () => {
       void fetchUnreadCount();
     };
     const unsubscribe = subscribeToAuthenticationChanges(synchronize);
+    window.addEventListener(SESSION_TIMEOUT_EVENT, handleSessionTimeout);
     window.addEventListener("new-notification-event", handleCustomNotify);
     window.addEventListener("open-notification-dropdown", handleOpenFromToast);
     window.addEventListener("storage", synchronize);
@@ -186,6 +237,7 @@ export const NotificationDropdown: React.FC = () => {
       requestScopeRef.current = null;
       stopPolling();
       unsubscribe();
+      window.removeEventListener(SESSION_TIMEOUT_EVENT, handleSessionTimeout);
       window.removeEventListener("new-notification-event", handleCustomNotify);
       window.removeEventListener("open-notification-dropdown", handleOpenFromToast);
       window.removeEventListener("storage", synchronize);
@@ -283,12 +335,33 @@ export const NotificationDropdown: React.FC = () => {
     const titleLower = item.title.toLowerCase();
     const isFailed = titleLower.includes("fail") || titleLower.includes("reject");
     const isReceived =
-      titleLower.includes("received") || titleLower.includes("funds received");
+      item.transferDirection === "RECEIVED" ||
+      titleLower.includes("received") ||
+      titleLower.includes("funds received");
+    const isPayment =
+      item.notificationType === "PAYMENT" ||
+      titleLower.includes("payment");
 
     if (isFailed) {
       return (
         <div className="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0 border border-red-100">
           <AlertCircle className="w-5 h-5" />
+        </div>
+      );
+    }
+
+    if (isPayment && isReceived) {
+      return (
+        <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100 shadow-xs">
+          <Store className="w-5 h-5" />
+        </div>
+      );
+    }
+
+    if (isPayment && !isReceived) {
+      return (
+        <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100 shadow-xs">
+          <CreditCard className="w-5 h-5" />
         </div>
       );
     }
@@ -520,14 +593,14 @@ export const NotificationDropdown: React.FC = () => {
                               item.transferDirection === "RECEIVED"
                                 ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
                                 : item.transferDirection === "SENT"
-                                ? "bg-blue-50 text-blue-700 border border-blue-100"
+                                ? "bg-rose-50 text-rose-700 border border-rose-100"
                                 : "bg-slate-100 text-slate-600"
                             }`}
                           >
                             {item.transferDirection === "RECEIVED"
-                              ? "+"
+                              ? "+ "
                               : item.transferDirection === "SENT"
-                              ? "-"
+                              ? "- "
                               : ""}
                             {formatAmount(item.amount)} {item.currency || "MMK"}
                           </span>

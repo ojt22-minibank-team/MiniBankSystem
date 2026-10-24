@@ -1,0 +1,17 @@
+
+{
+  "title": "Settings",
+  "description": "Manage your preferences and personalize your banking experience.",
+  "appearance": "Appearance",
+  "theme": "Theme",
+  "lightTheme": "Light",
+  "darkTheme": "Dark",
+  "systemTheme": "System",
+  "notifications": "Notifications",
+  "notificationsDescription": "Enable or disable in-app notification display.",
+  "notificationsEnabled": "Notifications enabled",
+  "language": "Language",
+  "languageDescription": "Choose your preferred display language",
+  "english": "English",
+  "myanmar": "မြန်မာ"
+}

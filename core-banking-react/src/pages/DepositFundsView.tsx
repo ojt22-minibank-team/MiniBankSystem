@@ -392,7 +392,7 @@ export const DepositFundsView: React.FC = () => {
             {/* Header Voucher Banner */}
             <div className="text-center pb-3 border-b border-dashed border-slate-300">
               <div className="text-sm font-black text-slate-900 font-sans tracking-wider uppercase">
-                MINIBANK CORE BANKING SYSTEM
+                ACE BANK CORE BANKING SYSTEM
               </div>
               <div className="text-[10px] text-slate-500 font-sans">
                 Group 2 Staff Counter Receipt • {receipt.timestamp}
@@ -432,7 +432,7 @@ export const DepositFundsView: React.FC = () => {
             </div>
 
             <div className="text-center text-[10px] text-slate-400 font-sans pt-1">
-              Thank you for banking with MiniBank. Transaction authorized.
+              Thank you for banking with ACE Bank. Transaction authorized.
             </div>
           </div>
         )}

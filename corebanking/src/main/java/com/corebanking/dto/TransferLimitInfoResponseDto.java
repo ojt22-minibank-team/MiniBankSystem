@@ -35,4 +35,7 @@ public class TransferLimitInfoResponseDto {
     // Real-time tracking
     private BigDecimal todayTransferredAmount;
     private BigDecimal remainingDailyLimit;
+
+    // Minimum Reserve Balance
+    private BigDecimal minimumBalance;
 }

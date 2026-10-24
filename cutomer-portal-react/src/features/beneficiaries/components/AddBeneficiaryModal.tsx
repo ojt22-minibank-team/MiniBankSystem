@@ -7,6 +7,7 @@ import {
   AlertCircle,
   Tag,
   CreditCard,
+  ChevronLeft,
 } from "lucide-react";
 import { lookupDestinationAccount } from "../../transfer/services/transferService";
 import { addBeneficiary } from "../services/beneficiaryService";
@@ -112,7 +113,8 @@ export const AddBeneficiaryModal: React.FC<AddBeneficiaryModalProps> = ({
         {/* Close Button */}
         <button
           onClick={handleClose}
-          className="absolute top-5 right-5 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+          disabled={submitting}
+          className="absolute top-5 right-5 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors disabled:opacity-50"
         >
           <X className="w-5 h-5" />
         </button>
@@ -219,9 +221,10 @@ export const AddBeneficiaryModal: React.FC<AddBeneficiaryModalProps> = ({
               type="button"
               onClick={handleClose}
               disabled={submitting}
-              className="flex-1 py-3.5 rounded-2xl font-semibold text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+              className="flex-1 py-3.5 rounded-2xl font-semibold text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors flex items-center justify-center gap-1.5"
             >
-              Cancel
+              <ChevronLeft className="w-4 h-4" />
+              <span>Back</span>
             </button>
             <button
               type="submit"

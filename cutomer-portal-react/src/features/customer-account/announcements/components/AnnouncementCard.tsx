@@ -9,7 +9,7 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 
-import type { Announcement } from "../../types/announcementTypes";
+import type { Announcement } from "../types/announcementTypes";
 
 interface AnnouncementCardProps {
   announcement: Announcement;

@@ -119,7 +119,7 @@ function SessionTimeoutModal({
         >
 
           Please login again to continue
-          using MiniBank securely.
+          using ACE Bank securely.
 
         </p>
 

@@ -27,7 +27,7 @@ export default function RecentTransactions() {
         </div>
 
         <Link
-          to="/transactions"
+          to="/transaction"
           className="inline-flex shrink-0 items-center gap-2 text-sm font-medium text-blue-700 transition hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
           <History size={17} />
@@ -90,10 +90,10 @@ export default function RecentTransactions() {
                   className={`text-sm font-semibold ${
                     isCredit
                       ? "text-green-600"
-                      : "text-slate-800"
+                      : "text-rose-600"
                   }`}
                 >
-                  {isCredit ? "+" : ""}
+                  {isCredit ? "+ " : "- "}
                   {Math.abs(transaction.amount).toLocaleString()} MMK
                 </p>
 

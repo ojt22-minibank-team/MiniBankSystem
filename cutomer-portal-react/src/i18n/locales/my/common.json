@@ -1,0 +1,23 @@
+{
+  "customerPortal": "Customer Portal",
+  "sections": {
+    "banking": "ဘဏ်လုပ်ငန်း",
+    "account": "အကောင့်"
+  },
+  "navigation": {
+    "dashboard": "ပင်မစာမျက်နှာ",
+    "accounts": "ကျွန်ုပ်၏ ဘဏ်အကောင့်များ",
+    "transfer": "ငွေလွှဲခြင်းနှင့် ငွေပေးချေမှုများ",
+    "transactionHistory": "ငွေလွှဲမှတ်တမ်း",
+    "beneficiaries": "ငွေလက်ခံသူများ",
+    "announcements": "ကြေညာချက်များ",
+    "profile": "ကိုယ်ရေးအချက်အလက်",
+    "settings": "ဆက်တင်များ",
+    "support": "အကူအညီနှင့် ပံ့ပိုးမှု",
+    "logout": "အကောင့်မှ ထွက်ရန်",
+    "loggingOut": "အကောင့်မှ ထွက်နေသည်..."
+  },
+  "accessibility": {
+    "unreadAnnouncements": "မဖတ်ရသေးသော ကြေညာချက် {{count}} ခု"
+  }
+}

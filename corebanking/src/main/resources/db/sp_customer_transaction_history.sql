@@ -7,7 +7,7 @@
 --   Retrieves filterable, paginated transaction history for an authenticated customer
 --   and selected account.
 --   Returns 2 Result Sets:
---     Result Set 1: Requested Page Rows
+--     Result Set 1: Requested Page Rows (with structured counterparty & own-account info)
 --     Result Set 2: totalElements (total matching count across both branches)
 --
 -- Security & Performance Invariants:
@@ -27,8 +27,14 @@
 --   4. Parameterized Dynamic SQL:
 --      Only active filters are appended to the WHERE clause to prevent optimizer plan
 --      degradation. Filter values are bound to session variables to prevent SQL injection.
---   5. Delayed Join on Accounts:
---      Joins to accounts table occur only on the final paginated page rows.
+--   5. Delayed Join on Accounts & Customers:
+--      Joins to accounts (sa, da) and customers (sc, dc) occur only on the final
+--      paginated page rows. The count query remains index-only with zero joins.
+--   6. Structured Counterparty Information:
+--      - counterparty_name: Resolved opposite party customer full_name (INTERNAL_TRANSFER,
+--        EXTERNAL_PAYMENT) or NULL when not applicable (OTC, REFUND, LEDGER_ADJUSTMENT).
+--      - is_own_account: 1 if source and destination account belong to the same customer,
+--        0 otherwise.
 -- =========================================================================
 
 DROP PROCEDURE IF EXISTS sp_get_customer_transaction_history;
@@ -132,7 +138,7 @@ proc_label: BEGIN
     END IF;
 
     -- -------------------------------------------------------------------------
-    -- 4. Result Set 1: Page of Transaction Rows
+    -- 4. Result Set 1: Page of Transaction Rows with Counterparty Information
     -- -------------------------------------------------------------------------
     SET @sql_rows = CONCAT(
       'SELECT ',
@@ -150,12 +156,32 @@ proc_label: BEGIN
       '  t.failure_code, ',
       '  t.failure_message, ',
       '  t.initiated_at, ',
-      '  t.completed_at ',
+      '  t.completed_at, ',
+      '  CASE ',
+      '    WHEN t.transaction_type = \'INTERNAL_TRANSFER\' THEN ',
+      '      CASE ',
+      '        WHEN t.account_side = \'SOURCE\' THEN dc.full_name ',
+      '        WHEN t.account_side = \'DESTINATION\' THEN sc.full_name ',
+      '        ELSE NULL ',
+      '      END ',
+      '    WHEN t.transaction_type = \'EXTERNAL_PAYMENT\' THEN ',
+      '      CASE ',
+      '        WHEN t.account_side = \'SOURCE\' THEN dc.full_name ',
+      '        WHEN t.account_side = \'DESTINATION\' THEN sc.full_name ',
+      '        ELSE NULL ',
+      '      END ',
+      '    ELSE NULL ',
+      '  END AS counterparty_name, ',
+      '  CASE ',
+      '    WHEN sa.customer_id IS NOT NULL AND da.customer_id IS NOT NULL AND sa.customer_id = da.customer_id THEN 1 ',
+      '    ELSE 0 ',
+      '  END AS is_own_account ',
       'FROM (',
       '  (SELECT bt.transaction_id, bt.transaction_ref, bt.source_account_id, bt.destination_account_id, ',
       '          bt.amount, bt.currency, bt.service_fee, bt.description, bt.status, bt.transaction_type, ',
       '          bt.failure_code, bt.failure_message, bt.initiated_at, bt.completed_at, ',
-      '          CASE WHEN bt.status = \'COMPLETED\' THEN \'OUT\' ELSE \'NONE\' END AS direction ',
+      '          CASE WHEN bt.status = \'COMPLETED\' THEN \'OUT\' ELSE \'NONE\' END AS direction, ',
+      '          \'SOURCE\' AS account_side ',
       '   FROM bank_transactions bt ',
       '   WHERE bt.source_account_id = @acc_id ', v_filter_sql, ' ',
       '   ORDER BY bt.initiated_at DESC, bt.transaction_id DESC ',
@@ -164,7 +190,8 @@ proc_label: BEGIN
       '  (SELECT bt.transaction_id, bt.transaction_ref, bt.source_account_id, bt.destination_account_id, ',
       '          bt.amount, bt.currency, bt.service_fee, bt.description, bt.status, bt.transaction_type, ',
       '          bt.failure_code, bt.failure_message, bt.initiated_at, bt.completed_at, ',
-      '          CASE WHEN bt.status = \'COMPLETED\' THEN \'IN\' ELSE \'NONE\' END AS direction ',
+      '          CASE WHEN bt.status = \'COMPLETED\' THEN \'IN\' ELSE \'NONE\' END AS direction, ',
+      '          \'DESTINATION\' AS account_side ',
       '   FROM bank_transactions bt ',
       '   WHERE bt.destination_account_id = @acc_id ',
       '     AND (bt.source_account_id IS NULL OR bt.source_account_id <> @acc_id) ', v_filter_sql, ' ',
@@ -173,6 +200,8 @@ proc_label: BEGIN
       ') t ',
       'LEFT JOIN accounts sa ON t.source_account_id = sa.account_id ',
       'LEFT JOIN accounts da ON t.destination_account_id = da.account_id ',
+      'LEFT JOIN customers sc ON sa.customer_id = sc.customer_id ',
+      'LEFT JOIN customers dc ON da.customer_id = dc.customer_id ',
       'ORDER BY t.initiated_at DESC, t.transaction_id DESC ',
       'LIMIT ', v_size, ' OFFSET ', v_offset
     );

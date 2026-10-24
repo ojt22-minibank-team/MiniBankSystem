@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { Users, UserPlus, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Users, UserPlus, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
 import { getBeneficiaries, deleteBeneficiary } from "../services/beneficiaryService";
 import type { Beneficiary } from "../types/beneficiaryTypes";
 import { BeneficiaryList } from "../components/BeneficiaryList";
 import { AddBeneficiaryModal } from "../components/AddBeneficiaryModal";
 
 export default function BeneficiariesPage() {
+  const navigate = useNavigate();
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +66,14 @@ export default function BeneficiariesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3.5">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="p-2.5 rounded-2xl bg-white border border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50 hover:border-gray-300 shadow-sm transition"
+            title="Back to previous page"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-200">
             <Users className="w-6 h-6 text-white" />
           </div>

@@ -1,3 +1,4 @@
+
 import {
   BriefcaseBusiness,
   CalendarDays,
@@ -8,18 +9,17 @@ import {
   MapPin,
   Phone,
   User,
- 
 } from "lucide-react";
 
-import type {
-  ChangeEvent,
-  ReactNode,
-} from "react";
+import type { ChangeEvent, ReactNode } from "react";
+
+// ပြင်ဆင်ချက်: English / Myanmar ဘာသာပြန်စာသားများ အသုံးပြုရန် import လုပ်ထားသည်။
+import { useTranslation } from "react-i18next";
 
 import type {
   CustomerProfile,
   CustomerProfileUpdate,
-} from "../../types/profileTypes";
+} from "../types/profileTypes";
 
 interface PersonalInfoProps {
   profile: CustomerProfile;
@@ -46,16 +46,20 @@ export default function PersonalInfo({
   onSave,
   isSaving,
 }: PersonalInfoProps) {
+  // ပြင်ဆင်ချက်: UI စာသားများကို profile.json မှ ယူသုံးရန် hook ထည့်ထားသည်။
+  const { t } = useTranslation("profile");
+
   const fullName =
     [profile.firstName, profile.lastName]
       .filter(Boolean)
-      .join(" ") || "Not available";
+      .join(" ") || t("notAvailable");
 
   const formatDate = (
     date: string | null
   ): string => {
     if (!date) {
-      return "Not available";
+      // ပြင်ဆင်ချက်: Hard-coded English အစား ဘာသာပြန် key ကို သုံးထားသည်။
+      return t("notAvailable");
     }
 
     const parsedDate = new Date(date);
@@ -64,14 +68,12 @@ export default function PersonalInfo({
       return date;
     }
 
-    return parsedDate.toLocaleDateString(
-      "en-GB",
-      {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }
-    );
+    // မူလရက်စွဲ format ကို မပြောင်းဘဲ ထိန်းသိမ်းထားသည်။
+    return parsedDate.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   };
 
   const formatAddress = (): string => {
@@ -84,97 +86,91 @@ export default function PersonalInfo({
 
     return parts.length > 0
       ? parts.join(", ")
-      : "Not available";
+      : t("notAvailable");
   };
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      {/* =========================================================
-          SECTION HEADER
-      ========================================================== */}
+      {/* ပြင်ဆင်ချက်: Section ခေါင်းစဉ်နှင့် ဖော်ပြချက်ကို translation keys ချိတ်ထားသည်။ */}
       <div className="flex flex-col gap-3 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
         <div>
           <h2 className="text-lg font-bold text-[#08295C]">
-            Personal Information
+            {t("personalInformation")}
           </h2>
 
           <p className="mt-1 text-sm text-slate-500">
-            Your registered personal and contact information
+            {t("registeredPersonalDescription")}
           </p>
         </div>
 
         {!isEditing && (
           <div className="flex items-center gap-2 text-xs font-medium text-slate-400">
             <span className="h-2 w-2 rounded-full bg-slate-300" />
-            Registered information
+            {t("registeredInformation")}
           </div>
         )}
       </div>
 
-      {/* =========================================================
-          REGISTERED INFORMATION
-      ========================================================== */}
+      {/* REGISTERED INFORMATION */}
       <div className="px-6 py-6 sm:px-7">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <ProfileField
-            label="Customer ID"
+            label={t("customerId")}
             value={profile.customerCode}
             icon={<User size={17} />}
             accent
           />
 
           <ProfileField
-            label="Full Name"
+            label={t("fullName")}
             value={fullName}
             icon={<User size={17} />}
           />
 
           <ProfileField
-            label="Email Address"
+            label={t("emailAddress")}
             value={profile.email}
             icon={<Mail size={17} />}
           />
 
           <ProfileField
-            label="Phone Number"
+            label={t("phoneNumber")}
             value={profile.phone}
             icon={<Phone size={17} />}
           />
 
           <ProfileField
-            label="Date of Birth"
+            label={t("dateOfBirth")}
             value={formatDate(profile.dateOfBirth)}
             icon={<CalendarDays size={17} />}
           />
 
           <ProfileField
-            label="Gender"
+            label={t("gender")}
             value={profile.gender}
             icon={<User size={17} />}
           />
 
           <ProfileField
-            label="NRC"
+            label={t("nrc")}
             value={profile.nrc}
             icon={<FileText size={17} />}
           />
 
           <ProfileField
-            label="Passport Number"
+            label={t("passportNumber")}
             value={profile.passportNumber}
             icon={<FileText size={17} />}
           />
 
           <ProfileField
-            label="Occupation"
+            label={t("occupation")}
             value={profile.occupation}
             icon={<BriefcaseBusiness size={17} />}
           />
         </div>
 
-        {/* =======================================================
-            ADDRESS
-        ======================================================== */}
+        {/* ပြင်ဆင်ချက်: Address section သို့ လိုအပ်သော props များကို မူလအတိုင်း ပေးထားသည်။ */}
         <AddressSection
           formData={formData}
           isEditing={isEditing}
@@ -220,11 +216,12 @@ function AddressSection({
   onSave,
   isSaving,
 }: AddressSectionProps) {
+  // ပြင်ဆင်ချက်: Address section ထဲက စာသားများကိုလည်း profile namespace မှ ယူသုံးသည်။
+  const { t } = useTranslation("profile");
+
   return (
     <div className="mt-8 border-t border-slate-100 pt-7">
-      {/* ==========================================================
-          ADDRESS HEADER
-      =========================================================== */}
+      {/* ADDRESS HEADER */}
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -234,11 +231,11 @@ function AddressSection({
 
             <div>
               <h3 className="text-base font-bold text-slate-800">
-                Address
+                {t("address")}
               </h3>
 
               <p className="text-xs text-slate-500">
-                Your current residential address
+                {t("currentResidentialAddress")}
               </p>
             </div>
           </div>
@@ -251,14 +248,12 @@ function AddressSection({
             className="inline-flex items-center justify-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-[#0878E8] transition hover:border-blue-200 hover:bg-blue-100 focus:outline-none focus:ring-4 focus:ring-blue-50"
           >
             <Edit3 size={15} />
-            Edit Address
+            {t("editAddress")}
           </button>
         )}
       </div>
 
-      {/* ==========================================================
-          VIEW MODE
-      =========================================================== */}
+      {/* VIEW MODE */}
       {!isEditing ? (
         <div className="rounded-xl border border-slate-200 bg-slate-50/60 px-5 py-4">
           <div className="flex items-start gap-3">
@@ -269,7 +264,7 @@ function AddressSection({
 
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                Current Address
+                {t("currentAddress")}
               </p>
 
               <p className="mt-1 text-sm font-semibold leading-6 text-slate-800">
@@ -279,113 +274,79 @@ function AddressSection({
           </div>
         </div>
       ) : (
-        /* ========================================================
-           EDIT MODE
-        ========================================================= */
+        /* EDIT MODE */
         <div className="rounded-xl border border-blue-100 bg-blue-50/30 p-5">
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <FormField
               id="address"
-              label="Address"
+              label={t("address")}
               value={formData.address ?? ""}
-              placeholder="Enter your address"
+              placeholder={t("enterAddress")}
               onChange={onInputChange}
               fullWidth
             />
 
             <FormField
               id="city"
-              label="City"
+              label={t("city")}
               value={formData.city ?? ""}
-              placeholder="Enter city"
+              placeholder={t("enterCity")}
               onChange={onInputChange}
             />
 
             <FormField
               id="stateRegion"
-              label="State / Region"
+              label={t("stateRegion")}
               value={formData.stateRegion ?? ""}
-              placeholder="Enter state or region"
+              placeholder={t("enterStateRegion")}
               onChange={onInputChange}
             />
 
             <FormField
               id="country"
-              label="Country"
+              label={t("country")}
               value={formData.country ?? ""}
-              placeholder="Enter country"
+              placeholder={t("enterCountry")}
               onChange={onInputChange}
             />
           </div>
 
-          {/* ======================================================
-              ACTIONS
-          ======================================================= */}
-      <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
-  <p className="hidden text-xs text-slate-400 sm:block">
-    Make sure your information is correct before saving.
-  </p>
+          {/* ပြင်ဆင်ချက်: Save / Cancel / Saving စာသားများကို ဘာသာပြန် key များနှင့် ချိတ်ထားသည်။ */}
+          <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
+            <p className="hidden text-xs text-slate-400 sm:block">
+              {t("saveChangesNotice")}
+            </p>
 
-  <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
-    <button
-      type="button"
-      onClick={onCancel}
-      disabled={isSaving}
-      className="
-        inline-flex items-center justify-center
-        rounded-lg
-        px-4 py-2.5
-        text-sm font-medium
-        text-slate-600
-        transition-colors
-        hover:bg-slate-50
-        hover:text-slate-800
-        focus:outline-none
-        focus:ring-2
-        focus:ring-slate-200
-        disabled:cursor-not-allowed
-        disabled:opacity-50
-      "
-    >
-      Cancel
-    </button>
+            <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={isSaving}
+                className="inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {t("cancel")}
+              </button>
 
-    <button
-      type="button"
-      onClick={onSave}
-      disabled={isSaving}
-      className="
-        inline-flex items-center justify-center gap-2
-        rounded-lg
-        bg-[#0878E8]
-        px-5 py-2.5
-        text-sm font-semibold
-        text-white
-        shadow-sm
-        transition-all
-        hover:bg-blue-700
-        hover:shadow-md
-        focus:outline-none
-        focus:ring-4
-        focus:ring-blue-100
-        disabled:cursor-not-allowed
-        disabled:opacity-60
-      "
-    >
-      {isSaving ? (
-        <>
-          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-          Saving...
-        </>
-      ) : (
-        <>
-          <Check size={16} />
-          Save
-        </>
-      )}
-    </button>
-  </div>
-</div>
+              <button
+                type="button"
+                onClick={onSave}
+                disabled={isSaving}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#0878E8] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSaving ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                    {t("saving")}
+                  </>
+                ) : (
+                  <>
+                    <Check size={16} />
+                    {t("save")}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -457,6 +418,9 @@ function ProfileField({
   icon,
   accent = false,
 }: ProfileFieldProps) {
+  // ပြင်ဆင်ချက်: Profile value မရှိသောအခါ လက်ရှိဘာသာစကားအလိုက် fallback ပြမည်။
+  const { t } = useTranslation("profile");
+
   return (
     <div className="group rounded-xl border border-slate-100 bg-slate-50/40 px-4 py-4 transition hover:border-slate-200 hover:bg-slate-50">
       <div className="flex items-start gap-3">
@@ -476,7 +440,7 @@ function ProfileField({
           </p>
 
           <p className="mt-1.5 break-words text-sm font-semibold text-slate-800">
-            {value || "Not available"}
+            {value || t("notAvailable")}
           </p>
         </div>
       </div>

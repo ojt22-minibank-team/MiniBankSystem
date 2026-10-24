@@ -1,5 +1,5 @@
-
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ArrowRight,
   Check,
@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import type { DashboardAccount } from "../../types/dashboardTypes";
+import type { DashboardAccount } from "../types/dashboardTypes";
 
 interface AccountSummaryProps {
   accounts: DashboardAccount[];
@@ -21,9 +21,8 @@ interface AccountSummaryProps {
 const statusStyles: Record<string, string> = {
   ACTIVE: "bg-emerald-50 text-emerald-700",
   FROZEN: "bg-amber-50 text-amber-700",
-  SUSPENDED: "bg-red-50 text-red-700",
   DORMANT: "bg-amber-50 text-amber-700",
-  CLOSED: "bg-slate-100 text-slate-600",
+  CLOSED: "bg-red-50 text-red-700",
 };
 
 function getAccountIcon(accountType: string) {
@@ -55,9 +54,46 @@ function maskAccountNumber(accountNumber: string): string {
   return `**** **** ${accountNumber.slice(-4)}`;
 }
 
+function getAccountTypeLabel(
+  accountType: string,
+  t: (key: string) => string,
+): string {
+  const normalizedType = accountType.toUpperCase();
+
+  if (normalizedType.includes("SAVING")) {
+    return t("accountTypeSavings");
+  }
+
+  if (normalizedType.includes("CURRENT")) {
+    return t("accountTypeCurrent");
+  }
+
+  return accountType;
+}
+
+function getStatusLabel(
+  status: string,
+  t: (key: string) => string,
+): string {
+  const normalizedStatus = status.toUpperCase();
+
+  const statusKeys: Record<string, string> = {
+    ACTIVE: "statusActive",
+    DORMANT: "statusDormant",
+    FROZEN: "statusFrozen",
+    CLOSED: "statusClosed",
+  };
+
+  const translationKey = statusKeys[normalizedStatus];
+
+  return translationKey ? t(translationKey) : status;
+}
+
 export default function AccountSummary({
   accounts,
 }: AccountSummaryProps) {
+  const { t } = useTranslation("dashboard");
+
   const [visibleAccounts, setVisibleAccounts] = useState<Set<string>>(
     () => new Set(),
   );
@@ -141,17 +177,20 @@ export default function AccountSummary({
 
   if (accounts.length === 0) {
     return (
-      <section className="rounded-xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center">
+      <section
+        aria-label={t("myAccounts")}
+        className="rounded-xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center"
+      >
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-[#0878E8]">
           <WalletCards size={24} aria-hidden="true" />
         </div>
 
         <h2 className="mt-3 text-base font-semibold text-[#08295C]">
-          No Accounts Available
+          {t("noAccountsAvailable")}
         </h2>
 
         <p className="mt-1 text-sm text-slate-500">
-          Your accounts will appear here when they are available.
+          {t("accountsWillAppear")}
         </p>
       </section>
     );
@@ -159,7 +198,7 @@ export default function AccountSummary({
 
   return (
     <section
-      aria-label="My accounts"
+      aria-label={t("myAccounts")}
       className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
     >
       {accounts.map((account) => {
@@ -174,6 +213,19 @@ export default function AccountSummary({
           statusStyles[account.status.toUpperCase()] ??
           "bg-slate-100 text-slate-600";
 
+        const accountTypeLabel = getAccountTypeLabel(
+          account.accountType,
+          t,
+        );
+
+        const statusLabel = getStatusLabel(account.status, t);
+
+        const visibilityLabel = isVisible
+          ? t("hideAccountNumber")
+          : t("showAccountNumber");
+
+        const accountDetailsLabel = t("viewDetails");
+
         return (
           <article
             key={account.accountNumber}
@@ -183,7 +235,7 @@ export default function AccountSummary({
             <div className="flex items-start justify-between gap-3">
               <Link
                 to={`/accounts/${encodeURIComponent(account.accountNumber)}`}
-                aria-label={`View details for ${account.accountType} account ending ${account.accountNumber.slice(-4)}`}
+                aria-label={`${accountTypeLabel}, ${t("accountNumber")} ending ${account.accountNumber.slice(-4)}`}
                 className="flex min-w-0 flex-1 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0878E8]"
               >
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#0878E8] transition-colors group-hover:bg-[#0878E8] group-hover:text-white">
@@ -192,7 +244,7 @@ export default function AccountSummary({
 
                 <div className="min-w-0">
                   <h3 className="truncate text-sm font-semibold text-[#08295C] sm:text-base">
-                    {account.accountType}
+                    {accountTypeLabel}
                   </h3>
                 </div>
               </Link>
@@ -200,8 +252,7 @@ export default function AccountSummary({
               <span
                 className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold sm:text-xs ${statusClass}`}
               >
-                {account.status.charAt(0) +
-                  account.status.slice(1).toLowerCase()}
+                {statusLabel}
               </span>
             </div>
 
@@ -218,17 +269,9 @@ export default function AccountSummary({
                 onClick={() =>
                   toggleAccountNumber(account.accountNumber)
                 }
-                aria-label={
-                  isVisible
-                    ? "Hide account number"
-                    : "Show account number"
-                }
+                aria-label={visibilityLabel}
                 aria-pressed={isVisible}
-                title={
-                  isVisible
-                    ? "Hide account number"
-                    : "Show account number"
-                }
+                title={visibilityLabel}
                 className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-blue-50 hover:text-[#0878E8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0878E8]"
               >
                 {isVisible ? (
@@ -245,10 +288,14 @@ export default function AccountSummary({
                 }
                 aria-label={
                   isCopied
-                    ? "Account number copied"
-                    : "Copy account number"
+                    ? t("copied")
+                    : t("copyAccountNumber")
                 }
-                title={isCopied ? "Copied!" : "Copy account number"}
+                title={
+                  isCopied
+                    ? t("copied")
+                    : t("copyAccountNumber")
+                }
                 className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-blue-50 hover:text-[#0878E8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0878E8]"
               >
                 {isCopied ? (
@@ -267,7 +314,7 @@ export default function AccountSummary({
                   className="whitespace-nowrap text-xs font-medium text-emerald-600"
                   role="status"
                 >
-                  Copied!
+                  {t("copied")}
                 </span>
               )}
 
@@ -276,7 +323,7 @@ export default function AccountSummary({
                   className="whitespace-nowrap text-xs text-red-600"
                   role="status"
                 >
-                  Copy failed
+                  {t("copyFailed")}
                 </span>
               )}
             </div>
@@ -284,7 +331,7 @@ export default function AccountSummary({
             {/* Available Balance */}
             <div className="mt-4">
               <p className="text-xs font-medium text-slate-500 sm:text-sm">
-                Available Balance
+                {t("availableBalance")}
               </p>
 
               <div className="mt-1.5 flex min-w-0 flex-wrap items-baseline gap-x-2">
@@ -302,11 +349,11 @@ export default function AccountSummary({
             <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
               <div className="min-w-0">
                 <p className="text-xs text-slate-500">
-                  Account Type
+                  {t("accountType")}
                 </p>
 
                 <p className="mt-1 truncate text-sm font-medium text-slate-700">
-                  {account.accountType}
+                  {accountTypeLabel}
                 </p>
               </div>
 
@@ -314,7 +361,7 @@ export default function AccountSummary({
                 to={`/accounts/${encodeURIComponent(account.accountNumber)}`}
                 className="inline-flex shrink-0 items-center gap-1.5 rounded-md text-xs font-semibold text-[#0878E8] transition-colors hover:text-[#0668ca] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0878E8] sm:text-sm"
               >
-                View Details
+                {accountDetailsLabel}
 
                 <ArrowRight
                   size={15}

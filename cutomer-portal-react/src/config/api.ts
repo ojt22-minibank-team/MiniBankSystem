@@ -546,6 +546,12 @@ api.interceptors.response.use(
         ApiErrorResponse
         | undefined;
 
+    if (
+      responseData?.code === "INVALID_PIN" ||
+      responseData?.code === "ACCOUNT_LOCKED"
+    ) {
+      return Promise.reject(error);
+    }
 
     if (
       responseData?.code ===

@@ -12,6 +12,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -193,7 +194,9 @@ public class CusAccountService {
                 )
 
                 .minimumBalance(
-                        account.getMinimumBalance()
+                        account.getMinimumBalance() != null && account.getMinimumBalance().compareTo(BigDecimal.ZERO) > 0
+                                ? account.getMinimumBalance()
+                                : transferLimitService.getMinimumBalance()
                 )
 
                 .dailyTransferLimit(

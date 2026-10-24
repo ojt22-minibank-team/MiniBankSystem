@@ -22,6 +22,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CusDashboardService {
 
+	 private static final String ROLE_CUSTOMER = "ROLE_CUSTOMER";
+	 private static final String CLOSED_STATUS = "CLOSED";
+	
     private final CustomerRepository customerRepository;
     private final AccountRepository accountRepository;
 
@@ -35,8 +38,10 @@ public class CusDashboardService {
         Customers customer = customerRepository
                 .findById(customerId)
                 .orElseThrow(() ->
-                        new RuntimeException("Customer not found.")
-                );
+                	new IllegalStateException(
+                        "Authenticated customer record was not found."
+                )
+              );
 
         // Get customer's accounts
         List<Accounts> accountEntities =
@@ -47,6 +52,19 @@ public class CusDashboardService {
                 accountEntities.stream()
                         .map(this::mapToDashboardAccount)
                         .toList();
+        
+        // 5. Count all non-closed accounts.
+        // FROZEN and DORMANT accounts are included.
+        int accountCount = Math.toIntExact(
+                accountEntities.stream()
+                        .filter(account ->
+                                account.getStatus() != null
+                                        && !CLOSED_STATUS.equals(
+                                                account.getStatus().name()
+                                        )
+                        )
+                        .count()
+        );
 
         // Calculate total available balance
         BigDecimal totalBalance = accounts.stream()
@@ -63,7 +81,7 @@ public class CusDashboardService {
                 .fullName(customer.getFullName())
                 .customerType(customer.getCustomerType())
                 .totalBalance(totalBalance)
-                .accountCount(accounts.size())
+                .accountCount(accountCount)
                 .accounts(accounts)
                 .build();
     }
@@ -115,7 +133,8 @@ public class CusDashboardService {
         } catch (IllegalArgumentException ex) {
 
             throw new RuntimeException(
-                    "Invalid customer identity."
+            		 "Invalid authenticated customer identity.",
+                     ex
             );
         }
     }

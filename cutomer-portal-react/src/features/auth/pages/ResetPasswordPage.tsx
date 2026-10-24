@@ -525,7 +525,7 @@ function ResetPasswordPage() {
                     "
                   >
 
-                    MiniBank
+                    ACE Bank
 
                   </h1>
 
@@ -576,7 +576,7 @@ function ResetPasswordPage() {
 
                 Your email verification is complete.
                 Create a new password to securely
-                regain access to your MiniBank account.
+                regain access to your ACE Bank account.
 
               </p>
 
@@ -930,7 +930,7 @@ function ResetPasswordPage() {
                     >
 
                       You can now login to your
-                      MiniBank account using your
+                      ACE Bank account using your
                       new password.
 
                     </p>
@@ -1048,7 +1048,7 @@ function ResetPasswordPage() {
                           "
                         >
 
-                          MiniBank
+                          ACE Bank
 
                         </h1>
 
@@ -1137,7 +1137,7 @@ function ResetPasswordPage() {
                       >
 
                         Create a secure new password
-                        for your MiniBank account.
+                        for your ACE Bank account.
 
                       </p>
 

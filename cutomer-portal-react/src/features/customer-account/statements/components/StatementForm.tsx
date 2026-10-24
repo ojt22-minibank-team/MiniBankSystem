@@ -1,6 +1,6 @@
 import { useRef, type ChangeEvent, type FormEvent, type FC } from "react";
 import { Calendar, ChevronDown, Wallet, Info } from "lucide-react";
-import type { CustomerAccount } from "../../types/accountTypes";
+import type { CustomerAccount } from "../../accounts/types/accountTypes";
 import type {
   StatementAccountType,
   StatementFilterForm,
