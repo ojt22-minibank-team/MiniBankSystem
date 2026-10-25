@@ -133,6 +133,13 @@ public class TransferLimitService {
     }
 
     /**
+     * Retrieves the bank-wide daily transfer limit configured in system_parameters (default: 10,000,000 MMK).
+     */
+    public BigDecimal getDailyTransferLimit() {
+        return getSystemParameter(KEY_DAILY_LIMIT, DEFAULT_DAILY_LIMIT);
+    }
+
+    /**
      * Retrieves the bank-wide minimum balance configured in system_parameters (default: 10,000 MMK).
      */
     public BigDecimal getMinimumBalance() {
