@@ -89,10 +89,15 @@ export const MerchantPaymentAuthorize: React.FC = () => {
         if (currentAccounts.length > 0) {
           setSelectedAccountId(currentAccounts[0].accountNumber);
         }
-      } catch {
+      } catch (err) {
         if (!isCancelled) {
-          setErrorMessage('Failed to load payment details. Invalid or expired token.');
-          setErrorCode('SYSTEM_ERROR');
+          if (axios.isAxiosError(err)) {
+            setErrorMessage(err.response?.data?.message || 'Failed to load payment details. Invalid or expired token.');
+            setErrorCode(err.response?.data?.code || 'SYSTEM_ERROR');
+          } else {
+            setErrorMessage('Failed to load payment details. Invalid or expired token.');
+            setErrorCode('SYSTEM_ERROR');
+          }
         }
       } finally {
         if (!isCancelled) {

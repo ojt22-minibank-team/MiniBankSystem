@@ -7,6 +7,7 @@ import com.corebanking.exception.TransactionException;
 import com.corebanking.integration.port.LedgerFacadePort;
 import com.corebanking.repository.AccountRepository;
 import com.corebanking.repository.BankTransactionRepository;
+import com.corebanking.service.TransferLimitService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -26,6 +27,7 @@ public class CoreBankingLedgerAdapter implements LedgerFacadePort {
 
     private final AccountRepository accountRepository;
     private final BankTransactionRepository bankTransactionRepository;
+    private final TransferLimitService transferLimitService;
 
     @Override
     public boolean isDuplicatePayment(String paymentToken) {
@@ -50,14 +52,25 @@ public class CoreBankingLedgerAdapter implements LedgerFacadePort {
                 .findFirst()
                 .orElseThrow(() -> new AccountNotFoundException("Selected account must be an active CURRENT account"));
 
-        BigDecimal availableBalance = sourceAccount.getAvailableBalance();
-        BigDecimal dailyLimit = sourceAccount.getDailyTransferLimit();
+        BigDecimal availableBalance = sourceAccount.getAvailableBalance() != null 
+                ? sourceAccount.getAvailableBalance() 
+                : BigDecimal.ZERO;
+        
+        // Enforce Bank-wide Minimum Balance (Synchronized with Member 3 TransferLimitService)
+        BigDecimal minBalance = transferLimitService.getEffectiveMinimumBalance(sourceAccount);
+        BigDecimal netAvailable = availableBalance.subtract(minBalance);
 
-        if (availableBalance == null || availableBalance.compareTo(amount) < 0) {
-            throw new InsufficientFundsException("Insufficient available balance");
+        if (netAvailable.compareTo(amount) < 0) {
+            log.warn("Insufficient funds for account {}. Available: {}, Minimum required: {}, Net spendable: {}, Attempted: {}",
+                    sourceAccount.getAccountNumber(), availableBalance, minBalance, netAvailable, amount);
+            throw new InsufficientFundsException(String.format(
+                    "Insufficient available funds. You must maintain a minimum balance of %,.2f %s. Available to spend: %,.2f %s, Attempted: %,.2f %s",
+                    minBalance, sourceAccount.getCurrency(), netAvailable.max(BigDecimal.ZERO), sourceAccount.getCurrency(), amount, sourceAccount.getCurrency()
+            ));
         }
         
         // Cumulative Daily Transfer Limit Check (Enforces consistency with Group 2 and Member 3)
+        BigDecimal dailyLimit = sourceAccount.getDailyTransferLimit();
         if (dailyLimit != null && dailyLimit.compareTo(BigDecimal.ZERO) > 0) {
             LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
             LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
@@ -89,4 +102,3 @@ public class CoreBankingLedgerAdapter implements LedgerFacadePort {
         log.info("Read-only pre-check passed for customer {}", customerId);
     }
 }
-
