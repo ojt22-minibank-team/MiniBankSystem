@@ -69,8 +69,12 @@ public class CoreBankingLedgerAdapter implements LedgerFacadePort {
             ));
         }
         
-        // Cumulative Daily Transfer Limit Check (Enforces consistency with Group 2 and Member 3)
-        BigDecimal dailyLimit = sourceAccount.getDailyTransferLimit();
+        // Cumulative Daily Transfer Limit Check (Synchronized with Group 2 and Member 3)
+        // Uses account daily limit if set; otherwise falls back dynamically to the bank-wide limit (system_parameters)
+        BigDecimal dailyLimit = (sourceAccount.getDailyTransferLimit() != null && sourceAccount.getDailyTransferLimit().compareTo(BigDecimal.ZERO) > 0)
+                ? sourceAccount.getDailyTransferLimit()
+                : transferLimitService.getDailyTransferLimit();
+
         if (dailyLimit != null && dailyLimit.compareTo(BigDecimal.ZERO) > 0) {
             LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
             LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);

@@ -70,7 +70,7 @@ public class MerchantPaymentController {
 
     // Local handler ONLY for MerchantPaymentController:
     // Translates Gateway offline / unreachable errors into 503 SERVICE_UNAVAILABLE (or 400 for standard tx failures)
-    // without polluting the shared GlobalExceptionHandler used by other teammates.
+    
     @ExceptionHandler(TransactionException.class)
     public ResponseEntity<Map<String, Object>> handleTransactionExceptionLocally(TransactionException ex) {
         HttpStatus status = HttpStatus.BAD_REQUEST;

@@ -46,9 +46,9 @@ public class MerchantSecurityValidationService {
             if (credentials.getPinLockedUntil() != null) {
                 if (credentials.getPinLockedUntil().isAfter(now)) {
                     log.warn("PIN validation blocked: Customer {} is locked until {}", customerId, credentials.getPinLockedUntil());
-                    throw new CusAccountLockedException("PIN locked due to excessive failed attempts. Please try again after 5 minutes.");
+                    throw new CusAccountLockedException("PIN locked due to excessive failed attempts. Please try again after 15 minutes.");
                 } else {
-                    // 5-minute lock has expired -> reset counter back to 0 so customer gets 3 fresh attempts
+                    // 15-minute lock has expired -> reset counter back to 0 so customer gets 5 fresh attempts
                     credentials.setFailedPinAttemptCount(0);
                     credentials.setPinLockedUntil(null);
                 }
@@ -70,15 +70,15 @@ public class MerchantSecurityValidationService {
         int attempts = credentials.getFailedPinAttemptCount() + 1;
         credentials.setFailedPinAttemptCount(attempts);
 
-        if (attempts >= 3) {
-            credentials.setPinLockedUntil(now.plusMinutes(5));
+        if (attempts >= 5) {
+            credentials.setPinLockedUntil(now.plusMinutes(15));
             credentialsRepository.saveAndFlush(credentials);
             log.warn("Customer {} exceeded max PIN attempts. Locked until {}", credentials.getCustomerId(), credentials.getPinLockedUntil());
-            throw new CusAccountLockedException("PIN locked due to 3 failed attempts. Please try again after 5 minutes.");
+            throw new CusAccountLockedException("PIN locked due to 5 failed attempts. Please try again after 15 minutes.");
         }
 
         credentialsRepository.saveAndFlush(credentials);
-        throw new InvalidPinException("Invalid Transaction PIN. Please try again. (" + (3 - attempts) + " attempt(s) remaining)");
+        throw new InvalidPinException("Invalid Transaction PIN. Please try again. (" + (5 - attempts) + " attempt(s) remaining)");
     }
 
     private void resetFailedPinCount(CustomerCredentials credentials) {
