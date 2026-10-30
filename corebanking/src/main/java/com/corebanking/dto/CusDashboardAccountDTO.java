@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -30,4 +31,6 @@ public class CusDashboardAccountDTO {
     private String status;
 
     private Boolean jointAccount;
+
+    private LocalDateTime openedAt;
 }

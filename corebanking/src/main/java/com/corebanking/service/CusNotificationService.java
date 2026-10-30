@@ -77,6 +77,13 @@ public class CusNotificationService {
                         builder.currency(txn.getCurrency());
                     }
 
+                    if (txn.getSourceAccount() != null) {
+                        builder.sourceAccountNumber(txn.getSourceAccount().getAccountNumber());
+                    }
+                    if (txn.getDestinationAccount() != null) {
+                        builder.destinationAccountNumber(txn.getDestinationAccount().getAccountNumber());
+                    }
+
                     // Populate counterparty details
                     UUID currentCustomerId = n.getCustomer() != null ? n.getCustomer().getCustomerId() : null;
                     if (txn.getSourceAccount() != null && txn.getDestinationAccount() != null && currentCustomerId != null) {
@@ -176,6 +183,17 @@ public class CusNotificationService {
                         builder.counterpartyAccountNumber(fromMatcher.group(2).trim());
                     }
                 }
+            }
+        }
+
+        // 5. Source / Destination account number fallback based on transfer direction
+        if ("SENT".equals(builder.build().getTransferDirection())) {
+            if (builder.build().getDestinationAccountNumber() == null && builder.build().getCounterpartyAccountNumber() != null) {
+                builder.destinationAccountNumber(builder.build().getCounterpartyAccountNumber());
+            }
+        } else if ("RECEIVED".equals(builder.build().getTransferDirection())) {
+            if (builder.build().getSourceAccountNumber() == null && builder.build().getCounterpartyAccountNumber() != null) {
+                builder.sourceAccountNumber(builder.build().getCounterpartyAccountNumber());
             }
         }
     }

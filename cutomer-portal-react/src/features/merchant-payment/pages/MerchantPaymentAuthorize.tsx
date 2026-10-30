@@ -156,7 +156,7 @@ export const MerchantPaymentAuthorize: React.FC = () => {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-slate-500 dark:text-slate-400 animate-pulse mt-12">
-        <div className="h-10 w-10 border-4 border-[#0878E8] border-t-transparent rounded-full animate-spin mb-4" />
+        <div className="h-10 w-10 border-4 border-[#00A3C4] border-t-transparent rounded-full animate-spin mb-4" />
         <span className="text-sm font-medium">Loading Secure Checkout...</span>
       </div>
     );

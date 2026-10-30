@@ -95,7 +95,14 @@ export default function CustomerCreateModal({
     if (customerType === 'PERSONAL') {
       if (!firstName.trim()) errs.firstName = 'First name is required.';
       if (!lastName.trim()) errs.lastName = 'Last name is required.';
-      if (!nrc.trim()) errs.nrc = 'NRC number is required.';
+      if (!nrc.trim()) {
+        errs.nrc = 'NRC number is required.';
+      } else {
+        const nrcRegex = /^[0-9]{1,2}\/[A-Z]{3,10}\([A-Z]{1,5}\)[0-9]{6}$/i;
+        if (!nrcRegex.test(nrc.trim())) {
+          errs.nrc = 'Format must be e.g. 12/KAMAYA(N)012345';
+        }
+      }
     } else {
       if (!companyName.trim()) errs.companyName = 'Company name is required.';
       if (!registrationNumber.trim()) errs.registrationNumber = 'Company registration number is required.';
@@ -308,11 +315,13 @@ export default function CustomerCreateModal({
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">NRC Number *</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    NRC Number * <span className="text-[11px] text-gray-500 font-normal">(e.g. 12/KAMAYA(N)012345)</span>
+                  </label>
                   <Input
                     placeholder="12/KAMAYA(N)012345"
                     value={nrc}
-                    onChange={(e) => setNrc(e.target.value)}
+                    onChange={(e) => setNrc(e.target.value.toUpperCase())}
                     error={errors.nrc}
                   />
                 </div>

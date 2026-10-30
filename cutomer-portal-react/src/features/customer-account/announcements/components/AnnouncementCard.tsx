@@ -61,12 +61,12 @@ export default function AnnouncementCard({
   return (
     <article className="border-b border-slate-200 bg-white px-4 py-5 transition-colors sm:px-5">
       <div className="flex items-start gap-3">
-        <div className="relative mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+        <div className="relative mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-[#00A3C4]">
           <Megaphone size={18} aria-hidden="true" />
 
           {!isRead && (
             <span
-              className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-blue-600"
+              className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[#00A3C4]"
               aria-label="Unread"
             />
           )}
@@ -78,7 +78,7 @@ export default function AnnouncementCard({
             onClick={handleOpenAnnouncement}
             disabled={isRead || isActionDisabled}
             aria-label={`Mark announcement as read: ${announcement.title}`}
-            className="min-w-0 flex-1 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-default"
+            className="min-w-0 flex-1 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4] focus-visible:ring-offset-2 disabled:cursor-default"
           >
             <h2
               className={`break-words text-sm text-slate-900 ${
@@ -156,7 +156,7 @@ export default function AnnouncementCard({
                     ) : (
                       <Check
                         size={15}
-                        className="text-blue-700"
+                        className="text-[#00A3C4]"
                         aria-hidden="true"
                       />
                     )}

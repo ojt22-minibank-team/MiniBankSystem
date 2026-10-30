@@ -4,27 +4,33 @@ import {
 } from "react";
 
 import {
+  Navigate,
   useNavigate,
 } from "react-router-dom";
 
-import {
-  ArrowLeft,
-  Check,
-  CheckCircle2,
-  Eye,
-  EyeOff,
-  KeyRound,
-  LockKeyhole,
-  ShieldCheck,
-} from "lucide-react";
+import { Eye, EyeOff, KeyRound } from "lucide-react";
 
 import {
   confirmPasswordReset,
 } from "../../../services/authService";
 
-import PublicAuthLayout
-  from "../components/PublicAuthLayout";
+import { AuthField, AuthNotice, AuthPasswordRules, AuthSuccess } from "../components/IndividualAuthUI";
 
+import { EkarajAuthLayout } from "../components/EkarajAuthLayout";
+import { EkarajAuthCard } from "../components/EkarajAuthCard";
+import { ekarajPrimaryButtonClass, ekarajLinkButtonClass } from "../components/EkarajAuthStyles";
+
+
+const resetPasswordInputClass =
+  "block min-h-11 w-full rounded-xl border border-[#CDD5DF] bg-white py-2.5 pl-4 pr-12 text-sm text-[#111418] shadow-sm outline-none transition-colors placeholder:text-[#757575] hover:border-[#C6A15B] focus:border-[#113E65] focus:ring-2 focus:ring-[#113E65] disabled:cursor-not-allowed disabled:bg-[#E5EAF0] disabled:text-[#757575] motion-reduce:transition-none";
+const resetPasswordToggleClass =
+  "absolute inset-y-0 right-1 inline-flex w-11 items-center justify-center rounded-lg text-[#757575] transition-colors hover:text-[#122E52] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#113E65] disabled:opacity-50 motion-reduce:transition-none";
+
+// Presentation overrides stay local; the shared rules and their live checks are unchanged.
+const resetPasswordRulesClass =
+  "rounded-xl border border-[#C6D5E3] bg-[#EAF2FA] [&>div]:border-0 [&>div]:bg-transparent [&>div]:p-2.5 [&>div>p]:mb-1.5 [&>div>p]:text-[#1A365D] [&_ul]:gap-y-0.5 [&_li]:text-xs [&_li.text-slate-500]:text-[#59697D]";
+const resetPasswordSuccessClass =
+  "[&_h1]:font-serif [&_h1]:font-medium [&_h1]:text-[#1A365D] [&>div>svg]:bg-[#EAF2FA] [&>div>svg]:text-[#113E65] [&>div>div]:space-y-3 [&>div>div]:text-[#59697D]";
 
 function ResetPasswordPage() {
 
@@ -405,1347 +411,131 @@ function ResetPasswordPage() {
   // UI
   // ======================================================
 
+  // A completed reset clears its authorization before showing the success screen.
+  if (
+    !success &&
+    (!verifiedChallengeGroupId ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(verifiedChallengeGroupId))
+  ) {
+    return <Navigate to="/forgot-password" replace />;
+  }
+
   return (
-
-    <PublicAuthLayout>
-
-      <div
-        className="
-          w-full
-          max-w-6xl
-          overflow-hidden
-          rounded-3xl
-          border
-          border-slate-200
-          bg-white
-          shadow-xl
-          shadow-slate-200/70
-        "
+    <EkarajAuthLayout title="EKARAJ BANK | Create New Password">
+      <EkarajAuthCard
+        ariaLabel="Individual password reset card"
+        formLabel="Create a new password"
+        variant="password"
+        leftHeading={<>Create a New Password.<br />Secure Your Account.</>}
       >
-
-        <div
-          className="
-            grid
-            min-h-[610px]
-            md:grid-cols-[0.9fr_1.1fr]
-          "
-        >
-
-
-          {/* ============================================
-              LEFT PASSWORD RECOVERY PANEL
-          ============================================ */}
-
-          <div
-            className="
-              relative
-              hidden
-              overflow-hidden
-              bg-gradient-to-br
-              from-[#08295C]
-              via-[#0B3A78]
-              to-[#125AA3]
-              p-10
-              text-white
-              md:flex
-              md:flex-col
-              md:justify-between
-              lg:p-12
-            "
-          >
-
-
-            {/* Decorative circles */}
-
-            <div
-              className="
-                absolute
-                -right-24
-                -top-24
-                h-72
-                w-72
-                rounded-full
-                bg-white/5
-              "
-            />
-
-
-            <div
-              className="
-                absolute
-                -bottom-28
-                -left-20
-                h-72
-                w-72
-                rounded-full
-                bg-white/5
-              "
-            />
-
-
-            {/* TOP */}
-
-            <div className="relative z-10">
-
-              <div
-                className="
-                  mb-8
-                  flex
-                  items-center
-                  gap-3
-                "
-              >
-
-                <div
-                  className="
-                    flex
-                    h-12
-                    w-12
-                    items-center
-                    justify-center
-                    rounded-2xl
-                    bg-white/15
-                    backdrop-blur
-                  "
-                >
-
-                  <ShieldCheck
-                    size={27}
-                  />
-
-                </div>
-
-
-                <div>
-
-                  <h1
-                    className="
-                      text-2xl
-                      font-bold
-                    "
-                  >
-
-                    ACE Bank
-
-                  </h1>
-
-
-                  <p
-                    className="
-                      mt-0.5
-                      text-xs
-                      text-blue-100
-                    "
-                  >
-
-                    Secure Password Recovery
-
-                  </p>
-
-                </div>
-
-              </div>
-
-
-              <h2
-                className="
-                  max-w-md
-                  text-3xl
-                  font-bold
-                  leading-tight
-                  lg:text-4xl
-                "
-              >
-
-                Create a strong new
-                password for your account.
-
-              </h2>
-
-
-              <p
-                className="
-                  mt-5
-                  max-w-md
-                  text-sm
-                  leading-7
-                  text-blue-100
-                  lg:text-base
-                "
-              >
-
-                Your email verification is complete.
-                Create a new password to securely
-                regain access to your ACE Bank account.
-
-              </p>
-
-            </div>
-
-
-            {/* PASSWORD SECURITY BOX */}
-
-            <div
-              className="
-                relative
-                z-10
-                mt-8
-                rounded-2xl
-                border
-                border-white/15
-                bg-white/10
-                p-6
-                backdrop-blur-sm
-              "
+        {success ? (
+          <div className={resetPasswordSuccessClass}>
+          <AuthSuccess title="Password reset successful">
+            <p role="status">{success}</p>
+            <p>You can now sign in to your Ekaraj Bank account using your new password.</p>
+            <button
+              type="button"
+              onClick={() => navigate("/login", { replace: true })}
+              className={ekarajPrimaryButtonClass}
             >
-
-              <div
-                className="
-                  mb-5
-                  flex
-                  items-center
-                  gap-3
-                "
+              Back to Login
+            </button>
+          </AuthSuccess>
+          </div>
+        ) : (
+          <>
+            <div className="mb-1.5 text-center">
+              <span aria-hidden="true" className="mx-auto mb-1 flex h-9 w-9 items-center justify-center rounded-full border border-[#C6D5E3] bg-[#EAF2FA] text-[#113E65]">
+                <KeyRound size={20} strokeWidth={1.8} />
+              </span>
+              <h1 className="font-serif text-2xl font-medium leading-8 tracking-tight text-[#1A365D]">Create New Password</h1>
+              <p className="mt-0.5 text-sm leading-5 text-[#59697D]">Choose a new password to restore secure access to your account.</p>
+            </div>
+            <form onSubmit={handleResetPassword} className="space-y-2 [&_label]:text-[#1A365D] [&>[role=alert]]:my-1 [&>[role=alert]]:py-1.5">
+              <AuthField label="New password" htmlFor="individual-reset-password">
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  autoComplete="new-password"
+                  maxLength={10}
+                  disabled={loading}
+                  id="individual-reset-password"
+                  className={resetPasswordInputClass}
+                  aria-invalid={Boolean(error)}
+                  aria-required={true}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword((prev) => !prev)}
+                  disabled={loading}
+                  aria-label={showNewPassword ? "Hide password" : "Show password"}
+                  className={resetPasswordToggleClass}
+                >
+                  {" "}
+                  {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}{" "}
+                </button>
+              </AuthField>
+              <AuthField label="Confirm password" htmlFor="individual-reset-confirm-password">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                  autoComplete="new-password"
+                  maxLength={10}
+                  disabled={loading}
+                  id="individual-reset-confirm-password"
+                  className={resetPasswordInputClass}
+                  aria-invalid={Boolean(error)}
+                  aria-required={true}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  disabled={loading}
+                  aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                  className={resetPasswordToggleClass}
+                >
+                  {" "}
+                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}{" "}
+                </button>
+              </AuthField>
+              <div className={resetPasswordRulesClass}>
+                <AuthPasswordRules password={newPassword} confirmPassword={confirmPassword} reset />
+              </div>
+              <AuthNotice error={error} />
+              <button
+                type="submit"
+                disabled={loading}
+                className={ekarajPrimaryButtonClass}
+                aria-busy={loading}
               >
-
-                <div
-                  className="
-                    flex
-                    h-11
-                    w-11
-                    shrink-0
-                    items-center
-                    justify-center
-                    rounded-full
-                    bg-white/15
-                  "
-                >
-
-                  <KeyRound
-                    size={22}
+                {loading && (
+                  <span
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[#122E52]/25 border-t-[#122E52] motion-reduce:animate-none"
                   />
-
-                </div>
-
-
-                <div>
-
-                  <h3
-                    className="
-                      text-lg
-                      font-bold
-                    "
-                  >
-
-                    Strong Password
-
-                  </h3>
-
-
-                  <p
-                    className="
-                      mt-1
-                      text-xs
-                      text-blue-100
-                    "
-                  >
-
-                    Protect your banking account
-
-                  </p>
-
-                </div>
-
+                )}{" "}
+                {loading ? "Resetting Password..." : "Reset Password"}
+              </button>
+              <div className="text-center">
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={loading}
+                className={ekarajLinkButtonClass}
+              >
+                {" "}
+                 Cancel Password Reset
+              </button>
               </div>
-
-
-              <div className="space-y-4">
-
-
-                <div
-                  className="
-                    flex
-                    items-center
-                    gap-3
-                  "
-                >
-
-                  <div
-                    className="
-                      flex
-                      h-7
-                      w-7
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-emerald-400/20
-                      text-emerald-200
-                    "
-                  >
-
-                    <Check size={16} />
-
-                  </div>
-
-
-                  <p className="text-sm text-blue-50">
-
-                    8 to 10 characters
-
-                  </p>
-
-                </div>
-
-
-                <div
-                  className="
-                    flex
-                    items-center
-                    gap-3
-                  "
-                >
-
-                  <div
-                    className="
-                      flex
-                      h-7
-                      w-7
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-emerald-400/20
-                      text-emerald-200
-                    "
-                  >
-
-                    <Check size={16} />
-
-                  </div>
-
-
-                  <p className="text-sm text-blue-50">
-
-                    Uppercase and lowercase letters
-
-                  </p>
-
-                </div>
-
-
-                <div
-                  className="
-                    flex
-                    items-center
-                    gap-3
-                  "
-                >
-
-                  <div
-                    className="
-                      flex
-                      h-7
-                      w-7
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-emerald-400/20
-                      text-emerald-200
-                    "
-                  >
-
-                    <Check size={16} />
-
-                  </div>
-
-
-                  <p className="text-sm text-blue-50">
-
-                    Number and special character
-
-                  </p>
-
-                </div>
-
-
-                <div
-                  className="
-                    flex
-                    items-center
-                    gap-3
-                  "
-                >
-
-                  <div
-                    className="
-                      flex
-                      h-7
-                      w-7
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-emerald-400/20
-                      text-emerald-200
-                    "
-                  >
-
-                    <Check size={16} />
-
-                  </div>
-
-
-                  <p className="text-sm text-blue-50">
-
-                    No whitespace
-
-                  </p>
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-
-          {/* ============================================
-              RIGHT PANEL
-          ============================================ */}
-
-          <div
-            className="
-              flex
-              items-center
-              justify-center
-              px-6
-              py-10
-              sm:px-10
-              lg:px-16
-            "
-          >
-
-            <div
-              className="
-                w-full
-                max-w-lg
-              "
-            >
-
-
-              {/* ========================================
-                  SUCCESS SCREEN
-              ======================================== */}
-
-              {
-                success
-                ? (
-
-                  <div className="text-center">
-
-
-                    <div
-                      className="
-                        mx-auto
-                        mb-6
-                        flex
-                        h-20
-                        w-20
-                        items-center
-                        justify-center
-                        rounded-full
-                        bg-emerald-50
-                        text-emerald-600
-                      "
-                    >
-
-                      <CheckCircle2
-                        size={42}
-                      />
-
-                    </div>
-
-
-                    <p
-                      className="
-                        mb-2
-                        text-sm
-                        font-semibold
-                        uppercase
-                        tracking-wider
-                        text-emerald-600
-                      "
-                    >
-
-                      Password Updated
-
-                    </p>
-
-
-                    <h2
-                      className="
-                        text-3xl
-                        font-bold
-                        tracking-tight
-                        text-[#08295C]
-                        lg:text-4xl
-                      "
-                    >
-
-                      Password Reset Successful
-
-                    </h2>
-
-
-                    <div
-                      className="
-                        mt-6
-                        rounded-xl
-                        border
-                        border-emerald-200
-                        bg-emerald-50
-                        px-5
-                        py-4
-                        text-sm
-                        font-medium
-                        text-emerald-700
-                      "
-                    >
-
-                      {success}
-
-                    </div>
-
-
-                    <p
-                      className="
-                        mt-5
-                        text-sm
-                        leading-6
-                        text-slate-500
-                      "
-                    >
-
-                      You can now login to your
-                      ACE Bank account using your
-                      new password.
-
-                    </p>
-
-
-                    <button
-
-                      type="button"
-
-                      onClick={() =>
-                        navigate(
-                          "/login"
-                        )
-                      }
-
-                      className="
-                        mt-8
-                        flex
-                        w-full
-                        items-center
-                        justify-center
-                        rounded-xl
-                        bg-blue-600
-                        px-5
-                        py-3.5
-                        text-sm
-                        font-bold
-                        text-white
-                        shadow-sm
-                        transition
-                        hover:bg-blue-700
-                        focus:outline-none
-                        focus:ring-4
-                        focus:ring-blue-200
-                      "
-                    >
-
-                      Back to Login
-
-                    </button>
-
-
-                    <div
-                      className="
-                        mt-6
-                        rounded-xl
-                        bg-slate-50
-                        px-4
-                        py-3
-                      "
-                    >
-
-                      <p
-                        className="
-                          text-xs
-                          leading-5
-                          text-slate-500
-                        "
-                      >
-
-                        For your security, all previous
-                        active sessions may no longer be valid.
-                        Please login again with your new password.
-
-                      </p>
-
-                    </div>
-
-                  </div>
-
-                )
-                : (
-
-                  <>
-
-                    {/* MOBILE BRAND */}
-
-                    <div
-                      className="
-                        mb-8
-                        flex
-                        items-center
-                        gap-3
-                        md:hidden
-                      "
-                    >
-
-                      <div
-                        className="
-                          flex
-                          h-11
-                          w-11
-                          items-center
-                          justify-center
-                          rounded-xl
-                          bg-[#08295C]
-                          text-white
-                        "
-                      >
-
-                        <ShieldCheck
-                          size={22}
-                        />
-
-                      </div>
-
-
-                      <div>
-
-                        <h1
-                          className="
-                            text-xl
-                            font-bold
-                            text-[#08295C]
-                          "
-                        >
-
-                          ACE Bank
-
-                        </h1>
-
-
-                        <p
-                          className="
-                            text-xs
-                            text-slate-400
-                          "
-                        >
-
-                          Secure Password Recovery
-
-                        </p>
-
-                      </div>
-
-                    </div>
-
-
-                    {/* ICON */}
-
-                    <div
-                      className="
-                        mb-6
-                        flex
-                        h-16
-                        w-16
-                        items-center
-                        justify-center
-                        rounded-2xl
-                        bg-blue-50
-                        text-blue-600
-                      "
-                    >
-
-                      <KeyRound
-                        size={30}
-                      />
-
-                    </div>
-
-
-                    {/* HEADER */}
-
-                    <div className="mb-7">
-
-                      <p
-                        className="
-                          mb-2
-                          text-sm
-                          font-semibold
-                          uppercase
-                          tracking-wider
-                          text-blue-600
-                        "
-                      >
-
-                        Password Recovery
-
-                      </p>
-
-
-                      <h2
-                        className="
-                          text-3xl
-                          font-bold
-                          tracking-tight
-                          text-[#08295C]
-                          lg:text-4xl
-                        "
-                      >
-
-                        Create New Password
-
-                      </h2>
-
-
-                      <p
-                        className="
-                          mt-3
-                          text-sm
-                          leading-6
-                          text-slate-500
-                        "
-                      >
-
-                        Create a secure new password
-                        for your ACE Bank account.
-
-                      </p>
-
-                    </div>
-
-
-                    {/* ==================================
-                        FORM
-                    ================================== */}
-
-                    <form
-                      onSubmit={
-                        handleResetPassword
-                      }
-                      className="space-y-5"
-                    >
-
-
-                      {/* ================================
-                          NEW PASSWORD
-                      ================================ */}
-
-                      <div>
-
-                        <label
-                          className="
-                            mb-2
-                            block
-                            text-sm
-                            font-semibold
-                            text-slate-700
-                          "
-                        >
-
-                          New Password
-
-                        </label>
-
-
-                        <div className="relative">
-
-                          <LockKeyhole
-                            size={19}
-                            className="
-                              absolute
-                              left-4
-                              top-1/2
-                              -translate-y-1/2
-                              text-slate-400
-                            "
-                          />
-
-
-                          <input
-
-                            type={
-                              showNewPassword
-                                ? "text"
-                                : "password"
-                            }
-
-                            value={
-                              newPassword
-                            }
-
-                            onChange={(e) =>
-                              setNewPassword(
-                                e.target.value
-                              )
-                            }
-
-                            placeholder="Enter new password"
-
-                            autoComplete="new-password"
-
-                            maxLength={10}
-
-                            disabled={
-                              loading
-                            }
-
-                            className="
-                              w-full
-                              rounded-xl
-                              border
-                              border-slate-300
-                              bg-white
-                              py-3.5
-                              pl-12
-                              pr-12
-                              text-sm
-                              text-slate-800
-                              outline-none
-                              transition
-                              placeholder:text-slate-400
-                              focus:border-blue-500
-                              focus:ring-4
-                              focus:ring-blue-100
-                              disabled:cursor-not-allowed
-                              disabled:bg-slate-50
-                            "
-
-                          />
-
-
-                          <button
-
-                            type="button"
-
-                            onClick={() =>
-                              setShowNewPassword(
-                                (prev) =>
-                                  !prev
-                              )
-                            }
-
-                            disabled={
-                              loading
-                            }
-
-                            aria-label={
-                              showNewPassword
-                                ? "Hide password"
-                                : "Show password"
-                            }
-
-                            className="
-                              absolute
-                              right-4
-                              top-1/2
-                              -translate-y-1/2
-                              text-slate-400
-                              transition
-                              hover:text-slate-600
-                              disabled:cursor-not-allowed
-                              disabled:opacity-50
-                            "
-                          >
-
-                            {
-                              showNewPassword
-                                ? (
-                                  <EyeOff
-                                    size={20}
-                                  />
-                                )
-                                : (
-                                  <Eye
-                                    size={20}
-                                  />
-                                )
-                            }
-
-                          </button>
-
-                        </div>
-
-                      </div>
-
-
-                      {/* ================================
-                          CONFIRM PASSWORD
-                      ================================ */}
-
-                      <div>
-
-                        <label
-                          className="
-                            mb-2
-                            block
-                            text-sm
-                            font-semibold
-                            text-slate-700
-                          "
-                        >
-
-                          Confirm Password
-
-                        </label>
-
-
-                        <div className="relative">
-
-                          <LockKeyhole
-                            size={19}
-                            className="
-                              absolute
-                              left-4
-                              top-1/2
-                              -translate-y-1/2
-                              text-slate-400
-                            "
-                          />
-
-
-                          <input
-
-                            type={
-                              showConfirmPassword
-                                ? "text"
-                                : "password"
-                            }
-
-                            value={
-                              confirmPassword
-                            }
-
-                            onChange={(e) =>
-                              setConfirmPassword(
-                                e.target.value
-                              )
-                            }
-
-                            placeholder="Confirm new password"
-
-                            autoComplete="new-password"
-
-                            maxLength={10}
-
-                            disabled={
-                              loading
-                            }
-
-                            className="
-                              w-full
-                              rounded-xl
-                              border
-                              border-slate-300
-                              bg-white
-                              py-3.5
-                              pl-12
-                              pr-12
-                              text-sm
-                              text-slate-800
-                              outline-none
-                              transition
-                              placeholder:text-slate-400
-                              focus:border-blue-500
-                              focus:ring-4
-                              focus:ring-blue-100
-                              disabled:cursor-not-allowed
-                              disabled:bg-slate-50
-                            "
-
-                          />
-
-
-                          <button
-
-                            type="button"
-
-                            onClick={() =>
-                              setShowConfirmPassword(
-                                (prev) =>
-                                  !prev
-                              )
-                            }
-
-                            disabled={
-                              loading
-                            }
-
-                            aria-label={
-                              showConfirmPassword
-                                ? "Hide confirm password"
-                                : "Show confirm password"
-                            }
-
-                            className="
-                              absolute
-                              right-4
-                              top-1/2
-                              -translate-y-1/2
-                              text-slate-400
-                              transition
-                              hover:text-slate-600
-                              disabled:cursor-not-allowed
-                              disabled:opacity-50
-                            "
-                          >
-
-                            {
-                              showConfirmPassword
-                                ? (
-                                  <EyeOff
-                                    size={20}
-                                  />
-                                )
-                                : (
-                                  <Eye
-                                    size={20}
-                                  />
-                                )
-                            }
-
-                          </button>
-
-                        </div>
-
-                      </div>
-
-
-                      {/* ================================
-                          PASSWORD REQUIREMENTS
-                      ================================ */}
-
-                      <div
-                        className="
-                          rounded-xl
-                          border
-                          border-blue-100
-                          bg-blue-50/60
-                          px-4
-                          py-4
-                        "
-                      >
-
-                        <p
-                          className="
-                            mb-3
-                            text-sm
-                            font-semibold
-                            text-[#08295C]
-                          "
-                        >
-
-                          Password Requirements
-
-                        </p>
-
-
-                        <div
-                          className="
-                            grid
-                            gap-2
-                            sm:grid-cols-2
-                          "
-                        >
-
-
-                          <div className="flex items-center gap-2">
-
-                            <Check
-                              size={15}
-                              className="shrink-0 text-blue-600"
-                            />
-
-                            <span className="text-xs text-slate-600">
-
-                              8 to 10 characters
-
-                            </span>
-
-                          </div>
-
-
-                          <div className="flex items-center gap-2">
-
-                            <Check
-                              size={15}
-                              className="shrink-0 text-blue-600"
-                            />
-
-                            <span className="text-xs text-slate-600">
-
-                              One uppercase letter
-
-                            </span>
-
-                          </div>
-
-
-                          <div className="flex items-center gap-2">
-
-                            <Check
-                              size={15}
-                              className="shrink-0 text-blue-600"
-                            />
-
-                            <span className="text-xs text-slate-600">
-
-                              One lowercase letter
-
-                            </span>
-
-                          </div>
-
-
-                          <div className="flex items-center gap-2">
-
-                            <Check
-                              size={15}
-                              className="shrink-0 text-blue-600"
-                            />
-
-                            <span className="text-xs text-slate-600">
-
-                              One number
-
-                            </span>
-
-                          </div>
-
-
-                          <div className="flex items-center gap-2">
-
-                            <Check
-                              size={15}
-                              className="shrink-0 text-blue-600"
-                            />
-
-                            <span className="text-xs text-slate-600">
-
-                              One special character
-
-                            </span>
-
-                          </div>
-
-
-                          <div className="flex items-center gap-2">
-
-                            <Check
-                              size={15}
-                              className="shrink-0 text-blue-600"
-                            />
-
-                            <span className="text-xs text-slate-600">
-
-                              No whitespace
-
-                            </span>
-
-                          </div>
-
-                        </div>
-
-                      </div>
-
-
-                      {/* ================================
-                          ERROR
-                      ================================ */}
-
-                      {
-                        error
-                        &&
-                        (
-
-                          <div
-                            className="
-                              rounded-xl
-                              border
-                              border-red-200
-                              bg-red-50
-                              px-4
-                              py-3
-                              text-sm
-                              font-medium
-                              text-red-600
-                            "
-                          >
-
-                            {error}
-
-                          </div>
-
-                        )
-                      }
-
-
-                      {/* ================================
-                          RESET BUTTON
-                      ================================ */}
-
-                      <button
-
-                        type="submit"
-
-                        disabled={
-                          loading
-                        }
-
-                        className="
-                          flex
-                          w-full
-                          items-center
-                          justify-center
-                          rounded-xl
-                          bg-blue-600
-                          px-5
-                          py-3.5
-                          text-sm
-                          font-bold
-                          text-white
-                          shadow-sm
-                          transition
-                          hover:bg-blue-700
-                          focus:outline-none
-                          focus:ring-4
-                          focus:ring-blue-200
-                          disabled:cursor-not-allowed
-                          disabled:opacity-60
-                        "
-                      >
-
-                        {
-                          loading
-                            ? "Resetting Password..."
-                            : "Reset Password"
-                        }
-
-                      </button>
-
-
-                      {/* ================================
-                          CANCEL
-                      ================================ */}
-
-                      <button
-
-                        type="button"
-
-                        onClick={
-                          handleCancel
-                        }
-
-                        disabled={
-                          loading
-                        }
-
-                        className="
-                          flex
-                          w-full
-                          items-center
-                          justify-center
-                          gap-2
-                          rounded-xl
-                          border
-                          border-slate-200
-                          bg-white
-                          px-5
-                          py-3
-                          text-sm
-                          font-semibold
-                          text-slate-600
-                          transition
-                          hover:bg-slate-50
-                          hover:text-slate-800
-                          disabled:cursor-not-allowed
-                          disabled:opacity-60
-                        "
-                      >
-
-                        <ArrowLeft
-                          size={17}
-                        />
-
-                        Cancel Password Reset
-
-                      </button>
-
-                    </form>
-
-
-                    {/* SECURITY NOTE */}
-
-                    <div
-                      className="
-                        mt-7
-                        rounded-xl
-                        bg-slate-50
-                        px-4
-                        py-3
-                        text-center
-                      "
-                    >
-
-                      <p
-                        className="
-                          text-xs
-                          leading-5
-                          text-slate-500
-                        "
-                      >
-
-                        Never reuse a password that you
-                        believe may have been compromised.
-
-                      </p>
-
-                    </div>
-
-                  </>
-
-                )
-              }
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </PublicAuthLayout>
-
+            </form>
+          </>
+        )}
+      </EkarajAuthCard>
+    </EkarajAuthLayout>
   );
 
 }

@@ -163,6 +163,26 @@ public class CusAccountService {
     private CusAccountResponseDTO mapToResponse(
             Accounts account) {
 
+        BigDecimal minBalance = account.getMinimumBalance() != null && account.getMinimumBalance().compareTo(BigDecimal.ZERO) > 0
+                ? account.getMinimumBalance()
+                : transferLimitService.getMinimumBalance();
+
+        BigDecimal currentBal = account.getCurrentBalance() != null ? account.getCurrentBalance() : BigDecimal.ZERO;
+        BigDecimal availableBal = account.getAvailableBalance();
+
+        // Business Logic: Available Balance = max(0, currentBalance - minimumReserve)
+        if (minBalance != null && minBalance.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal effectiveAvail = currentBal.subtract(minBalance);
+            if (effectiveAvail.compareTo(BigDecimal.ZERO) < 0) {
+                effectiveAvail = BigDecimal.ZERO;
+            }
+            if (availableBal == null || availableBal.compareTo(currentBal) >= 0) {
+                availableBal = effectiveAvail;
+            } else {
+                availableBal = availableBal.min(effectiveAvail);
+            }
+        }
+
         return CusAccountResponseDTO.builder()
 
                 .accountNumber(
@@ -186,17 +206,15 @@ public class CusAccountService {
                 )
 
                 .currentBalance(
-                        account.getCurrentBalance()
+                        currentBal
                 )
 
                 .availableBalance(
-                        account.getAvailableBalance()
+                        availableBal
                 )
 
                 .minimumBalance(
-                        account.getMinimumBalance() != null && account.getMinimumBalance().compareTo(BigDecimal.ZERO) > 0
-                                ? account.getMinimumBalance()
-                                : transferLimitService.getMinimumBalance()
+                        minBalance
                 )
 
                 .dailyTransferLimit(

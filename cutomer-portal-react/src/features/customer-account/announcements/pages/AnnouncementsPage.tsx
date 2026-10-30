@@ -103,7 +103,7 @@ export default function AnnouncementsPage() {
       <header className="mb-6">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-blue-700">
+            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-[#00A3C4]">
               <Megaphone size={15} aria-hidden="true" />
               Bank updates
             </div>
@@ -123,7 +123,7 @@ export default function AnnouncementsPage() {
             disabled={loading}
             aria-label="Refresh announcements"
             title="Refresh announcements"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-[#00A3C4] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <RefreshCw
               size={16}
@@ -158,7 +158,7 @@ export default function AnnouncementsPage() {
                   aria-pressed={selected}
                   className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition ${
                     selected
-                      ? "bg-blue-50 text-blue-700"
+                      ? "bg-cyan-50 text-[#00A3C4]"
                       : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
                   }`}
                 >
@@ -167,7 +167,7 @@ export default function AnnouncementsPage() {
                   {item.value !== "ALL" && (
                     <span
                       className={`text-xs tabular-nums ${
-                        selected ? "text-blue-700" : "text-slate-400"
+                        selected ? "text-[#00A3C4]" : "text-slate-400"
                       }`}
                     >
                       {counts[item.value]}
@@ -187,7 +187,7 @@ export default function AnnouncementsPage() {
               isMarkingAllRead ||
               pendingIds.length > 0
             }
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-[#00A3C4] transition hover:bg-cyan-50 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
           >
             {isMarkingAllRead ? (
               <RefreshCw size={14} className="animate-spin" />
@@ -236,7 +236,7 @@ export default function AnnouncementsPage() {
                 type="button"
                 onClick={handleRefresh}
                 disabled={loading}
-                className="mt-3 inline-flex items-center gap-2 rounded-lg bg-blue-700 px-3 py-2 text-sm font-medium text-white hover:bg-blue-800 disabled:opacity-50"
+                className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#00A3C4] px-3 py-2 text-sm font-medium text-white hover:bg-[#0891B2] disabled:opacity-50"
               >
                 <RefreshCw size={14} />
                 Try again

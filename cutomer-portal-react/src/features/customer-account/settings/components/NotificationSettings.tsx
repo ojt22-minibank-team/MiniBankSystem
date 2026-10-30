@@ -15,7 +15,7 @@ export default function NotificationSettings() {
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-6">
       <div className="flex items-start gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-[#0878E8] dark:bg-blue-950 dark:text-blue-300">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-[#00A3C4] dark:bg-blue-950 dark:text-blue-300">
           {enabled ? (
             <Bell size={20} aria-hidden="true" />
           ) : (
@@ -43,8 +43,8 @@ export default function NotificationSettings() {
           onClick={() =>
             dispatch(setNotificationsEnabled(!enabled))
           }
-          className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0878E8] focus-visible:ring-offset-2 ${
-            enabled ? "bg-[#0878E8]" : "bg-slate-300 dark:bg-slate-600"
+          className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4] focus-visible:ring-offset-2 ${
+            enabled ? "bg-[#00A3C4]" : "bg-slate-300 dark:bg-slate-600"
           }`}
         >
           <span

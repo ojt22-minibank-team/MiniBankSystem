@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -11,6 +12,10 @@ import {
   CreditCard,
 } from "lucide-react";
 import type { NotificationItem } from "../types/notificationTypes";
+import {
+  maskAccountNumber,
+  formatNotificationMessage,
+} from "../utils/notificationFormatters";
 import { SESSION_TIMEOUT_EVENT } from "../../../utils/sessionEvents";
 import { hasTokens, subscribeToAuthenticationChanges } from "../../../utils/tokenStorage";
 
@@ -216,8 +221,18 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
     }).format(num);
   };
 
-  const handleOpenDropdown = () => {
-    window.dispatchEvent(new Event("open-notification-dropdown"));
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleOpenReceipt = () => {
+    onDismiss();
+    const ref = toast.transactionRef || toast.id;
+    navigate(`/receipt/${encodeURIComponent(ref)}`, {
+      state: {
+        notification: toast,
+        from: location.pathname,
+      },
+    });
   };
 
   return (
@@ -295,7 +310,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
                 {isReceived ? "From: " : isSent ? "To: " : ""}
                 {toast.counterpartyName}
                 {toast.counterpartyAccountNumber
-                  ? ` (${toast.counterpartyAccountNumber})`
+                  ? ` (${maskAccountNumber(toast.counterpartyAccountNumber)})`
                   : ""}
               </span>
             </div>
@@ -303,24 +318,18 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
 
           {/* Description / Message */}
           <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed line-clamp-2">
-            {toast.message}
+            {formatNotificationMessage(toast)}
           </p>
 
           {/* Footer with Ref & View action */}
           <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400">
-            {toast.transactionRef ? (
-              <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">
-                Ref: {toast.transactionRef}
-              </span>
-            ) : (
-              <span>Just now</span>
-            )}
+            <span>Just now</span>
 
             <button
-              onClick={handleOpenDropdown}
+              onClick={handleOpenReceipt}
               className="text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1 hover:underline transition"
             >
-              <span>View details</span>
+              <span>View slip</span>
               <ExternalLink className="w-2.5 h-2.5" />
             </button>
           </div>

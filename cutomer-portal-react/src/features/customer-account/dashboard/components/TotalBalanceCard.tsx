@@ -1,10 +1,14 @@
-import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import {
   Eye,
   EyeOff,
-  Landmark,
-  WalletCards,
+  ArrowUpRight,
+  Receipt,
+  Sun,
+  Sunrise,
+  Moon,
 } from "lucide-react";
+import { CrownEmbossedWatermark } from "../../../../components/common/EkarajLogo";
 
 interface TotalBalanceCardProps {
   totalBalance: number;
@@ -12,6 +16,8 @@ interface TotalBalanceCardProps {
   showBalance: boolean;
   loading?: boolean;
   onToggleBalance: () => void;
+  customerName?: string;
+  primaryAccountNumber?: string;
 }
 
 function formatBalance(amount: number): string {
@@ -21,141 +27,148 @@ function formatBalance(amount: number): string {
   });
 }
 
+function getTimeGreetingDetails(): {
+  greeting: string;
+  Icon: typeof Sun;
+  iconClass: string;
+  bgGlow: string;
+} {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) {
+    return {
+      greeting: "Good Morning",
+      Icon: Sunrise,
+      iconClass: "text-amber-300",
+      bgGlow: "bg-amber-400/20 ring-amber-400/30",
+    };
+  }
+  if (hour >= 12 && hour < 17) {
+    return {
+      greeting: "Good Afternoon",
+      Icon: Sun,
+      iconClass: "text-amber-400",
+      bgGlow: "bg-amber-400/20 ring-amber-400/30",
+    };
+  }
+  return {
+    greeting: "Good Evening",
+    Icon: Moon,
+    iconClass: "text-cyan-300",
+    bgGlow: "bg-cyan-400/20 ring-cyan-400/30",
+  };
+}
+
 export default function TotalBalanceCard({
   totalBalance,
   accountCount,
   showBalance,
   loading = false,
   onToggleBalance,
+  customerName,
 }: TotalBalanceCardProps) {
-  const { t } = useTranslation("dashboard");
-
-  const balanceVisibilityLabel = showBalance
-    ? t("hideBalance")
-    : t("showBalance");
+  const displayName = customerName?.trim() || "Customer";
+  const { greeting, Icon, iconClass, bgGlow } = getTimeGreetingDetails();
 
   return (
     <section
-      aria-label={t("totalBalance")}
-      className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0878E8] via-[#176FE0] to-[#0755B8] p-6 shadow-md ring-1 ring-white/10 sm:p-8"
+      aria-label="Total Available Balance"
+      className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0A192F] via-[#102A54] to-[#153564] p-5 sm:p-6 text-white shadow-lg border border-cyan-500/20"
     >
-      {/* Decorative Background */}
+      {/* 1. Subtle Ambient Lighting & Watermark */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-blue-300/20 blur-3xl"
+        className="pointer-events-none absolute -right-16 -top-16 h-60 w-60 rounded-full bg-cyan-400/15 blur-3xl"
       />
-
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -bottom-20 -left-10 h-48 w-48 rounded-full bg-cyan-300/10 blur-2xl"
+        className="pointer-events-none absolute -bottom-20 -left-10 h-52 w-52 rounded-full bg-blue-600/15 blur-3xl"
       />
-
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute right-[-80px] top-1/2 h-64 w-64 -translate-y-1/2 rounded-full border-[28px] border-blue-300/10"
-      />
+        className="pointer-events-none absolute right-3 bottom-1 opacity-10 select-none"
+      >
+        <CrownEmbossedWatermark theme="navy" className="w-36 h-36" />
+      </div>
 
-      <div className="relative flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
-        {/* Balance Information */}
-        <div className="min-w-0 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <WalletCards
-              size={16}
-              aria-hidden="true"
-              className="text-blue-100/90"
-            />
+      <div className="relative z-10 space-y-4">
+        {/* ROW 1: Sleek Greeting with Dynamic Time Icon (☀️ / 🌙) */}
+        <div className="flex items-center gap-2.5">
+          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${bgGlow} ring-1 shadow-xs`}>
+            <Icon size={17} className={iconClass} />
+          </div>
+          <h2 className="text-base sm:text-lg font-bold tracking-tight text-white">
+            {greeting}, <span className="font-extrabold text-cyan-200">{displayName}</span>
+          </h2>
+        </div>
 
-            <span className="text-xs font-semibold uppercase tracking-wider text-blue-100/90">
-              {t("totalBalance")}
+        {/* ROW 2: Total Available Balance (Compact & User-Friendly) */}
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">
+              Total Available Balance
             </span>
-
-            <span
-              aria-hidden="true"
-              className="h-1 w-1 rounded-full bg-blue-100/60"
-            />
-
-            <span className="text-xs text-blue-50/80">
-              {t("acrossAllAccounts")}
-            </span>
-
             <button
               type="button"
               onClick={onToggleBalance}
               disabled={loading}
-              aria-label={balanceVisibilityLabel}
-              aria-pressed={showBalance}
-              title={balanceVisibilityLabel}
-              className="inline-flex items-center justify-center rounded-full p-1 text-blue-100/80 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-lg p-1 text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-300/30"
+              title={showBalance ? "Hide Balance" : "Show Balance"}
+              aria-label={showBalance ? "Hide Balance" : "Show Balance"}
             >
-              {showBalance ? (
-                <EyeOff size={15} aria-hidden="true" />
-              ) : (
-                <Eye size={15} aria-hidden="true" />
-              )}
+              {showBalance ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
+
+            {accountCount > 0 && (
+              <span className="hidden sm:inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-semibold text-slate-300 border border-white/10">
+                Across {accountCount} {accountCount === 1 ? "Account" : "Accounts"}
+              </span>
+            )}
           </div>
 
-          {/* Balance */}
-          <div
-            className="flex flex-wrap items-baseline gap-x-2 gap-y-1 pt-1"
-            aria-live="polite"
-            aria-atomic="true"
-          >
-            <span className="text-xl font-bold text-blue-100">
+          <div className="flex flex-wrap items-baseline gap-2 pt-0.5">
+            <span className="font-mono text-base sm:text-lg font-bold text-cyan-200">
               MMK
             </span>
-
-            <div className="break-words text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+            <div className="font-mono text-2xl sm:text-3xl font-extrabold tracking-tight text-white drop-shadow-xs">
               {loading ? (
-                <span
-                  aria-label={t("loadingBalance")}
-                  className="inline-block h-10 w-52 animate-pulse rounded-lg bg-white/10 align-middle"
-                />
+                <span className="inline-block h-8 w-40 animate-pulse rounded-lg bg-white/15 align-middle" />
               ) : showBalance ? (
                 formatBalance(totalBalance)
               ) : (
-                <span
-                  aria-label={t("hideBalance")}
-                  className="tracking-widest text-blue-100/80"
-                >
+                <span className="tracking-widest text-slate-300/80">
                   ********
                 </span>
               )}
             </div>
           </div>
-
-          {/* Account Count */}
-          <div className="flex flex-wrap items-center gap-2.5 pt-2">
-            {!loading && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-300/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-100 ring-1 ring-inset ring-emerald-200/20">
-                <span
-                  aria-hidden="true"
-                  className="h-1.5 w-1.5 rounded-full bg-emerald-300"
-                />
-                {t("overview")}
-              </span>
-            )}
-
-            <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-blue-50/90 ring-1 ring-inset ring-white/10">
-              {loading
-                ? t("loadingAccounts")
-                : t("linkedAccount", {
-                    count: accountCount,
-                  })}
-            </span>
-          </div>
         </div>
 
-        {/* Decorative Bank Icon */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-5 top-1/2 hidden -translate-y-1/2 sm:block"
-        >
-          <Landmark
-            size={165}
-            strokeWidth={1.2}
-            className="text-blue-100/30"
-          />
+        {/* ROW 3: Quick Action Buttons (Transfer & Pay only, hover-activated color) */}
+        <div className="flex flex-wrap items-center gap-2.5 pt-1">
+          {/* Transfer */}
+          <Link
+            to="/transfer"
+            className="group inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs sm:text-sm font-bold text-white shadow-xs backdrop-blur-md transition-all duration-200 hover:border-[#00A3C4] hover:bg-[#00A3C4] hover:shadow-md hover:shadow-cyan-500/25 active:scale-95"
+          >
+            <ArrowUpRight
+              size={15}
+              strokeWidth={2.4}
+              className="text-cyan-300 transition-colors duration-200 group-hover:text-white"
+            />
+            <span>Transfer</span>
+          </Link>
+
+          {/* Pay */}
+          <Link
+            to="/checkout"
+            className="group inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs sm:text-sm font-bold text-white shadow-xs backdrop-blur-md transition-all duration-200 hover:border-[#00A3C4] hover:bg-[#00A3C4] hover:shadow-md hover:shadow-cyan-500/25 active:scale-95"
+          >
+            <Receipt
+              size={15}
+              className="text-cyan-300 transition-colors duration-200 group-hover:text-white"
+            />
+            <span>Pay</span>
+          </Link>
         </div>
       </div>
     </section>

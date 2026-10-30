@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="account_status_subreport"
+              pageWidth="555"
+              pageHeight="842"
+              columnWidth="555"
+              leftMargin="0"
+              rightMargin="0"
+              topMargin="0"
+              bottomMargin="0"
+              uuid="d30a67e4-5e70-6c03-1d80-f42016c90133"
+              whenNoDataType="AllSectionsNoDetail">
+
+    <property name="net.sf.jasperreports.default.font.name" value="SansSerif"/>
+
+    <field name="accountStatus" class="java.lang.String"/>
+    <field name="accountCount" class="java.lang.Long"/>
+    <field name="newAccountsInRange" class="java.lang.Long"/>
+    <field name="avgBalance" class="java.math.BigDecimal"/>
+    <field name="minBalance" class="java.math.BigDecimal"/>
+    <field name="maxBalance" class="java.math.BigDecimal"/>
+
+    <columnHeader>
+        <band height="22">
+            <rectangle>
+                <reportElement x="0" y="0" width="555" height="22" backcolor="#08295C" mode="Opaque" uuid="c3344556-0001-4000-8000-000000000010"/>
+                <graphicElement>
+                    <pen lineWidth="0.0"/>
+                </graphicElement>
+            </rectangle>
+            <staticText>
+                <reportElement x="0" y="0" width="105" height="22" forecolor="#FFFFFF" uuid="c3344556-0001-4000-8000-000000000011"/>
+                <box leftPadding="5"/>
+                <textElement textAlignment="Left" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Status]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="105" y="0" width="90" height="22" forecolor="#FFFFFF" uuid="c3344556-0001-4000-8000-000000000012"/>
+                <box rightPadding="4"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Total Accounts]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="195" y="0" width="90" height="22" forecolor="#FFFFFF" uuid="c3344556-0001-4000-8000-000000000013"/>
+                <box rightPadding="4"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[New In Range]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="285" y="0" width="90" height="22" forecolor="#FFFFFF" uuid="c3344556-0001-4000-8000-000000000014"/>
+                <box rightPadding="4"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Avg Balance]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="375" y="0" width="90" height="22" forecolor="#FFFFFF" uuid="c3344556-0001-4000-8000-000000000015"/>
+                <box rightPadding="4"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Min Balance]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="465" y="0" width="90" height="22" forecolor="#FFFFFF" uuid="c3344556-0001-4000-8000-000000000016"/>
+                <box rightPadding="5"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Max Balance]]></text>
+            </staticText>
+        </band>
+    </columnHeader>
+
+    <detail>
+        <band height="18">
+            <rectangle>
+                <reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="555" height="18" backcolor="#F8FAFC" mode="Opaque" uuid="c3344556-0001-4000-8000-000000000020">
+                    <printWhenExpression><![CDATA[$V{REPORT_COUNT} % 2 == 0]]></printWhenExpression>
+                </reportElement>
+                <graphicElement>
+                    <pen lineWidth="0.0"/>
+                </graphicElement>
+            </rectangle>
+            <textField isBlankWhenNull="true">
+                <reportElement x="0" y="0" width="105" height="18" forecolor="#1E293B" uuid="c3344556-0001-4000-8000-000000000021"/>
+                <box leftPadding="5"/>
+                <textElement textAlignment="Left" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{accountStatus}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0" isBlankWhenNull="true">
+                <reportElement x="105" y="0" width="90" height="18" forecolor="#334155" uuid="c3344556-0001-4000-8000-000000000022"/>
+                <box rightPadding="4"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{accountCount} != null ? $F{accountCount} : 0L]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0" isBlankWhenNull="true">
+                <reportElement x="195" y="0" width="90" height="18" forecolor="#334155" uuid="c3344556-0001-4000-8000-000000000023"/>
+                <box rightPadding="4"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{newAccountsInRange} != null ? $F{newAccountsInRange} : 0L]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.00" isBlankWhenNull="true">
+                <reportElement x="285" y="0" width="90" height="18" forecolor="#334155" uuid="c3344556-0001-4000-8000-000000000024"/>
+                <box rightPadding="4"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{avgBalance} != null ? $F{avgBalance} : java.math.BigDecimal.ZERO]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.00" isBlankWhenNull="true">
+                <reportElement x="375" y="0" width="90" height="18" forecolor="#334155" uuid="c3344556-0001-4000-8000-000000000025"/>
+                <box rightPadding="4"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{minBalance} != null ? $F{minBalance} : java.math.BigDecimal.ZERO]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0.00" isBlankWhenNull="true">
+                <reportElement x="465" y="0" width="90" height="18" forecolor="#334155" uuid="c3344556-0001-4000-8000-000000000026"/>
+                <box rightPadding="5"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{maxBalance} != null ? $F{maxBalance} : java.math.BigDecimal.ZERO]]></textFieldExpression>
+            </textField>
+            <line>
+                <reportElement positionType="FixRelativeToBottom" x="0" y="17" width="555" height="1" forecolor="#F1F5F9" uuid="c3344556-0001-4000-8000-000000000027"/>
+                <graphicElement>
+                    <pen lineWidth="0.5"/>
+                </graphicElement>
+            </line>
+        </band>
+    </detail>
+
+</jasperReport>

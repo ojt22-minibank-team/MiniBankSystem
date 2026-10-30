@@ -18,7 +18,6 @@ import {
 } from "react";
 
 import Cropper, { type Area } from "react-easy-crop";
-import { useNavigate } from "react-router-dom";
 
 // ပြင်ဆင်ချက်: Profile page ရှိ UI message များအတွက် ဘာသာပြန် hook ထည့်ထားသည်။
 import { useTranslation } from "react-i18next";
@@ -34,7 +33,6 @@ import type {
   CustomerProfileUpdate,
 } from "../types/profileTypes";
 
-import { requestPinReset } from "../../../../services/authService";
 
 import {
   useAppDispatch,
@@ -146,8 +144,6 @@ async function createCroppedImage(
 /* -------------------------------------------------------------------------- */
 
 export default function ProfilePage() {
-  const navigate = useNavigate();
-
   // ပြင်ဆင်ချက်: profile namespace မှ English/Myanmar စာသားများကို ယူသုံးသည်။
   const { t } = useTranslation("profile");
 
@@ -208,11 +204,7 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  /* ------------------------------------------------------------------------ */
-  /* PIN reset state                                                          */
-  /* ------------------------------------------------------------------------ */
 
-  const [pinResetLoading, setPinResetLoading] = useState(false);
 
   /* ------------------------------------------------------------------------ */
   /* Messages                                                                 */
@@ -542,62 +534,7 @@ export default function ProfilePage() {
     t,
   ]);
 
-  /* ------------------------------------------------------------------------ */
-  /* Forgot Transaction PIN                                                   */
-  /* ------------------------------------------------------------------------ */
 
-  const handleForgotPin = useCallback(async () => {
-    if (pinResetLoading) {
-      return;
-    }
-
-    try {
-      setPinResetLoading(true);
-      clearMessages();
-
-      sessionStorage.removeItem("pinResetChallengeGroupId");
-      sessionStorage.removeItem("pinResetMaskedEmail");
-      sessionStorage.removeItem("verifiedPinResetChallengeGroupId");
-
-      const response = await requestPinReset();
-
-      if (!response.challengeGroupId) {
-        setError(t("pinResetInfoMissing"));
-        return;
-      }
-
-      sessionStorage.setItem(
-        "pinResetChallengeGroupId",
-        response.challengeGroupId
-      );
-
-      if (response.destinationMasked) {
-        sessionStorage.setItem(
-          "pinResetMaskedEmail",
-          response.destinationMasked
-        );
-      }
-
-      navigate("/pin-reset/otp");
-    } catch (err: unknown) {
-      console.error("Failed to start PIN reset:", err);
-
-      const axiosError = err as {
-        response?: {
-          data?: {
-            message?: string;
-          };
-        };
-      };
-
-      setError(
-        axiosError.response?.data?.message ??
-          t("pinResetFailed")
-      );
-    } finally {
-      setPinResetLoading(false);
-    }
-  }, [pinResetLoading, clearMessages, navigate, t]);
 
   /* ------------------------------------------------------------------------ */
   /* Full name                                                                */
@@ -641,8 +578,7 @@ export default function ProfilePage() {
   /* ------------------------------------------------------------------------ */
 
   return (
-    <div className="min-h-[calc(100vh-80px)] bg-[#F5F7FB] px-6 py-8 lg:px-8">
-      <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-5xl space-y-6">
         {/* ပြင်ဆင်ချက်: Error / success message များသည် ဘာသာပြန်ပြီးသား string ကို ပြသသည်။ */}
         {error && (
           <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
@@ -660,7 +596,7 @@ export default function ProfilePage() {
 
         {/* PROFILE SUMMARY */}
         <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="bg-gradient-to-r from-[#08295C] to-[#0878E8] px-6 py-8">
+          <div className="bg-gradient-to-r from-[#0A192F] to-[#00A3C4] px-6 py-8">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
               {/* Profile Photo */}
               <div className="relative h-28 w-28 shrink-0">
@@ -689,7 +625,7 @@ export default function ProfilePage() {
                   disabled={isSaving || isPhotoSaving}
                   aria-label={t("changeProfilePhoto")}
                   title={t("changeProfilePhoto")}
-                  className="absolute bottom-0 right-0 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-[#0878E8] text-white shadow-md transition hover:bg-[#0668ca] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="absolute bottom-0 right-0 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-[#00A3C4] text-white shadow-md transition hover:bg-[#0891B2] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Camera size={17} />
                 </button>
@@ -731,7 +667,7 @@ export default function ProfilePage() {
           <div className="flex items-start gap-3 border-t border-slate-100 px-6 py-4">
             <ShieldCheck
               size={18}
-              className="mt-0.5 shrink-0 text-[#0878E8]"
+              className="mt-0.5 shrink-0 text-[#00A3C4]"
             />
 
             <p className="text-xs leading-relaxed text-slate-500">
@@ -768,39 +704,7 @@ export default function ProfilePage() {
           />
         )}
 
-        {/* SECURITY */}
-        <section className="mt-8">
-          <div className="mb-3 flex items-center gap-2">
-            <ShieldCheck size={20} className="text-[#08295C]" />
 
-            <h2 className="text-lg font-bold text-[#08295C]">
-              {t("security")}
-            </h2>
-          </div>
-
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            {/* Password change route မချိတ်ရသေးသောကြောင့် မူလ behavior ကို ထိန်းထားသည်။ */}
-            <SecurityRow
-              label={t("password")}
-              action={t("change")}
-              onClick={() => {
-                // TODO: ရှိပြီးသား password change route ကို ချိတ်ဆက်ရန်။
-              }}
-            />
-
-            <SecurityRow
-              label={t("transactionPin")}
-              action={
-                pinResetLoading
-                  ? t("sendingOtp")
-                  : t("forgotTransactionPin")
-              }
-              onClick={handleForgotPin}
-              disabled={pinResetLoading}
-            />
-          </div>
-        </section>
-      </div>
 
       {/* CROP MODAL */}
       {isCropModalOpen && cropSourceUrl && (
@@ -809,7 +713,7 @@ export default function ProfilePage() {
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
               <div>
-                <h3 className="text-base font-bold text-[#08295C]">
+                <h3 className="text-base font-bold text-[#0A192F]">
                   {t("cropProfilePhoto")}
                 </h3>
 
@@ -864,7 +768,7 @@ export default function ProfilePage() {
                   setZoom(Number(event.target.value))
                 }
                 disabled={isPhotoSaving}
-                className="w-full accent-[#0878E8]"
+                className="w-full accent-[#00A3C4]"
               />
             </div>
 
@@ -883,7 +787,7 @@ export default function ProfilePage() {
                 type="button"
                 onClick={handleCropSave}
                 disabled={!croppedAreaPixels || isPhotoSaving}
-                className="flex items-center gap-2 rounded-lg bg-[#0878E8] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0668ca] disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex items-center gap-2 rounded-lg bg-[#00A3C4] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0891B2] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isPhotoSaving && (
                   <Loader2 size={16} className="animate-spin" />
@@ -899,39 +803,4 @@ export default function ProfilePage() {
   );
 }
 
-/* ========================================================================== */
-/* SECURITY ROW                                                               */
-/* ========================================================================== */
 
-interface SecurityRowProps {
-  label: string;
-  action: string;
-  onClick: () => void;
-  disabled?: boolean;
-}
-
-function SecurityRow({
-  label,
-  action,
-  onClick,
-  disabled = false,
-}: SecurityRowProps) {
-  return (
-    <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5 last:border-b-0">
-      <div>
-        <p className="text-sm font-semibold text-slate-700">
-          {label}
-        </p>
-      </div>
-
-      <button
-        type="button"
-        onClick={onClick}
-        disabled={disabled}
-        className="text-sm font-semibold text-blue-600 transition hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {action} →
-      </button>
-    </div>
-  );
-}

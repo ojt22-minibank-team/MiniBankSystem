@@ -5,6 +5,7 @@ import Button from '../../../components/common/Button';
 import { staffApi } from '../../../services/apiClient';
 import type { StaffResponse, StaffUpdateRequest } from '../../../types/api.types';
 import type { AxiosError } from 'axios';
+import { useAuth } from '../../auth/hooks/useAuth';
 
 interface StaffEditModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export default function StaffEditModal({
   staff,
   onSuccess,
 }: StaffEditModalProps) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState<StaffUpdateRequest>({
     fullName: '',
     email: '',
@@ -41,6 +43,16 @@ export default function StaffEditModal({
     }
   }, [staff]);
 
+  if (!staff) return null;
+
+  const currentUsername = user?.username?.trim().toLowerCase();
+  const targetUsername = staff.username?.trim().toLowerCase();
+  const isSelf = !!currentUsername && !!targetUsername && currentUsername === targetUsername;
+
+  const roleCode = (staff.roleCode || (staff.staffNo.includes('TLR') ? 'TELLER' : staff.staffNo.includes('AUD') ? 'AUDITOR' : staff.staffNo.includes('ADM') ? 'ADMIN' : 'STAFF')).toUpperCase();
+  const isTargetAdmin = roleCode === 'ADMIN';
+  const isOtherAdmin = isTargetAdmin && !isSelf;
+
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
     if (!formData.fullName.trim()) errs.fullName = 'Full name is required.';
@@ -57,7 +69,11 @@ export default function StaffEditModal({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!staff || !validate()) return;
+    if (isOtherAdmin) {
+      setApiError('Administrators cannot edit the information of other administrators.');
+      return;
+    }
+    if (!validate()) return;
 
     setIsLoading(true);
     setApiError(null);
@@ -83,8 +99,6 @@ export default function StaffEditModal({
     }
   };
 
-  if (!staff) return null;
-
   return (
     <Modal
       isOpen={isOpen}
@@ -107,6 +121,7 @@ export default function StaffEditModal({
             variant="primary"
             size="md"
             isLoading={isLoading}
+            disabled={isOtherAdmin}
             onClick={handleSubmit}
           >
             Save Changes
@@ -118,6 +133,12 @@ export default function StaffEditModal({
         {apiError && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             {apiError}
+          </div>
+        )}
+
+        {isOtherAdmin && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+            <strong>Restricted:</strong> Administrators cannot edit the profile information of other administrators.
           </div>
         )}
 
@@ -134,7 +155,7 @@ export default function StaffEditModal({
             if (errors.fullName) setErrors({ ...errors, fullName: '' });
           }}
           error={errors.fullName}
-          disabled={isLoading}
+          disabled={isLoading || isOtherAdmin}
           required
         />
 
@@ -147,7 +168,7 @@ export default function StaffEditModal({
             if (errors.email) setErrors({ ...errors, email: '' });
           }}
           error={errors.email}
-          disabled={isLoading}
+          disabled={isLoading || isOtherAdmin}
           required
         />
 
@@ -160,7 +181,7 @@ export default function StaffEditModal({
             if (errors.phone) setErrors({ ...errors, phone: '' });
           }}
           error={errors.phone}
-          disabled={isLoading}
+          disabled={isLoading || isOtherAdmin}
           required
         />
       </form>

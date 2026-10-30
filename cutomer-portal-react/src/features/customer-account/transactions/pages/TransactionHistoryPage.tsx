@@ -5,12 +5,14 @@ import { useAppDispatch, useAppSelector } from "../../../../lib/redux";
 import { fetchMyAccounts } from "../../accounts/stores/accountsSlice";
 import type {
   CusTransactionHistoryResponseDTO,
+  CusTransactionHistoryItemDTO,
   TransactionFilterDraft,
   TransactionFilterApplied,
 } from "../types/transactionHistoryTypes";
 import {
   getDefaultSelectedAccountNumber,
 } from "../types/transactionHistoryTypes";
+import { getTodayLocalIso } from "../../statements/types/statementTypes";
 import {
   getTransactions,
   getTransactionStatuses,
@@ -19,6 +21,7 @@ import {
 import TransactionFilters from "../components/TransactionFilters";
 import TransactionTable from "../components/TransactionTable";
 import TransactionPagination from "../components/TransactionPagination";
+import TransactionDetailModal from "../components/TransactionDetailModal";
 
 const INITIAL_DRAFT_FILTERS: TransactionFilterDraft = {
   status: "",
@@ -67,6 +70,9 @@ export default function TransactionHistoryPage() {
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
 
+  // Selected transaction for detail modal
+  const [selectedTransaction, setSelectedTransaction] = useState<CusTransactionHistoryItemDTO | null>(null);
+
   // Load customer accounts on mount if needed
   useEffect(() => {
     if (accounts.length === 0) {
@@ -85,9 +91,14 @@ export default function TransactionHistoryPage() {
   // Client validation for draft filters
   const validationError = useMemo<string | null>(() => {
     const { fromDate, toDate, minAmount, maxAmount } = draftFilters;
+    const todayIso = getTodayLocalIso();
+
+    if ((fromDate && fromDate > todayIso) || (toDate && toDate > todayIso)) {
+      return "Future dates are not allowed.";
+    }
 
     if (fromDate && toDate && fromDate > toDate) {
-      return "From date cannot be after To date.";
+      return "From Date cannot be later than To Date.";
     }
 
     const minNum = minAmount.trim() !== "" ? Number(minAmount) : NaN;
@@ -272,10 +283,12 @@ export default function TransactionHistoryPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Background page content (cleanly hidden during receipt print) */}
+      <div className="transaction-history-page-content space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0878E8]/10 text-[#0878E8] shadow-sm">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#00A3C4]/10 text-[#00A3C4] shadow-sm">
             <History size={24} aria-hidden="true" />
           </div>
           <div>
@@ -313,7 +326,7 @@ export default function TransactionHistoryPage() {
           <button
             type="button"
             onClick={() => void dispatch(fetchMyAccounts())}
-            className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-[#0878E8] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
+            className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-[#00A3C4] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#0891B2]"
           >
             <RefreshCw size={15} aria-hidden="true" />
             Try Again
@@ -383,6 +396,7 @@ export default function TransactionHistoryPage() {
             isLoading={isLoadingHistory}
             hasFiltersApplied={hasFiltersApplied}
             onClearFilters={handleClearFilters}
+            onSelectTransaction={setSelectedTransaction}
           />
 
           {/* Pagination */}
@@ -398,6 +412,15 @@ export default function TransactionHistoryPage() {
             disabled={isLoadingHistory}
           />
         </>
+      )}
+      </div>
+
+      {/* Transaction Detail Modal */}
+      {selectedTransaction && (
+        <TransactionDetailModal
+          transaction={selectedTransaction}
+          onClose={() => setSelectedTransaction(null)}
+        />
       )}
     </div>
   );

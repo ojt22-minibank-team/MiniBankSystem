@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="account_status_summary"
+              pageWidth="595"
+              pageHeight="842"
+              columnWidth="555"
+              leftMargin="20"
+              rightMargin="20"
+              topMargin="20"
+              bottomMargin="20"
+              uuid="f52c8906-7092-8e25-3fa2-164238eb2355"
+              whenNoDataType="AllSectionsNoDetail">
+
+    <property name="net.sf.jasperreports.default.font.name" value="SansSerif"/>
+
+    <parameter name="reportTitle" class="java.lang.String"/>
+    <parameter name="period" class="java.lang.String"/>
+    <parameter name="filterStatus" class="java.lang.String"/>
+    <parameter name="generatedAt" class="java.lang.String"/>
+    <parameter name="LOGO" class="java.lang.Object"/>
+    <parameter name="statusSubreport" class="net.sf.jasperreports.engine.JasperReport"/>
+    <parameter name="statusDataSource" class="net.sf.jasperreports.engine.JRDataSource"/>
+    <parameter name="bracketSubreport" class="net.sf.jasperreports.engine.JasperReport"/>
+    <parameter name="bracketDataSource" class="net.sf.jasperreports.engine.JRDataSource"/>
+
+    <title>
+        <band height="75">
+            <rectangle>
+                <reportElement x="0" y="0" width="555" height="44" backcolor="#08295C" mode="Opaque" uuid="e5566778-0001-4000-8000-000000000001">
+                    <property name="com.jaspersoft.studio.unit.height" value="px"/>
+                </reportElement>
+                <graphicElement>
+                    <pen lineWidth="0.0"/>
+                </graphicElement>
+            </rectangle>
+            <image scaleImage="RetainShape" isUsingCache="true" onErrorType="Blank">
+                <reportElement x="12" y="7" width="30" height="30" uuid="e5566778-0001-4000-8000-000000000008"/>
+                <imageExpression><![CDATA[$P{LOGO}]]></imageExpression>
+            </image>
+            <staticText>
+                <reportElement x="50" y="4" width="280" height="16" forecolor="#BFDBFE" uuid="e5566778-0001-4000-8000-000000000002"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[MINIBANK CORE BANKING SYSTEM]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="50" y="20" width="380" height="20" forecolor="#FFFFFF" uuid="e5566778-0001-4000-8000-000000000003"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="13" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{reportTitle} != null ? $P{reportTitle} : "Account Status Summary Report"]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="0" y="50" width="370" height="15" forecolor="#475569" uuid="e5566778-0001-4000-8000-000000000004"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Period: " + ($P{period} != null ? $P{period} : "All") + ($P{filterStatus} != null && !$P{filterStatus}.isEmpty() ? " | Filter: " + $P{filterStatus} : "")]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="370" y="50" width="185" height="15" forecolor="#64748B" uuid="e5566778-0001-4000-8000-000000000005"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Generated: " + ($P{generatedAt} != null ? $P{generatedAt} : "")]]></textFieldExpression>
+            </textField>
+            <line>
+                <reportElement x="0" y="68" width="555" height="1" forecolor="#E2E8F0" uuid="e5566778-0001-4000-8000-000000000006"/>
+                <graphicElement>
+                    <pen lineWidth="1.0"/>
+                </graphicElement>
+            </line>
+        </band>
+    </title>
+
+    <detail>
+        <band height="120">
+            <staticText>
+                <reportElement x="0" y="6" width="300" height="18" forecolor="#08295C" uuid="e5566778-0001-4000-8000-000000000010"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="10" isBold="true"/>
+                </textElement>
+                <text><![CDATA[1. Account Status Summary]]></text>
+            </staticText>
+            <subreport>
+                <reportElement positionType="Float" x="0" y="26" width="555" height="25" isRemoveLineWhenBlank="true" uuid="e5566778-0001-4000-8000-000000000011"/>
+                <dataSourceExpression><![CDATA[$P{statusDataSource}]]></dataSourceExpression>
+                <subreportExpression><![CDATA[$P{statusSubreport}]]></subreportExpression>
+            </subreport>
+            <staticText>
+                <reportElement positionType="Float" x="0" y="60" width="300" height="18" forecolor="#08295C" uuid="e5566778-0001-4000-8000-000000000012"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="10" isBold="true"/>
+                </textElement>
+                <text><![CDATA[2. Balance Bracket Distribution]]></text>
+            </staticText>
+            <subreport>
+                <reportElement positionType="Float" x="0" y="80" width="555" height="25" isRemoveLineWhenBlank="true" uuid="e5566778-0001-4000-8000-000000000013"/>
+                <dataSourceExpression><![CDATA[$P{bracketDataSource}]]></dataSourceExpression>
+                <subreportExpression><![CDATA[$P{bracketSubreport}]]></subreportExpression>
+            </subreport>
+        </band>
+    </detail>
+
+    <pageFooter>
+        <band height="20">
+            <line>
+                <reportElement x="0" y="2" width="555" height="1" forecolor="#E2E8F0" uuid="e5566778-0001-4000-8000-000000000040"/>
+                <graphicElement>
+                    <pen lineWidth="0.5"/>
+                </graphicElement>
+            </line>
+            <staticText>
+                <reportElement x="0" y="4" width="260" height="14" forecolor="#94A3B8" uuid="e5566778-0001-4000-8000-000000000041"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="7"/>
+                </textElement>
+                <text><![CDATA[Confidential - MiniBank Internal System]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="355" y="4" width="160" height="14" forecolor="#94A3B8" uuid="e5566778-0001-4000-8000-000000000042"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="7"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Page " + $V{PAGE_NUMBER} + " of "]]></textFieldExpression>
+            </textField>
+            <textField evaluationTime="Report">
+                <reportElement x="515" y="4" width="40" height="14" forecolor="#94A3B8" uuid="e5566778-0001-4000-8000-000000000043"/>
+                <textElement textAlignment="Left" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="7"/>
+                </textElement>
+                <textFieldExpression><![CDATA[" " + $V{PAGE_NUMBER}]]></textFieldExpression>
+            </textField>
+        </band>
+    </pageFooter>
+
+</jasperReport>

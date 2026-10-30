@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { isAxiosError } from "axios";
 import {
   Bell,
@@ -23,6 +24,10 @@ import {
 import type { NotificationItem } from "../types/notificationTypes";
 import { useNotificationWebSocket } from "../hooks/useNotificationWebSocket";
 import {
+  maskAccountNumber,
+  formatNotificationMessage,
+} from "../utils/notificationFormatters";
+import {
   getAccessToken,
   getAuthenticationGeneration,
   hasTokens,
@@ -36,6 +41,8 @@ interface NotificationRequestScope {
 }
 
 export const NotificationDropdown: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"all" | "unread">("all");
   const [unreadCount, setUnreadCount] = useState<number>(0);
@@ -306,6 +313,19 @@ export const NotificationDropdown: React.FC = () => {
     }
   };
 
+  // Deep-link directly to Receipt / Slip view
+  const handleNotificationClick = (item: NotificationItem) => {
+    void handleMarkAsRead(item);
+    setIsOpen(false);
+    const ref = item.transactionRef || (item.notificationId ? `NOTI-${item.notificationId}` : "");
+    navigate(`/receipt/${encodeURIComponent(ref)}`, {
+      state: {
+        notification: item,
+        from: location.pathname,
+      },
+    });
+  };
+
   // Mark all as read
   const handleMarkAllAsRead = async () => {
     const scope = requestScopeRef.current;
@@ -390,7 +410,7 @@ export const NotificationDropdown: React.FC = () => {
         className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition focus:outline-none focus:ring-2 focus:ring-blue-100 ${
           isOpen
             ? "bg-blue-50 text-blue-600 shadow-inner"
-            : "text-slate-500 hover:bg-slate-50 hover:text-[#08295C]"
+            : "text-slate-500 hover:bg-slate-50 hover:text-[#0A192F]"
         }`}
       >
         <Bell size={19} />
@@ -405,7 +425,7 @@ export const NotificationDropdown: React.FC = () => {
 
       {/* Dropdown Panel */}
       {isOpen && (
-        <div className="absolute right-0 mt-3 w-80 sm:w-96 rounded-2xl bg-white shadow-2xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-3 duration-200">
+        <div className="absolute -right-14 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 mt-3 w-80 sm:w-96 rounded-2xl bg-white shadow-2xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-3 duration-200">
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/70">
             <div>
@@ -530,7 +550,7 @@ export const NotificationDropdown: React.FC = () => {
                 return (
                   <div
                     key={item.notificationId}
-                    onClick={() => handleMarkAsRead(item)}
+                    onClick={() => handleNotificationClick(item)}
                     className={`px-5 py-3.5 flex items-start gap-3.5 transition cursor-pointer select-none ${
                       unread
                         ? "bg-blue-50/40 hover:bg-blue-50/70"
@@ -570,41 +590,48 @@ export const NotificationDropdown: React.FC = () => {
                               : ""}
                             {item.counterpartyName}
                             {item.counterpartyAccountNumber
-                              ? ` (${item.counterpartyAccountNumber})`
+                              ? ` (${maskAccountNumber(item.counterpartyAccountNumber)})`
                               : ""}
                           </span>
                         </div>
                       )}
 
                       <p className="text-[11px] text-slate-600 mt-1 leading-relaxed line-clamp-2">
-                        {item.message}
+                        {formatNotificationMessage(item)}
                       </p>
 
-                      <div className="mt-1.5 flex items-center justify-between gap-2">
-                        {item.transactionRef ? (
-                          <span className="inline-block text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">
-                            Ref: {item.transactionRef}
-                          </span>
-                        ) : <span />}
+                      <div className="mt-1.5 flex items-center justify-end gap-2">
+                        {(() => {
+                          const itemTitleLower = (item.title || "").toLowerCase();
+                          const isItemFailed = itemTitleLower.includes("fail") || itemTitleLower.includes("reject");
 
-                        {item.amount !== undefined && item.amount !== null && (
-                          <span
-                            className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                              item.transferDirection === "RECEIVED"
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                                : item.transferDirection === "SENT"
-                                ? "bg-rose-50 text-rose-700 border border-rose-100"
-                                : "bg-slate-100 text-slate-600"
-                            }`}
-                          >
-                            {item.transferDirection === "RECEIVED"
-                              ? "+ "
-                              : item.transferDirection === "SENT"
-                              ? "- "
-                              : ""}
-                            {formatAmount(item.amount)} {item.currency || "MMK"}
-                          </span>
-                        )}
+                          return (
+                            <>
+                              {isItemFailed && (
+                                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
+                                  Failed
+                                </span>
+                              )}
+                              {item.amount !== undefined && item.amount !== null && (
+                                <span
+                                  className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                                    isItemFailed
+                                      ? "bg-red-50 text-red-700 border border-red-200"
+                                      : item.transferDirection === "RECEIVED"
+                                      ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                                      : item.transferDirection === "SENT"
+                                      ? "bg-rose-50 text-rose-700 border border-rose-100"
+                                      : "bg-slate-100 text-slate-600"
+                                  }`}
+                                >
+                                  {isItemFailed
+                                    ? `- ${formatAmount(item.amount)} ${item.currency || "MMK"} (Failed)`
+                                    : `${item.transferDirection === "RECEIVED" ? "+ " : item.transferDirection === "SENT" ? "- " : ""}${formatAmount(item.amount)} ${item.currency || "MMK"}`}
+                                </span>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
 

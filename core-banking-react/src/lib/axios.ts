@@ -1,60 +1,134 @@
 import axios from 'axios';
-import type { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { API_BASE_URL, API_ENDPOINTS, STORAGE_KEYS } from '../config/api.config';
+import { updateTokens, forceLogout } from '../features/auth/authSlice';
 
-const API_BASE_URL = 'http://localhost:8080';
+let store: any;
 
-export const apiClient = axios.create({
+export const injectStore = (_store: any) => {
+  store = _store;
+};
+
+// Queue system for concurrent refresh requests
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (value?: string) => void; reject: (reason?: any) => void }> = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else if (token) {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
+const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-    Accept: 'application/json',
   },
   timeout: 30000,
 });
 
-// Request Interceptor: Attach Bearer Token & Staff Identifier
-apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+// ============================================================++++
+// Request interceptor — attach JWT access token from localStorage
+// ============================================================++++
+
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+    if (token && config.headers) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Do not intercept or refresh tokens for the login endpoint
+    if (!originalRequest || originalRequest.url?.includes(API_ENDPOINTS.AUTH.LOGIN)) {
+      return Promise.reject(error);
     }
 
-    // Default Staff ID header required by some backend endpoints
-    if (!config.headers['X-Staff-Id']) {
-      const storedUser = localStorage.getItem('staff_user');
-      if (storedUser) {
-        try {
-          const userObj = JSON.parse(storedUser);
-          if (userObj.id || userObj.staffId) {
-            config.headers['X-Staff-Id'] = String(userObj.id || userObj.staffId);
-          }
-        } catch {
-          config.headers['X-Staff-Id'] = '1';
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      
+      // တကယ်လို့ Refresh လုပ်နေတုန်း တခြား API တွေ 401 တက်လာရင် Queue ထဲမှာ စောင့်ခိုင်းထားမယ်
+      if (isRefreshing) {
+        return new Promise(function (resolve, reject) {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers['Authorization'] = `Bearer ${token}`;
+            return axiosInstance(originalRequest);
+          })
+          .catch((err) => {
+            return Promise.reject(err);
+          });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
         }
-      } else {
-        config.headers['X-Staff-Id'] = '1';
+
+        const response = await axios.post(
+          `${API_BASE_URL}${API_ENDPOINTS.AUTH.REFRESH}`,
+          { refreshToken }
+        );
+
+        const { accessToken, refreshToken: newRefreshToken } = response.data.data || response.data;
+
+        if (store) {
+          store.dispatch(
+            updateTokens({
+              accessToken,
+              refreshToken: newRefreshToken || refreshToken,
+            })
+          );
+        } else {
+          localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
+          if (newRefreshToken) {
+            localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
+          }
+        }
+
+        // စောင့်နေတဲ့ Queue တွေအားလုံးကို Token အသစ်ပေးပြီး ဆက်အလုပ်လုပ်ခိုင်းမယ်
+        processQueue(null, accessToken);
+
+        originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
+        return axiosInstance(originalRequest);
+      } catch (refreshError) {
+        // Refresh ပါ Fail သွားရင် Queue ထဲက ကောင်တွေပါ အကုန် Reject လုပ်ပြီး Logout လုပ်မယ်
+        processQueue(refreshError, null);
+        
+        if (store) {
+          store.dispatch(forceLogout());
+        } else {
+          localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+          localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+          localStorage.removeItem(STORAGE_KEYS.USERNAME);
+          localStorage.removeItem(STORAGE_KEYS.ROLES);
+        }
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false; // အားလုံးပြီးသွားရင် ဖွင့်ပေးလိုက်မယ်
       }
     }
 
-    return config;
-  },
-  (error) => {
     return Promise.reject(error);
   }
 );
 
-// Response Interceptor: Handle unauthenticated responses or structured backend errors
-apiClient.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  (error: AxiosError<{ message?: string; error?: string; status?: string }>) => {
-    if (error.response?.status === 401) {
-      console.warn('Authentication expired or unauthorized access.');
-    }
-    return Promise.reject(error);
-  }
-);
-
-export default apiClient;
+export default axiosInstance;

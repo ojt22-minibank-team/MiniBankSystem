@@ -4,26 +4,29 @@ import {
 } from "react";
 
 import {
+  Navigate,
   useNavigate,
 } from "react-router-dom";
 
-import {
-  ArrowLeft,
-  Check,
-  Clock3,
-  KeyRound,
-  Mail,
-  ShieldCheck,
-} from "lucide-react";
 
 import {
   verifyPasswordResetOtp,
   resendPasswordResetOtp,
 } from "../../../services/authService";
 
-import PublicAuthLayout
-  from "../components/PublicAuthLayout";
+import { Clock3, Mail, ShieldCheck } from "lucide-react";
+import { AuthField, AuthCodeField, AuthNotice } from "../components/IndividualAuthUI";
+import { authCodeInputClass } from "../components/IndividualAuthStyles";
 
+import { EkarajAuthLayout } from "../components/EkarajAuthLayout";
+import { EkarajAuthCard } from "../components/EkarajAuthCard";
+import { ekarajPrimaryButtonClass, ekarajSecondaryButtonClass, ekarajLinkButtonClass } from "../components/EkarajAuthStyles";
+
+
+
+// Keep shared field defaults intact; scope the recovery page's cell styling here.
+const resetOtpCodeClass =
+  "mx-auto w-full max-w-[298px] sm:max-w-[318px] [&>div]:max-w-none [&_[aria-hidden=true]]:gap-0.5 sm:[&_[aria-hidden=true]]:gap-1.5 [&_[aria-hidden=true]>span]:rounded-xl [&_[aria-hidden=true]>span]:border-[#CDD5DF] [&_[aria-hidden=true]>span]:font-medium [&_[aria-hidden=true]>span]:text-[#122E52] [&_[aria-hidden=true]>span]:shadow-sm [&_.group:focus-within_span[class*='group-focus-within']]:border-[#113E65] [&_.group:focus-within_span[class*='group-focus-within']]:ring-2 [&_.group:focus-within_span[class*='group-focus-within']]:ring-[#113E65]";
 
 function PasswordResetOtpPage() {
 
@@ -216,7 +219,9 @@ function PasswordResetOtpPage() {
       // ==================================================
 
       navigate(
-        "/password-reset/new-password"
+        "/password-reset/new-password",
+        // Leave this page before its cleared challenge can trigger the guard.
+        { replace: true, flushSync: true }
       );
 
 
@@ -386,980 +391,112 @@ function PasswordResetOtpPage() {
   // UI
   // ======================================================
 
+  if (
+    !challengeGroupId ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(challengeGroupId)
+  ) {
+    return <Navigate to="/forgot-password" replace />;
+  }
+
   return (
-
-    <PublicAuthLayout>
-
-      <div
-        className="
-          w-full
-          max-w-6xl
-          overflow-hidden
-          rounded-3xl
-          border
-          border-slate-200
-          bg-white
-          shadow-xl
-          shadow-slate-200/70
-        "
+    <EkarajAuthLayout title="EKARAJ BANK | Password Reset Verification">
+      <EkarajAuthCard
+        ariaLabel="Password reset OTP card"
+        formLabel="Password reset verification"
+        variant="recovery"
+        leftHeading={<>Verify Your Identity.<br />Complete Your Password Reset.</>}
       >
+              <div className="mb-3 text-center">
+                <span aria-hidden="true" className="mx-auto mb-1.5 flex h-10 w-10 items-center justify-center rounded-full border border-[#C6D5E3] bg-[#EAF2FA] text-[#113E65]">
+                  <Mail size={21} strokeWidth={1.8} />
+                </span>
+                <h1 className="font-serif text-2xl font-medium leading-8 tracking-tight text-[#1A365D]">OTP Verification</h1>
+                <p className="mt-1 break-words text-sm leading-5 text-[#59697D]">
+              Enter the 6-digit code sent to{" "}
+              <strong className="font-semibold text-[#1A365D]">
+                {maskedEmail || "your registered email"}
+              </strong>{" "}
+              to reset your password.
+                </p>
+              </div>
+        <form onSubmit={handleVerifyOtp} className="space-y-2.5 [&_label]:text-[#1A365D]">
+          <AuthField label="Verification code" htmlFor="individual-recovery-otp">
+            <div className="-mx-3 sm:mx-0">
+            <div className={resetOtpCodeClass}>
+            <AuthCodeField value={otp}>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                value={otp}
+                placeholder="000000"
+                autoComplete="one-time-code"
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, "");
 
-        <div
-          className="
-            grid
-            min-h-[610px]
-            md:grid-cols-[0.9fr_1.1fr]
-          "
-        >
-
-
-          {/* ============================================
-              LEFT PASSWORD RECOVERY PANEL
-          ============================================ */}
-
-          <div
-            className="
-              relative
-              hidden
-              overflow-hidden
-              bg-gradient-to-br
-              from-[#08295C]
-              via-[#0B3A78]
-              to-[#125AA3]
-              p-10
-              text-white
-              md:flex
-              md:flex-col
-              md:justify-between
-              lg:p-12
-            "
+                  setOtp(value);
+                }}
+                disabled={loading || resending}
+                id="individual-recovery-otp"
+                className={authCodeInputClass}
+                aria-invalid={Boolean(error)}
+                aria-required={true}
+              />
+            </AuthCodeField>
+            </div>
+            </div>
+          </AuthField>
+          <p className="flex items-center justify-center gap-1.5 text-xs leading-4 text-[#59697D]"><Clock3 aria-hidden="true" size={14} />Your verification code is valid for 5 minutes.</p>
+          <AuthNotice error={error} />
+          <AuthNotice message={message} />
+          <button
+            type="submit"
+            disabled={loading || resending}
+            className={ekarajPrimaryButtonClass}
+            aria-busy={loading || resending}
           >
-
-
-            {/* Decorative circles */}
-
-            <div
-              className="
-                absolute
-                -right-24
-                -top-24
-                h-72
-                w-72
-                rounded-full
-                bg-white/5
-              "
-            />
-
-
-            <div
-              className="
-                absolute
-                -bottom-28
-                -left-20
-                h-72
-                w-72
-                rounded-full
-                bg-white/5
-              "
-            />
-
-
-            {/* BRAND / MESSAGE */}
-
-            <div className="relative z-10">
-
-              <div
-                className="
-                  mb-8
-                  flex
-                  items-center
-                  gap-3
-                "
-              >
-
-                <div
-                  className="
-                    flex
-                    h-12
-                    w-12
-                    items-center
-                    justify-center
-                    rounded-2xl
-                    bg-white/15
-                    backdrop-blur
-                  "
-                >
-
-                  <ShieldCheck
-                    size={27}
-                  />
-
-                </div>
-
-
-                <div>
-
-                  <h1
-                    className="
-                      text-2xl
-                      font-bold
-                    "
-                  >
-
-                    ACE Bank
-
-                  </h1>
-
-
-                  <p
-                    className="
-                      mt-0.5
-                      text-xs
-                      text-blue-100
-                    "
-                  >
-
-                    Secure Password Recovery
-
-                  </p>
-
-                </div>
-
-              </div>
-
-
-              <h2
-                className="
-                  max-w-md
-                  text-3xl
-                  font-bold
-                  leading-tight
-                  lg:text-4xl
-                "
-              >
-
-                Confirm your identity
-                before creating a
-                new password.
-
-              </h2>
-
-
-              <p
-                className="
-                  mt-5
-                  max-w-md
-                  text-sm
-                  leading-7
-                  text-blue-100
-                  lg:text-base
-                "
-              >
-
-                Enter the verification code sent
-                to your registered email to continue
-                the password recovery process.
-
-              </p>
-
-            </div>
-
-
-            {/* SECURITY BOX */}
-
-            <div
-              className="
-                relative
-                z-10
-                mt-8
-                rounded-2xl
-                border
-                border-white/15
-                bg-white/10
-                p-6
-                backdrop-blur-sm
-              "
-            >
-
-              <div
-                className="
-                  mb-5
-                  flex
-                  items-center
-                  gap-3
-                "
-              >
-
-                <div
-                  className="
-                    flex
-                    h-11
-                    w-11
-                    shrink-0
-                    items-center
-                    justify-center
-                    rounded-full
-                    bg-white/15
-                  "
-                >
-
-                  <KeyRound
-                    size={22}
-                  />
-
-                </div>
-
-
-                <div>
-
-                  <h3
-                    className="
-                      text-lg
-                      font-bold
-                    "
-                  >
-
-                    Password Recovery
-
-                  </h3>
-
-
-                  <p
-                    className="
-                      mt-1
-                      text-xs
-                      text-blue-100
-                    "
-                  >
-
-                    Secure identity verification
-
-                  </p>
-
-                </div>
-
-              </div>
-
-
-              <div className="space-y-4">
-
-
-                {/* EMAIL OTP */}
-
-                <div
-                  className="
-                    flex
-                    items-center
-                    gap-3
-                  "
-                >
-
-                  <div
-                    className="
-                      flex
-                      h-7
-                      w-7
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-emerald-400/20
-                      text-emerald-200
-                    "
-                  >
-
-                    <Check
-                      size={16}
-                    />
-
-                  </div>
-
-
-                  <p
-                    className="
-                      text-sm
-                      text-blue-50
-                    "
-                  >
-
-                    Verification through Email OTP
-
-                  </p>
-
-                </div>
-
-
-                {/* EXPIRY */}
-
-                <div
-                  className="
-                    flex
-                    items-center
-                    gap-3
-                  "
-                >
-
-                  <div
-                    className="
-                      flex
-                      h-7
-                      w-7
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-emerald-400/20
-                      text-emerald-200
-                    "
-                  >
-
-                    <Check
-                      size={16}
-                    />
-
-                  </div>
-
-
-                  <p
-                    className="
-                      text-sm
-                      text-blue-50
-                    "
-                  >
-
-                    OTP is valid for 5 minutes
-
-                  </p>
-
-                </div>
-
-
-                {/* LATEST OTP */}
-
-                <div
-                  className="
-                    flex
-                    items-center
-                    gap-3
-                  "
-                >
-
-                  <div
-                    className="
-                      flex
-                      h-7
-                      w-7
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-emerald-400/20
-                      text-emerald-200
-                    "
-                  >
-
-                    <Check
-                      size={16}
-                    />
-
-                  </div>
-
-
-                  <p
-                    className="
-                      text-sm
-                      text-blue-50
-                    "
-                  >
-
-                    Only the latest OTP can be used
-
-                  </p>
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-
-          {/* ============================================
-              RIGHT OTP PANEL
-          ============================================ */}
-
-          <div
-            className="
-              flex
-              items-center
-              justify-center
-              px-6
-              py-10
-              sm:px-10
-              lg:px-16
-            "
+            {loading ||
+              (resending && (
+                <span
+                  aria-hidden="true"
+                  className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[#122E52]/25 border-t-[#122E52] motion-reduce:animate-none"
+                />
+              ))}{" "}
+            {loading ? "Verifying..." : "Verify OTP"}
+          </button>
+        </form>
+        <div className="mt-2.5 text-center">
+          <p className="mb-1.5 text-xs leading-4 text-[#59697D]">Didn't receive the code?</p>
+          <button
+            type="button"
+            onClick={handleResendOtp}
+            disabled={loading || resending}
+            className={ekarajSecondaryButtonClass}
           >
-
-            <div
-              className="
-                w-full
-                max-w-lg
-              "
-            >
-
-
-              {/* MOBILE BRAND */}
-
-              <div
-                className="
-                  mb-8
-                  flex
-                  items-center
-                  gap-3
-                  md:hidden
-                "
-              >
-
-                <div
-                  className="
-                    flex
-                    h-11
-                    w-11
-                    items-center
-                    justify-center
-                    rounded-xl
-                    bg-[#08295C]
-                    text-white
-                  "
-                >
-
-                  <ShieldCheck
-                    size={22}
-                  />
-
-                </div>
-
-
-                <div>
-
-                  <h1
-                    className="
-                      text-xl
-                      font-bold
-                      text-[#08295C]
-                    "
-                  >
-
-                    ACE Bank
-
-                  </h1>
-
-
-                  <p
-                    className="
-                      text-xs
-                      text-slate-400
-                    "
-                  >
-
-                    Password Recovery
-
-                  </p>
-
-                </div>
-
-              </div>
-
-
-              {/* ICON */}
-
-              <div
-                className="
-                  mb-6
-                  flex
-                  h-16
-                  w-16
-                  items-center
-                  justify-center
-                  rounded-2xl
-                  bg-blue-50
-                  text-blue-600
-                "
-              >
-
-                <Mail
-                  size={30}
-                />
-
-              </div>
-
-
-              {/* HEADER */}
-
-              <div className="mb-7">
-
-                <p
-                  className="
-                    mb-2
-                    text-sm
-                    font-semibold
-                    uppercase
-                    tracking-wider
-                    text-blue-600
-                  "
-                >
-
-                  Password Recovery
-
-                </p>
-
-
-                <h2
-                  className="
-                    text-3xl
-                    font-bold
-                    tracking-tight
-                    text-[#08295C]
-                    lg:text-4xl
-                  "
-                >
-
-                  Verify your email
-
-                </h2>
-
-
-                <p
-                  className="
-                    mt-3
-                    text-sm
-                    leading-6
-                    text-slate-500
-                  "
-                >
-
-                  Enter the 6-digit verification code
-                  sent to your registered email.
-
-                </p>
-
-
-                {/* MASKED EMAIL */}
-
-                {
-                  maskedEmail
-                  &&
-                  (
-
-                    <div
-                      className="
-                        mt-4
-                        inline-flex
-                        items-center
-                        gap-2
-                        rounded-full
-                        bg-blue-50
-                        px-4
-                        py-2
-                        text-sm
-                        font-semibold
-                        text-blue-700
-                      "
-                    >
-
-                      <Mail
-                        size={16}
-                      />
-
-                      {maskedEmail}
-
-                    </div>
-
-                  )
-                }
-
-              </div>
-
-
-              {/* ========================================
-                  OTP FORM
-              ======================================== */}
-
-              <form
-                onSubmit={
-                  handleVerifyOtp
-                }
-              >
-
-
-                {/* OTP LABEL */}
-
-                <label
-                  className="
-                    mb-2
-                    block
-                    text-sm
-                    font-semibold
-                    text-slate-700
-                  "
-                >
-
-                  Verification Code
-
-                </label>
-
-
-                {/* OTP INPUT */}
-
-                <input
-
-                  type="text"
-
-                  inputMode="numeric"
-
-                  maxLength={6}
-
-                  value={
-                    otp
-                  }
-
-                  placeholder="000000"
-
-                  autoComplete="one-time-code"
-
-                  onChange={(e) => {
-
-                    const value =
-                      e.target.value.replace(
-                        /\D/g,
-                        ""
-                      );
-
-
-                    setOtp(
-                      value
-                    );
-
-                  }}
-
-                  disabled={
-                    loading
-                    ||
-                    resending
-                  }
-
-                  className="
-                    w-full
-                    rounded-xl
-                    border
-                    border-slate-300
-                    bg-white
-                    px-5
-                    py-4
-                    text-center
-                    text-2xl
-                    font-semibold
-                    tracking-[0.55em]
-                    text-slate-800
-                    outline-none
-                    transition
-                    placeholder:text-slate-300
-                    focus:border-blue-500
-                    focus:ring-4
-                    focus:ring-blue-100
-                    disabled:cursor-not-allowed
-                    disabled:bg-slate-50
-                  "
-
-                />
-
-
-                {/* EXPIRY INFORMATION */}
-
-                <div
-                  className="
-                    mt-3
-                    flex
-                    items-center
-                    gap-2
-                    text-xs
-                    text-slate-400
-                  "
-                >
-
-                  <Clock3
-                    size={15}
-                  />
-
-                  The verification code is valid for
-                  5 minutes.
-
-                </div>
-
-
-                {/* ======================================
-                    ERROR MESSAGE
-                ====================================== */}
-
-                {
-                  error
-                  &&
-                  (
-
-                    <div
-                      className="
-                        mt-5
-                        rounded-xl
-                        border
-                        border-red-200
-                        bg-red-50
-                        px-4
-                        py-3
-                        text-sm
-                        font-medium
-                        text-red-600
-                      "
-                    >
-
-                      {error}
-
-                    </div>
-
-                  )
-                }
-
-
-                {/* ======================================
-                    SUCCESS MESSAGE
-                ====================================== */}
-
-                {
-                  message
-                  &&
-                  (
-
-                    <div
-                      className="
-                        mt-5
-                        rounded-xl
-                        border
-                        border-emerald-200
-                        bg-emerald-50
-                        px-4
-                        py-3
-                        text-sm
-                        font-medium
-                        text-emerald-700
-                      "
-                    >
-
-                      {message}
-
-                    </div>
-
-                  )
-                }
-
-
-                {/* ======================================
-                    VERIFY BUTTON
-                ====================================== */}
-
-                <button
-
-                  type="submit"
-
-                  disabled={
-                    loading
-                    ||
-                    resending
-                  }
-
-                  className="
-                    mt-6
-                    flex
-                    w-full
-                    items-center
-                    justify-center
-                    rounded-xl
-                    bg-blue-600
-                    px-5
-                    py-3.5
-                    text-sm
-                    font-bold
-                    text-white
-                    shadow-sm
-                    transition
-                    hover:bg-blue-700
-                    focus:outline-none
-                    focus:ring-4
-                    focus:ring-blue-200
-                    disabled:cursor-not-allowed
-                    disabled:opacity-60
-                  "
-                >
-
-                  {
-                    loading
-                      ? "Verifying..."
-                      : "Verify OTP"
-                  }
-
-                </button>
-
-
-                {/* ======================================
-                    RESEND OTP
-                ====================================== */}
-
-                <div
-                  className="
-                    mt-6
-                    text-center
-                  "
-                >
-
-                  <span
-                    className="
-                      text-sm
-                      text-slate-500
-                    "
-                  >
-
-                    Didn't receive the code?{" "}
-
-                  </span>
-
-
-                  <button
-
-                    type="button"
-
-                    onClick={
-                      handleResendOtp
-                    }
-
-                    disabled={
-                      loading
-                      ||
-                      resending
-                    }
-
-                    className="
-                      text-sm
-                      font-semibold
-                      text-blue-600
-                      transition
-                      hover:text-blue-700
-                      disabled:cursor-not-allowed
-                      disabled:opacity-50
-                    "
-                  >
-
-                    {
-                      resending
-                        ? "Sending..."
-                        : "Resend OTP"
-                    }
-
-                  </button>
-
-                </div>
-
-
-                {/* ======================================
-                    BACK
-                ====================================== */}
-
-                <button
-
-                  type="button"
-
-                  onClick={
-                    handleBack
-                  }
-
-                  disabled={
-                    loading
-                    ||
-                    resending
-                  }
-
-                  className="
-                    mt-5
-                    flex
-                    w-full
-                    items-center
-                    justify-center
-                    gap-2
-                    rounded-xl
-                    border
-                    border-slate-200
-                    bg-white
-                    px-5
-                    py-3
-                    text-sm
-                    font-semibold
-                    text-slate-600
-                    transition
-                    hover:bg-slate-50
-                    hover:text-slate-800
-                    disabled:cursor-not-allowed
-                    disabled:opacity-60
-                  "
-                >
-
-                  <ArrowLeft
-                    size={17}
-                  />
-
-                  Back to Password Recovery
-
-                </button>
-
-              </form>
-
-
-              {/* SECURITY NOTE */}
-
-              <div
-                className="
-                  mt-7
-                  rounded-xl
-                  bg-slate-50
-                  px-4
-                  py-3
-                  text-center
-                "
-              >
-
-                <p
-                  className="
-                    text-xs
-                    leading-5
-                    text-slate-500
-                  "
-                >
-
-                  For your security, only use the
-                  latest verification code sent to
-                  your registered email.
-
-                </p>
-
-              </div>
-
-            </div>
-
-          </div>
-
+            {" "}
+            {resending ? "Sending..." : "Resend OTP"}{" "}
+          </button>
         </div>
-
-      </div>
-
-    </PublicAuthLayout>
-
+        <div className="mt-1.5 text-center">
+          <button
+            type="button"
+            onClick={handleBack}
+            disabled={loading || resending}
+            className={ekarajLinkButtonClass}
+          >
+            {" "}
+             Back to Password Recovery
+          </button>
+        </div>
+              <div className="mt-2.5 flex items-start gap-3 rounded-xl border border-[#C6D5E3] bg-[#EAF2FA] p-2.5">
+                <ShieldCheck aria-hidden="true" size={20} className="mt-0.5 shrink-0 text-[#113E65]" />
+                <div>
+                  <p className="text-xs font-semibold leading-4 text-[#1A365D]">Secure verification</p>
+                  <p className="mt-0.5 text-xs leading-4 text-[#59697D]">Your verification code is valid for 5 minutes. Do not share it with anyone.</p>
+                </div>
+              </div>
+      </EkarajAuthCard>
+    </EkarajAuthLayout>
   );
 
 }

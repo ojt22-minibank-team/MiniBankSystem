@@ -1,88 +1,288 @@
-
 @import "tailwindcss";
+@import "./theme/ekarajTheme.css";
 
 /* Enable Tailwind dark: utilities using the .dark class */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Light theme */
-:root {
-  color-scheme: light;
-
-  --app-bg: #f5f7fb;
-  --surface: #ffffff;
-  --surface-secondary: #f8fafc;
-
-  --text-primary: #0f172a;
-  --text-secondary: #64748b;
-
-  --border-default: #e2e8f0;
-
-  --brand-primary: #0878e8;
-  --sidebar-bg: #08295c;
+/* Tailwind v4 Theme Color System for Ekaraj Bank */
+@theme {
+  --color-brand-navy: #0a192f;
+  --color-brand-navy-dark: #060e1a;
+  --color-brand-navy-light: #153564;
+  --color-brand-cyan: #00a3c4;
+  --color-brand-cyan-hover: #0891b2;
+  --color-brand-cyan-light: #cffafe;
+  --color-brand-gold: #d4af37;
+  --color-brand-gold-light: #fef9c3;
+  --color-brand-gold-dark: #b38a20;
+  --color-brand-sapphire: #1e40af;
+  --color-brand-platinum: #e2e8f0;
 }
 
-/* Dark theme */
-.dark {
-  color-scheme: dark;
-
-  --app-bg: #020617;
-  --surface: #0f172a;
-  --surface-secondary: #1e293b;
-
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-
-  --border-default: #334155;
-
-  --brand-primary: #3b9aff;
-  --sidebar-bg: #020b1d;
-}
-
-/* body {
+html,
+body {
+  background-color: #f4f6f9;
+  min-height: 100vh;
   margin: 0;
-  font-family: Arial, sans-serif;
-  background-color: #f5f7fa;
+  padding: 0;
+  color: #0a192f;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-input {
-  display: block;
-  width: 300px;
-  padding: 10px;
-  margin-top: 5px;
-  margin-bottom: 15px;
-  border: 1px solid #999;
-  border-radius: 5px;
-  background-color: white;
-  color: black;
+html.dark,
+html.dark body {
+  background-color: #060e1a;
+  color: #f8fafc;
 }
 
-button {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 5px;
-  background-color: #0066cc;
-  color: white;
-  cursor: pointer;
+/* ========================================================================== */
+/* Complete Customer Portal Automatic Dark Theme                              */
+/* Automatically styles all interior pages, cards, and widgets when .dark is on */
+/* ========================================================================== */
+html.dark {
+  color-scheme: dark;
 }
 
-button:hover {
-  background-color: #004c99;
-} */
+/* 0. Neutralize light canvas backgrounds in dark mode */
+html.dark .bg-\[\#F5F7FB\],
+html.dark .bg-\[\#F4F6F9\] {
+  background-color: transparent !important;
+}
+
+/* 1. Surfaces & Cards */
+html.dark .bg-white:not(.print-receipt-container, .print-receipt-container *, [data-keep-light], [data-keep-light] *, [data-bank-card], [data-bank-card] *) {
+  background-color: #0a192f !important;
+}
+
+html.dark .bg-slate-50:not(.print-receipt-container *, [data-keep-light] *, [data-bank-card] *),
+html.dark [class*="bg-slate-50"]:not(.print-receipt-container *, [data-keep-light] *, [data-bank-card] *),
+html.dark .bg-gray-50:not(.print-receipt-container *, [data-keep-light] *, [data-bank-card] *),
+html.dark [class*="bg-gray-50"]:not(.print-receipt-container *, [data-keep-light] *, [data-bank-card] *),
+html.dark .bg-zinc-50:not(.print-receipt-container *, [data-keep-light] *, [data-bank-card] *),
+html.dark [class*="bg-zinc-50"]:not(.print-receipt-container *, [data-keep-light] *, [data-bank-card] *) {
+  background-color: #0f2445 !important;
+}
+
+html.dark .bg-slate-100:not(.print-receipt-container *, [data-keep-light] *, [data-bank-card] *),
+html.dark [class*="bg-slate-100"]:not(.print-receipt-container *, [data-keep-light] *, [data-bank-card] *),
+html.dark .bg-gray-100:not(.print-receipt-container *, [data-keep-light] *, [data-bank-card] *),
+html.dark [class*="bg-gray-100"]:not(.print-receipt-container *, [data-keep-light] *, [data-bank-card] *),
+html.dark .bg-zinc-100:not(.print-receipt-container *, [data-keep-light] *, [data-bank-card] *),
+html.dark [class*="bg-zinc-100"]:not(.print-receipt-container *, [data-keep-light] *, [data-bank-card] *) {
+  background-color: #152b4e !important;
+}
+
+html.dark .bg-slate-200:not(.print-receipt-container *, [data-keep-light] *, [data-bank-card] *),
+html.dark [class*="bg-slate-200"]:not(.print-receipt-container *, [data-keep-light] *, [data-bank-card] *),
+html.dark .bg-gray-200:not(.print-receipt-container *, [data-keep-light] *, [data-bank-card] *),
+html.dark [class*="bg-gray-200"]:not(.print-receipt-container *, [data-keep-light] *, [data-bank-card] *),
+html.dark .bg-zinc-200:not(.print-receipt-container *, [data-keep-light] *, [data-bank-card] *),
+html.dark [class*="bg-zinc-200"]:not(.print-receipt-container *, [data-keep-light] *, [data-bank-card] *) {
+  background-color: #1e3a66 !important;
+}
+
+/* 2. Borders & Dividers */
+html.dark .border-slate-100:not(.print-receipt-container *, [data-bank-card] *),
+html.dark .border-slate-200:not(.print-receipt-container *, [data-bank-card] *),
+html.dark [class*="border-slate-100"]:not(.print-receipt-container *, [data-bank-card] *),
+html.dark [class*="border-slate-200"]:not(.print-receipt-container *, [data-bank-card] *),
+html.dark .border-gray-100:not(.print-receipt-container *, [data-bank-card] *),
+html.dark .border-gray-200:not(.print-receipt-container *, [data-bank-card] *),
+html.dark .border-gray-300:not(.print-receipt-container *, [data-bank-card] *),
+html.dark [class*="border-gray-100"]:not(.print-receipt-container *, [data-bank-card] *),
+html.dark [class*="border-gray-200"]:not(.print-receipt-container *, [data-bank-card] *),
+html.dark [class*="border-gray-300"]:not(.print-receipt-container *, [data-bank-card] *) {
+  border-color: #1b3152 !important;
+}
+
+html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]):not([data-bank-card] *),
+html.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]):not([data-bank-card] *),
+html.dark [class*="divide-slate-100"] > :not([hidden]) ~ :not([hidden]):not([data-bank-card] *),
+html.dark [class*="divide-slate-200"] > :not([hidden]) ~ :not([hidden]):not([data-bank-card] *),
+html.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]):not([data-bank-card] *),
+html.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]):not([data-bank-card] *),
+html.dark [class*="divide-gray-100"] > :not([hidden]) ~ :not([hidden]):not([data-bank-card] *),
+html.dark [class*="divide-gray-200"] > :not([hidden]) ~ :not([hidden]):not([data-bank-card] *) {
+  border-color: #1b3152 !important;
+}
+
+/* 3. Text & Typography */
+html.dark .text-\[\#0A192F\]:not(.print-receipt-container *, [data-keep-light], [data-keep-light] *, [data-bank-card], [data-bank-card] *),
+html.dark .text-slate-900:not(.print-receipt-container *, [data-keep-light], [data-keep-light] *, [data-bank-card], [data-bank-card] *),
+html.dark .text-slate-800:not(.print-receipt-container *, [data-keep-light], [data-keep-light] *, [data-bank-card], [data-bank-card] *),
+html.dark .text-gray-900:not(.print-receipt-container *, [data-keep-light], [data-keep-light] *, [data-bank-card], [data-bank-card] *),
+html.dark .text-gray-800:not(.print-receipt-container *, [data-keep-light], [data-keep-light] *, [data-bank-card], [data-bank-card] *),
+html.dark .text-zinc-900:not(.print-receipt-container *, [data-keep-light], [data-keep-light] *, [data-bank-card], [data-bank-card] *),
+html.dark .text-zinc-800:not(.print-receipt-container *, [data-keep-light], [data-keep-light] *, [data-bank-card], [data-bank-card] *) {
+  color: #f8fafc !important;
+}
+
+html.dark .text-slate-700:not(.print-receipt-container *, [data-keep-light], [data-keep-light] *, [data-bank-card], [data-bank-card] *),
+html.dark .text-slate-600:not(.print-receipt-container *, [data-keep-light], [data-keep-light] *, [data-bank-card], [data-bank-card] *),
+html.dark .text-gray-700:not(.print-receipt-container *, [data-keep-light], [data-keep-light] *, [data-bank-card], [data-bank-card] *),
+html.dark .text-gray-600:not(.print-receipt-container *, [data-keep-light], [data-keep-light] *, [data-bank-card], [data-bank-card] *),
+html.dark .text-zinc-700:not(.print-receipt-container *, [data-keep-light], [data-keep-light] *, [data-bank-card], [data-bank-card] *),
+html.dark .text-zinc-600:not(.print-receipt-container *, [data-keep-light], [data-keep-light] *, [data-bank-card], [data-bank-card] *) {
+  color: #cbd5e1 !important;
+}
+
+html.dark .text-slate-500:not(.print-receipt-container *, [data-keep-light], [data-keep-light] *, [data-bank-card], [data-bank-card] *),
+html.dark .text-slate-400:not(.print-receipt-container *, [data-keep-light], [data-keep-light] *, [data-bank-card], [data-bank-card] *),
+html.dark .text-gray-500:not(.print-receipt-container *, [data-keep-light], [data-keep-light] *, [data-bank-card], [data-bank-card] *),
+html.dark .text-gray-400:not(.print-receipt-container *, [data-keep-light], [data-keep-light] *, [data-bank-card], [data-bank-card] *),
+html.dark .text-zinc-500:not(.print-receipt-container *, [data-keep-light], [data-keep-light] *, [data-bank-card], [data-bank-card] *),
+html.dark .text-zinc-400:not(.print-receipt-container *, [data-keep-light], [data-keep-light] *, [data-bank-card], [data-bank-card] *) {
+  color: #94a3b8 !important;
+}
+
+/* Bank Card Specific High-Contrast Preservation in Dark Mode */
+[data-bank-card] .embossed-text-silver {
+  color: #1e293b !important;
+}
+
+[data-bank-card] .embossed-text-gold {
+  color: #453205 !important;
+}
+
+[data-bank-card] .embossed-text-navy {
+  color: #e2e8f0 !important;
+}
+
+/* 4. Form Controls & Inputs */
+html.dark input:not([type="checkbox"], [type="radio"], [type="submit"], [type="button"], [type="range"], .print-receipt-container *),
+html.dark select:not(.print-receipt-container *),
+html.dark textarea:not(.print-receipt-container *) {
+  background-color: #0f2445 !important;
+  color: #f8fafc !important;
+  border-color: #1b3152 !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* 5. Hover States */
+html.dark [class*="hover:bg-slate-50"]:hover:not(.print-receipt-container *),
+html.dark [class*="hover:bg-slate-100"]:hover:not(.print-receipt-container *),
+html.dark [class*="hover:bg-gray-50"]:hover:not(.print-receipt-container *),
+html.dark [class*="hover:bg-gray-100"]:hover:not(.print-receipt-container *) {
+  background-color: #132a4e !important;
+}
+
+/* 6. Soft Accent Badges */
+html.dark .bg-cyan-50:not([data-bank-card] *),
+html.dark .bg-cyan-100:not([data-bank-card] *),
+html.dark [class*="bg-cyan-50"]:not([class*="dark:"], [data-bank-card] *),
+html.dark [class*="bg-cyan-100"]:not([class*="dark:"], [data-bank-card] *) {
+  background-color: rgba(0, 163, 196, 0.2) !important;
+  color: #67e8f9 !important;
+}
+
+html.dark .bg-cyan-50 *:not([data-bank-card] *),
+html.dark .bg-cyan-100 *:not([data-bank-card] *),
+html.dark [class*="bg-cyan-50"]:not([class*="dark:"], [data-bank-card] *) *:not([data-bank-card] *),
+html.dark [class*="bg-cyan-100"]:not([class*="dark:"], [data-bank-card] *) *:not([data-bank-card] *) {
+  color: #67e8f9 !important;
+}
+
+html.dark .border-cyan-100:not([data-bank-card] *),
+html.dark .border-cyan-200:not([data-bank-card] *),
+html.dark [class*="border-cyan-100"]:not([class*="dark:"], [data-bank-card] *),
+html.dark [class*="border-cyan-200"]:not([class*="dark:"], [data-bank-card] *) {
+  border-color: rgba(0, 163, 196, 0.35) !important;
+}
+
+html.dark .bg-emerald-50:not([data-bank-card] *),
+html.dark .bg-emerald-100:not([data-bank-card] *),
+html.dark [class*="bg-emerald-50"]:not([class*="dark:"], [data-bank-card] *),
+html.dark [class*="bg-emerald-100"]:not([class*="dark:"], [data-bank-card] *) {
+  background-color: rgba(16, 185, 129, 0.2) !important;
+  color: #6ee7b7 !important;
+}
+
+html.dark .bg-emerald-50 *:not([data-bank-card] *),
+html.dark .bg-emerald-100 *:not([data-bank-card] *),
+html.dark [class*="bg-emerald-50"]:not([class*="dark:"], [data-bank-card] *) *:not([data-bank-card] *),
+html.dark [class*="bg-emerald-100"]:not([class*="dark:"], [data-bank-card] *) *:not([data-bank-card] *) {
+  color: #6ee7b7 !important;
+}
+
+html.dark .border-emerald-100:not([data-bank-card] *),
+html.dark .border-emerald-200:not([data-bank-card] *) {
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+html.dark .bg-amber-50:not([data-bank-card] *),
+html.dark .bg-amber-100:not([data-bank-card] *),
+html.dark [class*="bg-amber-50"]:not([class*="dark:"], [data-bank-card] *),
+html.dark [class*="bg-amber-100"]:not([class*="dark:"], [data-bank-card] *) {
+  background-color: rgba(245, 158, 11, 0.2) !important;
+  color: #fde047 !important;
+}
+
+html.dark .bg-amber-50 *:not([data-bank-card] *),
+html.dark .bg-amber-100 *:not([data-bank-card] *),
+html.dark [class*="bg-amber-50"]:not([class*="dark:"], [data-bank-card] *) *:not([data-bank-card] *),
+html.dark [class*="bg-amber-100"]:not([class*="dark:"], [data-bank-card] *) *:not([data-bank-card] *) {
+  color: #fde047 !important;
+}
+
+html.dark .border-amber-100:not([data-bank-card] *),
+html.dark .border-amber-200:not([data-bank-card] *) {
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+html.dark .bg-rose-50:not([data-bank-card] *),
+html.dark .bg-rose-100:not([data-bank-card] *),
+html.dark [class*="bg-rose-50"]:not([class*="dark:"], [data-bank-card] *),
+html.dark [class*="bg-rose-100"]:not([class*="dark:"], [data-bank-card] *),
+html.dark .bg-red-50:not([data-bank-card] *),
+html.dark .bg-red-100:not([data-bank-card] *),
+html.dark [class*="bg-red-50"]:not([class*="dark:"], [data-bank-card] *),
+html.dark [class*="bg-red-100"]:not([class*="dark:"], [data-bank-card] *) {
+  background-color: rgba(244, 63, 94, 0.2) !important;
+  color: #fda4af !important;
+}
+
+html.dark .bg-rose-50 *:not([data-bank-card] *),
+html.dark .bg-rose-100 *:not([data-bank-card] *),
+html.dark .bg-red-50 *:not([data-bank-card] *),
+html.dark .bg-red-100 *:not([data-bank-card] *) {
+  color: #fda4af !important;
+}
+
+html.dark .border-rose-100:not([data-bank-card] *),
+html.dark .border-rose-200:not([data-bank-card] *),
+html.dark .border-red-100:not([data-bank-card] *),
+html.dark .border-red-200:not([data-bank-card] *) {
+  border-color: rgba(244, 63, 94, 0.3) !important;
+}
 
 @media print {
   @page {
     size: A4 portrait;
-    margin: 0;
+    margin: 0; /* Strips browser URL, date, and page 1/1 header/footer */
   }
   html, body {
+    width: 100% !important;
     height: 100% !important;
     min-height: 100% !important;
     background: #ffffff !important;
     color: #0f172a !important;
     padding: 0 !important;
     margin: 0 !important;
+    overflow: hidden !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+  body {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
   header,
   aside,
@@ -109,13 +309,110 @@ button:hover {
   }
   .print-receipt-container {
     box-shadow: none !important;
-    border: 1px solid #cbd5e1 !important;
+    border: 1.5px solid #cbd5e1 !important;
     border-radius: 16px !important;
-    max-width: 530px !important;
+    max-width: 700px !important;
     width: 100% !important;
     margin: auto !important;
     overflow: hidden !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+    background: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* ========================================================================== */
+/* Isolated Transaction History Receipt Print Scope                           */
+/* ========================================================================== */
+@media print {
+  body.printing-transaction-history-receipt {
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  /* 1. Hide all elements by default */
+  body.printing-transaction-history-receipt * {
+    visibility: hidden !important;
+  }
+
+  /* 2. Completely collapse layout hierarchy so background takes 0 height and 0 flow */
+  body.printing-transaction-history-receipt #root,
+  body.printing-transaction-history-receipt #root > div,
+  body.printing-transaction-history-receipt main,
+  body.printing-transaction-history-receipt main > div {
+    display: block !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: static !important;
+    overflow: visible !important;
+  }
+
+  /* 3. Explicitly collapse the entire background Transaction History page content */
+  body.printing-transaction-history-receipt .transaction-history-page-content {
+    display: none !important;
+  }
+
+  /* 4. Neutralize the modal backdrop and intermediate wrappers */
+  body.printing-transaction-history-receipt .transaction-history-receipt-backdrop {
+    position: static !important;
+    display: block !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  body.printing-transaction-history-receipt .transaction-history-receipt-backdrop > div {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 5. Make the selected receipt card visible and positioned at top of page, centered */
+  body.printing-transaction-history-receipt .transaction-history-receipt-print,
+  body.printing-transaction-history-receipt .transaction-history-receipt-print * {
+    visibility: visible !important;
+  }
+
+  body.printing-transaction-history-receipt .transaction-history-receipt-print {
+    position: absolute !important;
+    top: 24px !important;
+    left: 0 !important;
+    right: 0 !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    max-width: 700px !important;
+    border: 1.5px solid #cbd5e1 !important;
+    border-radius: 16px !important;
+    box-shadow: none !important;
+    max-height: none !important;
+    overflow: hidden !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  /* 6. Enforce that screen-only controls remain hidden */
+  body.printing-transaction-history-receipt .no-print,
+  body.printing-transaction-history-receipt .no-print * {
+    visibility: hidden !important;
+    display: none !important;
   }
 }

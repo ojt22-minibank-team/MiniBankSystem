@@ -97,3 +97,17 @@ export const hasTokens = () => {
     getRefreshToken()
   );
 };
+
+export const getCurrentCustomerSubject = (): string | null => {
+  const token = getAccessToken();
+  if (!token) return null;
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, "=")));
+    return typeof payload.sub === "string" ? payload.sub : null;
+  } catch {
+    return null;
+  }
+};

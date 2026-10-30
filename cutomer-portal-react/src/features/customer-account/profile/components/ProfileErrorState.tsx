@@ -17,7 +17,7 @@ export default function ProfileErrorState({
       <div className="mx-auto max-w-5xl">
         {/* Page heading */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[#08295C]">
+          <h1 className="text-2xl font-bold text-[#0A192F]">
             Profile
           </h1>
 
@@ -39,7 +39,7 @@ export default function ProfileErrorState({
             </div>
 
             {/* Title */}
-            <h2 className="mt-5 text-lg font-bold text-[#08295C]">
+            <h2 className="mt-5 text-lg font-bold text-[#0A192F]">
               We couldn't load your profile
             </h2>
 
@@ -52,7 +52,7 @@ export default function ProfileErrorState({
             <button
               type="button"
               onClick={onRetry}
-              className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[#0878E8] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0668CA] focus:outline-none focus:ring-4 focus:ring-blue-100"
+              className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[#00A3C4] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0891B2] focus:outline-none focus:ring-4 focus:ring-cyan-100"
             >
               <RefreshCw
                 size={16}

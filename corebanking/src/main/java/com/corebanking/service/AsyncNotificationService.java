@@ -133,6 +133,8 @@ public class AsyncNotificationService {
                             .counterpartyName(receiverName)
                             .counterpartyAccountNumber(destAccNo)
                             .transferDirection("SENT")
+                            .sourceAccountNumber(sourceAccNo)
+                            .destinationAccountNumber(destAccNo)
                             .build();
 
                     notificationWebSocketHandler.sendNotification(senderManaged.getCustomerId().toString(), senderDto);
@@ -176,6 +178,8 @@ public class AsyncNotificationService {
                             .counterpartyName(senderName)
                             .counterpartyAccountNumber(sourceAccNo)
                             .transferDirection("RECEIVED")
+                            .sourceAccountNumber(sourceAccNo)
+                            .destinationAccountNumber(destAccNo)
                             .build();
 
                     notificationWebSocketHandler.sendNotification(receiverManaged.getCustomerId().toString(), receiverDto);
@@ -309,6 +313,8 @@ public class AsyncNotificationService {
                             .counterpartyName(mName)
                             .counterpartyAccountNumber(merchantAccountNumber)
                             .transferDirection("SENT")
+                            .sourceAccountNumber(srcAcc)
+                            .destinationAccountNumber(merchantAccountNumber)
                             .build();
 
                     notificationWebSocketHandler.sendNotification(payerManaged.getCustomerId().toString(), payerDto);
@@ -351,6 +357,8 @@ public class AsyncNotificationService {
                             .counterpartyName(payerName)
                             .counterpartyAccountNumber(srcAcc)
                             .transferDirection("RECEIVED")
+                            .sourceAccountNumber(srcAcc)
+                            .destinationAccountNumber(merchantAccountNumber)
                             .build();
 
                     notificationWebSocketHandler.sendNotification(merchantManaged.getCustomerId().toString(), merchantDto);
@@ -362,6 +370,62 @@ public class AsyncNotificationService {
             }
         } catch (Exception e) {
             log.error("Failed to dispatch merchant payment notifications for Ref: {}", transactionRef, e);
+        }
+    }
+    @Async
+    @Transactional
+    public void sendReversalNotificationAsync(Customers customer, BankTransactions transaction, String reason) {
+        try {
+            if (customer != null && transaction != null) {
+                UUID customerId = customer.getCustomerId();
+                Customers customerManaged = (customerId != null && customerRepository != null)
+                        ? customerRepository.findById(customerId).orElse(customer)
+                        : customer;
+
+                BigDecimal amount = transaction.getAmount() != null ? transaction.getAmount() : BigDecimal.ZERO;
+                BigDecimal fee = transaction.getServiceFee() != null ? transaction.getServiceFee() : BigDecimal.ZERO;
+                BigDecimal totalRefunded = amount.add(fee);
+                String curr = transaction.getCurrency() != null ? transaction.getCurrency() : "MMK";
+                String ref = transaction.getTransactionRef() != null ? transaction.getTransactionRef() : "N/A";
+                String sourceAcc = transaction.getSourceAccount() != null ? transaction.getSourceAccount().getAccountNumber() : "your account";
+                String revReason = (reason != null && !reason.isBlank()) ? reason : "Downstream network or service failure";
+
+                String message = String.format("Transfer of %s %s (Ref: %s) could not be completed and has been automatically refunded to account %s. Reason: %s",
+                        totalRefunded, curr, ref, sourceAcc, revReason);
+
+                Notifications reversalNotif = Notifications.builder()
+                        .customer(customerManaged)
+                        .transaction(transaction)
+                        .notificationType(NotificationType.TRANSFER)
+                        .title("Transfer Auto-Reversed & Refunded")
+                        .message(message)
+                        .build();
+
+                Notifications saved = notificationRepository.save(reversalNotif);
+
+                NotificationResponseDto dto = NotificationResponseDto.builder()
+                        .notificationId(saved.getNotificationId())
+                        .notificationType(saved.getNotificationType())
+                        .title(saved.getTitle())
+                        .message(saved.getMessage())
+                        .isRead(false)
+                        .createdAt(saved.getCreatedAt() != null ? saved.getCreatedAt() : LocalDateTime.now())
+                        .transactionId(transaction.getTransactionId())
+                        .transactionRef(ref)
+                        .amount(totalRefunded)
+                        .currency(curr)
+                        .transferDirection("REFUND")
+                        .sourceAccountNumber(sourceAcc)
+                        .destinationAccountNumber(transaction.getDestinationAccount() != null ? transaction.getDestinationAccount().getAccountNumber() : "")
+                        .build();
+
+                notificationWebSocketHandler.sendNotification(customerManaged.getCustomerId().toString(), dto);
+                log.info("Reversal notification #{} saved and pushed via WebSocket for customer: {}, Ref: {}",
+                        saved.getNotificationId(), customerManaged.getCustomerId(), ref);
+            }
+        } catch (Exception e) {
+            log.error("Failed to record and dispatch reversal notification for transaction: {}",
+                    transaction != null ? transaction.getTransactionRef() : "unknown", e);
         }
     }
 }

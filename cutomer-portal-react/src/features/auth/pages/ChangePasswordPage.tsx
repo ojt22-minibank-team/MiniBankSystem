@@ -7,25 +7,29 @@ import {
   useNavigate,
 } from "react-router-dom";
 
-import {
-  ArrowRight,
-  Check,
-  Eye,
-  EyeOff,
-  KeyRound,
-  LockKeyhole,
-  ShieldCheck,
-} from "lucide-react";
+import { Check, Clock3, Eye, EyeOff, LockKeyhole, ShieldCheck, WalletCards } from "lucide-react";
 
 import {
   changeFirstLoginPassword,
 } from "../../../services/authService";
 
-import PublicAuthLayout
-  from "../components/PublicAuthLayout";
+import { AuthField, AuthNotice, AuthPasswordRules } from "../components/IndividualAuthUI";
+import { EkarajAuthLayout } from "../components/EkarajAuthLayout";
+import { ekarajPrimaryButtonClass } from "../components/EkarajAuthStyles";
+import { IndividualSetupExpiredCard } from "../components/IndividualSetupExpiredCard";
+import { useIndividualSetupWindow } from "../utils/individualSetupWindow";
 
+const changePasswordInputClass =
+  "block min-h-11 w-full rounded-xl border border-[#CDD5DF] bg-white py-2.5 pl-11 pr-12 text-sm text-[#111418] shadow-sm outline-none transition-colors placeholder:text-[#757575] hover:border-[#C6A15B] focus:border-[#113E65] focus:ring-4 focus:ring-[#113E65]/15 disabled:cursor-not-allowed disabled:bg-[#E5EAF0] disabled:text-[#757575] motion-reduce:transition-none";
+const changePasswordToggleClass =
+  "absolute inset-y-0 right-1 inline-flex w-11 items-center justify-center rounded-lg text-[#757575] transition-colors hover:text-[#122E52] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#113E65] disabled:opacity-50 motion-reduce:transition-none";
+
+// Only presentation is overridden; the shared checklist keeps its original live rules.
+const changePasswordRulesClass =
+  "rounded-xl border border-[#C6D5E3] bg-[#EAF2FA] [&>div]:border-0 [&>div]:bg-transparent [&>div]:p-2.5 [&>div>p]:mb-1.5 [&>div>p]:text-[#1A365D] [&_li.text-slate-500]:text-[#59697D]";
 
 function ChangePasswordPage() {
+  const setupWindow = useIndividualSetupWindow();
 
   // ======================================================
   // STATE
@@ -217,6 +221,9 @@ function ChangePasswordPage() {
     // API CALL
     // =====================================
 
+    const setupRequest = setupWindow.capture(challengeGroupId);
+    if (!setupRequest) return;
+
     try {
 
       setLoading(
@@ -238,6 +245,8 @@ function ChangePasswordPage() {
       });
 
 
+      if (!setupWindow.canProceed(setupRequest)) return;
+
       // Password change success
       // challengeGroupId ကို မဖျက်သေးပါ
       // Setup PIN မှာ ပြန်သုံးရမယ်
@@ -250,6 +259,8 @@ function ChangePasswordPage() {
     } catch (
       error: any
     ) {
+
+      if (!setupWindow.canProceed(setupRequest) || setupWindow.handleExpiry(error, setupRequest)) return;
 
       setError(
 
@@ -275,1332 +286,142 @@ function ChangePasswordPage() {
   // UI
   // ======================================================
 
+  if (setupWindow.expired) return <IndividualSetupExpiredCard />;
+
   return (
-
-    <PublicAuthLayout>
-
-      <div
-        className="
-          w-full
-          max-w-6xl
-          overflow-hidden
-          rounded-3xl
-          border
-          border-slate-200
-          bg-white
-          shadow-xl
-          shadow-slate-200/70
-        "
-      >
-
-        <div
-          className="
-            grid
-            min-h-[640px]
-            md:grid-cols-[0.9fr_1.1fr]
-          "
-        >
-
-
-          {/* ============================================
-              LEFT FIRST LOGIN SECURITY PANEL
-          ============================================ */}
-
-          <div
-            className="
-              relative
-              hidden
-              overflow-hidden
-              bg-gradient-to-br
-              from-[#08295C]
-              via-[#0B3A78]
-              to-[#125AA3]
-              p-10
-              text-white
-              md:flex
-              md:flex-col
-              md:justify-between
-              lg:p-12
-            "
-          >
-
-
-            {/* DECORATIVE CIRCLES */}
-
-            <div
-              className="
-                absolute
-                -right-24
-                -top-24
-                h-72
-                w-72
-                rounded-full
-                bg-white/5
-              "
-            />
-
-
-            <div
-              className="
-                absolute
-                -bottom-28
-                -left-20
-                h-72
-                w-72
-                rounded-full
-                bg-white/5
-              "
-            />
-
-
-            {/* TOP CONTENT */}
-
-            <div className="relative z-10">
-
-              <div
-                className="
-                  mb-8
-                  flex
-                  items-center
-                  gap-3
-                "
-              >
-
-                <div
-                  className="
-                    flex
-                    h-12
-                    w-12
-                    items-center
-                    justify-center
-                    rounded-2xl
-                    bg-white/15
-                    backdrop-blur
-                  "
-                >
-
-                  <ShieldCheck
-                    size={27}
-                  />
-
-                </div>
-
-
-                <div>
-
-                  <h1
-                    className="
-                      text-2xl
-                      font-bold
-                    "
-                  >
-
-                    ACE Bank
-
-                  </h1>
-
-
-                  <p
-                    className="
-                      mt-0.5
-                      text-xs
-                      text-blue-100
-                    "
-                  >
-
-                    First-Time Security Setup
-
-                  </p>
-
-                </div>
-
-              </div>
-
-
-              <h2
-                className="
-                  max-w-md
-                  text-3xl
-                  font-bold
-                  leading-tight
-                  lg:text-4xl
-                "
-              >
-
-                Secure your account
-                before you start banking.
-
-              </h2>
-
-
-              <p
-                className="
-                  mt-5
-                  max-w-md
-                  text-sm
-                  leading-7
-                  text-blue-100
-                  lg:text-base
-                "
-              >
-
-                Complete your security setup before
-                accessing the ACE Bank Customer Portal.
-
-              </p>
-
-            </div>
-
-
-            {/* SECURITY STEPS */}
-
-            <div
-              className="
-                relative
-                z-10
-                mt-8
-                rounded-2xl
-                border
-                border-white/15
-                bg-white/10
-                p-6
-                backdrop-blur-sm
-              "
-            >
-
-              <div
-                className="
-                  mb-5
-                  flex
-                  items-center
-                  gap-3
-                "
-              >
-
-                <div
-                  className="
-                    flex
-                    h-11
-                    w-11
-                    shrink-0
-                    items-center
-                    justify-center
-                    rounded-full
-                    bg-white/15
-                  "
-                >
-
-                  <KeyRound
-                    size={22}
-                  />
-
-                </div>
-
-
-                <div>
-
-                  <h3
-                    className="
-                      text-lg
-                      font-bold
-                    "
-                  >
-
-                    Security Setup
-
-                  </h3>
-
-
-                  <p
-                    className="
-                      mt-1
-                      text-xs
-                      text-blue-100
-                    "
-                  >
-
-                    Complete both security steps
-
-                  </p>
-
-                </div>
-
-              </div>
-
-
-              <div className="space-y-4">
-
-
-                <div
-                  className="
-                    flex
-                    items-center
-                    gap-3
-                  "
-                >
-
-                  <div
-                    className="
-                      flex
-                      h-7
-                      w-7
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-emerald-400/20
-                      text-emerald-200
-                    "
-                  >
-
-                    <Check
-                      size={16}
-                    />
-
-                  </div>
-
-
-                  <p className="text-sm text-blue-50">
-
-                    Create your personal password
-
-                  </p>
-
-                </div>
-
-
-                <div
-                  className="
-                    flex
-                    items-center
-                    gap-3
-                  "
-                >
-
-                  <div
-                    className="
-                      flex
-                      h-7
-                      w-7
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-white/10
-                      text-blue-100
-                    "
-                  >
-
-                    2
-
-                  </div>
-
-
-                  <p className="text-sm text-blue-50">
-
-                    Set up your Transaction PIN next
-
-                  </p>
-
-                </div>
-
-
-                <div
-                  className="
-                    flex
-                    items-center
-                    gap-3
-                  "
-                >
-
-                  <div
-                    className="
-                      flex
-                      h-7
-                      w-7
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-emerald-400/20
-                      text-emerald-200
-                    "
-                  >
-
-                    <Check
-                      size={16}
-                    />
-
-                  </div>
-
-
-                  <p className="text-sm text-blue-50">
-
-                    Protect your online banking account
-
-                  </p>
-
-                </div>
-
-              </div>
-
-            </div>
-
+    <EkarajAuthLayout title="EKARAJ BANK | First Login — Change Password">
+      <section aria-label="First login change password card" className="grid w-full max-w-[976px] rounded-3xl border border-[#CDC0A8] bg-[#F5F3EF] shadow-[0_18px_50px_-26px_rgba(18,46,82,0.3)] md:grid-cols-[0.92fr_1.08fr]">
+        <aside className="relative hidden flex-col justify-between overflow-hidden rounded-l-[23px] bg-[#E5EAF0] text-[#1A365D] md:flex">
+          <img src="/assets/ekaraj-building-reference.jpg" alt="" aria-hidden="true" className="pointer-events-none absolute bottom-0 right-0 h-[85%] w-[85%] object-cover object-[60%_70%] opacity-[0.1] [mask-image:radial-gradient(ellipse_at_75%_65%,#000_10%,transparent_80%)]" />
+          <svg aria-hidden="true" focusable="false" viewBox="0 0 450 470" preserveAspectRatio="none" fill="none" className="pointer-events-none absolute inset-0 h-full w-full">
+            <path d="M-70 85C95 35 120 300 330 285S500 215 520 150" stroke="#C6A15B" strokeWidth="0.8" strokeOpacity="0.35" />
+            <path d="M-80 105C80 55 135 325 340 305S510 235 530 175" stroke="#C6A15B" strokeWidth="0.8" strokeOpacity="0.2" />
+          </svg>
+          <div className="relative px-6 pt-4 lg:px-7">
+            <h2 className="font-serif text-2xl font-medium leading-8 tracking-tight">Your Security<br />Starts Here.</h2>
+            <p className="mt-2 text-sm leading-5 text-[#59697D]">A strong password helps protect your account and keeps your banking services safe and secure.</p>
           </div>
-
-
-          {/* ============================================
-              RIGHT PASSWORD PANEL
-          ============================================ */}
-
-          <div
-            className="
-              flex
-              items-center
-              justify-center
-              px-6
-              py-10
-              sm:px-10
-              lg:px-16
-            "
-          >
-
-            <div
-              className="
-                w-full
-                max-w-lg
-              "
-            >
-
-
-              {/* MOBILE BRAND */}
-
-              <div
-                className="
-                  mb-8
-                  flex
-                  items-center
-                  gap-3
-                  md:hidden
-                "
-              >
-
-                <div
-                  className="
-                    flex
-                    h-11
-                    w-11
-                    items-center
-                    justify-center
-                    rounded-xl
-                    bg-[#08295C]
-                    text-white
-                  "
-                >
-
-                  <ShieldCheck
-                    size={22}
-                  />
-
-                </div>
-
-
+          <div aria-hidden="true" className="relative flex min-h-0 flex-1 items-center justify-center px-6 py-2">
+            <img src="/assets/ekaraj-crown-transparent.png" alt="" width={375} height={340} className="h-auto w-40 max-w-full object-contain" />
+          </div>
+          <div className="relative space-y-2.5 px-6 pb-4 pt-2 lg:px-7">
+            {[
+              { icon: ShieldCheck, title: "Secure Verification", description: "Your safety is our priority" },
+              { icon: WalletCards, title: "Safe Transactions", description: "Bank with confidence" },
+              { icon: Clock3, title: "Your Trusted Banking Partner", description: "Always by your side" },
+            ].map(({ icon: Icon, title, description }) => (
+              <div key={title} className="flex items-start gap-3">
+                <Icon aria-hidden="true" size={20} className="mt-0.5 shrink-0 text-[#C6A15B]" />
                 <div>
-
-                  <h1
-                    className="
-                      text-xl
-                      font-bold
-                      text-[#08295C]
-                    "
-                  >
-
-                    ACE Bank
-
-                  </h1>
-
-
-                  <p
-                    className="
-                      text-xs
-                      text-slate-400
-                    "
-                  >
-
-                    First-Time Security Setup
-
-                  </p>
-
+                  <p className="text-xs font-semibold leading-4">{title}</p>
+                  <p className="mt-0.5 text-[11px] leading-4 text-[#627084]">{description}</p>
                 </div>
-
               </div>
-
-
-              {/* ========================================
-                  STEP INDICATOR
-              ======================================== */}
-
-              <div
-                className="
-                  mb-7
-                  rounded-2xl
-                  border
-                  border-blue-100
-                  bg-blue-50/60
-                  px-5
-                  py-4
-                "
-              >
-
-                <div
-                  className="
-                    mb-3
-                    flex
-                    items-center
-                    justify-between
-                  "
-                >
-
-                  <p
-                    className="
-                      text-xs
-                      font-bold
-                      uppercase
-                      tracking-wider
-                      text-blue-600
-                    "
-                  >
-
-                    First-Time Setup
-
-                  </p>
-
-
-                  <span
-                    className="
-                      text-xs
-                      font-semibold
-                      text-slate-500
-                    "
-                  >
-
-                    Step 1 of 2
-
+            ))}
+          </div>
+        </aside>
+        <section aria-label="First login password setup" className="flex min-w-0 items-center px-5 py-3 sm:px-8 md:px-7 lg:px-9">
+          <div className="mx-auto w-full max-w-[392px]">
+            <ol aria-label="Account security setup" className="mb-2 grid grid-cols-3">
+              {["OTP Verification", "Change Password", "Set PIN"].map((label, index) => (
+                <li key={label} aria-current={index === 1 ? "step" : undefined} className="relative text-center">
+                  {index < 2 && <span aria-hidden="true" className="absolute left-1/2 top-3.5 h-px w-full bg-[#C6D5E3]" />}
+                  <span className={`relative mx-auto flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${index === 1 ? "bg-[#113E65] text-white" : index === 0 ? "bg-[#EAF2FA] text-[#113E65] ring-1 ring-inset ring-[#C6D5E3]" : "bg-[#E5EAF0] text-[#59697D]"}`}>
+                    {index === 0 ? <Check aria-hidden="true" size={14} /> : index + 1}
                   </span>
-
-                </div>
-
-
-                <div
-                  className="
-                    flex
-                    items-center
-                    gap-3
-                  "
-                >
-
-                  {/* STEP 1 */}
-
-                  <div
-                    className="
-                      flex
-                      items-center
-                      gap-2
-                    "
-                  >
-
-                    <div
-                      className="
-                        flex
-                        h-7
-                        w-7
-                        items-center
-                        justify-center
-                        rounded-full
-                        bg-blue-600
-                        text-xs
-                        font-bold
-                        text-white
-                      "
-                    >
-
-                      1
-
-                    </div>
-
-
-                    <span
-                      className="
-                        text-xs
-                        font-semibold
-                        text-blue-700
-                        sm:text-sm
-                      "
-                    >
-
-                      Password
-
-                    </span>
-
-                  </div>
-
-
-                  {/* LINE */}
-
-                  <div
-                    className="
-                      h-px
-                      flex-1
-                      bg-blue-200
-                    "
-                  />
-
-
-                  {/* STEP 2 */}
-
-                  <div
-                    className="
-                      flex
-                      items-center
-                      gap-2
-                    "
-                  >
-
-                    <div
-                      className="
-                        flex
-                        h-7
-                        w-7
-                        items-center
-                        justify-center
-                        rounded-full
-                        border
-                        border-slate-300
-                        bg-white
-                        text-xs
-                        font-bold
-                        text-slate-400
-                      "
-                    >
-
-                      2
-
-                    </div>
-
-
-                    <span
-                      className="
-                        text-xs
-                        font-medium
-                        text-slate-400
-                        sm:text-sm
-                      "
-                    >
-
-                      Transaction PIN
-
-                    </span>
-
-                  </div>
-
-                </div>
-
-              </div>
-
-
-              {/* ICON */}
-
-              <div
-                className="
-                  mb-6
-                  flex
-                  h-16
-                  w-16
-                  items-center
-                  justify-center
-                  rounded-2xl
-                  bg-blue-50
-                  text-blue-600
-                "
-              >
-
-                <LockKeyhole
-                  size={30}
-                />
-
-              </div>
-
-
-              {/* HEADER */}
-
-              <div className="mb-7">
-
-                <p
-                  className="
-                    mb-2
-                    text-sm
-                    font-semibold
-                    uppercase
-                    tracking-wider
-                    text-blue-600
-                  "
-                >
-
-                  Account Security
-
-                </p>
-
-
-                <h2
-                  className="
-                    text-3xl
-                    font-bold
-                    tracking-tight
-                    text-[#08295C]
-                    lg:text-4xl
-                  "
-                >
-
-                  Change Temporary Password
-
-                </h2>
-
-
-                <p
-                  className="
-                    mt-3
-                    text-sm
-                    leading-6
-                    text-slate-500
-                  "
-                >
-
-                  For your security, create a new
-                  password before continuing to
-                  Transaction PIN setup.
-
-                </p>
-
-              </div>
-
-
-              {/* ========================================
-                  FORM
-              ======================================== */}
-
-              <form
-                onSubmit={
-                  handleChangePassword
-                }
-                className="space-y-5"
-              >
-
-
-                {/* ======================================
-                    NEW PASSWORD
-                ====================================== */}
-
-                <div>
-
-                  <label
-                    className="
-                      mb-2
-                      block
-                      text-sm
-                      font-semibold
-                      text-slate-700
-                    "
-                  >
-
-                    New Password
-
-                  </label>
-
-
-                  <div className="relative">
-
-                    <LockKeyhole
-
-                      size={19}
-
-                      className="
-                        absolute
-                        left-4
-                        top-1/2
-                        -translate-y-1/2
-                        text-slate-400
-                      "
-
-                    />
-
-
-                    <input
-
-                      type={
-                        showNewPassword
-                          ? "text"
-                          : "password"
-                      }
-
-                      value={
-                        newPassword
-                      }
-
-                      onChange={(e) =>
-                        setNewPassword(
-                          e.target.value
-                        )
-                      }
-
-                      placeholder="Enter new password"
-
-                      autoComplete="new-password"
-
-                      disabled={
-                        loading
-                      }
-
-                      className="
-                        w-full
-                        rounded-xl
-                        border
-                        border-slate-300
-                        bg-white
-                        py-3.5
-                        pl-12
-                        pr-12
-                        text-sm
-                        text-slate-800
-                        outline-none
-                        transition
-                        placeholder:text-slate-400
-                        focus:border-blue-500
-                        focus:ring-4
-                        focus:ring-blue-100
-                        disabled:cursor-not-allowed
-                        disabled:bg-slate-50
-                      "
-
-                    />
-
-
-                    <button
-
-                      type="button"
-
-                      onClick={() =>
-                        setShowNewPassword(
-                          (prev) =>
-                            !prev
-                        )
-                      }
-
-                      disabled={
-                        loading
-                      }
-
-                      aria-label={
-                        showNewPassword
-                          ? "Hide new password"
-                          : "Show new password"
-                      }
-
-                      className="
-                        absolute
-                        right-4
-                        top-1/2
-                        -translate-y-1/2
-                        text-slate-400
-                        transition
-                        hover:text-slate-600
-                        disabled:cursor-not-allowed
-                        disabled:opacity-50
-                      "
-                    >
-
-                      {
-                        showNewPassword
-                          ? (
-                            <EyeOff
-                              size={20}
-                            />
-                          )
-                          : (
-                            <Eye
-                              size={20}
-                            />
-                          )
-                      }
-
-                    </button>
-
-                  </div>
-
-                </div>
-
-
-                {/* ======================================
-                    CONFIRM PASSWORD
-                ====================================== */}
-
-                <div>
-
-                  <label
-                    className="
-                      mb-2
-                      block
-                      text-sm
-                      font-semibold
-                      text-slate-700
-                    "
-                  >
-
-                    Confirm Password
-
-                  </label>
-
-
-                  <div className="relative">
-
-                    <LockKeyhole
-
-                      size={19}
-
-                      className="
-                        absolute
-                        left-4
-                        top-1/2
-                        -translate-y-1/2
-                        text-slate-400
-                      "
-
-                    />
-
-
-                    <input
-
-                      type={
-                        showConfirmPassword
-                          ? "text"
-                          : "password"
-                      }
-
-                      value={
-                        confirmPassword
-                      }
-
-                      onChange={(e) =>
-                        setConfirmPassword(
-                          e.target.value
-                        )
-                      }
-
-                      placeholder="Confirm new password"
-
-                      autoComplete="new-password"
-
-                      disabled={
-                        loading
-                      }
-
-                      className="
-                        w-full
-                        rounded-xl
-                        border
-                        border-slate-300
-                        bg-white
-                        py-3.5
-                        pl-12
-                        pr-12
-                        text-sm
-                        text-slate-800
-                        outline-none
-                        transition
-                        placeholder:text-slate-400
-                        focus:border-blue-500
-                        focus:ring-4
-                        focus:ring-blue-100
-                        disabled:cursor-not-allowed
-                        disabled:bg-slate-50
-                      "
-
-                    />
-
-
-                    <button
-
-                      type="button"
-
-                      onClick={() =>
-                        setShowConfirmPassword(
-                          (prev) =>
-                            !prev
-                        )
-                      }
-
-                      disabled={
-                        loading
-                      }
-
-                      aria-label={
-                        showConfirmPassword
-                          ? "Hide confirm password"
-                          : "Show confirm password"
-                      }
-
-                      className="
-                        absolute
-                        right-4
-                        top-1/2
-                        -translate-y-1/2
-                        text-slate-400
-                        transition
-                        hover:text-slate-600
-                        disabled:cursor-not-allowed
-                        disabled:opacity-50
-                      "
-                    >
-
-                      {
-                        showConfirmPassword
-                          ? (
-                            <EyeOff
-                              size={20}
-                            />
-                          )
-                          : (
-                            <Eye
-                              size={20}
-                            />
-                          )
-                      }
-
-                    </button>
-
-                  </div>
-
-                </div>
-
-
-                {/* ======================================
-                    PASSWORD REQUIREMENTS
-                ====================================== */}
-
-                <div
-                  className="
-                    rounded-xl
-                    border
-                    border-blue-100
-                    bg-blue-50/60
-                    px-4
-                    py-4
-                  "
-                >
-
-                  <p
-                    className="
-                      mb-3
-                      text-sm
-                      font-semibold
-                      text-[#08295C]
-                    "
-                  >
-
-                    Password Requirements
-
-                  </p>
-
-
-                  <div
-                    className="
-                      grid
-                      gap-2
-                      sm:grid-cols-2
-                    "
-                  >
-
-
-                    <div
-                      className="
-                        flex
-                        items-center
-                        gap-2
-                      "
-                    >
-
-                      <Check
-                        size={15}
-                        className="
-                          shrink-0
-                          text-blue-600
-                        "
-                      />
-
-                      <span
-                        className="
-                          text-xs
-                          text-slate-600
-                        "
-                      >
-
-                        At least 8 characters
-
-                      </span>
-
-                    </div>
-
-
-                    <div
-                      className="
-                        flex
-                        items-center
-                        gap-2
-                      "
-                    >
-
-                      <Check
-                        size={15}
-                        className="
-                          shrink-0
-                          text-blue-600
-                        "
-                      />
-
-                      <span
-                        className="
-                          text-xs
-                          text-slate-600
-                        "
-                      >
-
-                        One uppercase letter
-
-                      </span>
-
-                    </div>
-
-
-                    <div
-                      className="
-                        flex
-                        items-center
-                        gap-2
-                      "
-                    >
-
-                      <Check
-                        size={15}
-                        className="
-                          shrink-0
-                          text-blue-600
-                        "
-                      />
-
-                      <span
-                        className="
-                          text-xs
-                          text-slate-600
-                        "
-                      >
-
-                        One lowercase letter
-
-                      </span>
-
-                    </div>
-
-
-                    <div
-                      className="
-                        flex
-                        items-center
-                        gap-2
-                      "
-                    >
-
-                      <Check
-                        size={15}
-                        className="
-                          shrink-0
-                          text-blue-600
-                        "
-                      />
-
-                      <span
-                        className="
-                          text-xs
-                          text-slate-600
-                        "
-                      >
-
-                        At least one number
-
-                      </span>
-
-                    </div>
-
-
-                    <div
-                      className="
-                        flex
-                        items-center
-                        gap-2
-                        sm:col-span-2
-                      "
-                    >
-
-                      <Check
-                        size={15}
-                        className="
-                          shrink-0
-                          text-blue-600
-                        "
-                      />
-
-                      <span
-                        className="
-                          text-xs
-                          text-slate-600
-                        "
-                      >
-
-                        At least one special character
-
-                      </span>
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-
-                {/* ======================================
-                    ERROR
-                ====================================== */}
-
-                {
-                  error
-                  &&
-                  (
-
-                    <div
-                      className="
-                        rounded-xl
-                        border
-                        border-red-200
-                        bg-red-50
-                        px-4
-                        py-3
-                        text-sm
-                        font-medium
-                        text-red-600
-                      "
-                    >
-
-                      {error}
-
-                    </div>
-
-                  )
-                }
-
-
-                {/* ======================================
-                    CONTINUE BUTTON
-                ====================================== */}
-
-                <button
-
-                  type="submit"
-
-                  disabled={
-                    loading
-                  }
-
-                  className="
-                    flex
-                    w-full
-                    items-center
-                    justify-center
-                    gap-2
-                    rounded-xl
-                    bg-blue-600
-                    px-5
-                    py-3.5
-                    text-sm
-                    font-bold
-                    text-white
-                    shadow-sm
-                    transition
-                    hover:bg-blue-700
-                    focus:outline-none
-                    focus:ring-4
-                    focus:ring-blue-200
-                    disabled:cursor-not-allowed
-                    disabled:opacity-60
-                  "
-                >
-
-                  {
-                    loading
-                      ? (
-                        "Changing Password..."
-                      )
-                      : (
-                        <>
-                          Continue to PIN Setup
-
-                          <ArrowRight
-                            size={18}
-                          />
-                        </>
-                      )
-                  }
-
-                </button>
-
-              </form>
-
-
-              {/* SECURITY NOTE */}
-
-              <div
-                className="
-                  mt-6
-                  rounded-xl
-                  bg-slate-50
-                  px-4
-                  py-3
-                  text-center
-                "
-              >
-
-                <p
-                  className="
-                    text-xs
-                    leading-5
-                    text-slate-500
-                  "
-                >
-
-                  Your temporary password will no longer
-                  be used after this security setup is completed.
-
-                </p>
-
-              </div>
-
+                  <span className={`relative mt-1 block text-[10px] leading-4 sm:text-[11px] ${index === 1 ? "font-semibold text-[#1A365D]" : "text-[#59697D]"}`}>
+                    {label}{index === 0 && <span className="sr-only"> — Completed</span>}{index === 2 && <span className="sr-only"> — Upcoming</span>}
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <div className="mb-2 text-center">
+              <span aria-hidden="true" className="mx-auto mb-1 flex h-9 w-9 items-center justify-center rounded-full border border-[#C6D5E3] bg-[#EAF2FA] text-[#113E65]">
+                <LockKeyhole size={20} strokeWidth={1.8} />
+              </span>
+              <h1 className="font-serif text-2xl font-medium leading-8 tracking-tight text-[#1A365D]">Create a New Password</h1>
+              <p className="mt-0.5 text-sm leading-5 text-[#59697D]">Choose a strong password to secure your Ekaraj Bank account.</p>
             </div>
-
+            <form onSubmit={handleChangePassword} className="space-y-2 [&_label]:text-[#1A365D] [&>[role=alert]]:my-1 [&>[role=alert]]:py-1.5">
+              <AuthField label="New Password" htmlFor="individual-new-password">
+                <LockKeyhole aria-hidden="true" size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[#757575]" />
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  autoComplete="new-password"
+                  disabled={loading}
+                  id="individual-new-password"
+                  className={changePasswordInputClass}
+                  aria-invalid={Boolean(error)}
+                  aria-required={true}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword((prev) => !prev)}
+                  disabled={loading}
+                  aria-label={showNewPassword ? "Hide new password" : "Show new password"}
+                  className={changePasswordToggleClass}
+                >
+                  {" "}
+                  {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}{" "}
+                </button>
+              </AuthField>
+              <AuthField label="Confirm New Password" htmlFor="individual-confirm-password">
+                <LockKeyhole aria-hidden="true" size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[#757575]" />
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                  autoComplete="new-password"
+                  disabled={loading}
+                  id="individual-confirm-password"
+                  className={changePasswordInputClass}
+                  aria-invalid={Boolean(error)}
+                  aria-required={true}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  disabled={loading}
+                  aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                  className={changePasswordToggleClass}
+                >
+                  {" "}
+                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}{" "}
+                </button>
+              </AuthField>
+              <div className={changePasswordRulesClass}>
+                <AuthPasswordRules password={newPassword} confirmPassword={confirmPassword} />
+              </div>
+              <AuthNotice error={error} />
+              <button
+                type="submit"
+                disabled={loading}
+                className={ekarajPrimaryButtonClass}
+                aria-busy={loading}
+              >
+                {loading && (
+                  <span
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[#122E52]/25 border-t-[#122E52] motion-reduce:animate-none"
+                  />
+                )}{" "}
+                {loading ? (
+                  "Changing Password..."
+                ) : (
+                  <>
+                    Continue to PIN Setup
+                  </>
+                )}{" "}
+              </button>
+            </form>
           </div>
-
-        </div>
-
-      </div>
-
-    </PublicAuthLayout>
-
+        </section>
+      </section>
+    </EkarajAuthLayout>
   );
 
 }

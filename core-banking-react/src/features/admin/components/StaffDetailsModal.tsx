@@ -2,6 +2,7 @@ import Modal from '../../../components/common/Modal';
 import Button from '../../../components/common/Button';
 import type { StaffResponse } from '../../../types/api.types';
 import { formatDateTime } from '../../../utils/formatDate';
+import { useAuth } from '../../auth/hooks/useAuth';
 
 interface StaffDetailsModalProps {
   isOpen: boolean;
@@ -20,7 +21,23 @@ export default function StaffDetailsModal({
   onChangeRole,
   onResetPassword,
 }: StaffDetailsModalProps) {
+  const { user } = useAuth();
   if (!staff) return null;
+
+  const currentUsername = user?.username?.trim().toLowerCase();
+  const targetUsername = staff.username?.trim().toLowerCase();
+  const isSelf = !!currentUsername && !!targetUsername && currentUsername === targetUsername;
+
+  const roleCode = (staff.roleCode || (staff.staffNo.includes('TLR') ? 'TELLER' : staff.staffNo.includes('AUD') ? 'AUDITOR' : staff.staffNo.includes('ADM') ? 'ADMIN' : 'STAFF')).toUpperCase();
+  const isTargetAdmin = roleCode === 'ADMIN';
+  const isOtherAdmin = isTargetAdmin && !isSelf;
+
+  // RBAC permissions according to requirements:
+  // Admin to Other Admin: An Admin can ONLY view details of another Admin. All other actions hidden.
+  // Admin to Themselves: An Admin modifying their own profile can ONLY do "View Details", "Edit Information", and "Reset Password".
+  const canEdit = !isOtherAdmin && staff.status !== 'DEACTIVATED';
+  const canChangeRole = !isTargetAdmin && !isSelf && staff.status !== 'DEACTIVATED';
+  const canResetPassword = !isOtherAdmin && staff.status !== 'DEACTIVATED';
 
   return (
     <Modal
@@ -31,7 +48,7 @@ export default function StaffDetailsModal({
       footer={
         <div className="flex w-full items-center justify-between">
           <div className="flex gap-2">
-            {onEdit && (
+            {onEdit && canEdit && (
               <Button
                 variant="secondary"
                 size="sm"
@@ -43,7 +60,7 @@ export default function StaffDetailsModal({
                 Edit Info
               </Button>
             )}
-            {onChangeRole && (
+            {onChangeRole && canChangeRole && (
               <Button
                 variant="secondary"
                 size="sm"
@@ -55,7 +72,7 @@ export default function StaffDetailsModal({
                 Change Role
               </Button>
             )}
-            {onResetPassword && staff.status !== 'DEACTIVATED' && (
+            {onResetPassword && canResetPassword && (
               <Button
                 variant="secondary"
                 size="sm"
@@ -100,11 +117,28 @@ export default function StaffDetailsModal({
           </span>
         </div>
 
+        {isOtherAdmin && (
+          <div className="rounded-md border border-purple-200 bg-purple-50 p-2.5 text-xs text-purple-800 flex items-center gap-2">
+            <svg className="h-4 w-4 shrink-0 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>
+              Administrator Account: Protected profile. Administrators can only view details of other administrators.
+            </span>
+          </div>
+        )}
+
         {/* Detailed Info Grid */}
         <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-2">
           <div>
             <span className="block text-xs font-medium text-gray-500">Username</span>
             <span className="font-medium text-gray-800">{staff.username}</span>
+          </div>
+          <div>
+            <span className="block text-xs font-medium text-gray-500">Assigned Role</span>
+            <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10">
+              {staff.roleName || roleCode}
+            </span>
           </div>
           <div>
             <span className="block text-xs font-medium text-gray-500">Staff ID (UUID)</span>
@@ -141,7 +175,7 @@ export default function StaffDetailsModal({
             <span className="block text-xs font-medium text-gray-500">Created At</span>
             <span className="text-gray-800">{formatDateTime(staff.createdAt)}</span>
           </div>
-          <div>
+          <div className="col-span-2">
             <span className="block text-xs font-medium text-gray-500">Updated At</span>
             <span className="text-gray-800">{formatDateTime(staff.updatedAt)}</span>
           </div>

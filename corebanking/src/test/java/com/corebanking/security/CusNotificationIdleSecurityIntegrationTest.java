@@ -108,7 +108,7 @@ class CusNotificationIdleSecurityIntegrationTest {
         when(sessions.findBySessionUuid(SID)).thenAnswer(call -> Optional.of(session));
         when(credentials.findById(CUSTOMER_ID)).thenReturn(Optional.of(
                 CustomerCredentials.builder().customerId(CUSTOMER_ID).customer(customer).tokenVersion(7L).build()));
-        when(sessions.save(any(AuthSession.class))).thenAnswer(call -> call.getArgument(0));
+        com.corebanking.service.CusSessionActivityTestSupport.wire(context.getBean(CusSessionService.class), sessions, () -> session);
         // Model a subsequent DB read observing the atomic revocation, not a JPA entity write.
         when(sessions.revokeIfActive(eq(SID), anyString(), any(), any(), any(), any())).thenAnswer(call -> {
             if (session.getRevokedAt() != null) return 0;
@@ -153,6 +153,7 @@ class CusNotificationIdleSecurityIntegrationTest {
         assertEquals(deadline, session.getRefreshExpiresAt());
         assertNull(session.getUpdatedById());
         verify(sessions, never()).save(any());
+        verify(sessions, never()).touchIfValid(anyString(), any(), any(), anyLong(), any(), any());
         verify(sessions, never()).revokeIfActive(anyString(), anyString(), any(), any(), any(), any());
     }
 
@@ -179,6 +180,7 @@ class CusNotificationIdleSecurityIntegrationTest {
         mvc.perform(get(path).header("Authorization", "Bearer " + token)).andExpect(status().isUnauthorized());
         assertEquals(start, session.getLastSeenAt());
         verify(sessions, never()).save(any());
+        verify(sessions, never()).touchIfValid(anyString(), any(), any(), anyLong(), any(), any());
     }
 
     @ParameterizedTest
@@ -189,6 +191,7 @@ class CusNotificationIdleSecurityIntegrationTest {
                 .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("SESSION_EXPIRED"));
         verifyNoInteractions(notifications);
         verify(sessions, never()).save(any());
+        verify(sessions, never()).touchIfValid(anyString(), any(), any(), anyLong(), any(), any());
     }
 
     @ParameterizedTest
@@ -215,6 +218,7 @@ class CusNotificationIdleSecurityIntegrationTest {
                 .andExpect(status().isUnauthorized());
         verifyNoInteractions(notifications);
         verify(sessions, never()).save(any());
+        verify(sessions, never()).touchIfValid(anyString(), any(), any(), anyLong(), any(), any());
     }
 
     @ParameterizedTest
@@ -261,6 +265,7 @@ class CusNotificationIdleSecurityIntegrationTest {
         mvc.perform(get(path).header("Authorization", "Bearer " + accessToken())).andExpect(status().isUnauthorized());
         verifyNoInteractions(notifications);
         verify(sessions, never()).save(any());
+        verify(sessions, never()).touchIfValid(anyString(), any(), any(), anyLong(), any(), any());
     }
 
     @ParameterizedTest
@@ -274,6 +279,7 @@ class CusNotificationIdleSecurityIntegrationTest {
         verify(sessions).revokeIfActive(eq(SID), eq("SESSION_EXPIRED"), eq(now.get()), any(), any(), eq(now.get()));
         verifyNoInteractions(notifications);
         verify(sessions, never()).save(any());
+        verify(sessions, never()).touchIfValid(anyString(), any(), any(), anyLong(), any(), any());
     }
 
     @Test
@@ -289,7 +295,8 @@ class CusNotificationIdleSecurityIntegrationTest {
         now.set(start.plusMinutes(6));
         mvc.perform(get("/api/customer/notifications/unread-count").header("Authorization", "Bearer " + token)).andExpect(status().isOk());
         assertEquals(start.plusMinutes(4), session.getLastSeenAt());
-        verify(sessions, times(1)).save(session);
+        verify(sessions, times(1)).touchIfValid(eq(SID), eq(SessionSubjectType.CUSTOMER), eq(CUSTOMER_ID), eq(7L), any(), any());
+        verify(sessions, never()).save(any());
     }
 
     @Test
@@ -304,7 +311,8 @@ class CusNotificationIdleSecurityIntegrationTest {
         mvc.perform(put("/api/customer/notifications/read-all").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.updatedCount").value(4));
         assertEquals(now.get(), session.getLastSeenAt());
-        verify(sessions, times(2)).save(session);
+        verify(sessions, times(2)).touchIfValid(eq(SID), eq(SessionSubjectType.CUSTOMER), eq(CUSTOMER_ID), eq(7L), any(), any());
+        verify(sessions, never()).save(any());
         verify(notifications).markAsRead(CUSTOMER_ID.toString(), 42L);
         verify(notifications).markAllAsRead(CUSTOMER_ID.toString());
     }
@@ -316,6 +324,7 @@ class CusNotificationIdleSecurityIntegrationTest {
                 .andExpect(status().isOk());
         assertEquals(lastSeen, session.getLastSeenAt());
         verify(sessions, never()).save(any());
+        verify(sessions, never()).touchIfValid(anyString(), any(), any(), anyLong(), any(), any());
     }
 
     @Test
@@ -330,7 +339,8 @@ class CusNotificationIdleSecurityIntegrationTest {
         mvc.perform(get(ENDPOINT).header("Authorization", "Bearer " + token).header("X-No-Activity", "true"))
                 .andExpect(status().isOk());
         assertEquals(now.get(), session.getLastSeenAt());
-        verify(sessions, times(3)).save(session);
+        verify(sessions, times(3)).touchIfValid(eq(SID), eq(SessionSubjectType.CUSTOMER), eq(CUSTOMER_ID), eq(7L), any(), any());
+        verify(sessions, never()).save(any());
     }
 
     @Test
@@ -374,6 +384,7 @@ class CusNotificationIdleSecurityIntegrationTest {
         assertNotNull(jdbc.queryForObject("SELECT revoked_at FROM notification_idle_probe", LocalDateTime.class),
                 "Revocation must remain committed after the expiration exception crosses the Spring proxy");
         verify(sessions, never()).save(any());
+        verify(sessions, never()).touchIfValid(anyString(), any(), any(), anyLong(), any(), any());
     }
     private String accessToken() { return jwt.generateAccessToken(CUSTOMER_ID, SID, 7L); }
 
@@ -397,6 +408,7 @@ class CusNotificationIdleSecurityIntegrationTest {
         @Bean CusAuditLogsRepository audit() { return mock(CusAuditLogsRepository.class); }
         @Bean CusCorporateCredentialRepository corporate() { return mock(CusCorporateCredentialRepository.class); }
         @Bean CusJwtRevokedTokensRepository revokedTokens() { return mock(CusJwtRevokedTokensRepository.class); }
+        @Bean jakarta.persistence.EntityManager entityManager() { return mock(jakarta.persistence.EntityManager.class); }
         @Bean CusSessionService sessionService(CusAuthSessionsRepository sessions, CusCredentialsRepository credentials,
                 CusAuditLogsRepository audit, CusCorporateCredentialRepository corporate) {
             return new CusSessionService(sessions, credentials, audit, corporate);

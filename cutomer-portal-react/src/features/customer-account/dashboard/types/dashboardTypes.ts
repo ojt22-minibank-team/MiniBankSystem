@@ -32,8 +32,10 @@ export interface DashboardAccount {
   currency: string;
   currentBalance: number;
   availableBalance: number;
+  minimumBalance?: number;
   status: DashboardAccountStatus;
   jointAccount: boolean;
+  openedAt?: string;
 }
 
 export interface DashboardResponse {

@@ -4,6 +4,7 @@ import Button from '../../../components/common/Button';
 import { staffApi } from '../../../services/apiClient';
 import type { StaffResponse } from '../../../types/api.types';
 import type { AxiosError } from 'axios';
+import { useAuth } from '../../auth/hooks/useAuth';
 
 interface StaffResetPasswordModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export default function StaffResetPasswordModal({
   staff,
   onSuccess,
 }: StaffResetPasswordModalProps) {
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -26,8 +28,23 @@ export default function StaffResetPasswordModal({
     onClose();
   };
 
+  if (!staff) return null;
+
+  const currentUsername = user?.username?.trim().toLowerCase();
+  const targetUsername = staff.username?.trim().toLowerCase();
+  const isSelf = !!currentUsername && !!targetUsername && currentUsername === targetUsername;
+
+  const roleCode = (staff.roleCode || (staff.staffNo.includes('TLR') ? 'TELLER' : staff.staffNo.includes('AUD') ? 'AUDITOR' : staff.staffNo.includes('ADM') ? 'ADMIN' : 'STAFF')).toUpperCase();
+  const isTargetAdmin = roleCode === 'ADMIN';
+  const isOtherAdmin = isTargetAdmin && !isSelf;
+
   const handleConfirm = async () => {
     if (!staff) return;
+
+    if (isOtherAdmin) {
+      setApiError('Administrators cannot reset the password of other administrators.');
+      return;
+    }
 
     setIsLoading(true);
     setApiError(null);
@@ -47,8 +64,6 @@ export default function StaffResetPasswordModal({
       setIsLoading(false);
     }
   };
-
-  if (!staff) return null;
 
   return (
     <Modal
@@ -72,6 +87,7 @@ export default function StaffResetPasswordModal({
             variant="danger"
             size="md"
             isLoading={isLoading}
+            disabled={isOtherAdmin}
             onClick={handleConfirm}
           >
             Send Setup Link
@@ -83,6 +99,12 @@ export default function StaffResetPasswordModal({
         {apiError && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             {apiError}
+          </div>
+        )}
+
+        {isOtherAdmin && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+            <strong>Restricted:</strong> Administrators cannot reset credentials for other administrators.
           </div>
         )}
 
@@ -98,15 +120,10 @@ export default function StaffResetPasswordModal({
           </div>
         </div>
 
-        <p className="text-sm text-gray-600">
-          Are you sure you want to send a password reset / initial setup link to{' '}
-          <strong className="text-gray-900 font-semibold">{staff.fullName || staff.username}</strong> at{' '}
-          <span className="font-mono text-blue-600">{staff.email}</span>?
-        </p>
-
-        <p className="text-xs text-gray-500">
-          The staff member will receive an email containing a link to set their password.
-        </p>
+        <div className="rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
+          <p><span className="text-gray-400">Target Staff:</span> <span className="font-semibold text-gray-800">{staff.username}</span> ({staff.fullName})</p>
+          <p className="mt-1"><span className="text-gray-400">Email Destination:</span> <span className="font-mono text-gray-700">{staff.email}</span></p>
+        </div>
       </div>
     </Modal>
   );

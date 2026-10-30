@@ -53,7 +53,7 @@ export default function TransactionPagination({
             value={size}
             disabled={disabled}
             onChange={(e) => onSizeChange(Number(e.target.value))}
-            className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm transition hover:border-slate-400 focus:border-[#0878E8] focus:outline-none focus:ring-1 focus:ring-[#0878E8] disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm transition hover:border-slate-400 focus:border-[#00A3C4] focus:outline-none focus:ring-1 focus:ring-[#00A3C4] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <option value={10}>10</option>
             <option value={20}>20</option>
@@ -74,7 +74,7 @@ export default function TransactionPagination({
             onClick={() => onPageChange(page - 1)}
             disabled={!hasPrevious || disabled}
             aria-label="Previous page"
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0878E8] disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#00A3C4] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ChevronLeft size={16} aria-hidden="true" />
             <span className="hidden sm:inline">Previous</span>
@@ -85,7 +85,7 @@ export default function TransactionPagination({
             onClick={() => onPageChange(page + 1)}
             disabled={!hasNext || disabled}
             aria-label="Next page"
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0878E8] disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#00A3C4] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <span className="hidden sm:inline">Next</span>
             <ChevronRight size={16} aria-hidden="true" />

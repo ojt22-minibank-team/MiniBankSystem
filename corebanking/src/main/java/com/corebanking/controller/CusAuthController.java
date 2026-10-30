@@ -165,11 +165,12 @@ public class CusAuthController {
     public ResponseEntity<CusPasswordResetStartResponse>
             requestPasswordReset(
                     @RequestBody
-                    CusPasswordResetRequest request) {
+                    CusPasswordResetRequest request, HttpServletRequest servletRequest) {
 
         CusPasswordResetStartResponse response =
                 cusAuthService.requestPasswordReset(
-                        request
+                        request,
+                        CusSessionClientMetadata.from(servletRequest)
                 );
 
         return ResponseEntity.ok(
@@ -186,11 +187,12 @@ public class CusAuthController {
     public ResponseEntity<CusOtpResendResponse>
             resendPasswordResetOtp(
                     @RequestBody
-                    CusOtpResendRequest request) {
+                    CusOtpResendRequest request, HttpServletRequest servletRequest) {
 
         CusOtpResendResponse response =
                 cusAuthService.resendPasswordResetOtp(
-                        request
+                        request,
+                        CusSessionClientMetadata.from(servletRequest)
                 );
 
         return ResponseEntity.ok(
@@ -207,11 +209,12 @@ public class CusAuthController {
     public ResponseEntity<CusPasswordResetOtpVerifyResponse>
             verifyPasswordResetOtp(
                     @RequestBody
-                    CusPasswordResetOtpVerifyRequest request) {
+                    CusPasswordResetOtpVerifyRequest request, HttpServletRequest servletRequest) {
 
         CusPasswordResetOtpVerifyResponse response =
                 cusAuthService.verifyPasswordResetOtp(
-                        request
+                        request,
+                        CusSessionClientMetadata.from(servletRequest)
                 );
 
         return ResponseEntity.ok(
@@ -227,10 +230,11 @@ public class CusAuthController {
     @PostMapping("/password-reset/confirm")
     public ResponseEntity<String> confirmPasswordReset(
             @RequestBody
-            CusPasswordResetConfirmRequest request) {
+            CusPasswordResetConfirmRequest request, HttpServletRequest servletRequest) {
 
         cusAuthService.resetPassword(
-                request
+                request,
+                CusSessionClientMetadata.from(servletRequest)
         );
 
         return ResponseEntity.ok(
@@ -247,11 +251,12 @@ public class CusAuthController {
     public ResponseEntity<CusPinResetStartResponse>
             requestPinReset(
                     @RequestHeader("Authorization")
-                    String authorizationHeader) {
+                    String authorizationHeader, HttpServletRequest servletRequest) {
 
         CusPinResetStartResponse response =
                 cusAuthService.requestPinReset(
-                        authorizationHeader
+                        authorizationHeader,
+                        CusSessionClientMetadata.from(servletRequest)
                 );
 
         return ResponseEntity.ok(
@@ -272,12 +277,13 @@ public class CusAuthController {
                     String authorizationHeader,
 
                     @RequestBody
-                    CusOtpResendRequest request) {
+                    CusOtpResendRequest request, HttpServletRequest servletRequest) {
 
         CusOtpResendResponse response =
                 cusAuthService.resendPinResetOtp(
                         authorizationHeader,
-                        request
+                        request,
+                        CusSessionClientMetadata.from(servletRequest)
                 );
 
         return ResponseEntity.ok(
@@ -296,12 +302,13 @@ public class CusAuthController {
                  String authorizationHeader,
 
                  @RequestBody
-                 CusPinResetOtpVerifyRequest request) {
+                 CusPinResetOtpVerifyRequest request, HttpServletRequest servletRequest) {
 
      CusPinResetOtpVerifyResponse response =
              cusAuthService.verifyPinResetOtp(
                      authorizationHeader,
-                     request
+                     request,
+                     CusSessionClientMetadata.from(servletRequest)
              );
 
      return ResponseEntity.ok(
@@ -320,11 +327,12 @@ public ResponseEntity<String>
               String authorizationHeader,
 
               @RequestBody
-              CusPinResetConfirmRequest request) {
+              CusPinResetConfirmRequest request, HttpServletRequest servletRequest) {
 
   cusAuthService.resetTransactionPin(
           authorizationHeader,
-          request
+          request,
+          CusSessionClientMetadata.from(servletRequest)
   );
 
   return ResponseEntity.ok(

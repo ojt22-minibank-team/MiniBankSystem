@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type ReportTab = 'ledger' | 'account' | 'audit';
+export type ReportTab = 'ledger' | 'account' | 'audit' | 'fee' | 'aml';
 
 interface ReportFilterBarProps {
   activeTab: ReportTab;
@@ -24,6 +24,12 @@ interface ReportFilterBarProps {
   onAuditStartDateChange: (v: string) => void;
   auditEndDate: string;
   onAuditEndDateChange: (v: string) => void;
+  feeChannel?: string;
+  onFeeChannelChange?: (v: string) => void;
+  amlThreshold?: number;
+  onAmlThresholdChange?: (v: number) => void;
+  amlTransactionType?: string;
+  onAmlTransactionTypeChange?: (v: string) => void;
   onSearch: () => void;
   onReset: () => void;
   loading?: boolean;
@@ -69,6 +75,7 @@ const LEDGER_TRANSACTION_TYPES = [
   'REFUND',
 ];
 const ACCOUNT_STATUSES = ['', 'ACTIVE', 'FROZEN', 'SUSPENDED', 'CLOSED'];
+const CHANNELS = ['', 'CUSTOMER_PORTAL', 'STAFF_PORTAL', 'PAYMENT_GATEWAY', 'SYSTEM'];
 const ACTION_TYPES = [
   '',
   'LOGIN',
@@ -110,6 +117,12 @@ const ReportFilterBar: React.FC<ReportFilterBarProps> = (props) => {
     auditEndDate,
     onAuditStartDateChange,
     onAuditEndDateChange,
+    feeChannel = '',
+    onFeeChannelChange,
+    amlThreshold = 10000000,
+    onAmlThresholdChange,
+    amlTransactionType = '',
+    onAmlTransactionTypeChange,
     onSearch,
     onReset,
     loading,
@@ -140,7 +153,7 @@ const ReportFilterBar: React.FC<ReportFilterBarProps> = (props) => {
         Filter & Search
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'flex-end' }}>
-        {(activeTab === 'ledger' || activeTab === 'account') && (
+        {activeTab !== 'audit' && (
           <>
             <div style={fieldWrap}>
               <label style={labelStyle}>Start Date</label>
@@ -213,6 +226,53 @@ const ReportFilterBar: React.FC<ReportFilterBarProps> = (props) => {
               ))}
             </select>
           </div>
+        )}
+
+        {activeTab === 'fee' && (
+          <div style={fieldWrap}>
+            <label style={labelStyle}>Channel</label>
+            <select
+              value={feeChannel}
+              onChange={(e) => onFeeChannelChange?.(e.target.value)}
+              style={inputStyle}
+            >
+              {CHANNELS.map((c) => (
+                <option key={c} value={c}>
+                  {c || 'All Channels'}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {activeTab === 'aml' && (
+          <>
+            <div style={fieldWrap}>
+              <label style={labelStyle}>Min Threshold (MMK)</label>
+              <input
+                type="number"
+                value={amlThreshold || ''}
+                onChange={(e) => onAmlThresholdChange?.(Number(e.target.value))}
+                onKeyDown={(e) => e.key === 'Enter' && onSearch()}
+                style={inputStyle}
+                placeholder="10000000"
+              />
+            </div>
+            <div style={fieldWrap}>
+              <label style={labelStyle}>Transaction Type</label>
+              <select
+                value={amlTransactionType}
+                onChange={(e) => onAmlTransactionTypeChange?.(e.target.value)}
+                style={inputStyle}
+              >
+                {LEDGER_TRANSACTION_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t || 'All Types'}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
         )}
 
         {activeTab === 'audit' && (

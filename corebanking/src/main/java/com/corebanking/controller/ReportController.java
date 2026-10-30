@@ -3,6 +3,8 @@ package com.corebanking.controller;
 import com.corebanking.dto.AccountStatusReportDTO;
 import com.corebanking.dto.AuditTrailPageDTO;
 import com.corebanking.dto.DailyLedgerSummaryDTO;
+import com.corebanking.dto.FeeRevenueReportDTO;
+import com.corebanking.dto.LargeTransactionReportDTO;
 import com.corebanking.service.ReportService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ContentDisposition;
@@ -15,12 +17,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * ReportController ? Group 2 Reporting Subsystem.
+ * ReportController — Group 2 Reporting Subsystem.
  * Exposes REST endpoints under /api/v1/reports/**
  */
 @RestController
@@ -160,6 +163,80 @@ public class ReportController {
                         staffId, actionType, startDate, endDate, accountNo, page, pageSize);
                 yield buildResponse(bytes, "Audit_Trail_Log.csv", "text/csv");
             }
+        };
+    }
+
+    // -------------------------------------------------------
+    // 4. Large Transaction & AML Report
+    // -------------------------------------------------------
+
+    @GetMapping("/large-transactions")
+    public ResponseEntity<LargeTransactionReportDTO> getLargeTransactions(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) BigDecimal threshold,
+            @RequestParam(required = false) String transactionType) {
+
+        return ResponseEntity.ok(reportService.getLargeTransactionSummary(startDate, endDate, threshold, transactionType));
+    }
+
+    @GetMapping("/large-transactions/export")
+    public ResponseEntity<byte[]> exportLargeTransactions(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) BigDecimal threshold,
+            @RequestParam(required = false) String transactionType,
+            @RequestParam(defaultValue = "csv") String format) throws IOException {
+
+        return switch (format.toLowerCase()) {
+            case "excel", "xlsx" -> buildResponse(
+                    reportService.exportLargeTransactionExcel(startDate, endDate, threshold, transactionType),
+                    "Large_Transactions_AML.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            case "pdf" -> buildResponse(
+                    reportService.exportLargeTransactionPdf(startDate, endDate, threshold, transactionType),
+                    "Large_Transactions_AML.pdf",
+                    "application/pdf");
+            default -> buildResponse(
+                    reportService.exportLargeTransactionCsv(startDate, endDate, threshold, transactionType),
+                    "Large_Transactions_AML.csv",
+                    "text/csv");
+        };
+    }
+
+    // -------------------------------------------------------
+    // 5. Fee & Revenue Breakdown
+    // -------------------------------------------------------
+
+    @GetMapping("/fee-revenue")
+    public ResponseEntity<FeeRevenueReportDTO> getFeeRevenueSummary(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) String channel) {
+
+        return ResponseEntity.ok(reportService.getFeeRevenueSummary(startDate, endDate, channel));
+    }
+
+    @GetMapping("/fee-revenue/export")
+    public ResponseEntity<byte[]> exportFeeRevenueSummary(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) String channel,
+            @RequestParam(defaultValue = "csv") String format) throws IOException {
+
+        return switch (format.toLowerCase()) {
+            case "excel", "xlsx" -> buildResponse(
+                    reportService.exportFeeRevenueExcel(startDate, endDate, channel),
+                    "Fee_Revenue_Report.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            case "pdf" -> buildResponse(
+                    reportService.exportFeeRevenuePdf(startDate, endDate, channel),
+                    "Fee_Revenue_Report.pdf",
+                    "application/pdf");
+            default -> buildResponse(
+                    reportService.exportFeeRevenueCsv(startDate, endDate, channel),
+                    "Fee_Revenue_Report.csv",
+                    "text/csv");
         };
     }
 

@@ -87,7 +87,7 @@ export default function CompanyInfo({
       {/* မူရင်း section layout ကို ထိန်းထားပြီး ခေါင်းစဉ်များကို ဘာသာပြန်ထားသည်။ */}
       <div className="flex flex-col gap-3 border-b border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
         <div>
-          <h2 className="text-lg font-bold text-[#08295C]">
+          <h2 className="text-lg font-bold text-[#0A192F]">
             {t("companyInformation")}
           </h2>
 
@@ -212,7 +212,7 @@ function AddressSection({
       {/* ပြောင်းထားသည် - လိပ်စာခေါင်းစဉ်နှင့် Edit ခလုတ်စာသားကို ဘာသာပြန်ထားသည်။ */}
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-[#0878E8]">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-50 text-[#00A3C4]">
             <MapPin size={18} />
           </div>
 
@@ -231,7 +231,7 @@ function AddressSection({
           <button
             type="button"
             onClick={onEdit}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-[#0878E8] transition hover:border-blue-200 hover:bg-blue-100 focus:outline-none focus:ring-4 focus:ring-blue-50"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-100 bg-cyan-50 px-4 py-2.5 text-sm font-semibold text-[#00A3C4] transition hover:border-cyan-200 hover:bg-cyan-100 focus:outline-none focus:ring-4 focus:ring-cyan-100"
           >
             <Edit3 size={15} />
             {t("editAddress")}
@@ -261,7 +261,7 @@ function AddressSection({
         </div>
       ) : (
         /* EDIT MODE - မူရင်းပြင်ဆင်မှု logic ကို ထိန်းထားသည်။ */
-        <div className="rounded-xl border border-blue-100 bg-blue-50/30 p-5">
+        <div className="rounded-xl border border-cyan-100 bg-cyan-50/30 p-5">
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <FormField
               id="address"
@@ -317,7 +317,7 @@ function AddressSection({
                 type="button"
                 onClick={onSave}
                 disabled={isSaving}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#0878E8] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#00A3C4] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#00A3C4] hover:shadow-md focus:outline-none focus:ring-4 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSaving ? (
                   <>
@@ -382,7 +382,7 @@ function FormField({
         onChange={onChange}
         placeholder={placeholder}
         autoComplete="off"
-        className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-[#0878E8] focus:ring-4 focus:ring-blue-50"
+        className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-[#00A3C4] focus:ring-4 focus:ring-cyan-100"
       />
     </div>
   );
@@ -415,7 +415,7 @@ function ProfileField({
         <div
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
             accent
-              ? "bg-blue-50 text-[#0878E8]"
+              ? "bg-cyan-50 text-[#00A3C4]"
               : "bg-white text-slate-400"
           }`}
         >

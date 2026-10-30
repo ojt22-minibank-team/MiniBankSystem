@@ -98,14 +98,19 @@ export const loginThunk = createAsyncThunk<
 
     return payload;
   } catch (err) {
-    const error = err as AxiosError<{ message?: string }>;
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Invalid username or password.',
-      );
+    const error = err as AxiosError<{ message?: string; error?: string }>;
+    const responseData = error.response?.data as any;
+    const backendMessage =
+      (typeof responseData === 'string' && responseData) ||
+      responseData?.message ||
+      responseData?.error ||
+      responseData?.detail;
+
+    if (backendMessage) {
+      return rejectWithValue(backendMessage);
     }
-    if (error.response?.data?.message) {
-      return rejectWithValue(error.response.data.message);
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      return rejectWithValue('Invalid username or password.');
     }
     if (error.code === 'ECONNABORTED' || !error.response) {
       return rejectWithValue(

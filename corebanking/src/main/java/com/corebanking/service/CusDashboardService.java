@@ -27,6 +27,7 @@ public class CusDashboardService {
 	
     private final CustomerRepository customerRepository;
     private final AccountRepository accountRepository;
+    private final TransferLimitService transferLimitService;
 
     @Transactional(readOnly = true)
     public CusDashboardResponseDTO getDashboard() {
@@ -147,6 +148,26 @@ public class CusDashboardService {
     private CusDashboardAccountDTO mapToDashboardAccount(
             Accounts account) {
 
+        BigDecimal minBalance = account.getMinimumBalance() != null && account.getMinimumBalance().compareTo(BigDecimal.ZERO) > 0
+                ? account.getMinimumBalance()
+                : (transferLimitService != null ? transferLimitService.getMinimumBalance() : new BigDecimal("10000"));
+
+        BigDecimal currentBal = account.getCurrentBalance() != null ? account.getCurrentBalance() : BigDecimal.ZERO;
+        BigDecimal availableBal = account.getAvailableBalance();
+
+        // Business Logic: Available Balance = max(0, currentBalance - minimumReserve)
+        if (minBalance != null && minBalance.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal effectiveAvail = currentBal.subtract(minBalance);
+            if (effectiveAvail.compareTo(BigDecimal.ZERO) < 0) {
+                effectiveAvail = BigDecimal.ZERO;
+            }
+            if (availableBal == null || availableBal.compareTo(currentBal) >= 0) {
+                availableBal = effectiveAvail;
+            } else {
+                availableBal = availableBal.min(effectiveAvail);
+            }
+        }
+
         return CusDashboardAccountDTO.builder()
 
                 .accountNumber(
@@ -170,11 +191,11 @@ public class CusDashboardService {
                 )
 
                 .currentBalance(
-                        account.getCurrentBalance()
+                        currentBal
                 )
 
                 .availableBalance(
-                        account.getAvailableBalance()
+                        availableBal
                 )
 
                 .status(
@@ -185,6 +206,10 @@ public class CusDashboardService {
 
                 .jointAccount(
                         account.isJointAccount()
+                )
+
+                .openedAt(
+                        account.getOpenedAt()
                 )
 
                 .build();

@@ -1,14 +1,21 @@
-import { Clock3, LogIn, ShieldAlert } from "lucide-react";
+import { Clock3, ShieldAlert } from "lucide-react";
+import { ekarajPrimaryButtonClass } from "../../auth/components/EkarajAuthStyles";
 
 export default function CorporateSessionTimeoutModal({ message, onLoginAgain }: { message: string; onLoginAgain: () => void }) {
-  return <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-sm">
-    <div role="alertdialog" aria-modal="true" aria-labelledby="corporate-timeout-title" aria-describedby="corporate-timeout-message" className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-2xl">
-      <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-amber-50 text-amber-600"><Clock3 size={38} /></div>
-      <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600"><ShieldAlert size={14} />Security Timeout</div>
-      <h2 id="corporate-timeout-title" className="text-2xl font-bold text-[#08295C]">Session Timed Out</h2>
-      <p id="corporate-timeout-message" className="mt-3 text-sm leading-6 text-slate-500">{message}</p>
-      <p className="mt-2 text-sm text-slate-500">Please login again to continue using ACE Bank securely.</p>
-      <button autoFocus type="button" onClick={onLoginAgain} className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3.5 font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200"><LogIn size={18} />Login Again</button>
+  return <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#E5EAF0]">
+    <div className="flex min-h-full items-center justify-center px-4 py-6">
+      <div role="alertdialog" aria-modal="true" aria-labelledby="corporate-timeout-title" aria-describedby="corporate-timeout-message" className="w-full max-w-md rounded-[28px] border border-[#CDC0A8] bg-[#F5F3EF] p-6 text-center text-[#122E52] shadow-[0_18px_50px_-26px_rgba(18,46,82,0.3)] sm:p-8">
+        <div className="mb-5 flex items-center justify-center gap-3">
+          <img src="/assets/ekaraj-crown-transparent.png" alt="" aria-hidden="true" width={375} height={340} className="h-10 w-auto shrink-0 object-contain" />
+          <span className="text-sm font-semibold tracking-[0.06em] text-[#1A365D]">EKARAJ BANK</span>
+        </div>
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#EAF2FA] text-[#1A365D] ring-4 ring-[#C6A15B]/20"><Clock3 aria-hidden="true" size={28} /></div>
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#C6A15B]/40 bg-[#EAF2FA] px-3 py-1.5 text-xs font-semibold text-[#122E52]"><ShieldAlert aria-hidden="true" size={14} />Security Timeout</div>
+        <h2 id="corporate-timeout-title" className="font-serif text-2xl font-medium leading-8 text-[#1A365D]">Session Timed Out</h2>
+        <p id="corporate-timeout-message" className="mt-3 text-sm leading-5 text-[#59697D]">{message}</p>
+        <p className="mt-2 text-sm leading-5 text-[#59697D]">Please login again to continue using EKARAJ BANK securely.</p>
+        <button autoFocus type="button" onClick={onLoginAgain} className={`mt-5 ${ekarajPrimaryButtonClass}`}>Login Again</button>
+      </div>
     </div>
   </div>;
 }

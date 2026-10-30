@@ -206,7 +206,7 @@ export default function AccountCreateModal({
             {accountCategory === 'CORPORATE' ? (
               <div className="pt-3 text-xs text-gray-600 space-y-1">
                 <p className="font-semibold text-gray-800">Dual Authorization Configured:</p>
-                <p>• <strong>CEO:</strong> Approver (can_view = 1, can_approve = 1)</p>
+                <p>• <strong>Approver:</strong> Authorizer / Signatory (can_view = 1, can_approve = 1)</p>
                 <p>• <strong>MAKER:</strong> Initiator (can_view = 1, can_initiate = 1)</p>
                 <p>• <strong>Required Approvals:</strong> 2 signatures</p>
               </div>
@@ -266,7 +266,7 @@ export default function AccountCreateModal({
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
-                2. Corporate Account (CEO + Maker)
+                2. Corporate Account (Approver + Maker)
               </button>
             </div>
           </div>
@@ -311,7 +311,10 @@ export default function AccountCreateModal({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Initial Deposit</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-gray-700">Initial Deposit</label>
+                    <span className="text-[10px] text-gray-500 font-medium">Quick Fill:</span>
+                  </div>
                   <Input
                     type="number"
                     min="0"
@@ -320,6 +323,18 @@ export default function AccountCreateModal({
                     value={retailInitialDeposit}
                     onChange={(e) => setRetailInitialDeposit(e.target.value === '' ? '' : Number(e.target.value))}
                   />
+                  <div className="flex gap-1.5 mt-1.5">
+                    {[10000, 50000, 100000, 500000].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setRetailInitialDeposit(amt)}
+                        className="text-[10px] bg-white border border-gray-200 hover:border-blue-400 hover:bg-blue-50 text-gray-700 hover:text-blue-700 px-2 py-0.5 rounded transition-all shadow-2xs cursor-pointer"
+                      >
+                        +{amt.toLocaleString()}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -362,7 +377,10 @@ export default function AccountCreateModal({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Initial Deposit</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-gray-700">Initial Deposit</label>
+                    <span className="text-[10px] text-gray-500 font-medium">Quick Fill:</span>
+                  </div>
                   <Input
                     type="number"
                     min="0"
@@ -371,6 +389,18 @@ export default function AccountCreateModal({
                     value={corporateInitialDeposit}
                     onChange={(e) => setCorporateInitialDeposit(e.target.value === '' ? '' : Number(e.target.value))}
                   />
+                  <div className="flex gap-1.5 mt-1.5">
+                    {[50000, 100000, 500000, 1000000].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setCorporateInitialDeposit(amt)}
+                        className="text-[10px] bg-white border border-gray-200 hover:border-blue-400 hover:bg-blue-50 text-gray-700 hover:text-blue-700 px-2 py-0.5 rounded transition-all shadow-2xs cursor-pointer"
+                      >
+                        +{amt.toLocaleString()}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -379,7 +409,7 @@ export default function AccountCreateModal({
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-xs font-bold uppercase tracking-wider text-blue-900">
-                      1. CEO Signatory (Approver / Checker) <span className="font-normal text-gray-500 lowercase">(optional)</span>
+                      1. Primary Approver (Authorizer / Checker) <span className="font-normal text-gray-500 lowercase">(optional)</span>
                     </h4>
                     <p className="text-[11px] text-gray-500 mt-0.5">
                       Auto-generated from company profile if left blank.
@@ -391,7 +421,7 @@ export default function AccountCreateModal({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">CEO Customer Code</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Approver Customer Code</label>
                     <Input
                       placeholder="e.g. CUST-2026... (Existing customer)"
                       value={ceoCustomerCode}
@@ -399,9 +429,9 @@ export default function AccountCreateModal({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">CEO Full Name (or Override)</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Approver Full Name (or Override)</label>
                     <Input
-                      placeholder="e.g. U Thant Zin (CEO)"
+                      placeholder="e.g. U Thant Zin (Approver / MD)"
                       value={ceoFullName}
                       onChange={(e) => setCeoFullName(e.target.value)}
                     />
@@ -409,16 +439,16 @@ export default function AccountCreateModal({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">CEO Email</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Approver Email</label>
                     <Input
                       type="email"
-                      placeholder="ceo@company.com"
+                      placeholder="approver@company.com"
                       value={ceoEmail}
                       onChange={(e) => setCeoEmail(e.target.value)}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">CEO Phone</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Approver Phone</label>
                     <Input
                       placeholder="+95 911111111"
                       value={ceoPhone}

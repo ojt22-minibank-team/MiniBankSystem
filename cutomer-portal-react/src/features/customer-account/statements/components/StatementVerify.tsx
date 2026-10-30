@@ -22,10 +22,10 @@ export const StatementVerify: FC<StatementVerifyProps> = ({
       {/* Verify Section Header */}
       <div className="mb-6 border-b border-slate-100 pb-4">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-[#0878E8]">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-50/70 text-[#00A3C4]">
             <CheckCircle2 size={18} />
           </div>
-          <h2 className="text-base font-bold text-[#08295C]">Verify Statement Details</h2>
+          <h2 className="text-base font-bold text-[#0A192F]">Verify Statement Details</h2>
         </div>
         <p className="text-xs text-slate-500 mt-1">
           Please review your statement details before confirming.
@@ -37,7 +37,7 @@ export const StatementVerify: FC<StatementVerifyProps> = ({
         {/* Account Details Card */}
         <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-            <Wallet size={15} className="text-[#0878E8]" />
+            <Wallet size={15} className="text-[#00A3C4]" />
             <span>Account Selection</span>
           </div>
 
@@ -45,7 +45,7 @@ export const StatementVerify: FC<StatementVerifyProps> = ({
             <div>
               <span className="text-xs text-slate-400 block font-medium">Account Type</span>
               <span className="text-sm font-bold text-slate-900 inline-flex items-center gap-1.5 mt-0.5">
-                <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">
+                <span className="inline-flex items-center rounded-md bg-cyan-100 dark:bg-cyan-500/20 px-2.5 py-0.5 text-xs font-bold text-[#007088] dark:text-cyan-300 border border-cyan-200/60 dark:border-cyan-500/30">
                   {form.accountType}
                 </span>
               </span>
@@ -71,7 +71,7 @@ export const StatementVerify: FC<StatementVerifyProps> = ({
         {/* Date Period Card */}
         <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-            <Calendar size={15} className="text-[#0878E8]" />
+            <Calendar size={15} className="text-[#00A3C4]" />
             <span>Statement Period</span>
           </div>
 
@@ -96,8 +96,8 @@ export const StatementVerify: FC<StatementVerifyProps> = ({
       </div>
 
       {/* Confirmation Note */}
-      <div className="mb-8 flex items-start gap-2.5 rounded-xl bg-blue-50/60 p-3.5 text-xs text-blue-900">
-        <ShieldCheck size={16} className="shrink-0 text-[#0878E8] mt-0.5" />
+      <div className="mb-8 flex items-start gap-2.5 rounded-xl bg-cyan-50/60 p-3.5 text-xs text-[#0A192F]">
+        <ShieldCheck size={16} className="shrink-0 text-[#00A3C4] mt-0.5" />
         <p>
           Confirming these details will prepare your account statement for download. You can still return to make changes if needed.
         </p>
@@ -117,7 +117,7 @@ export const StatementVerify: FC<StatementVerifyProps> = ({
         <button
           type="button"
           onClick={onConfirm}
-          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-[#0878E8] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-[#0878E8] focus:ring-offset-2"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-[#00A3C4] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0891B2] focus:outline-none focus:ring-2 focus:ring-[#00A3C4] focus:ring-offset-2"
         >
           Confirm
           <ArrowRight size={16} />

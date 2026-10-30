@@ -9,6 +9,7 @@ import com.corebanking.dto.CusPasswordResetRequest;
 import com.corebanking.dto.CusPasswordResetStartResponse;
 import com.corebanking.entity.Accounts;
 import com.corebanking.entity.AuditLogs;
+import com.corebanking.dto.CusSessionClientMetadata;
 import com.corebanking.entity.CustomerCredentials;
 import com.corebanking.entity.Customers;
 import com.corebanking.entity.OtpChallenge;
@@ -29,6 +30,8 @@ import com.corebanking.repository.CusCredentialsRepository;
 import com.corebanking.repository.CusCustomerRepository;
 import com.corebanking.repository.CusOtpChallengesRepository;
 import lombok.RequiredArgsConstructor;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.mail.MailException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -56,6 +59,9 @@ public class CusCustomerPasswordResetService {
     private final CusEmailService cusEmailService;
     private final CusAuditLogsRepository auditLogsRepository;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
     private static final int OTP_EXPIRY_MINUTES = 5;
     private static final int MAX_OTP_ATTEMPTS = 5;
     private static final int MAX_OTP_RESENDS = 5;
@@ -68,6 +74,14 @@ public class CusCustomerPasswordResetService {
  )
  public CusPasswordResetStartResponse requestPasswordReset(
          CusPasswordResetRequest request) {
+    return requestPasswordReset(request, CusSessionClientMetadata.EMPTY);
+}
+
+@Transactional(
+         noRollbackFor = CusEmailException.class
+ )
+ public CusPasswordResetStartResponse requestPasswordReset(
+         CusPasswordResetRequest request, CusSessionClientMetadata metadata) {
 
      // =====================================================
      // 1. REQUEST VALIDATION
@@ -102,6 +116,9 @@ public class CusCustomerPasswordResetService {
      // 3. CUSTOMER MUST BE ACTIVE
      // =====================================================
 
+      customer = CusCustomerOtpLocks.lockCustomer(entityManager, credentialsRepository,
+              customer.getCustomerId()).getCustomer();
+
      validateCustomerStatus(
              customer
      );
@@ -118,36 +135,6 @@ public class CusCustomerPasswordResetService {
                  "No registered email address is available for password reset."
          );
      }
-
-
-     // =====================================================
-     // 5. EXPIRE PREVIOUS ACTIVE PASSWORD RESET OTPs
-     // =====================================================
-
-     var activeResetOtps =
-             otpChallengesRepository
-                     .findByCustomerAndPurposeAndStatus(
-                             customer,
-                             OtpPurpose.PASSWORD_RESET,
-                             OtpStatus.ACTIVE
-                     );
-
-
-     for (OtpChallenge otp : activeResetOtps) {
-
-         otp.setStatus(
-                 OtpStatus.EXPIRED
-         );
-
-         markOtpUpdatedByCustomer(
-                 otp
-         );
-     }
-
-
-     otpChallengesRepository.saveAll(
-             activeResetOtps
-     );
 
 
      // =====================================================
@@ -258,6 +245,39 @@ public class CusCustomerPasswordResetService {
 
 
      // =====================================================
+     // Expire predecessors after INSERT; avoid an empty InnoDB gap lock.
+     // =====================================================
+
+     var activeResetOtps =
+             otpChallengesRepository
+                     .findByCustomerAndPurposeAndStatus(
+                             customer,
+                             OtpPurpose.PASSWORD_RESET,
+                             OtpStatus.ACTIVE
+                     )
+                     .stream()
+                     .filter(otp -> !savedOtp.getOtpId().equals(otp.getOtpId()))
+                     .toList();
+
+
+     for (OtpChallenge otp : activeResetOtps) {
+
+         otp.setStatus(
+                 OtpStatus.EXPIRED
+         );
+
+         markOtpUpdatedByCustomer(
+                 otp
+         );
+     }
+
+
+     otpChallengesRepository.saveAll(
+             activeResetOtps
+     );
+
+
+     // =====================================================
      // 10. SEND OTP EMAIL
      // =====================================================
 
@@ -284,7 +304,8 @@ public class CusCustomerPasswordResetService {
                  null,
                  "{\"purpose\":\"PASSWORD_RESET\","
                          + "\"status\":\"ACTIVE\","
-                         + "\"resendNo\":0}"
+                         + "\"resendNo\":0}",
+                 metadata
          );
 
 
@@ -319,7 +340,8 @@ public class CusCustomerPasswordResetService {
                  ),
                  "{\"status\":\"ACTIVE\"}",
                  "{\"status\":\"EXPIRED\","
-                         + "\"reason\":\"EMAIL_SEND_FAILED\"}"
+                         + "\"reason\":\"EMAIL_SEND_FAILED\"}",
+                 metadata
          );
 
 
@@ -347,6 +369,14 @@ public class CusCustomerPasswordResetService {
 )
 public CusOtpResendResponse resendPasswordResetOtp(
       CusOtpResendRequest request) {
+    return resendPasswordResetOtp(request, CusSessionClientMetadata.EMPTY);
+}
+
+@Transactional(
+      noRollbackFor = CusEmailException.class
+)
+public CusOtpResendResponse resendPasswordResetOtp(
+      CusOtpResendRequest request, CusSessionClientMetadata metadata) {
 
   // =====================================================
   // 1. REQUEST VALIDATION
@@ -372,16 +402,8 @@ public CusOtpResendResponse resendPasswordResetOtp(
   // =====================================================
 
   OtpChallenge latestOtp =
-          otpChallengesRepository
-                  .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
-                          challengeGroupId,
-                          OtpPurpose.PASSWORD_RESET
-                  )
-                  .orElseThrow(() ->
-                          new CusOtpException(
-                                  "Invalid password reset challenge."
-                          )
-                  );
+          CusCustomerOtpLocks.lockRequested(entityManager, credentialsRepository,
+                  otpChallengesRepository, challengeGroupId, OtpPurpose.PASSWORD_RESET);
 
 
   // =====================================================
@@ -612,7 +634,8 @@ public CusOtpResendResponse resendPasswordResetOtp(
                       + "\"status\":\"ACTIVE\","
                       + "\"resendNo\":"
                       + savedOtp.getResendNo()
-                      + "}"
+                      + "}",
+              metadata
       );
 
 
@@ -648,7 +671,8 @@ public CusOtpResendResponse resendPasswordResetOtp(
               ),
               "{\"status\":\"ACTIVE\"}",
               "{\"status\":\"EXPIRED\","
-                      + "\"reason\":\"EMAIL_SEND_FAILED\"}"
+                      + "\"reason\":\"EMAIL_SEND_FAILED\"}",
+              metadata
       );
 
 
@@ -680,6 +704,15 @@ public CusOtpResendResponse resendPasswordResetOtp(
 public CusPasswordResetOtpVerifyResponse
      verifyPasswordResetOtp(
              CusPasswordResetOtpVerifyRequest request) {
+    return verifyPasswordResetOtp(request, CusSessionClientMetadata.EMPTY);
+}
+
+@Transactional(
+     noRollbackFor = CusOtpException.class
+)
+public CusPasswordResetOtpVerifyResponse
+     verifyPasswordResetOtp(
+             CusPasswordResetOtpVerifyRequest request, CusSessionClientMetadata metadata) {
 
  // =====================================================
  // 1. REQUEST VALIDATION
@@ -712,16 +745,8 @@ public CusPasswordResetOtpVerifyResponse
  // =====================================================
 
  OtpChallenge otpChallenge =
-         otpChallengesRepository
-                 .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
-                         challengeGroupId,
-                         OtpPurpose.PASSWORD_RESET
-                 )
-                 .orElseThrow(() ->
-                         new CusOtpException(
-                                 "Invalid password reset challenge."
-                         )
-                 );
+         CusCustomerOtpLocks.lockRequested(entityManager, credentialsRepository,
+                  otpChallengesRepository, challengeGroupId, OtpPurpose.PASSWORD_RESET);
 
 
  // =====================================================
@@ -800,7 +825,8 @@ public CusPasswordResetOtpVerifyResponse
              ),
              "{\"status\":\"ACTIVE\"}",
              "{\"status\":\"EXPIRED\","
-                     + "\"reason\":\"TIME_EXPIRED\"}"
+                     + "\"reason\":\"TIME_EXPIRED\"}",
+             metadata
      );
 
 
@@ -866,7 +892,8 @@ public CusPasswordResetOtpVerifyResponse
  if (!otpMatches) {
 
      handleFailedPasswordResetOtpAttempt(
-             otpChallenge
+             otpChallenge,
+             metadata
      );
 
      throw new CusOtpException(
@@ -938,7 +965,8 @@ public CusPasswordResetOtpVerifyResponse
          ),
          "{\"status\":\"ACTIVE\"}",
          "{\"status\":\"CONSUMED\","
-                 + "\"purpose\":\"PASSWORD_RESET\"}"
+                 + "\"purpose\":\"PASSWORD_RESET\"}",
+         metadata
  );
 
 
@@ -956,6 +984,12 @@ public CusPasswordResetOtpVerifyResponse
 @Transactional
 public void resetPassword(
      CusPasswordResetConfirmRequest request) {
+    resetPassword(request, CusSessionClientMetadata.EMPTY);
+}
+
+@Transactional
+public void resetPassword(
+     CusPasswordResetConfirmRequest request, CusSessionClientMetadata metadata) {
 
  // =====================================================
  // 1. REQUEST VALIDATION
@@ -1020,16 +1054,8 @@ public void resetPassword(
  // =====================================================
 
  OtpChallenge verifiedChallenge =
-         otpChallengesRepository
-                 .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
-                         verifiedChallengeGroupId,
-                         OtpPurpose.PASSWORD_RESET
-                 )
-                 .orElseThrow(() ->
-                         new CusOtpException(
-                                 "Invalid password reset authorization."
-                         )
-                 );
+         CusCustomerOtpLocks.lockRequested(entityManager, credentialsRepository,
+                  otpChallengesRepository, verifiedChallengeGroupId, OtpPurpose.PASSWORD_RESET);
 
 
  // =====================================================
@@ -1038,7 +1064,9 @@ public void resetPassword(
 
  if (verifiedChallenge.getStatus()
          != OtpStatus.CONSUMED
-         || verifiedChallenge.getConsumedAt() == null) {
+         || verifiedChallenge.getConsumedAt() == null
+         || verifiedChallenge.getExpiresAt() == null
+         || !verifiedChallenge.getExpiresAt().isAfter(LocalDateTime.now())) {
 
      throw new CusOtpException(
              "Password reset authorization is not valid."
@@ -1156,21 +1184,12 @@ public void resetPassword(
  // Repository uses clearAutomatically = true
  // =====================================================
 
- customer =
-         customerRepository
-                 .findById(
-                         customerId
-                 )
-                 .orElseThrow(() ->
-                         new RuntimeException(
-                                 "Customer not found."
-                         )
-                 );
+ // The claim clears JPA state. A locking read avoids the provisional RR snapshot.
 
 
  credentials =
          credentialsRepository
-                 .findById(
+                 .findByCustomerIdForUpdate(
                          customerId
                  )
                  .orElseThrow(() ->
@@ -1179,6 +1198,9 @@ public void resetPassword(
                          )
                  );
 
+
+ // Fresh owner from the same authoritative locking read.
+ customer = credentials.getCustomer();
 
  // =====================================================
  // 12. HASH NEW PASSWORD
@@ -1263,7 +1285,8 @@ public void resetPassword(
          "{\"passwordChanged\":true,"
                  + "\"sessionsRevoked\":"
                  + revokedSessions
-                 + "}"
+                 + "}",
+         metadata
  );
 }
 
@@ -1449,7 +1472,7 @@ private boolean isValidPassword(
  }
 
 private void handleFailedPasswordResetOtpAttempt(
-        OtpChallenge otpChallenge) {
+        OtpChallenge otpChallenge, CusSessionClientMetadata metadata) {
 
     int failedAttempts =
             otpChallenge.getAttemptCount() + 1;
@@ -1487,7 +1510,8 @@ private void handleFailedPasswordResetOtpAttempt(
                     + failedAttempts
                     + ",\"status\":\""
                     + otpChallenge.getStatus().name()
-                    + "\"}"
+                    + "\"}",
+            metadata
     );
 }
 
@@ -1498,10 +1522,12 @@ private void handleFailedPasswordResetOtpAttempt(
          String entityType,
          String entityId,
          String oldValues,
-         String newValues) {
+         String newValues, CusSessionClientMetadata metadata) {
 
      AuditLogs auditLog =
              AuditLogs.builder()
+                     .ipAddress(metadata == null ? null : metadata.ipAddress())
+                     .userAgent(metadata == null ? null : metadata.userAgent())
 
                      .actorType(
                              actorType

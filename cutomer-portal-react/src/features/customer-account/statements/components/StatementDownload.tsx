@@ -94,7 +94,7 @@ export const StatementDownload: FC<StatementDownloadProps> = ({
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
             <CheckCircle2 size={18} />
           </div>
-          <h2 className="text-base font-bold text-[#08295C]">Statement Ready</h2>
+          <h2 className="text-base font-bold text-[#0A192F] dark:text-white">Statement Ready</h2>
         </div>
         <p className="text-xs text-slate-500 mt-1">
           Your statement criteria have been confirmed. Choose your preferred export format below.
@@ -106,7 +106,7 @@ export const StatementDownload: FC<StatementDownloadProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <span className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
-              <Wallet size={13} className="text-[#0878E8]" />
+              <Wallet size={13} className="text-[#00A3C4]" />
               Account
             </span>
             <span className="text-sm font-bold text-slate-900 mt-1 block">
@@ -119,7 +119,7 @@ export const StatementDownload: FC<StatementDownloadProps> = ({
 
           <div>
             <span className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
-              <Calendar size={13} className="text-[#0878E8]" />
+              <Calendar size={13} className="text-[#00A3C4]" />
               From Date
             </span>
             <span className="text-sm font-bold text-slate-900 mt-1 block">
@@ -130,7 +130,7 @@ export const StatementDownload: FC<StatementDownloadProps> = ({
 
           <div>
             <span className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
-              <Calendar size={13} className="text-[#0878E8]" />
+              <Calendar size={13} className="text-[#00A3C4]" />
               To Date
             </span>
             <span className="text-sm font-bold text-slate-900 mt-1 block">
@@ -182,17 +182,17 @@ export const StatementDownload: FC<StatementDownloadProps> = ({
             disabled={isAnyDownloading}
             className={`flex items-center justify-between rounded-xl border p-4 text-left transition-all ${
               isPdfLoading
-                ? "border-blue-300 bg-blue-50/50 shadow-sm cursor-wait"
+                ? "border-cyan-300 bg-cyan-50/50 shadow-sm cursor-wait"
                 : isAnyDownloading
                 ? "border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed"
-                : "border-slate-200 bg-white hover:border-[#0878E8] hover:shadow-md cursor-pointer group"
+                : "border-slate-200 bg-white hover:border-[#00A3C4] hover:shadow-md cursor-pointer group"
             }`}
           >
             <div className="flex items-center gap-3">
               <div
                 className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
                   isPdfLoading
-                    ? "bg-blue-100 text-[#0878E8]"
+                    ? "bg-cyan-100 text-[#00A3C4]"
                     : "bg-red-50 text-red-600 group-hover:bg-red-100"
                 }`}
               >
@@ -205,9 +205,9 @@ export const StatementDownload: FC<StatementDownloadProps> = ({
                 <p className="text-xs text-slate-400">Official statement with bank letterhead</p>
               </div>
             </div>
-            <div className="text-[#0878E8] opacity-80 group-hover:opacity-100">
+            <div className="text-[#00A3C4] opacity-80 group-hover:opacity-100">
               {isPdfLoading ? (
-                <span className="text-xs font-semibold text-[#0878E8]">Preparing...</span>
+                <span className="text-xs font-semibold text-[#00A3C4]">Preparing...</span>
               ) : (
                 <Download size={18} />
               )}
@@ -256,8 +256,8 @@ export const StatementDownload: FC<StatementDownloadProps> = ({
       </div>
 
       {/* Information Tip */}
-      <div className="mb-6 flex items-start gap-2.5 rounded-xl bg-blue-50/60 p-3.5 text-xs text-blue-900">
-        <CheckCircle2 size={16} className="shrink-0 text-[#0878E8] mt-0.5" />
+      <div className="mb-6 flex items-start gap-2.5 rounded-xl bg-cyan-50/60 p-3.5 text-xs text-[#0A192F]">
+        <CheckCircle2 size={16} className="shrink-0 text-[#00A3C4] mt-0.5" />
         <p>
           You can download both PDF and CSV formats for your records. Click either button above to start your download.
         </p>

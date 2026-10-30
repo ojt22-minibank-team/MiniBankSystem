@@ -91,7 +91,7 @@ export const PaymentReceipt: React.FC<Props> = ({ receipt, details, selectedAcco
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={() => navigate(`/accounts/${selectedAccount}`)}
+              onClick={() => navigate("/accounts", { state: { accountNumber: selectedAccount } })}
               className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium py-3 transition-colors text-xs flex items-center justify-center gap-1.5"
             >
               <ReceiptText className="h-4 w-4 text-slate-500" />
