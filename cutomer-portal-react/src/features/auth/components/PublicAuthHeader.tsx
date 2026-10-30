@@ -1,124 +1,28 @@
-import {
-  Headphones,
-  Landmark,
-  ShieldCheck,
-} from "lucide-react";
+import { ShieldCheck } from "lucide-react";
+import { AuthWordmark } from "./IndividualAuthUI";
 
-
-function PublicAuthHeader() {
-
+function PublicAuthHeader({ portalLabel = "Customer Portal" }: { portalLabel?: string }) {
   return (
-
-    <header className="border-b border-slate-200 bg-white">
-
-      <div className="
-        mx-auto
-        flex
-        min-h-[72px]
-        w-full
-        max-w-[1450px]
-        items-center
-        justify-between
-        px-5
-        md:px-8
-      ">
-
-        {/* BRAND */}
-
-        <div className="flex items-center gap-3">
-
-          <div className="
-            flex
-            h-11
-            w-11
-            items-center
-            justify-center
-            rounded-xl
-            bg-[#08295C]
-            text-white
-            shadow-sm
-          ">
-
-            <Landmark size={23} />
-
-          </div>
-
-
-          <div>
-
-            <h1 className="
-              text-xl
-              font-bold
-              text-[#08295C]
-            ">
-              ACE Bank
-            </h1>
-
-            <p className="
-              mt-0.5
-              text-xs
-              text-slate-400
-            ">
-              Customer Portal
-            </p>
-
-          </div>
-
+    <header className="border-b border-slate-200/70 bg-white">
+      <div className="mx-auto flex min-h-16 max-w-[1280px] items-center justify-between gap-4 px-5 md:px-8">
+        <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-4">
+          <AuthWordmark />
+          <span className={`${portalLabel === "Customer Portal" ? "hidden sm:block" : "block"} text-[10px] text-slate-400 sm:border-l sm:border-slate-200 sm:pl-4 sm:text-xs`}>
+            {portalLabel}
+          </span>
         </div>
-
-
-        {/* RIGHT SIDE */}
-
-        <div className="flex items-center gap-6">
-
-          <div className="
-            hidden
-            items-center
-            gap-2
-            text-sm
-            font-semibold
-            text-emerald-600
-            md:flex
-          ">
-
-            <ShieldCheck size={18} />
-
-            Secure Banking
-
-          </div>
-
-
-          <button
-            type="button"
-            className="
-              flex
-              items-center
-              gap-2
-              text-sm
-              font-semibold
-              text-blue-600
-              transition
-              hover:text-blue-700
-            "
-          >
-
-            <Headphones size={18} />
-
-            <span className="hidden sm:inline">
-              Help & Support
-            </span>
-
-          </button>
-
+        <div className="flex items-center gap-5">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50/60 px-2.5 py-1.5 text-[10px] font-semibold text-[#123B72] sm:px-3 sm:text-xs">
+            <ShieldCheck aria-hidden="true" size={14} />
+            <span className="hidden sm:inline">Secure banking</span>
+            <span className="sm:hidden">Secure</span>
+          </span>
+          <p className="hidden text-xs text-slate-400 lg:block">
+            Need assistance? <span className="font-medium text-[#08295C]">Contact your bank</span>
+          </p>
         </div>
-
       </div>
-
     </header>
-
   );
-
 }
-
-
 export default PublicAuthHeader;

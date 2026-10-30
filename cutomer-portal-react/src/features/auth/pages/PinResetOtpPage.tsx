@@ -7,18 +7,15 @@ import {
   useNavigate,
 } from "react-router-dom";
 
-import {
-  ArrowLeft,
-  Clock3,
-  Mail,
-  ShieldCheck,
-} from "lucide-react";
 
 import {
   verifyPinResetOtp,
   resendPinResetOtp,
 } from "../../../services/authService";
 
+
+import { AuthRecoveryLayout, IndividualAuthCard, AuthHeading, AuthField, AuthCodeField, AuthNotice, AuthSecurityNote, AuthExpiryNote } from "../components/IndividualAuthUI";
+import { authPrimaryButtonClass, authSecondaryButtonClass, authLinkButtonClass, authCodeInputClass } from "../components/IndividualAuthStyles";
 
 function PinResetOtpPage() {
 
@@ -386,599 +383,91 @@ function PinResetOtpPage() {
   // ======================================================
 
   return (
-
-    <div
-      className="
-        min-h-full
-        bg-[#F3F7FB]
-        px-4
-        py-8
-        sm:px-6
-        lg:px-10
-      "
-    >
-
-      <div
-        className="
-          mx-auto
-          w-full
-          max-w-3xl
-        "
-      >
-
-
-        {/* ============================================
-            PAGE HEADING
-        ============================================ */}
-
-        <div
-          className="
-            mb-6
-          "
-        >
-
-          <p
-            className="
-              mb-2
-              text-sm
-              font-semibold
-              uppercase
-              tracking-wider
-              text-[#00A3C4]
-            "
-          >
-
-            Security Verification
-
-          </p>
-
-
-          <h1
-            className="
-              text-2xl
-              font-bold
-              tracking-tight
-              text-[#0A192F]
-              sm:text-3xl
-            "
-          >
-
-            Transaction PIN Reset
-
-          </h1>
-
-
-          <p
-            className="
-              mt-2
-              text-sm
-              leading-6
-              text-slate-500
-            "
-          >
-
-            Verify your identity before creating
-            a new Transaction PIN.
-
-          </p>
-
-        </div>
-
-
-        {/* ============================================
-            MAIN CARD
-        ============================================ */}
-
-        <div
-          className="
-            overflow-hidden
-            rounded-3xl
-            border
-            border-slate-200
-            bg-white
-            shadow-lg
-            shadow-slate-200/60
-          "
-        >
-
-          <div
-            className="
-              px-6
-              py-8
-              sm:px-10
-              sm:py-10
-            "
-          >
-
-
-            {/* SECURITY ICON */}
-
-            <div
-              className="
-                mb-6
-                flex
-                h-16
-                w-16
-                items-center
-                justify-center
-                rounded-2xl
-                bg-cyan-50
-                text-[#00A3C4]
-              "
-            >
-
-              <ShieldCheck
-                size={31}
-              />
-
-            </div>
-
-
-            {/* CARD HEADER */}
-
-            <div
-              className="
-                mb-7
-              "
-            >
-
-              <h2
-                className="
-                  text-2xl
-                  font-bold
-                  text-[#0A192F]
-                  sm:text-3xl
-                "
-              >
-
-                Verify Transaction PIN Reset
-
-              </h2>
-
-
-              <p
-                className="
-                  mt-3
-                  max-w-xl
-                  text-sm
-                  leading-6
-                  text-slate-500
-                "
-              >
-
-                Enter the 6-digit verification code
-                sent to your registered email.
-
-              </p>
-
-
-              {/* MASKED EMAIL */}
-
-              {
-                maskedEmail
-                &&
-                (
-
-                  <div
-                    className="
-                      mt-4
-                      inline-flex
-                      items-center
-                      gap-2
-                      rounded-full
-                      bg-cyan-50
-                      px-4
-                      py-2
-                      text-sm
-                      font-semibold
-                      text-blue-700
-                    "
-                  >
-
-                    <Mail
-                      size={16}
-                    />
-
-                    {maskedEmail}
-
-                  </div>
-
-                )
-              }
-
-            </div>
-
-
-            {/* ============================================
-                FORM
-            ============================================ */}
-
-            <form
-              onSubmit={
-                handleVerifyOtp
-              }
-            >
-
-
-              {/* OTP LABEL */}
-
-              <label
-                className="
-                  mb-2
-                  block
-                  text-sm
-                  font-semibold
-                  text-slate-700
-                "
-              >
-
-                Verification Code
-
-              </label>
-
-
-              {/* OTP INPUT */}
-
+    <AuthRecoveryLayout>
+      <IndividualAuthCard variant="otp">
+        <AuthHeading
+          title="Verify your email"
+          description={
+            <>
+              Enter the 6-digit code sent to{" "}
+              <strong className="font-semibold text-[#08295C]">
+                {maskedEmail || "your registered email"}
+              </strong>{" "}
+              to reset your transaction PIN.
+            </>
+          }
+          variant="otp"
+        />
+        <form onSubmit={handleVerifyOtp} className="space-y-3">
+          <AuthField label="Verification code" htmlFor="individual-recovery-otp">
+            <AuthCodeField value={otp}>
               <input
-
                 type="text"
-
                 inputMode="numeric"
-
                 autoComplete="one-time-code"
-
                 maxLength={6}
-
-                value={
-                  otp
-                }
-
+                value={otp}
                 placeholder="000000"
-
                 onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, "");
 
-                  const value =
-                    e.target.value
-                      .replace(
-                        /\D/g,
-                        ""
-                      );
-
-
-                  setOtp(
-                    value
-                  );
-
+                  setOtp(value);
                 }}
-
-                disabled={
-                  loading
-                  ||
-                  resending
-                }
-
-                className="
-                  w-full
-                  rounded-xl
-                  border
-                  border-slate-300
-                  bg-white
-                  px-5
-                  py-4
-                  text-center
-                  text-2xl
-                  font-semibold
-                  tracking-[0.55em]
-                  text-slate-800
-                  outline-none
-                  transition
-                  placeholder:text-slate-300
-                  focus:border-[#00A3C4]
-                  focus:ring-4
-                  focus:ring-cyan-100
-                  disabled:cursor-not-allowed
-                  disabled:bg-slate-50
-                "
-
+                disabled={loading || resending}
+                id="individual-recovery-otp"
+                className={authCodeInputClass}
+                aria-invalid={Boolean(error)}
+                aria-required={true}
               />
-
-
-              {/* OTP EXPIRY */}
-
-              <div
-                className="
-                  mt-3
-                  flex
-                  items-center
-                  gap-2
-                  text-xs
-                  text-slate-400
-                "
-              >
-
-                <Clock3
-                  size={15}
-                />
-
-                The verification code is valid for
-                5 minutes.
-
-              </div>
-
-
-              {/* ============================================
-                  ERROR
-              ============================================ */}
-
-              {
-                error
-                &&
-                (
-
-                  <div
-                    className="
-                      mt-5
-                      rounded-xl
-                      border
-                      border-red-200
-                      bg-red-50
-                      px-4
-                      py-3
-                      text-sm
-                      font-medium
-                      text-red-600
-                    "
-                  >
-
-                    {error}
-
-                  </div>
-
-                )
-              }
-
-
-              {/* ============================================
-                  SUCCESS MESSAGE
-              ============================================ */}
-
-              {
-                message
-                &&
-                (
-
-                  <div
-                    className="
-                      mt-5
-                      rounded-xl
-                      border
-                      border-emerald-200
-                      bg-emerald-50
-                      px-4
-                      py-3
-                      text-sm
-                      font-medium
-                      text-emerald-700
-                    "
-                  >
-
-                    {message}
-
-                  </div>
-
-                )
-              }
-
-
-              {/* ============================================
-                  VERIFY BUTTON
-              ============================================ */}
-
-              <button
-
-                type="submit"
-
-                disabled={
-                  loading
-                  ||
-                  resending
-                }
-
-                className="
-                  mt-6
-                  flex
-                  w-full
-                  items-center
-                  justify-center
-                  rounded-xl
-                  bg-[#00A3C4]
-                  px-5
-                  py-3.5
-                  text-sm
-                  font-bold
-                  text-white
-                  shadow-sm
-                  transition
-                  hover:bg-[#0891B2]
-                  focus:outline-none
-                  focus:ring-4
-                  focus:ring-blue-200
-                  disabled:cursor-not-allowed
-                  disabled:opacity-60
-                "
-              >
-
-                {
-                  loading
-                    ? "Verifying..."
-                    : "Verify OTP"
-                }
-
-              </button>
-
-
-              {/* ============================================
-                  RESEND
-              ============================================ */}
-
-              <div
-                className="
-                  mt-6
-                  text-center
-                "
-              >
-
+            </AuthCodeField>
+          </AuthField>
+          <AuthExpiryNote />
+          <AuthNotice error={error} />
+          <AuthNotice message={message} />
+          <button
+            type="submit"
+            disabled={loading || resending}
+            className={authPrimaryButtonClass}
+            aria-busy={loading || resending}
+          >
+            {loading ||
+              (resending && (
                 <span
-                  className="
-                    text-sm
-                    text-slate-500
-                  "
-                >
-
-                  Didn't receive the code?{" "}
-
-                </span>
-
-
-                <button
-
-                  type="button"
-
-                  onClick={
-                    handleResendOtp
-                  }
-
-                  disabled={
-                    loading
-                    ||
-                    resending
-                  }
-
-                  className="
-                    text-sm
-                    font-semibold
-                    text-[#00A3C4]
-                    transition
-                    hover:text-[#0891B2]
-                    disabled:cursor-not-allowed
-                    disabled:opacity-50
-                  "
-                >
-
-                  {
-                    resending
-                      ? "Sending..."
-                      : "Resend OTP"
-                  }
-
-                </button>
-
-              </div>
-
-
-              {/* ============================================
-                  DIVIDER
-              ============================================ */}
-
-              <div
-                className="
-                  my-6
-                  border-t
-                  border-slate-100
-                "
-              />
-
-
-              {/* ============================================
-                  BACK TO PROFILE
-              ============================================ */}
-
-              <button
-
-                type="button"
-
-                onClick={
-                  handleBack
-                }
-
-                disabled={
-                  loading
-                  ||
-                  resending
-                }
-
-                className="
-                  flex
-                  w-full
-                  items-center
-                  justify-center
-                  gap-2
-                  rounded-xl
-                  border
-                  border-slate-200
-                  bg-white
-                  px-5
-                  py-3
-                  text-sm
-                  font-semibold
-                  text-slate-600
-                  transition
-                  hover:bg-slate-50
-                  hover:text-slate-800
-                  disabled:cursor-not-allowed
-                  disabled:opacity-60
-                "
-              >
-
-                <ArrowLeft
-                  size={17}
+                  aria-hidden="true"
+                  className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-white/30 border-t-white motion-reduce:animate-none"
                 />
-
-                Back to Profile
-
-              </button>
-
-            </form>
-
-
-            {/* ============================================
-                SECURITY NOTE
-            ============================================ */}
-
-            <div
-              className="
-                mt-6
-                rounded-xl
-                bg-slate-50
-                px-4
-                py-3
-                text-center
-              "
-            >
-
-              <p
-                className="
-                  text-xs
-                  leading-5
-                  text-slate-500
-                "
-              >
-
-                Never share your Transaction PIN
-                or verification OTP with anyone.
-
-              </p>
-
-            </div>
-
-          </div>
-
+              ))}{" "}
+            {loading ? "Verifying..." : "Verify OTP"}
+          </button>
+        </form>
+        <div className="mt-3 text-center">
+          <p className="mb-2 text-xs text-slate-500">Didn't receive the code?</p>
+          <button
+            type="button"
+            onClick={handleResendOtp}
+            disabled={loading || resending}
+            className={authSecondaryButtonClass}
+          >
+            {" "}
+            {resending ? "Sending..." : "Resend OTP"}{" "}
+          </button>
         </div>
-
-      </div>
-
-    </div>
-
+        <div className="mt-3 text-center">
+          <button
+            type="button"
+            onClick={handleBack}
+            disabled={loading || resending}
+            className={authLinkButtonClass}
+          >
+            {" "}
+             Back to Profile
+          </button>
+        </div>
+        <AuthSecurityNote title="Secure verification">
+          Your verification code is valid for 5 minutes. Do not share it with anyone.
+        </AuthSecurityNote>
+      </IndividualAuthCard>
+    </AuthRecoveryLayout>
   );
 
 }

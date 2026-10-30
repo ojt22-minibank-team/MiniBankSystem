@@ -75,6 +75,16 @@ public class TransferQueueConsumer {
             p2pTransferService.executeQueuedTransfer(message);
         } catch (Exception e) {
             log.error("Worker-{} failed to execute queued transfer ref: {}", workerId, message.getTransactionRef(), e);
+            try {
+                p2pTransferService.executeAutoReversal(
+                        message.getTransactionRef(),
+                        "Asynchronous queue execution failure: " + e.getMessage(),
+                        "QUEUE_EXECUTION_FAILED"
+                );
+            } catch (Exception revEx) {
+                log.error("Worker-{} failed to trigger auto-reversal for ref: {}", workerId, message.getTransactionRef(), revEx);
+                p2pTransferService.markQueuedTransferFailed(message.getTransactionRef(), e.getMessage());
+            }
         }
     }
 

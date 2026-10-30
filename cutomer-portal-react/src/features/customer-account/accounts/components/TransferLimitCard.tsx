@@ -21,6 +21,7 @@ interface TransferLimitCardProps {
   currency: string;
   onLimitsLoaded?: (limits: TransferLimitInfo) => void;
   onLimitsUpdated?: () => void;
+  autoOpenModal?: boolean;
 }
 
 export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
@@ -28,6 +29,7 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
   currency,
   onLimitsLoaded,
   onLimitsUpdated,
+  autoOpenModal,
 }) => {
   const [limits, setLimits] = useState<TransferLimitInfo | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -81,6 +83,15 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
     if (submitting) return;
     setIsModalOpen(false);
   };
+
+  const autoOpenedRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (autoOpenModal && limits && !loading && !autoOpenedRef.current) {
+      autoOpenedRef.current = true;
+      handleOpenModal();
+    }
+  }, [autoOpenModal, limits, loading]);
 
   const handlePinChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;

@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -157,6 +158,7 @@ public class CusSecurityConfig {
     
     
     @Bean
+    @Primary
     public CorsConfigurationSource
             corsConfigurationSource() {
 
@@ -165,7 +167,8 @@ public class CusSecurityConfig {
 
         configuration.setAllowedOrigins(
                 List.of(
-                        "http://localhost:5173"
+                        "http://localhost:5173",
+                        "http://127.0.0.1:5173"
                 )
         );
 
@@ -183,7 +186,10 @@ public class CusSecurityConfig {
         configuration.setAllowedHeaders(
                 List.of(
                         "Authorization",
-                        "Content-Type"
+                        "Content-Type",
+                        "Idempotency-Key",
+                        "X-Requested-With",
+                        "Accept"
                 )
         );
 

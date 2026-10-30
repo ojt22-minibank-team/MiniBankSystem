@@ -28,5 +28,7 @@ public class OtcTransactionResponseDto {
     private String tellerUsername;
     private String depositorOrWithdrawerName;
     private String description;
+    private String manualReferenceId;
+    private String manualAuditNote;
     private LocalDateTime transactedAt;
 }

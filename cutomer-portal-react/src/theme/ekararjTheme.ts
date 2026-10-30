@@ -1,6 +1,6 @@
 /**
- * EKARARJ BANK - UI Theme Design System
- * Extracted directly from the official Ekararj Bank logo and Platinum card design.
+ * EKARAJ BANK - UI Theme Design System
+ * Extracted directly from the official Ekaraj Bank logo and Platinum card design.
  *
  * Core Color Dimensions:
  * 1. Deep Royal Navy   - Prestigious midnight banking depth (#0A192F, #060E1A)
@@ -10,7 +10,7 @@
  * 5. Brushed Platinum  - Sleek metallic silver steel card surface (#E2E8F0, #CBD5E1)
  */
 
-export const EKARARJ_COLORS = {
+export const EKARAJ_COLORS = {
   // Deep Royal Navy (Dark backgrounds, primary headings, sidebar, dark mode surfaces)
   navy: {
     50: "#F0F4FA",
@@ -87,9 +87,9 @@ export const EKARARJ_COLORS = {
 } as const;
 
 /**
- * Gradients directly matching the Ekararj Bank card & brand assets
+ * Gradients directly matching the Ekaraj Bank card & brand assets
  */
-export const EKARARJ_GRADIENTS = {
+export const EKARAJ_GRADIENTS = {
   // The exact brushed platinum card surface
   cardPlatinum: "linear-gradient(135deg, #F8FAFC 0%, #EDF2F7 35%, #E2E8F0 70%, #CBD5E1 100%)",
 
@@ -140,4 +140,7 @@ export const BUTTON_STYLES = {
     "inline-flex items-center justify-center rounded-xl p-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]",
 } as const;
 
-export default EKARARJ_COLORS;
+export default EKARAJ_COLORS;
+
+export const EKARARJ_COLORS = EKARAJ_COLORS;
+export const EKARARJ_GRADIENTS = EKARAJ_GRADIENTS;

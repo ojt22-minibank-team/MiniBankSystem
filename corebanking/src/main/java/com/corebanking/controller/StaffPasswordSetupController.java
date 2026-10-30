@@ -1,7 +1,7 @@
-
 package com.corebanking.controller;
 
 import com.corebanking.dto.StaffPasswordSetupRequest;
+import com.corebanking.service.StaffManagementService;
 import com.corebanking.service.StaffPasswordSetupService;
 
 import jakarta.validation.Valid;
@@ -21,6 +21,7 @@ import java.util.UUID;
 public class StaffPasswordSetupController {
 
     private final StaffPasswordSetupService staffPasswordSetupService;
+    private final StaffManagementService staffManagementService;
 
     /**
      * Public endpoint:
@@ -47,6 +48,7 @@ public class StaffPasswordSetupController {
     public ResponseEntity<Map<String, String>> resendSetupLink(
             @PathVariable UUID staffId) {
 
+        staffManagementService.validateAdminCanResetPassword(staffId);
         staffPasswordSetupService.createSetupLink(staffId);
 
         return ResponseEntity.ok(Map.of(

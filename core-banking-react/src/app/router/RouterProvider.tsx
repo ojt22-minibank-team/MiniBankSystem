@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from '../../features/auth/pages/LoginPage';
+import SignupPage from '../../features/auth/pages/SignupPage';
 import StaffPasswordSetupPage from '../../features/auth/pages/StaffPasswordSetupPage';
 import AdminDashboardPage from '../../features/admin/pages/AdminDashboardPage';
 import StaffListPage from '../../features/admin/pages/StaffListPage';
@@ -10,6 +11,7 @@ import AccountsPage from '../../features/operations/pages/AccountsPage';
 import TransfersPage from '../../features/operations/pages/TransfersPage';
 import OtcTransactionPage from '../../features/operations/pages/OtcTransactionPage';
 import ReportingPage from '../../features/reporting/pages/ReportingPage';
+import AuditLogsPage from '../../features/audit-logs/pages/AuditLogsPage';
 import UnauthorizedPage from '../../components/common/UnauthorizedPage';
 import ProtectedRoute from './ProtectedRoute';
 
@@ -19,9 +21,12 @@ export default function RouterProvider() {
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/setup-password" element={<StaffPasswordSetupPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/register" element={<SignupPage />} />
+        <Route path="/setup-password" element={<SignupPage />} />
 
-        <Route path="/set-password" element={<StaffPasswordSetupPage />} />
+        <Route path="/set-password" element={<SignupPage />} />
+        <Route path="/staff-setup" element={<StaffPasswordSetupPage />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
         {/* Protected Dashboard (available to authenticated staff) */}
@@ -100,6 +105,16 @@ export default function RouterProvider() {
           element={
             <ProtectedRoute>
               <TransfersPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Audit Logs (Admin and Auditor only) */}
+        <Route
+          path="/admin/audit-logs"
+          element={
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
+              <AuditLogsPage />
             </ProtectedRoute>
           }
         />

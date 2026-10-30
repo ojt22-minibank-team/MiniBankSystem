@@ -164,9 +164,14 @@ export default function AccountDetailPage({
   const location = useLocation();
   const params = useParams<{ accountNumber: string }>();
 
+  const locationState = location.state as {
+    accountNumber?: string;
+    autoOpenLimitModal?: boolean;
+  } | null;
+
   const targetAccountNumber =
     propAccountNumber ||
-    (location.state as { accountNumber?: string } | null)?.accountNumber ||
+    locationState?.accountNumber ||
     params.accountNumber;
 
   const [account, setAccount] = useState<CustomerAccount | null>(null);
@@ -187,6 +192,15 @@ export default function AccountDetailPage({
       navigate(-1);
     }
   };
+
+  useEffect(() => {
+    if (locationState?.autoOpenLimitModal) {
+      const el = document.getElementById("transfer-limit-section");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+  }, [locationState?.autoOpenLimitModal]);
 
   useEffect(() => {
     let cancelled = false;
@@ -446,7 +460,7 @@ export default function AccountDetailPage({
               </div>
             </div>
 
-            {/* Action Buttons: Unified styling, changing to Ekararj Cyan/Blue on hover */}
+            {/* Action Buttons: Unified styling, changing to Ekaraj Cyan/Blue on hover */}
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <Link
                 to="/transfer"
@@ -541,11 +555,12 @@ export default function AccountDetailPage({
         </section>
 
         {/* 2. Transfer Limits & Safety Management Card */}
-        <section>
+        <section id="transfer-limit-section">
           <TransferLimitCard
             accountNumber={account.accountNumber}
             currency={account.currency}
             onLimitsLoaded={setTransferLimits}
+            autoOpenModal={Boolean(locationState?.autoOpenLimitModal)}
           />
         </section>
       </div>

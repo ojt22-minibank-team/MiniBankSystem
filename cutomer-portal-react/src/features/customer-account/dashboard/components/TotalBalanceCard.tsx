@@ -8,7 +8,7 @@ import {
   Sunrise,
   Moon,
 } from "lucide-react";
-import { CrownEmbossedWatermark } from "../../../../components/common/EkararjLogo";
+import { CrownEmbossedWatermark } from "../../../../components/common/EkarajLogo";
 
 interface TotalBalanceCardProps {
   totalBalance: number;

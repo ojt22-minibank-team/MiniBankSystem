@@ -229,68 +229,130 @@ public class AuthService {
     // =========================================================
 
     @Transactional
-    public void logout(String authorizationHeader, CoreLogoutRequest request) {
+    public void logout(
+            String authorizationHeader,
+            CoreLogoutRequest request) {
 
-        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-            throw new AuthException("Authorization token is required");
+        // 1. Validate Authorization header
+        if (authorizationHeader == null
+                || !authorizationHeader.startsWith("Bearer ")) {
+            throw new AuthException(
+                    "Authorization token is required");
         }
 
-        String accessToken = authorizationHeader.substring(7).trim();
+        String accessToken =
+                authorizationHeader.substring(7).trim();
 
         if (accessToken.isBlank()) {
             throw new AuthException("Access token is empty");
         }
 
-        // 1. REVOKE REFRESH TOKEN FIRST
-        if (request != null && request.getRefreshToken() != null && !request.getRefreshToken().isBlank()) {
+        // 2. Validate access token and extract claims
+        io.jsonwebtoken.Claims claims;
+
+        try {
+            claims = jwtService.extractAllClaims(accessToken);
+
+        } catch (ExpiredJwtException e) {
+            // Allow logout using an expired access token
+            claims = e.getClaims();
+
+        } catch (Exception e) {
+            log.warn("Invalid access token during logout");
+            throw new AuthException("Invalid access token");
+        }
+
+        // 3. Extract required claims
+        String jti = claims.getId();
+        Date expirationDate = claims.getExpiration();
+
+        UUID staffId;
+
+        try {
+            Object staffIdClaim = claims.get("staff_id");
+
+            if (staffIdClaim == null) {
+                throw new IllegalArgumentException(
+                        "Missing staff_id claim");
+            }
+
+            staffId = UUID.fromString(staffIdClaim.toString());
+
+        } catch (Exception e) {
+            throw new AuthException(
+                    "Invalid staff ID in access token");
+        }
+
+        if (jti == null || jti.isBlank()
+                || expirationDate == null) {
+            throw new AuthException(
+                    "Required access token claims are missing");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        LocalDateTime expiresAt = expirationDate.toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDateTime();
+
+        // 4. Find staff
+        StaffUsers staff = staffUsersRepository.findById(staffId)
+                .orElseThrow(() ->
+                        new AuthException("Staff account not found"));
+
+        // 5. Find and validate refresh session BEFORE changing data
+        AuthSession session = null;
+
+        if (request != null
+                && request.getRefreshToken() != null
+                && !request.getRefreshToken().isBlank()) {
+
             String hashedToken = hashToken(request.getRefreshToken());
-            AuthSession session = authSessionsRepository.findByRefreshTokenHash(hashedToken).orElse(null);
-            
-            if (session != null) {
-                session.setRevokedAt(LocalDateTime.now());
-                session.setRevokeReason("User Logout");
-                session.setLastSeenAt(LocalDateTime.now());
-                authSessionsRepository.save(session);
+
+            session = authSessionsRepository
+                    .findByRefreshTokenHash(hashedToken)
+                    .orElseThrow(() ->
+                            new AuthException("Invalid refresh token"));
+
+            if (session.getStaff() == null
+                    || !staffId.equals(
+                            session.getStaff().getStaffId())) {
+                throw new AuthException(
+                        "Refresh token does not belong to this staff");
             }
         }
 
-        // 2. EXTRACT JWT DATA & REVOKE ACCESS TOKEN
-        String jti = null;
-        UUID staffId = null;
-        LocalDateTime expiresAt = null;
+        // 6. Revoke refresh session
+        if (session != null && session.getRevokedAt() == null) {
+            session.setRevokedAt(now);
+            session.setRevokeReason("User Logout");
+            session.setLastSeenAt(now);
 
-        try {
-            jti = jwtService.extractJti(accessToken);
-            staffId = jwtService.extractStaffId(accessToken);
-            Date expirationDate = jwtService.extractAllClaims(accessToken).getExpiration();
-            expiresAt = expirationDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
-            
-        } catch (ExpiredJwtException e) {
-            log.info("Token expired during logout. Extracting claims from exception.");
-            jti = e.getClaims().getId();
-            staffId = UUID.fromString(e.getClaims().getSubject());
-            expiresAt = e.getClaims().getExpiration().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
-        } catch (Exception e) {
-            log.error("Failed to parse access token during logout", e);
-            return; 
+            authSessionsRepository.save(session);
         }
 
-        if (jti != null && !jwtRevokedTokensRepository.existsByJti(jti)) {
-            StaffUsers staff = staffUsersRepository.findById(staffId).orElse(null);
-            
-            JwtRevokedTokens revokedToken = JwtRevokedTokens.builder()
-                    .jti(jti)
-                    .subjectType(SessionSubjectType.STAFF)
-                    .staff(staff)
-                    .tokenExpiresAt(expiresAt)
-                    .reason("User Logout")
-                    .updatedByType(com.corebanking.entity.enums.UpdatedByType.STAFF)
-                    .updatedById(staffId)
-                    .updatedAt(LocalDateTime.now())
-                    .build();
-                    
+        // 7. Blacklist access token if it has not expired
+        if (expiresAt.isAfter(now)
+                && !jwtRevokedTokensRepository.existsByJti(jti)) {
+
+            JwtRevokedTokens revokedToken =
+                    JwtRevokedTokens.builder()
+                            .jti(jti)
+                            .subjectType(SessionSubjectType.STAFF)
+                            .staff(staff)
+                            .tokenExpiresAt(expiresAt)
+                            .reason("User Logout")
+                            .updatedByType(
+                                    com.corebanking.entity.enums
+                                            .UpdatedByType.STAFF)
+                            .updatedById(staffId)
+                            .updatedAt(now)
+                            .build();
+
             jwtRevokedTokensRepository.save(revokedToken);
         }
+
+        log.info("Logout completed for staff ID: {}", staffId);
     }
 
     // =========================================================

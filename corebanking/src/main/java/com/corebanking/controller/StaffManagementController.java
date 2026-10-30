@@ -1,10 +1,10 @@
 package com.corebanking.controller;
 
 import com.corebanking.dto.ChangeStaffRoleRequest;
-
 import com.corebanking.dto.StaffCreateRequest;
 import com.corebanking.dto.StaffResponse;
 import com.corebanking.dto.StaffUpdateRequest;
+import com.corebanking.entity.Roles;
 import com.corebanking.service.StaffManagementService;
 import com.corebanking.service.StaffPasswordSetupService;
 
@@ -59,6 +59,20 @@ public class StaffManagementController {
 
         return ResponseEntity.ok(
                 staffManagementService.getAllStaff()
+        );
+    }
+
+
+    // =====================================================
+    // GET ALL ROLES
+    // GET /api/admin/staff/roles
+    // =====================================================
+
+    @GetMapping("/roles")
+    public ResponseEntity<List<Roles>> getAllRoles() {
+
+        return ResponseEntity.ok(
+                staffManagementService.getAllRoles()
         );
     }
 
@@ -149,6 +163,7 @@ public class StaffManagementController {
     public ResponseEntity<String> resetPassword(
             @PathVariable UUID staffId) {
 
+        staffManagementService.validateAdminCanResetPassword(staffId);
         staffPasswordSetupService.createSetupLink(staffId);
 
         return ResponseEntity.ok(
