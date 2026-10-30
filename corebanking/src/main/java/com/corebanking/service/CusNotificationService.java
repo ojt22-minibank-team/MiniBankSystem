@@ -90,20 +90,42 @@ public class CusNotificationService {
                         UUID sourceCustId = (txn.getSourceAccount().getCustomer() != null) ? txn.getSourceAccount().getCustomer().getCustomerId() : null;
                         UUID destCustId = (txn.getDestinationAccount().getCustomer() != null) ? txn.getDestinationAccount().getCustomer().getCustomerId() : null;
 
-                        if (currentCustomerId.equals(sourceCustId)) {
-                            String destName = (txn.getDestinationAccount().getCustomer() != null && txn.getDestinationAccount().getCustomer().getFullName() != null)
-                                    ? txn.getDestinationAccount().getCustomer().getFullName()
-                                    : "Account " + txn.getDestinationAccount().getAccountNumber();
-                            builder.counterpartyName(destName);
-                            builder.counterpartyAccountNumber(txn.getDestinationAccount().getAccountNumber());
-                            builder.transferDirection("SENT");
-                        } else if (currentCustomerId.equals(destCustId)) {
-                            String srcName = (txn.getSourceAccount().getCustomer() != null && txn.getSourceAccount().getCustomer().getFullName() != null)
-                                    ? txn.getSourceAccount().getCustomer().getFullName()
-                                    : "Account " + txn.getSourceAccount().getAccountNumber();
-                            builder.counterpartyName(srcName);
-                            builder.counterpartyAccountNumber(txn.getSourceAccount().getAccountNumber());
-                            builder.transferDirection("RECEIVED");
+                        String titleLower = n.getTitle() != null ? n.getTitle().toLowerCase() : "";
+                        boolean isReceivedNotification = titleLower.contains("received");
+                        boolean isSelfTransfer = sourceCustId != null && sourceCustId.equals(destCustId);
+
+                        if (isSelfTransfer) {
+                            if (isReceivedNotification) {
+                                String srcName = (txn.getSourceAccount().getCustomer() != null && txn.getSourceAccount().getCustomer().getFullName() != null)
+                                        ? txn.getSourceAccount().getCustomer().getFullName()
+                                        : "Account " + txn.getSourceAccount().getAccountNumber();
+                                builder.counterpartyName(srcName);
+                                builder.counterpartyAccountNumber(txn.getSourceAccount().getAccountNumber());
+                                builder.transferDirection("RECEIVED");
+                            } else {
+                                String destName = (txn.getDestinationAccount().getCustomer() != null && txn.getDestinationAccount().getCustomer().getFullName() != null)
+                                        ? txn.getDestinationAccount().getCustomer().getFullName()
+                                        : "Account " + txn.getDestinationAccount().getAccountNumber();
+                                builder.counterpartyName(destName);
+                                builder.counterpartyAccountNumber(txn.getDestinationAccount().getAccountNumber());
+                                builder.transferDirection("SENT");
+                            }
+                        } else {
+                            if (currentCustomerId.equals(sourceCustId)) {
+                                String destName = (txn.getDestinationAccount().getCustomer() != null && txn.getDestinationAccount().getCustomer().getFullName() != null)
+                                        ? txn.getDestinationAccount().getCustomer().getFullName()
+                                        : "Account " + txn.getDestinationAccount().getAccountNumber();
+                                builder.counterpartyName(destName);
+                                builder.counterpartyAccountNumber(txn.getDestinationAccount().getAccountNumber());
+                                builder.transferDirection("SENT");
+                            } else if (currentCustomerId.equals(destCustId)) {
+                                String srcName = (txn.getSourceAccount().getCustomer() != null && txn.getSourceAccount().getCustomer().getFullName() != null)
+                                        ? txn.getSourceAccount().getCustomer().getFullName()
+                                        : "Account " + txn.getSourceAccount().getAccountNumber();
+                                builder.counterpartyName(srcName);
+                                builder.counterpartyAccountNumber(txn.getSourceAccount().getAccountNumber());
+                                builder.transferDirection("RECEIVED");
+                            }
                         }
                     }
                 }
