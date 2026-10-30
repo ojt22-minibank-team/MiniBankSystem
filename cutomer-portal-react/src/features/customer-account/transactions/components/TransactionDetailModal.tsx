@@ -10,6 +10,7 @@ import {
   Building2,
   Info,
   Printer,
+  RotateCcw,
 } from "lucide-react";
 import type { CusTransactionHistoryItemDTO } from "../types/transactionHistoryTypes";
 import {
@@ -31,6 +32,7 @@ type DetailViewMode =
   | "FAILED"
   | "REJECTED"
   | "CANCELLED"
+  | "REVERSED"
   | "PROCESSING";
 
 function getViewMode(status?: string): DetailViewMode {
@@ -44,6 +46,8 @@ function getViewMode(status?: string): DetailViewMode {
       return "REJECTED";
     case "CANCELLED":
       return "CANCELLED";
+    case "REVERSED":
+      return "REVERSED";
     case "INITIATED":
     case "PENDING_AUTHORIZATION":
     case "HELD":
@@ -180,6 +184,11 @@ export default function TransactionDetailModal({
       statusIcon = <XCircle className="h-6 w-6 text-slate-500" aria-hidden="true" />;
       statusIconWrapper = "bg-slate-100 border-slate-200";
       break;
+    case "REVERSED":
+      statusHeading = "Transaction Reversed & Refunded";
+      statusIcon = <RotateCcw className="h-6 w-6 text-indigo-600" aria-hidden="true" />;
+      statusIconWrapper = "bg-indigo-50 border-indigo-200";
+      break;
     case "PROCESSING":
     default:
       if (transaction.status === "PENDING_AUTHORIZATION") {
@@ -312,6 +321,25 @@ export default function TransactionDetailModal({
         {/* Modal Scrollable Body */}
         <div className="p-6 space-y-5 flex-1">
           {/* Status-specific Alerts / Notice Banners */}
+          {viewMode === "REVERSED" && (
+            <div className="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-800 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold">
+                <RotateCcw className="w-4 h-4 shrink-0 text-indigo-600" />
+                <span>
+                  {transaction.failureMessage?.trim() || "This transfer was automatically reversed and refunded."}
+                </span>
+              </div>
+              <p className="text-[11px] text-indigo-700 pl-5">
+                Funds have been credited back to your account.
+              </p>
+              {transaction.failureCode?.trim() && (
+                <p className="text-[11px] font-mono text-indigo-700 pl-5">
+                  Reversal Code: {transaction.failureCode.trim()}
+                </p>
+              )}
+            </div>
+          )}
+
           {viewMode === "FAILED" && (
             <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 space-y-1">
               <div className="flex items-center gap-1.5 font-bold">

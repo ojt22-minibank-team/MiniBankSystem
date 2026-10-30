@@ -177,6 +177,7 @@
 							<goal>compile</goal>
 						</goals>
 						<configuration>
+							<parameters>true</parameters>
 							<annotationProcessorPaths>
 								<path>
 									<groupId>org.projectlombok</groupId>
@@ -192,6 +193,7 @@
 							<goal>testCompile</goal>
 						</goals>
 						<configuration>
+							<parameters>true</parameters>
 							<annotationProcessorPaths>
 								<path>
 									<groupId>org.projectlombok</groupId>

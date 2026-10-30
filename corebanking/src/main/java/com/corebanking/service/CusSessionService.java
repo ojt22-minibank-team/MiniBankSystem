@@ -6,6 +6,8 @@ import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.UUID;
+import jakarta.persistence.EntityManager;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +52,9 @@ public class CusSessionService {
 
     private final CusCorporateCredentialRepository corporateCredentialRepository;
 
+    @Autowired
+    private EntityManager entityManager;
+
 
     // =========================================================
     // 1. VALIDATE ACCESS TOKEN SESSION
@@ -69,7 +74,7 @@ public class CusSessionService {
 
         // Valid protected API request
         // => customer activity ဖြစ်လို့ lastSeenAt update
-        return updateSessionActivity(session, UpdatedByType.CUSTOMER);
+        return updateSessionActivity(session, claims, UpdatedByType.CUSTOMER);
     }
 
     // Background reads still validate the full session and may revoke it on expiry.
@@ -765,7 +770,7 @@ public class CusSessionService {
     @Transactional(noRollbackFor = CusSessionExpiredException.class)
     public AuthSession validateCorporateAccessSession(Claims claims) {
         AuthSession session = validateCorporateBaseSession(claims, "ACCESS");
-        return updateSessionActivity(session, UpdatedByType.CORPORATE_USER);
+        return updateSessionActivity(session, claims, UpdatedByType.CORPORATE_USER);
     }
 
     @Transactional(noRollbackFor = CusSessionExpiredException.class)
@@ -828,15 +833,55 @@ public class CusSessionService {
         return session;
     }
 
-    private AuthSession updateSessionActivity(AuthSession session, UpdatedByType actorType) {
-        session.setLastSeenAt(LocalDateTime.now());
-        if (actorType == UpdatedByType.CORPORATE_USER) {
-            session.setUpdatedByType(UpdatedByType.CORPORATE_USER);
-            session.setUpdatedById(session.getCorporateUser().getCorporateUserId());
-        } else {
-            markSessionUpdatedByCustomer(session);
+    private AuthSession updateSessionActivity(AuthSession provisional, Claims claims, UpdatedByType actorType) {
+        String sessionUuid = provisional.getSessionUuid();
+        SessionSubjectType subjectType = provisional.getSubjectType();
+        UUID ownerId = actorType == UpdatedByType.CUSTOMER
+                ? provisional.getCustomer().getCustomerId()
+                : provisional.getCorporateUser().getCorporateUserId();
+        long tokenVersion = ((Number) claims.get("tokenVersion")).longValue();
+
+        // Never dirty/save a pre-lock session. Discard only this clean entity;
+        // unrelated pending caller changes stay managed. A locking query can
+        // otherwise return an already-managed stale instance under RR.
+        entityManager.detach(provisional);
+        AuthSession current = authSessionsRepository.findForActivity(sessionUuid, subjectType)
+                .orElseThrow(() -> new CusAuthenticationException("Authentication session is invalid."));
+
+        // Re-run the existing checks on the locked row. Expiration retains its
+        // existing conditional revocation and audit behavior. Time is sampled
+        // after acquiring the lock, never before a database lock wait.
+        if (actorType == UpdatedByType.CUSTOMER) validateBaseSession(claims, "ACCESS");
+        else validateCorporateBaseSession(claims, "ACCESS");
+        LocalDateTime now = LocalDateTime.now();
+        validateSessionLifetime(current, now, tokenVersion);
+        int touched = authSessionsRepository.touchIfValid(
+                sessionUuid, subjectType, ownerId, tokenVersion, actorType, now);
+        if (touched != 0 && touched != 1) {
+            throw new CusAuthenticationException("Authentication session is no longer valid.");
         }
-        return authSessionsRepository.save(session);
+
+        // The bulk UPDATE does not synchronize JPA state. Reload only this
+        // still-clean entity via a real locking read; no blanket clear/merge.
+        entityManager.detach(current);
+        AuthSession refreshed = authSessionsRepository.findForActivity(sessionUuid, subjectType)
+                .orElseThrow(() -> new CusAuthenticationException("Authentication session is invalid."));
+        if (touched == 0) {
+            // Connector/J may report changed rather than matched rows. An older
+            // activity can legitimately be a no-op under GREATEST. Accept only
+            // an authoritative, still-valid row already at the intended state;
+            // never retry an expired/revoked session into validity.
+            if (actorType == UpdatedByType.CUSTOMER) validateBaseSession(claims, "ACCESS");
+            else validateCorporateBaseSession(claims, "ACCESS");
+            validateSessionLifetime(refreshed, LocalDateTime.now(), tokenVersion);
+            LocalDateTime databaseTime = now.truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+            if (refreshed.getLastSeenAt().isBefore(databaseTime)
+                    || refreshed.getUpdatedAt() == null || refreshed.getUpdatedAt().isBefore(databaseTime)
+                    || refreshed.getUpdatedByType() != actorType || !ownerId.equals(refreshed.getUpdatedById())) {
+                throw new CusAuthenticationException("Authentication session is no longer valid.");
+            }
+        }
+        return refreshed;
     }
 
     private void validateRefreshTokenHash(AuthSession session, String rawRefreshToken) {

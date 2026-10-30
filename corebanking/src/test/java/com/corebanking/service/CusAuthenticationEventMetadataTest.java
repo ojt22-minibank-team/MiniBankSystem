@@ -136,6 +136,7 @@ class CusAuthenticationEventMetadataTest {
         f.mvc.perform(request(endpoint, OTP_BODY, IP, "Original browser")).andExpect(status().isOk());
         AuthSession session = f.saved.get();
         var validation = new CusSessionService(f.sessions, f.individualCredentials, f.audit, f.corporateCredentials);
+        CusSessionActivityTestSupport.wire(validation, f.sessions, () -> session);
         ReflectionTestUtils.setField(f.individualAuth, "customerSessionService", new CusCustomerSessionService(f.individualCredentials, f.sessions, f.jwt, f.shared, f.revoked, f.audit));
         String refresh = corporate ? "synthetic-corporate-refresh" : "synthetic-refresh";
         String access = corporate ? "synthetic-corporate-access" : "synthetic-access";

@@ -109,6 +109,7 @@ class CusCustomerRecoveryBaselineTest {
     @Mock private CusEmailService cusEmailService;
     @Mock private CusAuditLogsRepository auditLogsRepository;
     @Mock private Claims claims;
+    @Mock private jakarta.persistence.EntityManager entityManager;
     @InjectMocks private CusCustomerPasswordResetService passwordResetService;
     @InjectMocks private CusCustomerPinResetService pinResetService;
     private CusAuthService service;
@@ -124,6 +125,8 @@ class CusCustomerRecoveryBaselineTest {
 
     @BeforeEach
     void fixtures() {
+        org.springframework.test.util.ReflectionTestUtils.setField(passwordResetService, "entityManager", entityManager);
+        org.springframework.test.util.ReflectionTestUtils.setField(pinResetService, "entityManager", entityManager);
         service = authFacade(passwordResetService);
         customer = Customers.builder().customerId(CUSTOMER_ID).customerCode(CODE)
                 .customerType(CustomerType.PERSONAL).status(CustomerStatus.ACTIVE).email(EMAIL).build();
@@ -133,6 +136,13 @@ class CusCustomerRecoveryBaselineTest {
         validatedSession = AuthSession.builder().customer(customer)
                 .subjectType(SessionSubjectType.CUSTOMER).build();
         nextId = 100;
+        lenient().when(credentialsRepository.findByCustomerIdForUpdate(CUSTOMER_ID)).thenAnswer(call -> Optional.of(credentials));
+        lenient().when(claims.getSubject()).thenReturn(CUSTOMER_ID.toString());
+        lenient().when(entityManager.find(eq(CustomerCredentials.class), eq(CUSTOMER_ID), eq(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE))).thenAnswer(call -> credentials);
+        lenient().when(entityManager.find(eq(Customers.class), eq(CUSTOMER_ID), eq(jakarta.persistence.LockModeType.PESSIMISTIC_READ))).thenAnswer(call -> customer);
+        lenient().when(entityManager.find(eq(OtpChallenge.class), any(), eq(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE))).thenAnswer(call -> latest);
+        lenient().when(otpChallengesRepository.findFirstByCustomer_CustomerIdAndSubjectTypeAndPurposeOrderByOtpIdDesc(
+                eq(CUSTOMER_ID), eq(OtpSubjectType.CUSTOMER), any(OtpPurpose.class))).thenAnswer(call -> Optional.ofNullable(latest));
     }
 
     @AfterEach
@@ -160,7 +170,7 @@ class CusCustomerRecoveryBaselineTest {
         verifyGeneratedDelivery(purpose, 1);
         assertAudit(purpose + "_OTP_SENT", ActorType.CUSTOMER);
         verify(otpChallengesRepository).saveAll(List.of());
-        verifyNoInteractions(credentialsRepository);
+        verify(credentialsRepository, never()).save(any());
     }
 
     @ParameterizedTest
@@ -388,7 +398,8 @@ class CusCustomerRecoveryBaselineTest {
         assertConsumptionArguments(purpose, verifiedGroup, before);
         assertAudit(purpose + "_OTP_VERIFIED", ActorType.CUSTOMER);
         verify(otpChallengesRepository, never()).save(any());
-        verifyNoInteractions(credentialsRepository, cusEmailService);
+        verify(credentialsRepository, never()).save(any());
+        verifyNoInteractions(cusEmailService);
     }
 
     @ParameterizedTest
@@ -400,7 +411,8 @@ class CusCustomerRecoveryBaselineTest {
 
         assertThrows(CusOtpException.class, () -> verifyReset(purpose, GROUP, OTP));
 
-        verifyNoInteractions(auditLogsRepository, credentialsRepository, cusEmailService);
+        verify(credentialsRepository, never()).save(any());
+        verifyNoInteractions(auditLogsRepository, cusEmailService);
         verify(otpChallengesRepository, never()).save(any());
     }
 
@@ -408,7 +420,7 @@ class CusCustomerRecoveryBaselineTest {
     @EnumSource(value = OtpPurpose.class, names = {"PASSWORD_RESET", "PIN_RESET"})
     void rotatedAwayOtpGroupIsRejectedOnRepeatedVerification(OtpPurpose purpose) {
         prepareLookup(purpose);
-        when(otpChallengesRepository.findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(GROUP, purpose))
+        when(lookup(purpose))
                 .thenReturn(Optional.of(challenge), Optional.empty());
         when(passwordEncoder.matches(OTP, OTP_HASH)).thenReturn(true);
         stubConsume(purpose, 1);
@@ -531,7 +543,7 @@ class CusCustomerRecoveryBaselineTest {
     @EnumSource(value = OtpPurpose.class, names = {"PASSWORD_RESET", "PIN_RESET"})
     void missingOtpChallengeIsRejected(OtpPurpose purpose) {
         authorizeIfPin(purpose);
-        when(otpChallengesRepository.findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(GROUP, purpose))
+        when(lookup(purpose))
                 .thenReturn(Optional.empty());
 
         assertThrows(CusOtpException.class, () -> verifyReset(purpose, GROUP, OTP));
@@ -561,7 +573,8 @@ class CusCustomerRecoveryBaselineTest {
 
         assertClaimArguments(purpose, before);
         assertCredentialReplacement(credentials, purpose, before);
-        verify(credentialsRepository, times(2)).findById(CUSTOMER_ID);
+        verify(credentialsRepository).findById(CUSTOMER_ID);
+        verify(credentialsRepository, times(2)).findByCustomerIdForUpdate(CUSTOMER_ID);
         verify(credentialsRepository).save(credentials);
         assertAudit(purpose + "_SUCCESS", ActorType.CUSTOMER);
         if (purpose == OtpPurpose.PASSWORD_RESET) {
@@ -594,7 +607,7 @@ class CusCustomerRecoveryBaselineTest {
     @EnumSource(value = OtpPurpose.class, names = {"PASSWORD_RESET", "PIN_RESET"})
     void claimedAwayVerifiedBindingCannotBeReplayed(OtpPurpose purpose) {
         prepareBinding(purpose);
-        when(otpChallengesRepository.findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(GROUP, purpose))
+        when(lookup(purpose))
                 .thenReturn(Optional.of(challenge), Optional.empty());
         stubCredentials();
         stubClaim(purpose, 1);
@@ -617,7 +630,8 @@ class CusCustomerRecoveryBaselineTest {
             challenge.setStatus(status);
             assertThrows(CusOtpException.class, () -> confirmReset(purpose));
         }
-        verifyNoInteractions(credentialsRepository, passwordEncoder, auditLogsRepository);
+        verify(credentialsRepository, never()).save(any());
+        verifyNoInteractions(passwordEncoder, auditLogsRepository);
     }
 
     @ParameterizedTest
@@ -628,19 +642,21 @@ class CusCustomerRecoveryBaselineTest {
 
         assertThrows(CusOtpException.class, () -> confirmReset(purpose));
 
-        verifyNoInteractions(credentialsRepository, passwordEncoder, auditLogsRepository);
+        verify(credentialsRepository, never()).save(any());
+        verifyNoInteractions(passwordEncoder, auditLogsRepository);
     }
 
     @ParameterizedTest
     @EnumSource(value = OtpPurpose.class, names = {"PASSWORD_RESET", "PIN_RESET"})
     void nonexistentVerifiedBindingIsRejected(OtpPurpose purpose) {
         authorizeIfPin(purpose);
-        when(otpChallengesRepository.findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(GROUP, purpose))
+        when(lookup(purpose))
                 .thenReturn(Optional.empty());
 
         assertThrows(CusOtpException.class, () -> confirmReset(purpose));
 
-        verifyNoInteractions(credentialsRepository, passwordEncoder, auditLogsRepository);
+        verify(credentialsRepository, never()).save(any());
+        verifyNoInteractions(passwordEncoder, auditLogsRepository);
     }
 
     @ParameterizedTest
@@ -651,7 +667,8 @@ class CusCustomerRecoveryBaselineTest {
 
         assertThrows(CusAuthenticationException.class, () -> confirmReset(purpose));
 
-        verifyNoInteractions(credentialsRepository, passwordEncoder, auditLogsRepository);
+        verify(credentialsRepository, never()).save(any());
+        verifyNoInteractions(passwordEncoder, auditLogsRepository);
     }
 
     @ParameterizedTest
@@ -670,12 +687,10 @@ class CusCustomerRecoveryBaselineTest {
     @EnumSource(value = OtpPurpose.class, names = {"PASSWORD_RESET", "PIN_RESET"})
     void missingCredentialsAfterClaimPropagatesFailureWithoutSaving(OtpPurpose purpose) {
         prepareBinding(purpose);
-        when(credentialsRepository.findById(CUSTOMER_ID))
+        when(credentialsRepository.findById(CUSTOMER_ID)).thenReturn(Optional.of(credentials));
+        when(credentialsRepository.findByCustomerIdForUpdate(CUSTOMER_ID))
                 .thenReturn(Optional.of(credentials), Optional.empty());
         stubClaim(purpose, 1);
-        if (purpose == OtpPurpose.PASSWORD_RESET) {
-            when(customerRepository.findById(CUSTOMER_ID)).thenReturn(Optional.of(customer));
-        }
 
         assertThrows(RuntimeException.class, () -> confirmReset(purpose));
 
@@ -690,9 +705,6 @@ class CusCustomerRecoveryBaselineTest {
         prepareBinding(purpose);
         stubCredentials();
         stubClaim(purpose, 1);
-        if (purpose == OtpPurpose.PASSWORD_RESET) {
-            when(customerRepository.findById(CUSTOMER_ID)).thenReturn(Optional.of(customer));
-        }
         when(passwordEncoder.encode(newSecret(purpose))).thenThrow(new IllegalStateException("Synthetic encoder failure"));
 
         assertThrows(IllegalStateException.class, () -> confirmReset(purpose));
@@ -738,7 +750,8 @@ class CusCustomerRecoveryBaselineTest {
     void passwordConfirmationUpdatesTheReloadedCredentialAfterClearAutomaticallyClaim() {
         prepareBinding(OtpPurpose.PASSWORD_RESET);
         CustomerCredentials reloaded = credentialsFixture();
-        when(credentialsRepository.findById(CUSTOMER_ID))
+        when(credentialsRepository.findById(CUSTOMER_ID)).thenReturn(Optional.of(credentials));
+        when(credentialsRepository.findByCustomerIdForUpdate(CUSTOMER_ID))
                 .thenReturn(Optional.of(credentials), Optional.of(reloaded));
         stubClaim(OtpPurpose.PASSWORD_RESET, 1);
         stubConfirmationRemainder(OtpPurpose.PASSWORD_RESET);
@@ -756,7 +769,6 @@ class CusCustomerRecoveryBaselineTest {
         prepareBinding(OtpPurpose.PASSWORD_RESET);
         stubCredentials();
         stubClaim(OtpPurpose.PASSWORD_RESET, 1);
-        when(customerRepository.findById(CUSTOMER_ID)).thenReturn(Optional.of(customer));
         when(passwordEncoder.encode(NEW_PASSWORD)).thenReturn(NEW_PASSWORD_HASH);
         when(cusSessionService.revokeAllActiveCustomerSessions(
                 CUSTOMER_ID, "PASSWORD_RESET", UpdatedByType.CUSTOMER, CUSTOMER_ID))
@@ -810,7 +822,8 @@ class CusCustomerRecoveryBaselineTest {
         assertThrows(CusSessionExpiredException.class,
                 () -> service.resetTransactionPin(AUTHORIZATION, pinConfirmation()));
 
-        verifyNoInteractions(otpChallengesRepository, credentialsRepository, cusEmailService);
+        verify(credentialsRepository, never()).save(any());
+        verifyNoInteractions(otpChallengesRepository, cusEmailService);
     }
 
     @Test
@@ -826,7 +839,8 @@ class CusCustomerRecoveryBaselineTest {
         assertThrows(CusSessionExpiredException.class,
                 () -> service.resetTransactionPin(AUTHORIZATION, pinConfirmation()));
 
-        verifyNoInteractions(otpChallengesRepository, credentialsRepository, cusEmailService);
+        verify(credentialsRepository, never()).save(any());
+        verifyNoInteractions(otpChallengesRepository, cusEmailService);
     }
 
     @Test
@@ -841,7 +855,8 @@ class CusCustomerRecoveryBaselineTest {
         assertThrows(CusOtpException.class, () -> service.resetTransactionPin(AUTHORIZATION, pinConfirmation()));
 
         assertNoOtpWriteOrDelivery();
-        verifyNoInteractions(credentialsRepository, passwordEncoder);
+        verify(credentialsRepository, never()).save(any());
+        verifyNoInteractions(passwordEncoder);
     }
 
     @Test
@@ -871,7 +886,8 @@ class CusCustomerRecoveryBaselineTest {
             assertThrows(CusValidationException.class,
                     () -> service.resetTransactionPin(AUTHORIZATION, request));
         }
-        verifyNoInteractions(otpChallengesRepository, credentialsRepository, passwordEncoder);
+        verify(credentialsRepository, never()).save(any());
+        verifyNoInteractions(otpChallengesRepository, passwordEncoder);
     }
 
     @Test
@@ -895,11 +911,12 @@ class CusCustomerRecoveryBaselineTest {
 
         assertThrows(CusOtpException.class, () -> service.verifyPinResetOtp(AUTHORIZATION, pinVerification(OTP)));
 
-        var order = inOrder(cusJwtService, cusSessionService, otpChallengesRepository);
+        var order = inOrder(cusJwtService, credentialsRepository, cusSessionService, otpChallengesRepository);
         order.verify(cusJwtService).getClaims(ACCESS);
+        order.verify(credentialsRepository).findByCustomerIdForUpdate(CUSTOMER_ID);
         order.verify(cusSessionService).validateAccessSession(claims);
         order.verify(otpChallengesRepository)
-                .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(GROUP, OtpPurpose.PIN_RESET);
+                .findFirstByCustomer_CustomerIdAndSubjectTypeAndPurposeOrderByOtpIdDesc(CUSTOMER_ID, OtpSubjectType.CUSTOMER, OtpPurpose.PIN_RESET);
     }
 
     @ParameterizedTest
@@ -1215,11 +1232,17 @@ class CusCustomerRecoveryBaselineTest {
         stubOtpWrites();
     }
 
+    private Optional<OtpChallenge> lookup(OtpPurpose purpose) {
+        return purpose == OtpPurpose.PIN_RESET
+                ? otpChallengesRepository.findFirstByCustomer_CustomerIdAndSubjectTypeAndPurposeOrderByOtpIdDesc(CUSTOMER_ID, OtpSubjectType.CUSTOMER, purpose)
+                : otpChallengesRepository.findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(GROUP, purpose);
+    }
+
     private void prepareLookup(OtpPurpose purpose) {
         authorizeIfPin(purpose);
         challenge = challenge(purpose);
         latest = challenge;
-        when(otpChallengesRepository.findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(GROUP, purpose))
+        when(lookup(purpose))
                 .thenAnswer(invocation -> Optional.of(latest));
     }
 
@@ -1253,7 +1276,6 @@ class CusCustomerRecoveryBaselineTest {
     private void stubConfirmationRemainder(OtpPurpose purpose) {
         when(passwordEncoder.encode(newSecret(purpose))).thenReturn(newHash(purpose));
         if (purpose == OtpPurpose.PASSWORD_RESET) {
-            when(customerRepository.findById(CUSTOMER_ID)).thenReturn(Optional.of(customer));
             when(cusSessionService.revokeAllActiveCustomerSessions(
                     CUSTOMER_ID, "PASSWORD_RESET", UpdatedByType.CUSTOMER, CUSTOMER_ID)).thenReturn(2);
         }
@@ -1450,20 +1472,21 @@ class CusCustomerRecoveryBaselineTest {
     private void assertConfirmationOrder(OtpPurpose purpose) {
         var order = inOrder(otpChallengesRepository, credentialsRepository, customerRepository,
                 passwordEncoder, cusSessionService, auditLogsRepository);
-        order.verify(otpChallengesRepository).findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(GROUP, purpose);
+        if (purpose == OtpPurpose.PASSWORD_RESET) order.verify(otpChallengesRepository).findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(GROUP, purpose);
+        order.verify(credentialsRepository).findByCustomerIdForUpdate(CUSTOMER_ID);
+        order.verify(otpChallengesRepository).findFirstByCustomer_CustomerIdAndSubjectTypeAndPurposeOrderByOtpIdDesc(CUSTOMER_ID, OtpSubjectType.CUSTOMER, purpose);
         order.verify(credentialsRepository).findById(CUSTOMER_ID);
         if (purpose == OtpPurpose.PASSWORD_RESET) {
             order.verify(passwordEncoder).matches(NEW_PASSWORD, PASSWORD_HASH);
             order.verify(otpChallengesRepository).claimVerifiedPasswordResetChallengeIfMatch(
                     eq(10L), eq(GROUP), anyString(), eq(purpose), eq(OtpStatus.CONSUMED),
                     eq(UpdatedByType.CUSTOMER), eq(CUSTOMER_ID), any(LocalDateTime.class));
-            order.verify(customerRepository).findById(CUSTOMER_ID);
         } else {
             order.verify(otpChallengesRepository).claimVerifiedPinResetChallengeIfMatch(
                     eq(10L), eq(GROUP), anyString(), eq(purpose), eq(OtpStatus.CONSUMED),
                     eq(UpdatedByType.CUSTOMER), eq(CUSTOMER_ID), any(LocalDateTime.class));
         }
-        order.verify(credentialsRepository).findById(CUSTOMER_ID);
+        order.verify(credentialsRepository).findByCustomerIdForUpdate(CUSTOMER_ID);
         order.verify(passwordEncoder).encode(newSecret(purpose));
         order.verify(credentialsRepository).save(credentials);
         if (purpose == OtpPurpose.PASSWORD_RESET) {

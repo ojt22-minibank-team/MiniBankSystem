@@ -1474,6 +1474,14 @@ public class CusAuthService {
          CusPasswordResetRequest request) {
         return customerPasswordResetService.requestPasswordReset(request);
 }
+
+@Transactional(
+         noRollbackFor = CusEmailException.class
+ )
+ public CusPasswordResetStartResponse requestPasswordReset(
+         CusPasswordResetRequest request, CusSessionClientMetadata metadata) {
+        return customerPasswordResetService.requestPasswordReset(request, metadata);
+}
  
 //=========================================================
 //TRANSACTION PIN RESET - REQUEST OTP
@@ -1485,6 +1493,14 @@ public class CusAuthService {
 public CusPinResetStartResponse requestPinReset(
       String authorizationHeader) {
         return customerPinResetService.requestPinReset(authorizationHeader);
+}
+
+@Transactional(
+      noRollbackFor = CusEmailException.class
+)
+public CusPinResetStartResponse requestPinReset(
+      String authorizationHeader, CusSessionClientMetadata metadata) {
+        return customerPinResetService.requestPinReset(authorizationHeader, metadata);
 }
 
 
@@ -1501,6 +1517,15 @@ public CusOtpResendResponse resendPinResetOtp(
         return customerPinResetService.resendPinResetOtp(authorizationHeader, request);
 }
 
+@Transactional(
+     noRollbackFor = CusEmailException.class
+)
+public CusOtpResendResponse resendPinResetOtp(
+     String authorizationHeader,
+     CusOtpResendRequest request, CusSessionClientMetadata metadata) {
+        return customerPinResetService.resendPinResetOtp(authorizationHeader, request, metadata);
+}
+
 
 //=========================================================
 //TRANSACTION PIN RESET - VERIFY OTP
@@ -1515,6 +1540,15 @@ public CusPinResetOtpVerifyResponse verifyPinResetOtp(
         return customerPinResetService.verifyPinResetOtp(authorizationHeader, request);
 }
 
+@Transactional(
+     noRollbackFor = CusOtpException.class
+)
+public CusPinResetOtpVerifyResponse verifyPinResetOtp(
+     String authorizationHeader,
+     CusPinResetOtpVerifyRequest request, CusSessionClientMetadata metadata) {
+        return customerPinResetService.verifyPinResetOtp(authorizationHeader, request, metadata);
+}
+
 
 //=========================================================
 //TRANSACTION PIN RESET - CONFIRM NEW PIN
@@ -1526,6 +1560,13 @@ public void resetTransactionPin(
      CusPinResetConfirmRequest request) {
         customerPinResetService.resetTransactionPin(authorizationHeader, request);
 }
+
+@Transactional
+public void resetTransactionPin(
+     String authorizationHeader,
+     CusPinResetConfirmRequest request, CusSessionClientMetadata metadata) {
+        customerPinResetService.resetTransactionPin(authorizationHeader, request, metadata);
+}
 //=========================================================
 //PASSWORD RESET - RESEND OTP
 //=========================================================
@@ -1536,6 +1577,14 @@ public void resetTransactionPin(
 public CusOtpResendResponse resendPasswordResetOtp(
       CusOtpResendRequest request) {
         return customerPasswordResetService.resendPasswordResetOtp(request);
+}
+
+@Transactional(
+      noRollbackFor = CusEmailException.class
+)
+public CusOtpResendResponse resendPasswordResetOtp(
+      CusOtpResendRequest request, CusSessionClientMetadata metadata) {
+        return customerPasswordResetService.resendPasswordResetOtp(request, metadata);
 }
 
 //=========================================================
@@ -1551,6 +1600,15 @@ public CusPasswordResetOtpVerifyResponse
         return customerPasswordResetService.verifyPasswordResetOtp(request);
 }
 
+@Transactional(
+     noRollbackFor = CusOtpException.class
+)
+public CusPasswordResetOtpVerifyResponse
+     verifyPasswordResetOtp(
+             CusPasswordResetOtpVerifyRequest request, CusSessionClientMetadata metadata) {
+        return customerPasswordResetService.verifyPasswordResetOtp(request, metadata);
+}
+
 //=========================================================
 //PASSWORD RESET - SET NEW PASSWORD
 //=========================================================
@@ -1559,6 +1617,12 @@ public CusPasswordResetOtpVerifyResponse
 public void resetPassword(
      CusPasswordResetConfirmRequest request) {
         customerPasswordResetService.resetPassword(request);
+}
+
+@Transactional
+public void resetPassword(
+     CusPasswordResetConfirmRequest request, CusSessionClientMetadata metadata) {
+        customerPasswordResetService.resetPassword(request, metadata);
 }
 
 

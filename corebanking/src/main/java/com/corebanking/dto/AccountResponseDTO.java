@@ -15,6 +15,9 @@ public class AccountResponseDTO {
     private boolean isJointAccount;
     private String customerCode;
     private String customerName;
+    private String nrc;
+    private String phone;
+    private String profileImageUrl;
     private BigDecimal currentBalance;
     private BigDecimal availableBalance;
     private String currency;

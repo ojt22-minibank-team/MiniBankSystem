@@ -4,21 +4,24 @@ interface CrownProps {
 }
 
 /**
- * Official Ekararj Bank 3D Crown Logo
+ * Official Ekaraj Bank 3D Crown Logo
  * Extracted directly from the official brand assets uploaded by the user.
  * Featuring Sapphire Blue jewel facets, polished 3D Royal Gold trim, and metallic cyan horns.
  */
-export function EkararjCrown({ className = "", size = 44 }: CrownProps) {
+export function EkarajCrown({ className = "", size = 44 }: CrownProps) {
   return (
     <img
-      src="/ekararj-crown-transparent.png"
-      alt="Ekararj Bank Crown"
+      src="/ekaraj-crown-transparent.png"
+      alt="Ekaraj Bank Crown"
       style={{ width: size, height: "auto" }}
       className={`shrink-0 object-contain drop-shadow-md select-none inline-block ${className}`}
       loading="eager"
     />
   );
 }
+
+// Backwards-compatibility alias
+export { EkarajCrown as EkararjCrown };
 
 /**
  * 3D Metallic Cyan 'EB' Monogram
@@ -164,7 +167,7 @@ export function CrownEmbossedWatermark({
       {/* 1. Large 3D Official Crown Watermark in the Right / Center Background */}
       <div className="absolute -right-6 -bottom-6 sm:-right-4 sm:-bottom-4 pointer-events-none select-none">
         <img
-          src="/ekararj-crown-transparent.png"
+          src="/ekaraj-crown-transparent.png"
           alt=""
           aria-hidden="true"
           className={`h-48 w-48 sm:h-56 sm:w-56 object-contain pointer-events-none ${
@@ -235,73 +238,32 @@ export function CrownEmbossedWatermark({
 }
 
 /**
- * Geometric Linear Accent Patterns from the card (preserved for compatibility)
+ * Official Geometric Lines pattern for Bank Cards
+ * Using the official 2D card lines SVG
  */
 export function CardGeometricLines({
   className = "",
-  theme = "platinum",
+  theme: _theme = "platinum",
 }: {
   className?: string;
   theme?: "platinum" | "navy" | "gold" | "obsidian";
 }) {
-  const cyanStroke =
-    theme === "navy"
-      ? "#38BDF8"
-      : theme === "gold"
-        ? "#00829B"
-        : theme === "obsidian"
-          ? "#22D3EE"
-          : "#00A3C4";
-
-  const goldStroke =
-    theme === "navy"
-      ? "#FBBF24"
-      : theme === "gold"
-        ? "#A16207"
-        : theme === "obsidian"
-          ? "#E5C158"
-          : "#D4AF37";
-
-  const cyanOpacity =
-    theme === "platinum" ? "0.45" : theme === "navy" ? "0.55" : "0.4";
-  const goldOpacity =
-    theme === "platinum" ? "0.55" : theme === "navy" ? "0.65" : "0.45";
-
   return (
-    <svg
-      className={`pointer-events-none absolute inset-0 h-full w-full ${className}`}
-      viewBox="0 0 360 220"
-      fill="none"
-      preserveAspectRatio="none"
-      xmlns="http://www.w3.org/2000/svg"
+    <div
+      aria-hidden="true"
+      className={`pointer-events-none absolute inset-0 h-full w-full overflow-hidden select-none ${className}`}
     >
-      <path
-        d="M 180 95 L 290 32 L 360 68"
-        stroke={cyanStroke}
-        strokeWidth="1.2"
-        strokeOpacity={cyanOpacity}
+      <img
+        src="/card-geometric-lines.svg"
+        alt="EKARAJ Bank Geometric Lines"
+        className="h-full w-full object-cover"
       />
-      <path
-        d="M 180 95 L 295 160 L 360 132"
-        stroke={cyanStroke}
-        strokeWidth="1.2"
-        strokeOpacity={cyanOpacity}
-      />
-      <line
-        x1="250"
-        y1="220"
-        x2="335"
-        y2="10"
-        stroke={goldStroke}
-        strokeWidth="1.2"
-        strokeOpacity={goldOpacity}
-      />
-    </svg>
+    </div>
   );
 }
 
 /**
- * Complete Ekararj Bank Logo Lockup
+ * Complete Ekaraj Bank Logo Lockup
  */
 interface LogoLockupProps {
   variant?: "horizontal" | "stacked" | "cardHeader" | "compact";
@@ -311,7 +273,7 @@ interface LogoLockupProps {
   showSubtitle?: boolean;
 }
 
-export default function EkararjLogo({
+export default function EkarajLogo({
   variant = "horizontal",
   textMode = "dark",
   size = "md",
@@ -323,7 +285,7 @@ export default function EkararjLogo({
   if (variant === "cardHeader") {
     return (
       <div className={`flex items-center justify-between w-full ${className}`}>
-        {/* Left: EB Monogram + EKARARJ BANK */}
+        {/* Left: EB Monogram + EKARAJ BANK */}
         <div className="flex items-center gap-2.5">
           <EbMonogram size={36} />
           <div>
@@ -334,13 +296,13 @@ export default function EkararjLogo({
                   : "text-[#0A192F] drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]"
               }`}
             >
-              EKARARJ BANK
+              EKARAJ BANK
             </h3>
           </div>
         </div>
 
         {/* Right: Official Crown Logo */}
-        <EkararjCrown size={46} />
+        <EkarajCrown size={46} />
       </div>
     );
   }
@@ -349,7 +311,7 @@ export default function EkararjLogo({
     return (
       <div className={`inline-flex items-center gap-2.5 select-none ${className}`}>
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0A192F] shadow-sm ring-1 ring-[#00A3C4]/30">
-          <EkararjCrown size={30} />
+          <EkarajCrown size={30} />
         </div>
         <div className="min-w-0">
           <span
@@ -357,7 +319,7 @@ export default function EkararjLogo({
               isLightText ? "text-white" : "text-[#0A192F]"
             }`}
           >
-            EKARARJ BANK
+            EKARAJ BANK
           </span>
           {showSubtitle && (
             <span className="block text-[10px] font-medium text-slate-400">
@@ -375,7 +337,7 @@ export default function EkararjLogo({
   return (
     <div className={`inline-flex items-center gap-3 select-none ${className}`}>
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0A192F] to-[#153564] shadow-sm ring-1 ring-white/10 p-1">
-        <EkararjCrown size={crownSize} />
+        <EkarajCrown size={crownSize} />
       </div>
 
       <div className="min-w-0">
@@ -385,7 +347,7 @@ export default function EkararjLogo({
               isLightText ? "text-white" : "text-[#0A192F]"
             }`}
           >
-            EKARARJ BANK
+            EKARAJ BANK
           </span>
         </div>
         {showSubtitle && (
@@ -397,3 +359,5 @@ export default function EkararjLogo({
     </div>
   );
 }
+
+export { EkarajLogo as EkararjLogo };

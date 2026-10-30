@@ -50,15 +50,25 @@ export interface StaffResponse {
   lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
+  roleId?: number;
+  roleCode?: string;
+  roleName?: string;
 }
 
 export interface StaffCreateRequest {
-  staffNo: string;
+  staffNo?: string;
   username: string;
   fullName: string;
   email: string;
   phone: string;
   roleId: number;
+}
+
+export interface StaffRoleOption {
+  roleId: number;
+  roleCode: string;
+  roleName: string;
+  description?: string;
 }
 
 export interface StaffUpdateRequest {
@@ -119,7 +129,8 @@ export interface FeeScheduleResponse {
   currency: string;
   activeFrom: string;
   activeUntil: string | null;
-  active: boolean;
+  active?: boolean;
+  isActive?: boolean;
   createdByStaffId: string | null;
   createdAt: string;
   updatedById: string | null;
@@ -159,7 +170,8 @@ export interface AnnouncementResponse {
   title: string;
   message: string;
   audience: AnnouncementAudience;
-  isActive: boolean;
+  active?: boolean;
+  isActive?: boolean;
   isDeleted: boolean;
   startsAt: string | null;
   endsAt: string | null;
@@ -244,6 +256,9 @@ export interface AccountResponse {
   isJointAccount: boolean;
   customerCode: string;
   customerName: string;
+  nrc?: string;
+  phone?: string;
+  profileImageUrl?: string;
   currentBalance: number;
   availableBalance: number;
   currency: string;
@@ -318,9 +333,9 @@ export interface OtcTransactionRequestDto {
   accountNumber: string;
   amount: number;
   currency?: string;
-  remark?: string;
-  depositorOrWithdrawerName?: string;
-  nrcOrId?: string;
+  remark: string;
+  manualReferenceId: string;
+  manualAuditNote: string;
 }
 
 export interface OtcTransactionResponseDto {
@@ -330,6 +345,9 @@ export interface OtcTransactionResponseDto {
   accountNumber: string;
   customerCode: string;
   customerName: string;
+  nrc?: string;
+  phone?: string;
+  profileImageUrl?: string;
   amount: number;
   serviceFee: number;
   balanceBefore: number;
@@ -338,6 +356,8 @@ export interface OtcTransactionResponseDto {
   tellerUsername: string;
   depositorOrWithdrawerName?: string;
   description?: string;
+  manualReferenceId?: string;
+  manualAuditNote?: string;
   transactedAt: string;
 }
 
@@ -356,3 +376,4 @@ export interface DailyCashSummaryResponse {
   withdrawalCount: number;
   currency: string;
 }
+

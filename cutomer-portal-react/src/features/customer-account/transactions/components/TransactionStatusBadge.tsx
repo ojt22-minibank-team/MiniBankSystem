@@ -7,6 +7,8 @@ interface TransactionStatusBadgeProps {
 const STATUS_STYLES: Record<string, string> = {
   COMPLETED:
     "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-950/40 dark:text-emerald-400 dark:ring-emerald-500/30",
+  REVERSED:
+    "bg-indigo-50 text-indigo-700 ring-indigo-600/20 dark:bg-indigo-950/40 dark:text-indigo-400 dark:ring-indigo-500/30",
   FAILED:
     "bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-950/40 dark:text-red-400 dark:ring-red-500/30",
   REJECTED:

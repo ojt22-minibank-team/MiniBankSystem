@@ -99,7 +99,7 @@ class CusKeepAliveSecurityIntegrationTest {
         when(sessions.findBySessionUuid(SID)).thenAnswer(call -> Optional.of(session));
         when(credentials.findById(CUSTOMER_ID)).thenReturn(Optional.of(
                 CustomerCredentials.builder().customerId(CUSTOMER_ID).customer(customer).tokenVersion(7L).build()));
-        when(sessions.save(any(AuthSession.class))).thenAnswer(call -> call.getArgument(0));
+        com.corebanking.service.CusSessionActivityTestSupport.wire(context.getBean(CusSessionService.class), sessions, () -> session);
         when(sessions.revokeIfActive(eq(SID), anyString(), any(), any(), any(), any())).thenReturn(1);
         clock = mockStatic(LocalDateTime.class, CALLS_REAL_METHODS);
         clock.when(LocalDateTime::now).thenAnswer(call -> now.get());
@@ -128,7 +128,8 @@ class CusKeepAliveSecurityIntegrationTest {
         assertEquals(now.get(), session.getLastSeenAt());
         assertEquals(issued, session.getIssuedAt());
         assertEquals(deadline, session.getRefreshExpiresAt());
-        verify(sessions).save(session);
+        verify(sessions).touchIfValid(eq(SID), eq(SessionSubjectType.CUSTOMER), eq(CUSTOMER_ID), eq(7L), any(), any());
+        verify(sessions, never()).save(any());
         verify(revokedTokens).existsByJti(anyString());
     }
 
@@ -201,7 +202,8 @@ class CusKeepAliveSecurityIntegrationTest {
         now.set(now.get().plusSeconds(1));
         mvc.perform(get(ENDPOINT).header("Authorization", "Bearer " + token))
                 .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("SESSION_EXPIRED"));
-        verify(sessions, times(1)).save(session);
+        verify(sessions, times(1)).touchIfValid(eq(SID), eq(SessionSubjectType.CUSTOMER), eq(CUSTOMER_ID), eq(7L), any(), any());
+        verify(sessions, never()).save(any());
         assertEquals(deadline, session.getRefreshExpiresAt());
     }
 
@@ -235,6 +237,7 @@ class CusKeepAliveSecurityIntegrationTest {
         @Bean CusAuditLogsRepository audit() { return mock(CusAuditLogsRepository.class); }
         @Bean CusCorporateCredentialRepository corporate() { return mock(CusCorporateCredentialRepository.class); }
         @Bean CusJwtRevokedTokensRepository revokedTokens() { return mock(CusJwtRevokedTokensRepository.class); }
+        @Bean jakarta.persistence.EntityManager entityManager() { return mock(jakarta.persistence.EntityManager.class); }
         @Bean CusSessionService sessionService(CusAuthSessionsRepository sessions, CusCredentialsRepository credentials,
                 CusAuditLogsRepository audit, CusCorporateCredentialRepository corporate) {
             return new CusSessionService(sessions, credentials, audit, corporate);

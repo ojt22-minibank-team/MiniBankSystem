@@ -70,12 +70,9 @@ export default function AccountDetailModal({
                 <span
                   className={[
                     'rounded-full px-3 py-1 text-xs font-semibold',
-                    account.status === 'ACTIVE'
-                      ? 'bg-green-100 text-green-700'
-                      : account.status === 'FROZEN'
-                      ? 'bg-red-100 text-red-700'
-                      : account.status === 'DORMANT'
-                      ? 'bg-amber-100 text-amber-700'
+                    account.status === 'ACTIVE' ? 'status-pill-emerald'
+                      : account.status === 'FROZEN' ? 'status-pill-crimson' : account.status === 'CLOSED' ? 'status-pill-crimson'
+                      : account.status === 'DORMANT' ? 'status-pill-amber'
                       : 'bg-gray-100 text-gray-600',
                   ].join(' ')}
                 >

@@ -1,9 +1,9 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import Modal from '../../../components/common/Modal';
 import Input from '../../../components/common/Input';
 import Button from '../../../components/common/Button';
 import { staffApi } from '../../../services/apiClient';
-import type { StaffCreateRequest } from '../../../types/api.types';
+import type { StaffCreateRequest, StaffRoleOption } from '../../../types/api.types';
 import type { AxiosError } from 'axios';
 
 interface StaffCreateModalProps {
@@ -12,10 +12,16 @@ interface StaffCreateModalProps {
   onSuccess: () => void;
 }
 
-const AVAILABLE_ROLES = [
-  { id: 1, name: 'ADMIN', description: 'Full system administration, security and rules oversight' },
-  { id: 2, name: 'TELLER', description: 'Customer onboarding, accounts management, and transfers' },
-  { id: 3, name: 'AUDITOR', description: 'Read-only compliance, reporting, and audit log inspection' },
+interface DisplayRole {
+  id: number;
+  code: string;
+  name: string;
+  description: string;
+}
+
+const FALLBACK_ROLES: DisplayRole[] = [
+  { id: 2, code: 'TELLER', name: 'Teller', description: 'Customer onboarding, accounts management, and counter transfers' },
+  { id: 4, code: 'AUDITOR', name: 'Auditor', description: 'Read-only compliance, reporting, and audit log inspection' },
 ];
 
 export default function StaffCreateModal({
@@ -23,8 +29,8 @@ export default function StaffCreateModal({
   onClose,
   onSuccess,
 }: StaffCreateModalProps) {
+  const [availableRoles, setAvailableRoles] = useState<DisplayRole[]>(FALLBACK_ROLES);
   const [formData, setFormData] = useState<StaffCreateRequest>({
-    staffNo: '',
     username: '',
     fullName: '',
     email: '',
@@ -36,14 +42,57 @@ export default function StaffCreateModal({
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  // Fetch roles from backend to get accurate role IDs and ensure only TELLER and AUDITOR are permitted
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let isMounted = true;
+    staffApi
+      .getRoles()
+      .then((res) => {
+        if (!isMounted) return;
+        const permitted = (res.data || [])
+          .filter((r: StaffRoleOption) => {
+            const code = (r.roleCode || '').toUpperCase();
+            return code === 'TELLER' || code === 'AUDITOR';
+          })
+          .map((r: StaffRoleOption) => ({
+            id: r.roleId,
+            code: r.roleCode.toUpperCase(),
+            name: r.roleName || (r.roleCode === 'TELLER' ? 'Teller' : 'Auditor'),
+            description:
+              r.description ||
+              (r.roleCode === 'TELLER'
+                ? 'Customer onboarding, accounts management, and counter transfers'
+                : 'Read-only compliance, reporting, and audit log inspection'),
+          }));
+
+        if (permitted.length > 0) {
+          setAvailableRoles(permitted);
+          // Ensure selected roleId matches one of the permitted roles
+          setFormData((prev) => ({
+            ...prev,
+            roleId: permitted[0].id,
+          }));
+        }
+      })
+      .catch(() => {
+        // Fallback to defaults if roles endpoint is unavailable
+        setAvailableRoles(FALLBACK_ROLES);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen]);
+
   const resetForm = () => {
     setFormData({
-      staffNo: '',
       username: '',
       fullName: '',
       email: '',
       phone: '',
-      roleId: 2,
+      roleId: availableRoles[0]?.id || 2,
     });
     setErrors({});
     setApiError(null);
@@ -56,7 +105,6 @@ export default function StaffCreateModal({
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
-    if (!formData.staffNo.trim()) errs.staffNo = 'Staff number is required.';
     if (!formData.username.trim()) errs.username = 'Username is required.';
     if (!formData.fullName.trim()) errs.fullName = 'Full name is required.';
     if (!formData.email.trim()) {
@@ -79,8 +127,8 @@ export default function StaffCreateModal({
     setApiError(null);
 
     try {
+      // Staff No is auto-generated on backend upon creation
       await staffApi.create({
-        staffNo: formData.staffNo.trim(),
         username: formData.username.trim(),
         fullName: formData.fullName.trim(),
         email: formData.email.trim(),
@@ -96,7 +144,7 @@ export default function StaffCreateModal({
       if (error.response?.data?.message) {
         setApiError(error.response.data.message);
       } else if (error.response?.status === 409) {
-        setApiError('A staff member with this username, staff number, or email already exists.');
+        setApiError('A staff member with this username or email already exists.');
       } else {
         setApiError('Failed to create staff account. Please try again.');
       }
@@ -104,6 +152,8 @@ export default function StaffCreateModal({
       setIsLoading(false);
     }
   };
+
+  const selectedRole = availableRoles.find((r) => r.id === formData.roleId);
 
   return (
     <Modal
@@ -150,18 +200,23 @@ export default function StaffCreateModal({
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Input
-            label="Staff Number / ID"
-            placeholder="e.g. STF-00124"
-            value={formData.staffNo}
-            onChange={(e) => {
-              setFormData({ ...formData, staffNo: e.target.value });
-              if (errors.staffNo) setErrors({ ...errors, staffNo: '' });
-            }}
-            error={errors.staffNo}
-            disabled={isLoading}
-            required
-          />
+          {/* Auto-generated Staff Number */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Staff Number / ID
+            </label>
+            <div className="mt-1 flex items-center justify-between rounded-lg border border-dashed border-blue-300 bg-blue-50/60 px-3 py-2">
+              <span className="font-mono text-xs font-semibold text-blue-800">
+                {selectedRole?.code === 'AUDITOR' ? 'STF-AUD-XXXX' : 'STF-TLR-XXXX'}
+              </span>
+              <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                Auto-generated
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Staff No. is automatically generated based on the selected role.
+            </p>
+          </div>
 
           <Input
             label="Username"
@@ -220,13 +275,18 @@ export default function StaffCreateModal({
           />
         </div>
 
-        {/* Role Selection */}
+        {/* Role Selection: Restricted to Teller and Auditor only */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Initial System Role <span className="text-red-500">*</span>
-          </label>
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-            {AVAILABLE_ROLES.map((r) => (
+          <div className="flex items-center justify-between">
+            <label className="block text-sm font-medium text-gray-700">
+              Initial System Role <span className="text-red-500">*</span>
+            </label>
+            <span className="text-xs text-gray-400">
+              New staff can only be created as Teller or Auditor
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            {availableRoles.map((r) => (
               <label
                 key={r.id}
                 className={[
@@ -247,6 +307,9 @@ export default function StaffCreateModal({
                     disabled={isLoading}
                   />
                   <span className="text-sm font-semibold text-gray-900">{r.name}</span>
+                  <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-mono font-medium text-gray-600">
+                    {r.code}
+                  </span>
                 </div>
                 <p className="mt-1 text-xs text-gray-500 leading-normal">{r.description}</p>
               </label>

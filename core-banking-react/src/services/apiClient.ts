@@ -5,6 +5,7 @@ import type {
   LoginResponse,
   StaffResponse,
   StaffCreateRequest,
+  StaffRoleOption,
   StaffUpdateRequest,
   ChangeStaffRoleRequest,
   StaffPasswordSetupRequest,
@@ -60,6 +61,9 @@ export const authApi = {
 export const staffApi = {
   getAll: () =>
     axiosInstance.get<StaffResponse[]>(API_ENDPOINTS.ADMIN.STAFF),
+
+  getRoles: () =>
+    axiosInstance.get<StaffRoleOption[]>(API_ENDPOINTS.ADMIN.STAFF_ROLES),
 
   getById: (staffId: string) =>
     axiosInstance.get<StaffResponse>(API_ENDPOINTS.ADMIN.STAFF_BY_ID(staffId)),
@@ -276,4 +280,3 @@ export const tellerApi = {
   getDailyCashSummary: () =>
     axiosInstance.get<DailyCashSummaryResponse>(API_ENDPOINTS.TELLER.DAILY_CASH_SUMMARY),
 };
-

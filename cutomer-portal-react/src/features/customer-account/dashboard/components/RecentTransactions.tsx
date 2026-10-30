@@ -148,7 +148,7 @@ export default function RecentTransactions({
     });
   }, [transactions, period]);
 
-  const displayItems = filteredTransactions.slice(0, 6);
+  const displayItems = filteredTransactions.slice(0, 5);
 
   return (
     <div className="flex flex-col rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#0A192F] p-5 sm:p-6 shadow-xs transition-colors duration-200">
@@ -219,7 +219,7 @@ export default function RecentTransactions({
         {/* Loading Skeletons */}
         {loading && (
           <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
-            {[1, 2, 3, 4].map((i) => (
+            {[1, 2, 3, 4, 5].map((i) => (
               <div
                 key={i}
                 className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-6 py-4 px-2 sm:px-3 animate-pulse"

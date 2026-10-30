@@ -342,7 +342,7 @@ export default function TransactionReceiptPage() {
       }
 
       const blob = await getReceiptBlob(receiptElement);
-      const filename = `ekararj-receipt-${receiptData.transactionRef || Date.now()}.png`;
+      const filename = `ekaraj-receipt-${receiptData.transactionRef || Date.now()}.png`;
       const file = new File([blob], filename, { type: "image/png" });
 
       // Mobile Flow: If on mobile, invoke native OS Share sheet
@@ -356,8 +356,8 @@ export default function TransactionReceiptPage() {
         try {
           await navigator.share({
             files: [file],
-            title: "EKARARJ BANK Transfer Receipt",
-            text: `Official EKARARJ BANK Transfer Receipt\nRef: ${receiptData.transactionRef}\nAmount: ${Number(receiptData.amount).toLocaleString()} ${receiptData.currency || "MMK"}`,
+            title: "EKARAJ BANK Transfer Receipt",
+            text: `Official EKARAJ BANK Transfer Receipt\nRef: ${receiptData.transactionRef}\nAmount: ${Number(receiptData.amount).toLocaleString()} ${receiptData.currency || "MMK"}`,
           });
           return;
         } catch (shareErr: unknown) {
@@ -383,8 +383,8 @@ export default function TransactionReceiptPage() {
       if (typeof navigator !== "undefined" && navigator.share) {
         try {
           await navigator.share({
-            title: "EKARARJ BANK Transfer Receipt",
-            text: `EKARARJ BANK Transfer Receipt\nRef: ${receiptData.transactionRef}\nAmount: ${Number(receiptData.amount).toLocaleString()} ${receiptData.currency || "MMK"}`,
+            title: "EKARAJ BANK Transfer Receipt",
+            text: `EKARAJ BANK Transfer Receipt\nRef: ${receiptData.transactionRef}\nAmount: ${Number(receiptData.amount).toLocaleString()} ${receiptData.currency || "MMK"}`,
           });
         } catch {
           // User cancelled
@@ -601,7 +601,7 @@ export default function TransactionReceiptPage() {
                           Share Transfer Receipt
                         </h3>
                         <p className="text-[10px] font-medium text-slate-400">
-                          EKARARJ BANK Official Slip
+                          EKARAJ BANK Official Slip
                         </p>
                       </div>
                     </div>

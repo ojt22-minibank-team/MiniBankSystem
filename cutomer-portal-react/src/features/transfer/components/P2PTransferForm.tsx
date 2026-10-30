@@ -9,6 +9,7 @@ import type { Beneficiary } from "../../beneficiaries/types/beneficiaryTypes";
 import type { P2PTransferRequest } from "../types/transferTypes";
 import { getAccountTransferLimits } from "../../customer-account/accounts/api/customerAccountApi";
 import type { TransferLimitInfo } from "../../customer-account/accounts/types/accountTypes";
+import { getCurrentCustomerSubject } from "../../../utils/tokenStorage";
 import TransferReceiptView from "./TransferReceiptView";
 import TransferFailedSlip from "./TransferFailedSlip";
 import { mapP2PResponseToReceiptData } from "../types/transferReceiptTypes";
@@ -34,6 +35,7 @@ import {
   Sparkles,
   Lock,
   CreditCard,
+  Pencil,
 } from "lucide-react";
 
 /* -------------------------------------------------------------------------- */
@@ -771,7 +773,7 @@ function ReviewStep({
         <div className="p-5 sm:p-6 divide-y divide-slate-100 dark:divide-slate-800/80 text-xs sm:text-[13px]">
           <div className="flex justify-between items-center py-2.5">
             <span className="text-slate-700 dark:text-slate-300 font-semibold">Payment Channel</span>
-            <span className="font-bold text-slate-900 dark:text-white tracking-wide">EKARARJ BANK</span>
+            <span className="font-bold text-slate-900 dark:text-white tracking-wide">EKARAJ BANK</span>
           </div>
 
           <div className="flex justify-between items-center py-2.5">
@@ -962,9 +964,9 @@ function ReceiptStep({
   // =========================================================================
   // Production URL Share Link (Preserved for future hosting deployment)
   // When the production domain is live, you can re-enable the link sharing:
-  // const productionDomain = "https://ekararjbank.com";
+  // const productionDomain = "https://ekarajbank.com";
   // const shareReceiptUrl = `${productionDomain}/receipt/${result.transactionRef}`;
-  // const shareSummaryText = `EKARARJ BANK Official Transfer Receipt\nRef: ${result.transactionRef}\nAmount: ${Number(result.amount).toLocaleString()} ${result.currency || "MMK"}\nVerify: ${shareReceiptUrl}`;
+  // const shareSummaryText = `EKARAJ BANK Official Transfer Receipt\nRef: ${result.transactionRef}\nAmount: ${Number(result.amount).toLocaleString()} ${result.currency || "MMK"}\nVerify: ${shareReceiptUrl}`;
   // =========================================================================
 
   const handleShareToTelegram = async () => {
@@ -1021,7 +1023,7 @@ function ReceiptStep({
       }
 
       const blob = await getReceiptBlob(receiptElement);
-      const filename = `ekararj-receipt-${result.transactionRef || Date.now()}.png`;
+      const filename = `ekaraj-receipt-${result.transactionRef || Date.now()}.png`;
       const file = new File([blob], filename, { type: "image/png" });
 
       // Mobile Flow: If on mobile, invoke native OS Share sheet with file
@@ -1035,8 +1037,8 @@ function ReceiptStep({
         try {
           await navigator.share({
             files: [file],
-            title: "EKARARJ BANK Transfer Receipt",
-            text: `Official EKARARJ BANK Transfer Receipt\nRef: ${result.transactionRef}\nAmount: ${Number(result.amount).toLocaleString()} ${result.currency || "MMK"}`,
+            title: "EKARAJ BANK Transfer Receipt",
+            text: `Official EKARAJ BANK Transfer Receipt\nRef: ${result.transactionRef}\nAmount: ${Number(result.amount).toLocaleString()} ${result.currency || "MMK"}`,
           });
           return;
         } catch (shareErr: unknown) {
@@ -1062,8 +1064,8 @@ function ReceiptStep({
       if (typeof navigator !== "undefined" && navigator.share) {
         try {
           await navigator.share({
-            title: "EKARARJ BANK Transfer Receipt",
-            text: `EKARARJ BANK Transfer Receipt\nRef: ${result.transactionRef}\nAmount: ${Number(result.amount).toLocaleString()} ${result.currency || "MMK"}`,
+            title: "EKARAJ BANK Transfer Receipt",
+            text: `EKARAJ BANK Transfer Receipt\nRef: ${result.transactionRef}\nAmount: ${Number(result.amount).toLocaleString()} ${result.currency || "MMK"}`,
           });
         } catch {
           // User cancelled
@@ -1204,7 +1206,7 @@ function ReceiptStep({
                     Share Transfer Receipt
                   </h3>
                   <p className="text-[10px] font-medium text-slate-400">
-                    EKARARJ BANK Official Slip
+                    EKARAJ BANK Official Slip
                   </p>
                 </div>
               </div>
@@ -1359,6 +1361,8 @@ export const P2PTransferForm = () => {
   const dispatch = useAppDispatch();
   const { loading, error, success, transactionResult } = useAppSelector((s) => s.transfer);
   const { accounts, loading: accountsLoading } = useAppSelector((s) => s.accounts);
+  const { profile } = useAppSelector((s) => s.profile);
+  const currentCustomerId = profile?.customerCode || getCurrentCustomerSubject();
 
   const [step, setStep] = useState<Step>("form");
   const [showPinModal, setShowPinModal] = useState(false);
@@ -1473,12 +1477,27 @@ export const P2PTransferForm = () => {
   // Load recent accounts & reset transfer state
   useEffect(() => {
     dispatch(fetchMyAccounts());
-    const saved = localStorage.getItem("recentDestinations");
-    if (saved) setRecentAccounts(JSON.parse(saved));
+    const storageKey = currentCustomerId ? `recentDestinations_${currentCustomerId}` : "recentDestinations";
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      try {
+        setRecentAccounts(JSON.parse(saved));
+      } catch {
+        setRecentAccounts([]);
+      }
+    } else {
+      setRecentAccounts([]);
+    }
+
+    // Clean up legacy global key if user-scoped key is active
+    if (currentCustomerId) {
+      localStorage.removeItem("recentDestinations");
+    }
+
     return () => {
       dispatch(resetTransferState());
     };
-  }, [dispatch]);
+  }, [dispatch, currentCustomerId]);
 
   // Debounced recipient account lookup
   useEffect(() => {
@@ -1545,7 +1564,8 @@ export const P2PTransferForm = () => {
   const saveDestination = (accNo: string) => {
     const updated = [accNo, ...recentAccounts.filter((a) => a !== accNo)].slice(0, 5);
     setRecentAccounts(updated);
-    localStorage.setItem("recentDestinations", JSON.stringify(updated));
+    const storageKey = currentCustomerId ? `recentDestinations_${currentCustomerId}` : "recentDestinations";
+    localStorage.setItem(storageKey, JSON.stringify(updated));
   };
 
   /* Validation */
@@ -1953,6 +1973,24 @@ export const P2PTransferForm = () => {
                     <span className="font-bold text-slate-700 flex items-center gap-1.5">
                       <ShieldCheck className="w-4 h-4 text-[#00A3C4]" />
                       Today's Limit Usage
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const targetAcc = sourceAccount || accounts[0]?.accountNumber;
+                          navigate("/accounts", {
+                            state: {
+                              accountNumber: targetAcc,
+                              autoOpenLimitModal: true,
+                            },
+                          });
+                        }}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold text-[#00A3C4] hover:bg-cyan-100/70 border border-cyan-200/60 transition cursor-pointer"
+                        title="Adjust transfer limits in My Account"
+                        aria-label="Edit transfer limits"
+                      >
+                        <Pencil className="w-2.5 h-2.5" />
+                        <span>Edit</span>
+                      </button>
                     </span>
                     <span className="font-bold text-[#00A3C4]">
                       {Math.min(

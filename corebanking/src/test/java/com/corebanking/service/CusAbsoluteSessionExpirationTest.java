@@ -81,7 +81,7 @@ class CusAbsoluteSessionExpirationTest {
         when(sessions.findBySessionUuid(SID)).thenAnswer(call -> Optional.of(session));
         when(credentials.findById(CUSTOMER_ID)).thenReturn(Optional.of(
                 CustomerCredentials.builder().customerId(CUSTOMER_ID).customer(customer).tokenVersion(7L).build()));
-        when(sessions.save(any(AuthSession.class))).thenAnswer(call -> call.getArgument(0));
+        CusSessionActivityTestSupport.wire(validator, sessions, () -> session);
         when(sessions.revokeIfActive(eq(SID), anyString(), any(), any(), any(), any())).thenReturn(1);
         clock = mockStatic(LocalDateTime.class, CALLS_REAL_METHODS);
         clock.when(LocalDateTime::now).thenAnswer(call -> now.get());

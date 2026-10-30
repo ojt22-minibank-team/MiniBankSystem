@@ -111,6 +111,7 @@ class CusSessionClientMetadataTest {
         f.mvc.perform(request(endpoint, OTP_BODY, IP, "Original browser")).andExpect(status().isOk());
         AuthSession session = f.saved.get();
         var validation = new CusSessionService(f.sessions, f.individualCredentials, f.audit, f.corporateCredentials);
+        CusSessionActivityTestSupport.wire(validation, f.sessions, () -> session);
         String refresh = corporate ? "synthetic-corporate-refresh" : "synthetic-refresh";
         String access = corporate ? "synthetic-corporate-access" : "synthetic-access";
         session.setRefreshTokenHash(validation.hashRefreshToken(refresh));

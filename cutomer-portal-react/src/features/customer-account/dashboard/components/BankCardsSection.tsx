@@ -60,7 +60,7 @@ export default function BankCardsSection({
           No Linked Accounts Found
         </h3>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-          Your active Ekararj Bank cards and accounts will appear here once linked.
+          Your active Ekaraj Bank cards and accounts will appear here once linked.
         </p>
         <Link
           to="/accounts"

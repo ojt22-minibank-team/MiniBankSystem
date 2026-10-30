@@ -29,14 +29,30 @@ import java.util.concurrent.ThreadLocalRandom;
 @RequiredArgsConstructor
 public class OtcTransactionService {
 
-    private static final BigDecimal DEFAULT_MINIMUM_BALANCE = new BigDecimal("50000.00");
-    private static final BigDecimal MIN_TRANSACTION_AMOUNT = new BigDecimal("100.00");
-
     private final AccountRepository accountRepository;
     private final BankTransactionRepository bankTransactionRepository;
     private final StaffUsersRepository staffUsersRepository;
     private final LedgerAccountRepository ledgerAccountRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
+    private final SystemParametersRepository systemParametersRepository;
+    private final ManualTransactionsRepository manualTransactionsRepository;
+
+    /**
+     * Reads a mandatory system parameter from database.
+     * Throws TransactionException if the parameter is missing or has invalid format.
+     */
+    private BigDecimal getRequiredSystemParameter(String key) {
+        return systemParametersRepository.findByParameterKeyIgnoreCase(key)
+                .map(param -> {
+                    try {
+                        String cleanVal = param.getParameterValue().trim().replace(",", "");
+                        return new BigDecimal(cleanVal);
+                    } catch (Exception e) {
+                        throw new TransactionException("Invalid numeric format for system parameter: " + key);
+                    }
+                })
+                .orElseThrow(() -> new TransactionException("System parameter '" + key + "' is not configured in database."));
+    }
 
     /**
      * Over-the-Counter Cash Deposit:
@@ -52,12 +68,27 @@ public class OtcTransactionService {
             Optional<BankTransactions> existing = bankTransactionRepository.findByIdempotencyKey(idempotencyKey);
             if (existing.isPresent()) {
                 log.info("Duplicate OTC Deposit detected with key: {}. Returning existing record.", idempotencyKey);
-                return mapToResponseDto(existing.get(), request.getDepositorOrWithdrawerName());
+                return mapToResponseDto(existing.get(), null, null, null);
             }
         }
 
-        if (request.getAmount() == null || request.getAmount().compareTo(MIN_TRANSACTION_AMOUNT) < 0) {
-            throw new TransactionException("Deposit amount must be at least " + MIN_TRANSACTION_AMOUNT + " MMK.");
+        if (request.getRemark() == null || request.getRemark().isBlank()) {
+            throw new TransactionException("Customer statement narration is required.");
+        }
+        if (request.getManualReferenceId() == null || request.getManualReferenceId().isBlank()) {
+            throw new TransactionException("Counter voucher / slip reference ID is required.");
+        }
+        if (request.getManualAuditNote() == null || request.getManualAuditNote().isBlank()) {
+            throw new TransactionException("Internal audit note is required.");
+        }
+        String customRefId = request.getManualReferenceId().trim();
+        if (manualTransactionsRepository.existsByReferenceId(customRefId)) {
+            throw new TransactionException("Counter Voucher / Reference ID '" + customRefId + "' already exists. Please enter a unique reference.");
+        }
+
+        BigDecimal minDeposit = getRequiredSystemParameter("OTC_MINIMUM_DEPOSIT_AMOUNT");
+        if (request.getAmount() == null || request.getAmount().compareTo(minDeposit) < 0) {
+            throw new TransactionException("Deposit amount must be at least " + minDeposit.toPlainString() + " MMK.");
         }
 
         // Lock account row for update
@@ -86,9 +117,10 @@ public class OtcTransactionService {
         String txnRef = generateTransactionRef("DEP");
         LocalDateTime now = LocalDateTime.now();
 
-        String desc = (request.getRemark() != null && !request.getRemark().isBlank())
-                ? request.getRemark()
-                : "OTC Cash Deposit by " + (request.getDepositorOrWithdrawerName() != null ? request.getDepositorOrWithdrawerName() : "Customer");
+        String customerName = (account.getCustomer() != null && account.getCustomer().getFullName() != null)
+                ? account.getCustomer().getFullName() : "Customer";
+
+        String desc = request.getRemark().trim();
 
         BankTransactions txn = BankTransactions.builder()
                 .transactionRef(txnRef)
@@ -113,10 +145,11 @@ public class OtcTransactionService {
 
         // Double-entry General Ledger
         recordDepositLedgerEntries(txn, account, depositAmount, balanceBefore);
+        recordManualTransaction(txn, account, staff, ManualOperationType.CASH_DEPOSIT, depositAmount, customRefId, request.getManualAuditNote().trim());
 
         log.info("OTC Deposit successful. Ref: {}, Account: {}, New Balance: {}", txnRef, account.getAccountNumber(), account.getCurrentBalance());
 
-        return mapToResponseDto(txn, request.getDepositorOrWithdrawerName());
+        return mapToResponseDto(txn, customerName, customRefId, request.getManualAuditNote().trim());
     }
 
     /**
@@ -134,12 +167,27 @@ public class OtcTransactionService {
             Optional<BankTransactions> existing = bankTransactionRepository.findByIdempotencyKey(idempotencyKey);
             if (existing.isPresent()) {
                 log.info("Duplicate OTC Withdrawal detected with key: {}. Returning existing record.", idempotencyKey);
-                return mapToResponseDto(existing.get(), request.getDepositorOrWithdrawerName());
+                return mapToResponseDto(existing.get(), null, null, null);
             }
         }
 
-        if (request.getAmount() == null || request.getAmount().compareTo(MIN_TRANSACTION_AMOUNT) < 0) {
-            throw new TransactionException("Withdrawal amount must be at least " + MIN_TRANSACTION_AMOUNT + " MMK.");
+        if (request.getRemark() == null || request.getRemark().isBlank()) {
+            throw new TransactionException("Customer statement narration is required.");
+        }
+        if (request.getManualReferenceId() == null || request.getManualReferenceId().isBlank()) {
+            throw new TransactionException("Counter voucher / slip reference ID is required.");
+        }
+        if (request.getManualAuditNote() == null || request.getManualAuditNote().isBlank()) {
+            throw new TransactionException("Internal audit note is required.");
+        }
+        String customRefId = request.getManualReferenceId().trim();
+        if (manualTransactionsRepository.existsByReferenceId(customRefId)) {
+            throw new TransactionException("Counter Voucher / Reference ID '" + customRefId + "' already exists. Please enter a unique reference.");
+        }
+
+        BigDecimal minWithdrawal = getRequiredSystemParameter("OTC_MINIMUM_WITHDRAWAL_AMOUNT");
+        if (request.getAmount() == null || request.getAmount().compareTo(minWithdrawal) < 0) {
+            throw new TransactionException("Withdrawal amount must be at least " + minWithdrawal.toPlainString() + " MMK.");
         }
 
         // Lock account row for update
@@ -153,15 +201,16 @@ public class OtcTransactionService {
         BigDecimal withdrawAmount = request.getAmount();
 
         // Check Minimum Balance Enforcement
+        BigDecimal systemMinBalance = getRequiredSystemParameter("MINIMUM_BALANCE");
         BigDecimal minBalance = (account.getMinimumBalance() != null && account.getMinimumBalance().compareTo(BigDecimal.ZERO) > 0)
                 ? account.getMinimumBalance()
-                : DEFAULT_MINIMUM_BALANCE;
+                : systemMinBalance;
 
         BigDecimal netAvailable = account.getAvailableBalance().subtract(minBalance);
         if (netAvailable.compareTo(withdrawAmount) < 0) {
             throw new InsufficientFundsException(String.format(
                     "Insufficient available funds. You must maintain a minimum balance of %s MMK. Net available for withdrawal: %s MMK, Requested: %s MMK.",
-                    minBalance, netAvailable, withdrawAmount));
+                    minBalance.toPlainString(), netAvailable.toPlainString(), withdrawAmount.toPlainString()));
         }
 
         String currency = request.getCurrency() != null && !request.getCurrency().isBlank()
@@ -181,9 +230,10 @@ public class OtcTransactionService {
         String txnRef = generateTransactionRef("WDL");
         LocalDateTime now = LocalDateTime.now();
 
-        String desc = (request.getRemark() != null && !request.getRemark().isBlank())
-                ? request.getRemark()
-                : "OTC Cash Withdrawal by " + (request.getDepositorOrWithdrawerName() != null ? request.getDepositorOrWithdrawerName() : "Customer");
+        String customerName = (account.getCustomer() != null && account.getCustomer().getFullName() != null)
+                ? account.getCustomer().getFullName() : "Customer";
+
+        String desc = request.getRemark().trim();
 
         BankTransactions txn = BankTransactions.builder()
                 .transactionRef(txnRef)
@@ -208,10 +258,11 @@ public class OtcTransactionService {
 
         // Double-entry General Ledger
         recordWithdrawalLedgerEntries(txn, account, withdrawAmount, balanceBefore);
+        recordManualTransaction(txn, account, staff, ManualOperationType.CASH_WITHDRAWAL, withdrawAmount, customRefId, request.getManualAuditNote().trim());
 
         log.info("OTC Withdrawal successful. Ref: {}, Account: {}, New Balance: {}", txnRef, account.getAccountNumber(), account.getCurrentBalance());
 
-        return mapToResponseDto(txn, request.getDepositorOrWithdrawerName());
+        return mapToResponseDto(txn, customerName, customRefId, request.getManualAuditNote().trim());
     }
 
     private void recordDepositLedgerEntries(BankTransactions txn, Accounts account, BigDecimal amount, BigDecimal balBefore) {
@@ -293,6 +344,35 @@ public class OtcTransactionService {
         ledgerEntryRepository.save(vaultEntry);
     }
 
+    private void recordManualTransaction(BankTransactions txn, Accounts account, StaffUsers staff,
+                                         ManualOperationType opType, BigDecimal amount,
+                                         String customRefId, String customAuditNote) {
+        String refId = (customRefId != null && !customRefId.isBlank())
+                ? customRefId.trim()
+                : ("MAN-" + txn.getTransactionRef());
+
+        String audit = (customAuditNote != null && !customAuditNote.isBlank())
+                ? customAuditNote.trim()
+                : String.format("OTC %s | Acc: %s | Amount: %s %s | Teller: %s",
+                        opType == ManualOperationType.CASH_DEPOSIT ? "DEPOSIT" : "WITHDRAWAL",
+                        account.getAccountNumber(),
+                        amount.toPlainString(),
+                        txn.getCurrency(),
+                        staff.getUsername());
+
+        ManualTransactions manualTxn = ManualTransactions.builder()
+                .transaction(txn)
+                .account(account)
+                .staff(staff)
+                .operationType(opType)
+                .amount(amount)
+                .referenceId(refId)
+                .auditNote(audit)
+                .build();
+
+        manualTransactionsRepository.save(manualTxn);
+    }
+
     private StaffUsers getCurrentAuthenticatedStaff() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String username = (auth != null && auth.getName() != null && !auth.getName().isBlank() && !auth.getName().equals("anonymousUser"))
@@ -311,7 +391,8 @@ public class OtcTransactionService {
         return String.format("TXN-OTC-%s-%s-%d", prefix, dateStr, randomNum);
     }
 
-    private OtcTransactionResponseDto mapToResponseDto(BankTransactions txn, String personName) {
+    private OtcTransactionResponseDto mapToResponseDto(BankTransactions txn, String personName,
+                                                      String manualRefId, String manualAuditNote) {
         Accounts targetAccount = txn.getTransactionType() == TransactionType.OTC_DEPOSIT
                 ? txn.getDestinationAccount() : txn.getSourceAccount();
 
@@ -328,6 +409,9 @@ public class OtcTransactionService {
         }
 
         Customers customer = targetAccount != null ? targetAccount.getCustomer() : null;
+        String resolvedPerson = (personName != null && !personName.isBlank())
+                ? personName
+                : (customer != null ? customer.getFullName() : null);
 
         return OtcTransactionResponseDto.builder()
                 .transactionRef(txn.getTransactionRef())
@@ -342,8 +426,10 @@ public class OtcTransactionService {
                 .balanceAfter(balAfter)
                 .currency(txn.getCurrency())
                 .tellerUsername(txn.getInitiatedByStaff() != null ? txn.getInitiatedByStaff().getUsername() : "teller")
-                .depositorOrWithdrawerName(personName)
+                .depositorOrWithdrawerName(resolvedPerson)
                 .description(txn.getDescription())
+                .manualReferenceId(manualRefId)
+                .manualAuditNote(manualAuditNote)
                 .transactedAt(txn.getCompletedAt() != null ? txn.getCompletedAt() : txn.getInitiatedAt())
                 .build();
     }

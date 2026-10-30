@@ -10,7 +10,7 @@ import {
   X,
   ShieldAlert,
 } from "lucide-react";
-import { EkararjCrown } from "../../../components/common/EkararjLogo";
+import { EkarajCrown } from "../../../components/common/EkarajLogo";
 
 export interface TransferFailedSlipProps {
   amount: number;
@@ -144,17 +144,17 @@ export default function TransferFailedSlip({
         aria-hidden="true"
       >
         <img
-          src="/ekararj-crown-transparent.png"
+          src="/ekaraj-crown-transparent.png"
           alt=""
           className="w-56 h-56 sm:w-64 sm:h-64 object-contain opacity-[0.05] grayscale contrast-125 select-none"
         />
       </div>
 
-      {/* Official Bank Header: EKARARJ BANK with Failure Notice */}
+      {/* Official Bank Header: EKARAJ BANK with Failure Notice */}
       <div className="bg-[#08295C] px-5 sm:px-6 py-4 text-white flex items-center justify-between border-b border-blue-900/50 relative z-10">
         <div>
           <h2 className="text-base sm:text-lg font-black tracking-wide uppercase text-white leading-tight">
-            EKARARJ BANK
+            EKARAJ BANK
           </h2>
           <p className="text-[10px] text-rose-300 font-semibold tracking-wider uppercase mt-0.5">
             Transaction Failure Advisory
@@ -162,7 +162,7 @@ export default function TransferFailedSlip({
         </div>
 
         <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-          <EkararjCrown size={34} className="drop-shadow-md" />
+          <EkarajCrown size={34} className="drop-shadow-md" />
           {onClose && (
             <button
               type="button"

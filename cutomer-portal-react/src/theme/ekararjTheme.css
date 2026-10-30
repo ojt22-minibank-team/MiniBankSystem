@@ -1,22 +1,22 @@
 /**
- * EKARARJ BANK - Theme Stylesheet
+ * EKARAJ BANK - Theme Stylesheet
  * Brand Color System & Utility Classes
  */
 
 :root {
-  /* Ekararj Brand Colors */
-  --ekararj-navy-dark: #060e1a;
-  --ekararj-navy: #0a192f;
-  --ekararj-navy-light: #153564;
-  --ekararj-royal-blue: #1e40af;
-  --ekararj-cyan: #00a3c4;
-  --ekararj-cyan-hover: #0891b2;
-  --ekararj-cyan-light: #e0f7fa;
-  --ekararj-gold: #d4af37;
-  --ekararj-gold-light: #fef9c3;
-  --ekararj-gold-dark: #b38a20;
-  --ekararj-platinum: #e2e8f0;
-  --ekararj-platinum-sheen: #f8fafc;
+  /* Ekaraj Brand Colors */
+  --ekaraj-navy-dark: #060e1a;
+  --ekaraj-navy: #0a192f;
+  --ekaraj-navy-light: #153564;
+  --ekaraj-royal-blue: #1e40af;
+  --ekaraj-cyan: #00a3c4;
+  --ekaraj-cyan-hover: #0891b2;
+  --ekaraj-cyan-light: #e0f7fa;
+  --ekaraj-gold: #d4af37;
+  --ekaraj-gold-light: #fef9c3;
+  --ekaraj-gold-dark: #b38a20;
+  --ekaraj-platinum: #e2e8f0;
+  --ekaraj-platinum-sheen: #f8fafc;
 
   /* App Theme Variables (Light Mode) */
   --app-bg: #f4f6f9;
@@ -30,9 +30,9 @@
 }
 
 .dark {
-  --ekararj-navy-dark: #03070d;
-  --ekararj-navy: #071222;
-  --ekararj-navy-light: #0d1e38;
+  --ekaraj-navy-dark: #03070d;
+  --ekaraj-navy: #071222;
+  --ekaraj-navy-light: #0d1e38;
 
   /* App Theme Variables (Dark Mode) */
   --app-bg: #060e1a;
@@ -175,7 +175,7 @@
 /* ========================================================
    BUTTON CLASSES
    ======================================================== */
-.btn-ekararj-primary {
+.btn-ekaraj-primary {
   background: linear-gradient(135deg, #0a192f 0%, #153564 100%);
   color: #ffffff;
   border-radius: 0.75rem;
@@ -190,13 +190,13 @@
   transition: all 0.2s ease;
 }
 
-.btn-ekararj-primary:hover {
+.btn-ekaraj-primary:hover {
   background: linear-gradient(135deg, #0f2445 0%, #1e4785 100%);
   box-shadow: 0 4px 12px rgba(10, 25, 47, 0.25);
   transform: translateY(-1px);
 }
 
-.btn-ekararj-cyan {
+.btn-ekaraj-cyan {
   background: linear-gradient(135deg, #00a3c4 0%, #0891b2 50%, #0284c7 100%);
   color: #ffffff;
   border-radius: 0.75rem;
@@ -211,13 +211,13 @@
   transition: all 0.2s ease;
 }
 
-.btn-ekararj-cyan:hover {
+.btn-ekaraj-cyan:hover {
   background: linear-gradient(135deg, #0891b2 0%, #0284c7 50%, #0369a1 100%);
   box-shadow: 0 6px 20px rgba(0, 163, 196, 0.45);
   transform: translateY(-1px);
 }
 
-.btn-ekararj-gold {
+.btn-ekaraj-gold {
   background: linear-gradient(135deg, #e5c378 0%, #d4af37 50%, #b38a20 100%);
   color: #0a192f;
   border-radius: 0.75rem;
@@ -232,7 +232,7 @@
   transition: all 0.2s ease;
 }
 
-.btn-ekararj-gold:hover {
+.btn-ekaraj-gold:hover {
   filter: brightness(1.06);
   box-shadow: 0 6px 18px rgba(212, 175, 55, 0.4);
   transform: translateY(-1px);

@@ -1,10 +1,10 @@
 @import "tailwindcss";
-@import "./theme/ekararjTheme.css";
+@import "./theme/ekarajTheme.css";
 
 /* Enable Tailwind dark: utilities using the .dark class */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Tailwind v4 Theme Color System for Ekararj Bank */
+/* Tailwind v4 Theme Color System for Ekaraj Bank */
 @theme {
   --color-brand-navy: #0a192f;
   --color-brand-navy-dark: #060e1a;

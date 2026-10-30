@@ -15,7 +15,7 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
-    @Value("${spring.mail.username}")
+    @Value("${spring.mail.username:yoyobeautycare29@gmail.com}")
     private String fromEmail;
 
     public void sendPasswordSetupEmail(

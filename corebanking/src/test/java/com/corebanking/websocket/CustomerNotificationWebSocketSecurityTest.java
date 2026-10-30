@@ -77,6 +77,7 @@ class CustomerNotificationWebSocketSecurityTest {
         handshake = new JwtHandshakeInterceptor(validator);
         handler = new NotificationWebSocketHandler(validator);
         session = addSession(A, SID);
+        com.corebanking.service.CusSessionActivityTestSupport.wire(sessionService, sessions, () -> session);
         when(sessions.findBySessionUuid(anyString())).thenAnswer(call -> Optional.ofNullable(rows.get(call.getArgument(0))));
         when(credentials.findById(any())).thenAnswer(call -> Optional.ofNullable(credentialRows.get(call.getArgument(0))));
         when(sessions.save(any())).thenAnswer(call -> call.getArgument(0));
@@ -290,7 +291,9 @@ class CustomerNotificationWebSocketSecurityTest {
         String token = access(); var socket = connect(token); LocalDateTime before = session.getLastSeenAt();
         handler.handleTextMessage(socket.ws, new TextMessage("PING")); assertEquals(before, session.getLastSeenAt());
         sessionService.validateAccessSession(jwt.getClaims(token)); assertEquals(now.get(), session.getLastSeenAt());
-        handler.sendNotification(A.toString(), notification()); verify(sessions, times(1)).save(session);
+        handler.sendNotification(A.toString(), notification());
+        verify(sessions, times(1)).touchIfValid(eq(SID), eq(SessionSubjectType.CUSTOMER), eq(A), eq(7L), any(), any());
+        verify(sessions, never()).save(any());
     }
     @Test void transientPersistenceFailureClosesWithoutDataAndAllowsNormalClientTransportRecovery() throws Exception {
         var socket = connect(access());

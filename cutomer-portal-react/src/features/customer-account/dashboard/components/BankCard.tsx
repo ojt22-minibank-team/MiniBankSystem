@@ -3,10 +3,10 @@ import { Link } from "react-router-dom";
 import { Check, Copy, Eye, EyeOff } from "lucide-react";
 import type { DashboardAccount } from "../types/dashboardTypes";
 import {
-  EkararjCrown,
+  EkarajCrown,
   EbMonogram,
-  CrownEmbossedWatermark,
-} from "../../../../components/common/EkararjLogo";
+  CardGeometricLines,
+} from "../../../../components/common/EkarajLogo";
 import { useAppSelector, type RootState } from "../../../../lib/redux";
 
 interface BankCardProps {
@@ -21,7 +21,7 @@ interface BankCardProps {
   compact?: boolean;
 }
 
-export interface EkararjCardTheme {
+export interface EkarajCardTheme {
   id: string;
   name: string;
   cardClass: string;
@@ -38,7 +38,9 @@ export interface EkararjCardTheme {
   actionBtnClass: string;
 }
 
-export const EKARARJ_CARD_THEMES: EkararjCardTheme[] = [
+export type EkararjCardTheme = EkarajCardTheme;
+
+export const EKARAJ_CARD_THEMES: EkarajCardTheme[] = [
   // 1. Brushed Platinum Silver
   {
     id: "platinum",
@@ -109,6 +111,8 @@ export const EKARARJ_CARD_THEMES: EkararjCardTheme[] = [
   },
 ];
 
+export const EKARARJ_CARD_THEMES = EKARAJ_CARD_THEMES;
+
 export function formatBalance(amount: number): string {
   return amount.toLocaleString("en-US", {
     minimumFractionDigits: 2,
@@ -172,10 +176,10 @@ export default function BankCard({
     accountName ||
     (account as unknown as { accountName?: string }).accountName ||
     reduxFullName ||
-    "EKARARJ CUSTOMER"
+    "EKARAJ CUSTOMER"
   ).toUpperCase();
 
-  const theme = EKARARJ_CARD_THEMES[index % EKARARJ_CARD_THEMES.length];
+  const theme = EKARAJ_CARD_THEMES[index % EKARAJ_CARD_THEMES.length];
 
   const accountTypeLabel =
     account.accountType?.toUpperCase() === "SAVINGS"
@@ -215,10 +219,10 @@ export default function BankCard({
 
   const cardInner = (
     <>
-      {/* 1. Embossed Watermark Crown Silhouettes & 3D Emblem in Background */}
-      <CrownEmbossedWatermark theme={theme.themeType} />
+      {/* 1. Card Geometric Lines in Background */}
+      <CardGeometricLines />
 
-      {/* 2. TOP ROW: 'EB' Monogram + 'EKARARJ BANK' on Left, Official 3D Crown on Right */}
+      {/* 2. TOP ROW: 'EB' Monogram + 'EKARAJ BANK' on Left, Official 3D Crown on Right */}
       <div className="relative z-10 flex items-start justify-between">
         <div className="flex items-center gap-2.5">
           {/* 3D Metallic Cyan 'EB' */}
@@ -229,14 +233,14 @@ export default function BankCard({
               className={`text-[15px] sm:text-[16px] font-black tracking-wide leading-none ${theme.bankTitleClass}`}
               style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
             >
-              EKARARJ BANK
+              EKARAJ BANK
             </h3>
           </div>
         </div>
 
         {/* Official 3D Crown Logo */}
         <div className="flex items-center gap-2">
-          <EkararjCrown size={42} />
+          <EkarajCrown size={42} />
         </div>
       </div>
 
@@ -334,10 +338,8 @@ export default function BankCard({
 
     const compactContent = (
       <>
-        {/* Crown Watermark */}
-        <div className="pointer-events-none absolute -right-6 -bottom-6 opacity-15 select-none">
-          <CrownEmbossedWatermark theme={theme.themeType} className="w-24 h-24" />
-        </div>
+        {/* Card Geometric Lines */}
+        <CardGeometricLines />
 
         {/* TOP ROW: EB Monogram + Bank Title + 3D Crown */}
         <div className="relative z-10 flex items-center justify-between">
@@ -346,10 +348,10 @@ export default function BankCard({
             <span
               className={`text-[10px] font-black tracking-wide leading-none ${theme.bankTitleClass}`}
             >
-              EKARARJ BANK
+              EKARAJ BANK
             </span>
           </div>
-          <EkararjCrown size={20} />
+          <EkarajCrown size={20} />
         </div>
 
         {/* MIDDLE: Balance & Card Masked Number */}

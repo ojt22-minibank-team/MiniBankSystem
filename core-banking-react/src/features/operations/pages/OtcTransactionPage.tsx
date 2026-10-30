@@ -1,44 +1,164 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import AdminLayout from '../../../components/layout/AdminLayout';
 import Button from '../../../components/common/Button';
 import Input from '../../../components/common/Input';
+import Modal from '../../../components/common/Modal';
 import { otcApi, accountsApi } from '../../../services/apiClient';
 import type { OtcTransactionResponseDto, AccountResponse } from '../../../types/api.types';
 import { formatCurrency } from '../../../utils/formatCurrency';
 import type { AxiosError } from 'axios';
+import { QRCodeSVG } from 'qrcode.react';
+
 type OtcOperationType = 'DEPOSIT' | 'WITHDRAW';
+
+/**
+ * Converts numeric amount to standard English words for formal banking vouchers.
+ */
+function numberToWords(num: number): string {
+  if (num === 0) return 'Zero';
+
+  const a = [
+    '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen',
+    'Seventeen', 'Eighteen', 'Nineteen',
+  ];
+  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  function inWords(n: number): string {
+    if (n < 20) return a[n];
+    if (n < 100) return b[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + a[n % 10] : '');
+    if (n < 1000) return a[Math.floor(n / 100)] + ' Hundred' + (n % 100 !== 0 ? ' ' + inWords(n % 100) : '');
+    if (n < 1000000)
+      return inWords(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 !== 0 ? ' ' + inWords(n % 1000) : '');
+    if (n < 1000000000)
+      return inWords(Math.floor(n / 1000000)) + ' Million' + (n % 1000000 !== 0 ? ' ' + inWords(n % 1000000) : '');
+    return inWords(Math.floor(n / 1000000000)) + ' Billion' + (n % 1000000000 !== 0 ? ' ' + inWords(n % 1000000000) : '');
+  }
+
+  const integerPart = Math.floor(Math.abs(num));
+  return inWords(integerPart);
+}
+
+function formatAmountToWords(amount: number, currency: string = 'MMK'): string {
+  const words = numberToWords(amount);
+  const currLabel = currency.toUpperCase() === 'MMK' ? 'Myanmar Kyats' : currency.toUpperCase();
+  return `${words} ${currLabel} Only`;
+}
+
+/**
+ * Formats ISO timestamp cleanly into 'DD/MM/YYYY, h:mm A' (e.g. '29/10/2026, 1:43 PM') without seconds.
+ */
+function formatTransactionDateTime(dateInput?: string | Date | null): string {
+  const d = dateInput ? (typeof dateInput === 'string' ? new Date(dateInput) : dateInput) : new Date();
+  if (isNaN(d.getTime())) return '—';
+  return (
+    d.toLocaleDateString('en-GB') +
+    ', ' +
+    d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+  );
+}
+
+/**
+ * Builds comprehensive digital verification text encoded into the voucher QR code.
+ */
+function formatReceiptQrText(receipt: OtcTransactionResponseDto): string {
+  const isDeposit = receipt.transactionType === 'OTC_DEPOSIT';
+  const typeLabel = isDeposit ? 'CASH DEPOSIT' : 'CASH WITHDRAWAL';
+  const sign = isDeposit ? '+' : '-';
+  const curr = receipt.currency || 'MMK';
+  const dateStr = formatTransactionDateTime(receipt.transactedAt);
+  const amtWords = formatAmountToWords(Number(receipt.amount), curr);
+
+  return [
+    '============================================================',
+    '                     CORE BANKING PLC                       ',
+    '           OFFICIAL COUNTER TRANSACTION VOUCHER             ',
+    '============================================================',
+    `STATUS          : ${receipt.status || 'COMPLETED & SETTLED'}`,
+    `TRANSACTION TYPE: ${typeLabel}`,
+    `TRANSACTED DATE : ${dateStr}`,
+    `TRANSACTION REF : ${receipt.transactionRef || '—'}`,
+    `SLIP / VOUCHER  : ${receipt.manualReferenceId || '—'}`,
+    '',
+    '------------------ CUSTOMER & ACCOUNT ----------------------',
+    `ACCOUNT NUMBER  : ${receipt.accountNumber || '—'}`,
+    `ACCOUNT HOLDER  : ${receipt.customerName || '—'}`,
+    `CUSTOMER ID     : ${receipt.customerCode || '—'}`,
+    `CURRENCY        : ${curr}`,
+    '',
+    '------------------ FINANCIAL SETTLEMENT --------------------',
+    `PREVIOUS BALANCE: ${formatCurrency(receipt.balanceBefore ?? 0, curr)}`,
+    `TRANSACTED AMT  : ${sign} ${formatCurrency(receipt.amount ?? 0, curr)}`,
+    `AMOUNT IN WORDS : ${amtWords}`,
+    `NEW BALANCE     : ${formatCurrency(receipt.balanceAfter ?? 0, curr)}`,
+    '',
+    '------------------ BRANCH & AUDIT DETAILS ------------------',
+    'BRANCH          : Yangon Main Branch (Code: BR-001)',
+    'STATION / DESK  : Counter #02 (Teller Counter)',
+    'CHANNEL         : OVER_THE_COUNTER (OTC)',
+    `PROCESSED BY    : ${receipt.tellerUsername || 'teller'}`,
+    `STATEMENT REMARK: ${receipt.description || '—'}`,
+    `AUDIT NOTE      : ${receipt.manualAuditNote || '—'}`,
+    '============================================================',
+    '      This constitutes official digital proof of cash       ',
+    '       transaction generated by Core Banking System.        ',
+    '============================================================',
+  ].join('\n');
+}
 
 export default function OtcTransactionPage() {
   const [operationType, setOperationType] = useState<OtcOperationType>('DEPOSIT');
   const [accountNumber, setAccountNumber] = useState('');
   const [amount, setAmount] = useState('');
-  const [depositorName, setDepositorName] = useState('');
-  const [nrcOrId, setNrcOrId] = useState('');
   const [remark, setRemark] = useState('');
+  const [manualReferenceId, setManualReferenceId] = useState('');
+  const [manualAuditNote, setManualAuditNote] = useState('');
 
   // Account verification state
   const [verifiedAccount, setVerifiedAccount] = useState<AccountResponse | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [accountLookupError, setAccountLookupError] = useState<string | null>(null);
 
-  // Form submission state
+  // Form submission and confirmation modal state
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<OtcTransactionResponseDto | null>(null);
 
-  const handleLookupAccount = async () => {
+  const voucherTopRef = useRef<HTMLDivElement>(null);
+
+  // Automatically scroll viewport to top when switching between receipt and operations form
+  useEffect(() => {
+    const scrollToTop = () => {
+      if (voucherTopRef.current) {
+        voucherTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      const mainEl = document.querySelector('main');
+      if (mainEl) {
+        mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const timer = setTimeout(scrollToTop, 50);
+    return () => clearTimeout(timer);
+  }, [receipt]);
+
+  const handleLookupAccount = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
     if (!accountNumber.trim()) {
       setAccountLookupError('Please enter an account number to verify.');
       return;
     }
     setIsVerifying(true);
     setAccountLookupError(null);
-    setVerifiedAccount(null);
 
     try {
       const res = await accountsApi.getByNumber(accountNumber.trim());
       setVerifiedAccount(res.data);
+      setError(null);
     } catch (err) {
+      setVerifiedAccount(null);
       const axErr = err as AxiosError<{ message?: string }>;
       setAccountLookupError(
         axErr.response?.data?.message || 'Account not found. Please verify the account number.',
@@ -48,33 +168,50 @@ export default function OtcTransactionPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Pre-validate form inputs before triggering the Confirmation Modal
+  const handleInitiateConfirmation = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!accountNumber.trim() || !amount) {
-      setError('Account number and transaction amount are required.');
+
+    if (!accountNumber.trim()) {
+      setError('Target bank account number is required.');
+      return;
+    }
+
+    if (!verifiedAccount) {
+      setError('Please click Verify and ensure the target account is verified before proceeding.');
       return;
     }
 
     const numAmount = Number(amount);
-    if (isNaN(numAmount) || numAmount < 100) {
-      setError('Transaction amount must be at least 100 MMK.');
+    if (!amount || isNaN(numAmount) || numAmount <= 0) {
+      setError('Transaction amount must be a valid number greater than zero.');
       return;
     }
 
-    if (operationType === 'WITHDRAW' && verifiedAccount) {
-      const minBalance = 50000;
-      const netAvailable = (verifiedAccount.availableBalance ?? 0) - minBalance;
-      if (numAmount > netAvailable) {
-        setError(
-          `Insufficient funds for withdrawal. Minimum balance to maintain is 50,000 MMK. Maximum withdrawable: ${Math.max(0, netAvailable).toLocaleString()} MMK.`,
-        );
-        return;
-      }
+    if (!remark.trim()) {
+      setError('Customer statement narration / description is required.');
+      return;
     }
 
+    if (!manualReferenceId.trim()) {
+      setError('Counter voucher / slip reference ID is required.');
+      return;
+    }
+
+    if (!manualAuditNote.trim()) {
+      setError('Internal audit note is required.');
+      return;
+    }
+
+    setError(null);
+    setShowConfirmModal(true);
+  };
+
+  // Actual execution triggered inside Confirmation Modal
+  const handleExecuteTransaction = async () => {
+    const numAmount = Number(amount);
     setIsLoading(true);
     setError(null);
-    setReceipt(null);
 
     const idempotencyKey = `otc_${operationType.toLowerCase()}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
@@ -82,9 +219,9 @@ export default function OtcTransactionPage() {
       const payload = {
         accountNumber: accountNumber.trim(),
         amount: numAmount,
-        depositorOrWithdrawerName: depositorName.trim() || undefined,
-        nrcOrId: nrcOrId.trim() || undefined,
-        remark: remark.trim() || undefined,
+        remark: remark.trim(),
+        manualReferenceId: manualReferenceId.trim(),
+        manualAuditNote: manualAuditNote.trim(),
       };
 
       const res =
@@ -101,309 +238,794 @@ export default function OtcTransactionPage() {
           availableBalance: res.data.balanceAfter,
         });
       }
-      setAmount('');
-      setRemark('');
+      setShowConfirmModal(false);
     } catch (err) {
       const axErr = err as AxiosError<{ message?: string }>;
       setError(
         axErr.response?.data?.message ||
           `OTC ${operationType === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'} failed. Please try again.`,
       );
+      setShowConfirmModal(false);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleReset = () => {
+  // Reset all state to start a clean new transaction
+  const handleResetForNewTransaction = () => {
     setReceipt(null);
     setError(null);
     setAmount('');
     setRemark('');
-    setDepositorName('');
-    setNrcOrId('');
+    setManualReferenceId('');
+    setManualAuditNote('');
+    setAccountNumber('');
+    setVerifiedAccount(null);
+    setAccountLookupError(null);
   };
+
+  const handlePrintVoucher = () => {
+    window.print();
+  };
+
+  // Financial calculations for Before vs After breakdown
+  const currentBal = verifiedAccount?.availableBalance ?? 0;
+  const numAmount = Number(amount) || 0;
+  const projectedBal =
+    operationType === 'DEPOSIT' ? currentBal + numAmount : currentBal - numAmount;
 
   return (
     <AdminLayout pageTitle="OTC Operations (Teller Counter)">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">Over-the-Counter (OTC) Banking</h2>
-          <p className="mt-0.5 text-sm text-gray-500">
-            Process direct counter cash deposits and cash withdrawals for walk-in customers.
-          </p>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Left 2 Cols: Operations Form */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm lg:col-span-2 space-y-6">
-          {/* Operation Switcher Tabs */}
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
-              Select Counter Operation
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
+      {/* Print Specific CSS Styles */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          #printable-voucher, #printable-voucher * {
+            visibility: visible !important;
+          }
+          #printable-voucher {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 24px !important;
+            box-shadow: none !important;
+            border: 1px solid #d1d5db !important;
+            background: #ffffff !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
+
+      {/* VIEW 1: DEDICATED OFFICIAL BANK VOUCHER / RECEIPT VIEW */}
+      {receipt ? (
+        <div ref={voucherTopRef} className="space-y-6 max-w-4xl mx-auto pb-10">
+          {/* Top Actions Bar (Hidden in Print) */}
+          <div className="no-print flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900 text-base">Transaction Completed Successfully</h3>
+                <p className="text-xs text-gray-600">
+                  Ref: <span className="font-mono font-semibold text-gray-900">{receipt.transactionRef}</span> • Official Bank Counter Voucher ready.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
                 type="button"
-                onClick={() => {
-                  setOperationType('DEPOSIT');
-                  setError(null);
-                }}
-                className={[
-                  'flex items-center justify-center gap-2 rounded-xl border p-3.5 text-sm font-semibold transition-all',
-                  operationType === 'DEPOSIT'
-                    ? 'border-emerald-600 bg-emerald-50 text-emerald-700 shadow-sm'
-                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
-                ].join(' ')}
+                variant="secondary"
+                onClick={handlePrintVoucher}
+                className="flex items-center gap-2 px-4 py-2 font-semibold shadow-xs"
               >
-                <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                <span>Print / Download PDF</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="primary"
+                onClick={handleResetForNewTransaction}
+                className="flex items-center gap-2 px-5 py-2 font-semibold shadow-sm"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                <span>Cash Deposit (ငွေသွင်း)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setOperationType('WITHDRAW');
-                  setError(null);
-                }}
-                className={[
-                  'flex items-center justify-center gap-2 rounded-xl border p-3.5 text-sm font-semibold transition-all',
-                  operationType === 'WITHDRAW'
-                    ? 'border-amber-600 bg-amber-50 text-amber-700 shadow-sm'
-                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
-                ].join(' ')}
-              >
-                <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                </svg>
-                <span>Cash Withdrawal (ငွေထုတ်)</span>
-              </button>
+                <span>New Transaction</span>
+              </Button>
             </div>
           </div>
 
-          {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              <p className="font-semibold">Operation Failed</p>
-              <p className="mt-1">{error}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Account Lookup Row */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Target Bank Account Number <span className="text-red-500">*</span>
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="e.g. 1001234567"
-                  value={accountNumber}
-                  onChange={(e) => {
-                    setAccountNumber(e.target.value);
-                    setVerifiedAccount(null);
-                    setAccountLookupError(null);
-                  }}
-                  className="flex-1 rounded-lg border border-gray-300 px-3.5 py-2 text-sm font-mono focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  required
-                  disabled={isLoading}
-                />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={handleLookupAccount}
-                  disabled={isVerifying || !accountNumber.trim()}
-                >
-                  {isVerifying ? 'Checking...' : 'Verify'}
-                </Button>
-              </div>
-              {accountLookupError && (
-                <p className="mt-1.5 text-xs text-red-600">{accountLookupError}</p>
-              )}
+          {/* OFFICIAL COMMERCIAL BANK VOUCHER SHEET (PRINTABLE) */}
+          <div
+            id="printable-voucher"
+            className="rounded-2xl border border-gray-300 bg-white p-8 sm:p-10 shadow-lg text-gray-800 space-y-6 relative overflow-hidden"
+          >
+            {/* Watermark Logo / Badge */}
+            <div className="absolute right-8 top-8 opacity-10 pointer-events-none select-none">
+              <svg className="h-44 w-44 text-blue-900" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z" />
+              </svg>
             </div>
 
-            {/* Verified Account Card */}
-            {verifiedAccount && (
-              <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider">
-                    Account Verified ✓
-                  </span>
-                  <span
-                    className={[
-                      'rounded-full px-2 py-0.5 text-xs font-semibold',
-                      verifiedAccount.status === 'ACTIVE'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-red-100 text-red-700',
-                    ].join(' ')}
-                  >
-                    {verifiedAccount.status}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-                  <div>
-                    <span className="text-gray-500 block">Customer Name</span>
-                    <span className="font-bold text-gray-900">{verifiedAccount.customerName}</span>
+            {/* Bank & Branch Header */}
+            <div className="border-b-2 border-gray-800 pb-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-900 text-white font-extrabold text-lg">
+                      CB
+                    </span>
+                    <h1 className="text-2xl font-black tracking-tight text-gray-900 uppercase">
+                      Core Banking PLC
+                    </h1>
                   </div>
-                  <div>
-                    <span className="text-gray-500 block">Category / Type</span>
-                    <span className="font-medium text-gray-800">
-                      {verifiedAccount.accountCategory} • {verifiedAccount.accountType}
+                  <p className="mt-1 text-xs text-gray-600 font-medium">
+                    Commercial & Retail Banking Operations • Licensed Financial Institution
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    <strong>Branch:</strong> Yangon Main Branch (Code: BR-001) • <strong>Station:</strong> Counter #02 (Teller Counter)
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  {/* Digital Security Verification QR Code */}
+                  <div className="flex flex-col items-center justify-center bg-white p-1.5 rounded-lg border border-gray-200 shadow-2xs">
+                    <QRCodeSVG
+                      value={formatReceiptQrText(receipt)}
+                      size={80}
+                      level="M"
+                      includeMargin={false}
+                    />
+                    <span className="text-[9px] font-mono font-bold text-gray-500 mt-1 uppercase tracking-tighter">
+                      Scan to Verify
                     </span>
                   </div>
-                  <div>
-                    <span className="text-gray-500 block">Available Balance</span>
-                    <span className="font-bold text-blue-700 font-mono">
-                      {formatCurrency(verifiedAccount.availableBalance ?? 0, verifiedAccount.currency)}
+
+                  <div className="text-right">
+                    <span
+                      className={[
+                        'inline-block px-3 py-1 rounded-md text-xs font-black uppercase tracking-wider',
+                        receipt.transactionType === 'OTC_DEPOSIT'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : 'bg-amber-100 text-amber-800 border border-amber-300',
+                      ].join(' ')}
+                    >
+                      {receipt.transactionType === 'OTC_DEPOSIT' ? 'Cash Deposit Voucher' : 'Cash Withdrawal Voucher'}
                     </span>
+                    <p className="mt-1 text-[11px] font-mono text-gray-500">
+                      STATUS: <strong className="text-emerald-700">COMPLETED & SETTLED</strong>
+                    </p>
+                    <p className="text-[11px] text-gray-500 font-mono">
+                      Date: {formatTransactionDateTime(receipt.transactedAt)}
+                    </p>
                   </div>
                 </div>
               </div>
-            )}
-
-            {/* Amount and Person Details */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Input
-                label={`${operationType === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'} Amount (MMK)`}
-                type="number"
-                placeholder="e.g. 500000"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                required
-                disabled={isLoading}
-                min={100}
-              />
-              <Input
-                label="Depositor / Withdrawer Full Name"
-                placeholder="Walk-in customer name"
-                value={depositorName}
-                onChange={(e) => setDepositorName(e.target.value)}
-                disabled={isLoading}
-              />
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Input
-                label="NRC or National ID Number"
-                placeholder="e.g. 12/DAGAMA(N)123456"
-                value={nrcOrId}
-                onChange={(e) => setNrcOrId(e.target.value)}
-                disabled={isLoading}
-              />
-              <Input
-                label="Counter Narration / Notes"
-                placeholder="e.g. Salary cash deposit / Cash withdrawal"
-                value={remark}
-                onChange={(e) => setRemark(e.target.value)}
-                disabled={isLoading}
-              />
+            {/* Transaction Reference & Identifier Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50 rounded-lg p-3 text-xs border border-gray-200">
+              <div>
+                <span className="text-gray-500 block text-[10px] uppercase font-bold">Transaction Ref</span>
+                <span className="font-mono font-bold text-gray-900 text-xs block truncate">{receipt.transactionRef}</span>
+              </div>
+              <div>
+                <span className="text-gray-500 block text-[10px] uppercase font-bold">Counter Slip / Voucher No</span>
+                <span className="font-mono font-bold text-blue-800 text-xs block">{receipt.manualReferenceId || '—'}</span>
+              </div>
+              <div>
+                <span className="text-gray-500 block text-[10px] uppercase font-bold">Channel</span>
+                <span className="font-semibold text-gray-800 text-xs block">OVER_THE_COUNTER (OTC)</span>
+              </div>
+              <div>
+                <span className="text-gray-500 block text-[10px] uppercase font-bold">Processed By Teller</span>
+                <span className="font-mono font-semibold text-gray-800 text-xs block">{receipt.tellerUsername}</span>
+              </div>
             </div>
 
-            <div className="pt-2 flex justify-end">
-              <Button
-                type="submit"
-                variant={operationType === 'DEPOSIT' ? 'primary' : 'danger'}
-                isLoading={isLoading}
-                className="w-full sm:w-auto px-6 py-2.5"
-              >
-                {operationType === 'DEPOSIT' ? 'Confirm Cash Deposit' : 'Confirm Cash Withdrawal'}
-              </Button>
+            {/* Customer & Account Particulars */}
+            <div className="rounded-xl border border-gray-200 p-4 space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-100 pb-2">
+                Account & Customer Particulars
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                <div>
+                  <span className="text-gray-500 block text-[11px]">Bank Account Number</span>
+                  <span className="font-mono font-black text-gray-900 text-base block mt-0.5">
+                    {receipt.accountNumber}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block text-[11px]">Account Holder Name</span>
+                  <span className="font-bold text-gray-900 text-sm block mt-0.5">
+                    {receipt.customerName}
+                  </span>
+                  <span className="text-[11px] font-mono text-gray-400">Code: {receipt.customerCode}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block text-[11px]">Customer NRC / National ID</span>
+                  <span className="font-semibold text-gray-800 font-mono block mt-0.5">
+                    {verifiedAccount?.nrc || '—'}
+                  </span>
+                  <span className="text-[11px] text-gray-500">Phone: {verifiedAccount?.phone || '—'}</span>
+                </div>
+              </div>
             </div>
-          </form>
-        </div>
 
-        {/* Right 1 Col: Receipt or Guidelines */}
-        <div className="space-y-6">
-          {receipt ? (
-            <div className="rounded-xl border border-emerald-200 bg-white p-6 shadow-sm space-y-4">
-              <div className="flex items-center gap-2 text-emerald-700">
-                <svg className="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <h3 className="font-bold text-gray-900">Transaction Receipt</h3>
+            {/* Financial Settlement & Ledger Details */}
+            <div className="rounded-xl border-2 border-gray-900 p-5 space-y-4 bg-gray-50/40">
+              <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-300 pb-3">
+                <span className="text-sm font-bold text-gray-700 uppercase">Settled Cash Amount:</span>
+                <span className="text-2xl sm:text-3xl font-black font-mono text-gray-900 tracking-tight">
+                  {formatCurrency(receipt.amount, receipt.currency)}
+                </span>
               </div>
 
-              <div className="divide-y divide-gray-100 text-xs space-y-2.5">
-                <div className="flex justify-between pt-2">
-                  <span className="text-gray-500">Transaction Reference</span>
-                  <span className="font-mono font-bold text-gray-900">{receipt.transactionRef}</span>
-                </div>
-                <div className="flex justify-between pt-2.5">
-                  <span className="text-gray-500">Operation Type</span>
-                  <span
-                    className={[
-                      'font-semibold px-2 py-0.5 rounded text-[11px]',
-                      receipt.transactionType === 'OTC_DEPOSIT'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-amber-100 text-amber-800',
-                    ].join(' ')}
-                  >
-                    {receipt.transactionType}
-                  </span>
-                </div>
-                <div className="flex justify-between pt-2.5">
-                  <span className="text-gray-500">Account Number</span>
-                  <span className="font-mono font-medium text-gray-800">{receipt.accountNumber}</span>
-                </div>
-                <div className="flex justify-between pt-2.5">
-                  <span className="text-gray-500">Customer</span>
-                  <span className="font-medium text-gray-800">{receipt.customerName}</span>
-                </div>
-                <div className="flex justify-between pt-2.5">
-                  <span className="text-gray-500">Transacted Amount</span>
-                  <span className="font-mono font-bold text-gray-900 text-sm">
-                    {formatCurrency(receipt.amount, receipt.currency)}
-                  </span>
-                </div>
-                <div className="flex justify-between pt-2.5">
-                  <span className="text-gray-500">Balance Before</span>
-                  <span className="font-mono text-gray-600">
+              {/* Amount In Words */}
+              <div className="bg-white p-3 rounded-lg border border-gray-200 text-xs">
+                <span className="text-gray-500 block font-semibold text-[10px] uppercase tracking-wide">
+                  Amount In Words:
+                </span>
+                <span className="font-serif italic font-bold text-gray-800 text-sm block mt-0.5">
+                  “ {formatAmountToWords(receipt.amount, receipt.currency)} ”
+                </span>
+              </div>
+
+              {/* Balance Before & After Ledger Summary */}
+              <div className="grid grid-cols-3 gap-2 pt-1 text-center divide-x divide-gray-200 text-xs">
+                <div>
+                  <span className="text-gray-500 block text-[11px]">Balance Before</span>
+                  <span className="font-mono font-medium text-gray-700 text-sm block mt-0.5">
                     {formatCurrency(receipt.balanceBefore, receipt.currency)}
                   </span>
                 </div>
-                <div className="flex justify-between pt-2.5">
-                  <span className="text-gray-500">Balance After</span>
-                  <span className="font-mono font-bold text-emerald-700">
+                <div>
+                  <span className="text-gray-500 block text-[11px]">Service Fee</span>
+                  <span className="font-mono font-medium text-gray-700 text-sm block mt-0.5">
+                    {formatCurrency(receipt.serviceFee ?? 0, receipt.currency)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block text-[11px] font-bold">New Available Balance</span>
+                  <span className="font-mono font-black text-blue-900 text-sm block mt-0.5">
                     {formatCurrency(receipt.balanceAfter, receipt.currency)}
                   </span>
                 </div>
-                <div className="flex justify-between pt-2.5">
-                  <span className="text-gray-500">Processed By Teller</span>
-                  <span className="font-mono text-gray-700">{receipt.tellerUsername}</span>
+              </div>
+            </div>
+
+            {/* Statement Narration & Audit Information */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs border border-gray-200 rounded-lg p-3 bg-white">
+              <div>
+                <span className="text-gray-500 font-semibold block text-[11px]">Customer Statement Narration:</span>
+                <p className="font-medium text-gray-800 mt-0.5">{receipt.description || '—'}</p>
+              </div>
+              <div>
+                <span className="text-gray-500 font-semibold block text-[11px]">Internal Audit Note:</span>
+                <p className="font-sans text-gray-700 mt-0.5">{receipt.manualAuditNote || '—'}</p>
+              </div>
+            </div>
+
+            {/* Dual Signatures Section */}
+            <div className="pt-8 pb-4 border-t border-gray-200">
+              <div className="grid grid-cols-2 gap-8 text-xs">
+                {/* Left: Customer Signature */}
+                <div className="space-y-12">
+                  <div className="border-b border-gray-400 w-full"></div>
+                  <div>
+                    <span className="font-bold text-gray-900 block">Customer / Depositor / Withdrawer Signature</span>
+                    <span className="text-[11px] text-gray-500 block mt-0.5">Date: ________________________</span>
+                  </div>
                 </div>
-                <div className="flex justify-between pt-2.5">
-                  <span className="text-gray-500">Time</span>
-                  <span className="font-mono text-gray-500">
-                    {receipt.transactedAt ? new Date(receipt.transactedAt).toLocaleTimeString() : '—'}
-                  </span>
+
+                {/* Right: Authorized Teller Signature */}
+                <div className="space-y-12 text-right">
+                  <div className="border-b border-gray-400 w-full"></div>
+                  <div>
+                    <span className="font-bold text-gray-900 block">Authorized Bank Teller & Official Stamp</span>
+                    <span className="text-[11px] text-gray-500 block mt-0.5">
+                      Teller: {receipt.tellerUsername} • Date: {receipt.transactedAt ? new Date(receipt.transactedAt).toLocaleDateString() : '—'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Official Legal Disclaimer Footer */}
+            <div className="border-t border-gray-100 pt-3 text-[10px] text-gray-400 text-center leading-normal">
+              This counter transaction voucher is generated by the Core Banking System. It constitutes official proof of cash transaction when endorsed by the branch teller. Please retain this slip for your financial records. For inquiries, contact support@corebanking.local.
+            </div>
+          </div>
+
+          {/* Bottom Action Bar */}
+          <div className="no-print flex justify-end gap-3 pt-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handlePrintVoucher}
+              className="px-5 py-2.5 font-semibold"
+            >
+              Print / Download PDF
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={handleResetForNewTransaction}
+              className="px-6 py-2.5 font-bold shadow-md"
+            >
+              Process Next Transaction
+            </Button>
+          </div>
+        </div>
+      ) : (
+        /* VIEW 2: OTC OPERATIONS FORM (ACTIVE WHEN NO RECEIPT) */
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Over-the-Counter (OTC) Banking</h2>
+              <p className="mt-0.5 text-sm text-gray-500">
+                Process direct counter cash deposits and cash withdrawals for walk-in customers.
+              </p>
+            </div>
+          </div>
+
+          
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            {/* Left 2 Cols: Operations Form */}
+            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm lg:col-span-2 space-y-6">
+              {/* Operation Switcher Tabs */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                  Select Counter Operation
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOperationType('DEPOSIT');
+                      setError(null);
+                    }}
+                    className={[
+                      'flex items-center justify-center gap-2 rounded-xl border p-3.5 text-sm font-semibold transition-all',
+                      operationType === 'DEPOSIT'
+                        ? 'border-emerald-600 bg-emerald-50 text-emerald-700 shadow-sm'
+                        : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
+                    ].join(' ')}
+                  >
+                    <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Cash Deposit</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOperationType('WITHDRAW');
+                      setError(null);
+                    }}
+                    className={[
+                      'flex items-center justify-center gap-2 rounded-xl border p-3.5 text-sm font-semibold transition-all',
+                      operationType === 'WITHDRAW'
+                        ? 'border-amber-600 bg-amber-50 text-amber-700 shadow-sm'
+                        : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
+                    ].join(' ')}
+                  >
+                    <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                    </svg>
+                    <span>Cash Withdrawal</span>
+                  </button>
                 </div>
               </div>
 
-              <Button variant="secondary" onClick={handleReset} className="w-full mt-2">
-                Process Another Transaction
-              </Button>
+              {error && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                  <p className="font-semibold">Operation Notice</p>
+                  <p className="mt-1">{error}</p>
+                </div>
+              )}
+
+              <form onSubmit={handleInitiateConfirmation} className="space-y-5">
+                {/* Account Lookup Row */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Target Bank Account Number <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="e.g. 1001234567"
+                      value={accountNumber}
+                      onChange={(e) => {
+                        setAccountNumber(e.target.value);
+                        setVerifiedAccount(null);
+                        setAccountLookupError(null);
+                        if (error) setError(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleLookupAccount();
+                        }
+                      }}
+                      className="flex-1 rounded-lg border border-gray-300 px-3.5 py-2 text-sm font-mono focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      required
+                      disabled={isLoading}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={(e) => handleLookupAccount(e)}
+                      disabled={isVerifying || !accountNumber.trim()}
+                    >
+                      {isVerifying ? 'Checking...' : 'Verify'}
+                    </Button>
+                  </div>
+                  {accountLookupError && (
+                    <p className="mt-1.5 text-xs text-red-600">{accountLookupError}</p>
+                  )}
+                </div>
+
+                {/* Verified Account Card with Customer Profile Verification */}
+                {verifiedAccount && (
+                  <div
+                    className={`rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50/70 to-indigo-50/40 p-4.5 space-y-3.5 shadow-sm transition-opacity duration-200 ${
+                      isVerifying ? 'opacity-60' : 'opacity-100'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between border-b border-blue-100 pb-2.5">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-blue-700 uppercase tracking-wider">
+                        <svg className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                        <span>Account Identity Verified ✓</span>
+                      </div>
+                      <span
+                        className={[
+                          'rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                          verifiedAccount.status === 'ACTIVE'
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                            : 'bg-red-100 text-red-800 border border-red-200',
+                        ].join(' ')}
+                      >
+                        {verifiedAccount.status}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                      {/* Customer Avatar / Photo */}
+                      <div className="relative shrink-0">
+                        {verifiedAccount.profileImageUrl ? (
+                          <img
+                            src={verifiedAccount.profileImageUrl}
+                            alt={verifiedAccount.customerName}
+                            className="h-16 w-16 rounded-full object-cover border-2 border-white shadow-sm ring-2 ring-blue-200"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = 'none';
+                              const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                              if (fallback) fallback.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          className={`h-16 w-16 rounded-full bg-blue-600 text-white font-bold text-xl flex items-center justify-center border-2 border-white shadow-sm ring-2 ring-blue-200 ${
+                            verifiedAccount.profileImageUrl ? 'hidden' : 'flex'
+                          }`}
+                        >
+                          {verifiedAccount.customerName?.charAt(0)?.toUpperCase() || 'C'}
+                        </div>
+                      </div>
+
+                      {/* Customer Identity Info Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3.5 text-xs flex-1 min-w-0 w-full">
+                        <div className="min-w-0">
+                          <span className="text-gray-500 block text-[11px] font-medium">Account Holder</span>
+                          <span className="font-bold text-gray-900 text-sm block truncate mt-0.5">
+                            {verifiedAccount.customerName}
+                          </span>
+                          <span className="text-[11px] font-mono text-gray-500 block mt-0.5">{verifiedAccount.customerCode}</span>
+                        </div>
+
+                        <div className="min-w-0">
+                          <span className="text-gray-500 block text-[11px] font-medium">Available Balance</span>
+                          <span className="font-bold text-blue-700 font-mono text-sm block mt-0.5">
+                            {formatCurrency(verifiedAccount.availableBalance ?? 0, verifiedAccount.currency)}
+                          </span>
+                          <span className="text-[10px] text-gray-500 block mt-0.5">
+                            Total: {formatCurrency(verifiedAccount.currentBalance ?? 0, verifiedAccount.currency)}
+                          </span>
+                        </div>
+
+                        <div className="min-w-0">
+                          <span className="text-gray-500 block text-[11px] font-medium">NRC / National ID</span>
+                          <span className="font-semibold text-gray-900 font-mono block text-xs mt-0.5">
+                            {verifiedAccount.nrc || '—'}
+                          </span>
+                          <span className="text-[11px] text-gray-500 block mt-0.5">Phone: {verifiedAccount.phone || '—'}</span>
+                        </div>
+
+                        <div className="min-w-0">
+                          <span className="text-gray-500 block text-[11px] font-medium">Account Type</span>
+                          <span className="font-semibold text-gray-900 block text-xs mt-0.5">
+                            {verifiedAccount.accountCategory}
+                          </span>
+                          <span className="text-[11px] text-gray-500 block mt-0.5">{verifiedAccount.accountType}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Section 1: Transaction Amount & Customer Statement Narration */}
+                <div className="border-t border-gray-100 pt-4 space-y-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-600">
+                    1. Transaction & Statement Details
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Input
+                      label={`${operationType === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'} Amount (MMK)`}
+                      type="number"
+                      placeholder="e.g. 500000"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      required
+                      disabled={isLoading}
+                      min={1}
+                    />
+                    <Input
+                      label="Customer Statement Narration / Description"
+                      placeholder="e.g. Counter Cash Deposit / Salary Cash Out"
+                      value={remark}
+                      onChange={(e) => setRemark(e.target.value)}
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
+
+                {/* Section 2: Internal Teller & Audit Documentation */}
+                <div className="border-t border-gray-100 pt-4 space-y-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-600">
+                    2. Internal Teller & Audit Documentation (Manual Transaction)
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Input
+                      label="Counter Slip / Voucher Reference No."
+                      placeholder="e.g. VCH-20261028-001 or Slip ID"
+                      value={manualReferenceId}
+                      onChange={(e) => setManualReferenceId(e.target.value)}
+                      required
+                      disabled={isLoading}
+                      maxLength={64}
+                    />
+                    <Input
+                      label="Internal Audit Note"
+                      placeholder="e.g. Customer verified in person with NRC; cash notes counted."
+                      value={manualAuditNote}
+                      onChange={(e) => setManualAuditNote(e.target.value)}
+                      required
+                      disabled={isLoading}
+                      maxLength={500}
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-3 flex justify-end">
+                  <Button
+                    type="submit"
+                    variant={operationType === 'DEPOSIT' ? 'primary' : 'danger'}
+                    isLoading={isLoading}
+                    className="w-full sm:w-auto px-6 py-2.5 font-semibold shadow-sm"
+                  >
+                    {operationType === 'DEPOSIT' ? 'Review & Confirm Cash Deposit' : 'Review & Confirm Cash Withdrawal'}
+                  </Button>
+                </div>
+              </form>
             </div>
-          ) : (
-            <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-5 space-y-4 text-xs text-gray-600">
-              <h4 className="font-bold text-gray-800 text-sm uppercase tracking-wide">
-                Teller Counter Policy
-              </h4>
-              <ul className="space-y-2 list-disc pl-4 leading-relaxed">
-                <li>
-                  <strong>Pessimistic Concurrency:</strong> Database accounts are locked during transaction execution to prevent double spending.
-                </li>
-                <li>
-                  <strong>Minimum Balance (50,000 MMK):</strong> Savings and retail accounts must maintain a minimum reserve balance. Withdrawals exceeding net available funds will be rejected.
-                </li>
-                <li>
-                  <strong>Vault Cash Recording:</strong> Counter deposits and withdrawals are recorded with double-entry General Ledger balancing vault cash accounts against customer liabilities.
-                </li>
-              </ul>
+
+            {/* Right 1 Col: Teller Counter Policy & Guidance */}
+            <div className="space-y-6">
+              <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-5 space-y-4 text-xs text-gray-600">
+                <h4 className="font-bold text-gray-800 text-sm uppercase tracking-wide flex items-center gap-1.5">
+                  <svg className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Teller Counter Policy</span>
+                </h4>
+                <ul className="space-y-2.5 list-disc pl-4 leading-relaxed">
+                  <li>
+                    <strong>Mandatory Account Verification:</strong> Account details must be checked and visually validated against walk-in customer identity before confirming.
+                  </li>
+                  <li>
+                    <strong>Dual-Step Confirmation:</strong> Before debiting or crediting the ledger, verify the 3-column balance impact screen in the review dialog.
+                  </li>
+                  <li>
+                    <strong>Official Bank Voucher:</strong> Upon settlement, generate the official bank voucher slip for physical customer endorsement and audit archiving.
+                  </li>
+                  <li>
+                    <strong>Pessimistic Concurrency:</strong> Database accounts are locked with row-level locks during execution to prevent race conditions.
+                  </li>
+                  <li>
+                    <strong>Vault Balancing:</strong> Cash received or disbursed updates the teller vault cash ledger in real time.
+                  </li>
+                </ul>
+              </div>
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Confirmation Modal with Before vs After Balance Breakdown */}
+      <Modal
+        isOpen={showConfirmModal}
+        onClose={() => {
+          if (!isLoading) setShowConfirmModal(false);
+        }}
+        title={`Confirm Counter Cash ${operationType === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'}`}
+        size="lg"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowConfirmModal(false)}
+              disabled={isLoading}
+            >
+              Cancel / Review Again
+            </Button>
+            <Button
+              type="button"
+              variant={operationType === 'DEPOSIT' ? 'primary' : 'danger'}
+              isLoading={isLoading}
+              onClick={handleExecuteTransaction}
+              className="px-6 font-bold"
+            >
+              {operationType === 'DEPOSIT'
+                ? 'Confirm & Execute Deposit'
+                : 'Confirm & Execute Withdrawal'}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {/* Account & Customer Summary Pill */}
+          <div className="flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50/60 p-3.5 text-xs">
+            <div className="relative h-11 w-11 shrink-0">
+              {verifiedAccount?.profileImageUrl ? (
+                <img
+                  src={verifiedAccount.profileImageUrl}
+                  alt={verifiedAccount.customerName}
+                  className="h-11 w-11 rounded-full object-cover border border-white shadow-sm ring-2 ring-blue-200"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLElement).style.display = 'none';
+                    const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+              ) : null}
+              <div
+                className={`h-11 w-11 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-sm shadow-sm ring-2 ring-white ${
+                  verifiedAccount?.profileImageUrl ? 'hidden' : 'flex'
+                }`}
+              >
+                {verifiedAccount?.customerName?.charAt(0)?.toUpperCase() || 'C'}
+              </div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-gray-900 text-sm truncate">
+                  {verifiedAccount?.customerName}
+                </span>
+                <span className="rounded bg-blue-200/80 text-blue-800 px-1.5 py-0.5 text-[10px] font-mono font-semibold">
+                  {verifiedAccount?.customerCode}
+                </span>
+              </div>
+              <div className="text-gray-600 font-mono text-[11px] mt-0.5">
+                Acc: <strong className="text-gray-900">{verifiedAccount?.accountNumber}</strong> • NRC: {verifiedAccount?.nrc || '—'}
+              </div>
+            </div>
+          </div>
+
+          {/* Balance Impact Breakdown Card (Current -> Transacted -> Projected) */}
+          <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 space-y-3">
+            <div className="text-[11px] font-bold text-gray-600 uppercase tracking-wider flex items-center justify-between">
+              <span>Financial Balance Impact</span>
+              <span
+                className={[
+                  'px-2 py-0.5 rounded text-[10px] font-bold uppercase',
+                  operationType === 'DEPOSIT'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-amber-100 text-amber-800',
+                ].join(' ')}
+              >
+                {operationType === 'DEPOSIT' ? '+ Cash Inflow' : '- Cash Outflow'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center divide-x divide-gray-200 bg-white p-3 rounded-lg border border-gray-200/70 shadow-2xs">
+              <div className="px-1">
+                <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-tight">
+                  Current Balance
+                </span>
+                <span className="block text-xs sm:text-sm font-mono font-bold text-gray-800 mt-1">
+                  {formatCurrency(currentBal, verifiedAccount?.currency || 'MMK')}
+                </span>
+              </div>
+
+              <div className="px-1">
+                <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-tight">
+                  {operationType === 'DEPOSIT' ? 'Deposit Amount' : 'Withdrawal Amount'}
+                </span>
+                <span
+                  className={[
+                    'block text-xs sm:text-sm font-mono font-bold mt-1',
+                    operationType === 'DEPOSIT' ? 'text-emerald-600' : 'text-red-600',
+                  ].join(' ')}
+                >
+                  {operationType === 'DEPOSIT' ? '+' : '-'} {formatCurrency(numAmount, verifiedAccount?.currency || 'MMK')}
+                </span>
+              </div>
+
+              <div className="px-1">
+                <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-tight">
+                  Projected New Balance
+                </span>
+                <span
+                  className={[
+                    'block text-xs sm:text-sm font-mono font-extrabold mt-1',
+                    projectedBal < 0 ? 'text-red-600' : 'text-blue-700',
+                  ].join(' ')}
+                >
+                  {formatCurrency(projectedBal, verifiedAccount?.currency || 'MMK')}
+                </span>
+              </div>
+            </div>
+
+            {operationType === 'WITHDRAW' && projectedBal < 0 && (
+              <div className="rounded-lg bg-red-50 p-2.5 text-xs text-red-700 font-semibold border border-red-200 flex items-center gap-2">
+                <svg className="h-4 w-4 shrink-0 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <span>Warning: Projected balance falls below zero! This withdrawal will exceed available funds.</span>
+              </div>
+            )}
+          </div>
+
+          {/* Operational & Audit Details */}
+          <div className="divide-y divide-gray-100 text-xs rounded-xl border border-gray-200 p-3.5 bg-white space-y-2.5 shadow-2xs">
+            <div className="flex justify-between items-center pt-1">
+              <span className="text-gray-500">Counter Slip / Voucher No:</span>
+              <span className="font-mono font-bold text-gray-900 bg-gray-50 px-2 py-0.5 rounded border border-gray-200">
+                {manualReferenceId}
+              </span>
+            </div>
+            <div className="flex justify-between items-center pt-2">
+              <span className="text-gray-500">Statement Narration:</span>
+              <span className="font-medium text-gray-800">{remark}</span>
+            </div>
+            <div className="flex flex-col gap-1 pt-2">
+              <span className="text-gray-500">Internal Audit Note:</span>
+              <span className="bg-gray-50 p-2 rounded text-[11px] text-gray-700 border border-gray-100 leading-relaxed font-sans">
+                {manualAuditNote}
+              </span>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </AdminLayout>
   );
 }

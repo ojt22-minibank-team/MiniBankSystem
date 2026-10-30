@@ -27,7 +27,7 @@ import { isIndividualLogoutInProgress, useIndividualLogout } from "../../feature
 import { getAuthenticationGeneration, subscribeToAuthenticationChanges } from "../../utils/tokenStorage";
 import { useAppDispatch ,useAppSelector } from "../../lib/redux";
 import { fetchAnnouncements } from "../../features/customer-account/announcements/store/announcementSlice";
-import { EkararjCrown } from "../common/EkararjLogo";
+import { EkarajCrown } from "../common/EkarajLogo";
 
 
 
@@ -202,7 +202,7 @@ export default function Sidebar() {
             "
           >
 
-            <EkararjCrown
+            <EkarajCrown
               size={28}
             />
 
@@ -221,7 +221,7 @@ export default function Sidebar() {
                 text-[#0A192F] dark:text-white
               "
             >
-              EKARARJ BANK
+              EKARAJ BANK
             </h1>
 
             <p
