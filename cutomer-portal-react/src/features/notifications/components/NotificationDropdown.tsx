@@ -318,10 +318,19 @@ export const NotificationDropdown: React.FC = () => {
     void handleMarkAsRead(item);
     setIsOpen(false);
     const ref = item.transactionRef || (item.notificationId ? `NOTI-${item.notificationId}` : "");
+
+    // If already viewing a receipt, replace history so clicking multiple notifications doesn't stack receipts
+    const isAlreadyOnReceipt = location.pathname.startsWith("/receipt");
+    const currentFrom = (location.state as { from?: string } | null)?.from;
+    const originFrom = isAlreadyOnReceipt
+      ? (currentFrom && !currentFrom.startsWith("/receipt") ? currentFrom : "/dashboard")
+      : location.pathname;
+
     navigate(`/receipt/${encodeURIComponent(ref)}`, {
+      replace: isAlreadyOnReceipt,
       state: {
         notification: item,
-        from: location.pathname,
+        from: originFrom,
       },
     });
   };
@@ -579,60 +588,65 @@ export const NotificationDropdown: React.FC = () => {
                       </div>
 
                       {/* Prominent Account Holder Name + Account Number */}
-                      {item.counterpartyName && (
-                        <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                          <User className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                          <span className="truncate">
-                            {item.transferDirection === "RECEIVED"
-                              ? "From: "
-                              : item.transferDirection === "SENT"
-                              ? "To: "
-                              : ""}
-                            {item.counterpartyName}
-                            {item.counterpartyAccountNumber
-                              ? ` (${maskAccountNumber(item.counterpartyAccountNumber)})`
-                              : ""}
-                          </span>
-                        </div>
-                      )}
+                      {(() => {
+                        const itemTitleLower = (item.title || "").toLowerCase();
+                        const isItemReceived =
+                          item.transferDirection === "RECEIVED" ||
+                          itemTitleLower.includes("received") ||
+                          itemTitleLower.includes("funds received");
 
-                      <p className="text-[11px] text-slate-600 mt-1 leading-relaxed line-clamp-2">
-                        {formatNotificationMessage(item)}
-                      </p>
-
-                      <div className="mt-1.5 flex items-center justify-end gap-2">
-                        {(() => {
-                          const itemTitleLower = (item.title || "").toLowerCase();
-                          const isItemFailed = itemTitleLower.includes("fail") || itemTitleLower.includes("reject");
-
-                          return (
-                            <>
-                              {isItemFailed && (
-                                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
-                                  Failed
+                        return (
+                          <>
+                            {item.counterpartyName && (
+                              <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                                <User className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                <span className="truncate">
+                                  {isItemReceived ? "From: " : "To: "}
+                                  {item.counterpartyName}
+                                  {item.counterpartyAccountNumber
+                                    ? ` (${maskAccountNumber(item.counterpartyAccountNumber)})`
+                                    : ""}
                                 </span>
-                              )}
-                              {item.amount !== undefined && item.amount !== null && (
-                                <span
-                                  className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                                    isItemFailed
-                                      ? "bg-red-50 text-red-700 border border-red-200"
-                                      : item.transferDirection === "RECEIVED"
-                                      ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                                      : item.transferDirection === "SENT"
-                                      ? "bg-rose-50 text-rose-700 border border-rose-100"
-                                      : "bg-slate-100 text-slate-600"
-                                  }`}
-                                >
-                                  {isItemFailed
-                                    ? `- ${formatAmount(item.amount)} ${item.currency || "MMK"} (Failed)`
-                                    : `${item.transferDirection === "RECEIVED" ? "+ " : item.transferDirection === "SENT" ? "- " : ""}${formatAmount(item.amount)} ${item.currency || "MMK"}`}
-                                </span>
-                              )}
-                            </>
-                          );
-                        })()}
-                      </div>
+                              </div>
+                            )}
+
+                            <p className="text-[11px] text-slate-600 mt-1 leading-relaxed line-clamp-2">
+                              {formatNotificationMessage(item)}
+                            </p>
+
+                            <div className="mt-1.5 flex items-center justify-end gap-2">
+                              {(() => {
+                                const isItemFailed = itemTitleLower.includes("fail") || itemTitleLower.includes("reject");
+
+                                return (
+                                  <>
+                                    {isItemFailed && (
+                                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
+                                        Failed
+                                      </span>
+                                    )}
+                                    {item.amount !== undefined && item.amount !== null && (
+                                      <span
+                                        className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                                          isItemFailed
+                                            ? "bg-red-50 text-red-700 border border-red-200"
+                                            : isItemReceived
+                                            ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                                            : "bg-rose-50 text-rose-700 border border-rose-100"
+                                        }`}
+                                      >
+                                        {isItemFailed
+                                          ? `- ${formatAmount(item.amount)} ${item.currency || "MMK"} (Failed)`
+                                          : `${isItemReceived ? "+ " : "- "}${formatAmount(item.amount)} ${item.currency || "MMK"}`}
+                                      </span>
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
 
                     {unread && (

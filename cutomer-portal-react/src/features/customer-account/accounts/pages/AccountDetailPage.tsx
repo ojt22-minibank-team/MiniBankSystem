@@ -167,6 +167,8 @@ export default function AccountDetailPage({
   const locationState = location.state as {
     accountNumber?: string;
     autoOpenLimitModal?: boolean;
+    returnTo?: string;
+    returnState?: any;
   } | null;
 
   const targetAccountNumber =
@@ -186,7 +188,9 @@ export default function AccountDetailPage({
   const [copied, setCopied] = useState(false);
 
   const handleBack = () => {
-    if (onBack) {
+    if (locationState?.returnTo) {
+      navigate(locationState.returnTo, { state: locationState.returnState });
+    } else if (onBack) {
       onBack();
     } else {
       navigate(-1);
@@ -279,7 +283,7 @@ export default function AccountDetailPage({
           className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 transition-colors hover:text-[#00A3C4]"
         >
           <ArrowLeft size={16} />
-          <span>Back to My Accounts</span>
+          <span>{locationState?.returnTo === "/transfer" ? "Back to Transfer" : "Back to My Accounts"}</span>
         </button>
 
         <section
@@ -321,8 +325,8 @@ export default function AccountDetailPage({
             type="button"
             onClick={handleBack}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-2xs transition-all hover:border-[#00A3C4] hover:bg-cyan-50/50 hover:text-[#00A3C4]"
-            title="Go back"
-            aria-label="Go back"
+            title={locationState?.returnTo === "/transfer" ? "Back to Transfer" : "Go back"}
+            aria-label={locationState?.returnTo === "/transfer" ? "Back to Transfer" : "Go back"}
           >
             <ArrowLeft size={16} />
           </button>
@@ -561,6 +565,8 @@ export default function AccountDetailPage({
             currency={account.currency}
             onLimitsLoaded={setTransferLimits}
             autoOpenModal={Boolean(locationState?.autoOpenLimitModal)}
+            returnTo={locationState?.returnTo}
+            returnState={locationState?.returnState}
           />
         </section>
       </div>
