@@ -33,6 +33,10 @@ import com.corebanking.repository.CusLoginAttemptsRepository;
 import com.corebanking.repository.CusJwtRevokedTokensRepository;
 import com.corebanking.repository.CusOtpChallengesRepository;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.IncorrectClaimException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.security.SignatureException;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
@@ -200,7 +204,14 @@ public class CusCorporateSessionService {
             throw new CusAuthenticationException("Refresh token is required.");
         }
         String oldRefreshToken = request.getRefreshToken().trim();
-        Claims claims = cusJwtService.getClaims(oldRefreshToken);
+        Claims claims;
+        try {
+            claims = cusJwtService.getClaims(oldRefreshToken);
+        } catch (MalformedJwtException | ExpiredJwtException
+                | SignatureException | IncorrectClaimException ex) {
+            // Client credential errors only; signing-key/configuration failures propagate.
+            throw new CusAuthenticationException("Invalid or expired refresh token.");
+        }
         AuthSession session = validateRefreshSession(claims, oldRefreshToken);
         CorporateUser user = session.getCorporateUser();
         if (user == null || user.getCorporateUserId() == null) {

@@ -183,7 +183,7 @@ function LoginPage() {
         leftHeading={<>Your Trust.<br />Our Commitment.</>}
       >
             <div className="mb-4">
-              <h1 className="font-serif text-2xl font-medium leading-8 tracking-tight text-[#1A365D]">Welcome Ekaraj Banking</h1>
+              <h1 className="font-serif text-2xl font-medium leading-8 tracking-tight text-[#1A365D]">Welcome to EKARAJ Banking</h1>
               <p className="mt-0.5 text-sm leading-5 text-[#111418]">Login securely using your Customer ID or Account Number.</p>
               <div aria-hidden="true" className="mt-1 h-px w-10 bg-[#C6A15B]" />
             </div>

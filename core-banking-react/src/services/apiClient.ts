@@ -31,6 +31,7 @@ import type {
   OtcTransactionRequestDto,
   OtcTransactionResponseDto,
   DailyCashSummaryResponse,
+  OtcParametersResponse,
 } from '../types/api.types';
 
 // ============================================================
@@ -270,6 +271,14 @@ export const otcApi = {
           }
         : undefined,
     ),
+
+  getParameters: () =>
+    axiosInstance.get<OtcParametersResponse>(API_ENDPOINTS.OTC.PARAMETERS),
+
+  checkReference: (ref: string) =>
+    axiosInstance.get<{ exists: boolean }>(API_ENDPOINTS.OTC.CHECK_REFERENCE, {
+      params: { ref },
+    }),
 };
 
 // ============================================================

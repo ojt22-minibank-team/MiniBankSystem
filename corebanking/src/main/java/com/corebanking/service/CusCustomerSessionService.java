@@ -18,6 +18,13 @@ import com.corebanking.repository.CusAuthSessionsRepository;
 import com.corebanking.repository.CusCredentialsRepository;
 import com.corebanking.repository.CusJwtRevokedTokensRepository;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.IncorrectClaimException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.MissingClaimException;
+import io.jsonwebtoken.PrematureJwtException;
+import io.jsonwebtoken.UnsupportedJwtException;
+import io.jsonwebtoken.security.SignatureException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -77,10 +84,15 @@ public CusTokenResponse refreshToken(
   // 2. VERIFY REFRESH JWT
   // =====================================================
 
-  Claims claims =
-          cusJwtService.getClaims(
-                  oldRefreshToken
-          );
+  Claims claims;
+  try {
+      claims = cusJwtService.getClaims(oldRefreshToken);
+  } catch (MalformedJwtException | ExpiredJwtException
+          | SignatureException | IncorrectClaimException
+          | MissingClaimException | PrematureJwtException | UnsupportedJwtException ex) {
+      // Client credential errors only; signing-key/configuration failures propagate.
+      throw new CusAuthenticationException("Invalid or expired refresh token.");
+  }
 
 
   // =====================================================
