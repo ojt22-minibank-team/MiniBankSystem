@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ShieldCheck,
   Sliders,
@@ -9,6 +10,7 @@ import {
   Loader2,
   Info,
   KeyRound,
+  ArrowRight,
 } from "lucide-react";
 import {
   getAccountTransferLimits,
@@ -22,6 +24,8 @@ interface TransferLimitCardProps {
   onLimitsLoaded?: (limits: TransferLimitInfo) => void;
   onLimitsUpdated?: () => void;
   autoOpenModal?: boolean;
+  returnTo?: string;
+  returnState?: any;
 }
 
 export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
@@ -30,7 +34,10 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
   onLimitsLoaded,
   onLimitsUpdated,
   autoOpenModal,
+  returnTo,
+  returnState,
 }) => {
+  const navigate = useNavigate();
   const [limits, setLimits] = useState<TransferLimitInfo | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,12 +74,9 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
 
   const handleOpenModal = () => {
     if (!limits) return;
-    setCustomOneTime(
-      limits.userCustomOneTimeLimit ? String(limits.userCustomOneTimeLimit) : ""
-    );
-    setCustomDaily(
-      limits.userCustomDailyLimit ? String(limits.userCustomDailyLimit) : ""
-    );
+    // Start clean with empty inputs so placeholders are shown and no false validation errors occur
+    setCustomOneTime("");
+    setCustomDaily("");
     setPinDigits(Array(6).fill(""));
     setModalError(null);
     setModalSuccess(null);
@@ -82,6 +86,11 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
   const handleCloseModal = () => {
     if (submitting) return;
     setIsModalOpen(false);
+    setModalError(null);
+    setModalSuccess(null);
+    if (returnTo === "/transfer") {
+      navigate(returnTo, { state: returnState });
+    }
   };
 
   const autoOpenedRef = useRef<boolean>(false);
@@ -123,6 +132,60 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
     pinInputRefs.current[focusIndex]?.focus();
   };
 
+  const formatAmount = (num: number | null | undefined) => {
+    if (num === null || num === undefined) return "—";
+    return new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: 2,
+    }).format(num);
+  };
+
+  // Values calculation for Validation and Summary preview
+  const currentOneTime = limits
+    ? (limits.userCustomOneTimeLimit && limits.userCustomOneTimeLimit <= limits.bankMaxOneTimeLimit
+        ? limits.userCustomOneTimeLimit
+        : limits.effectiveOneTimeLimitBeneficiary)
+    : 0;
+  const currentDaily = limits
+    ? (limits.userCustomDailyLimit && limits.userCustomDailyLimit <= limits.bankMaxDailyLimit
+        ? limits.userCustomDailyLimit
+        : limits.effectiveDailyLimit)
+    : 0;
+
+  const parsedOneTime = customOneTime.trim() !== "" ? parseFloat(customOneTime) : null;
+  const parsedDaily = customDaily.trim() !== "" ? parseFloat(customDaily) : null;
+
+  const hasChanges = parsedOneTime !== null || parsedDaily !== null;
+
+  const effectiveNewOneTime = parsedOneTime !== null ? parsedOneTime : currentOneTime;
+  const effectiveNewDaily = parsedDaily !== null ? parsedDaily : currentDaily;
+
+  // Real-time Validations
+  const oneTimeExceedsCeiling = Boolean(
+    limits && parsedOneTime !== null && parsedOneTime > limits.bankMaxOneTimeLimit
+  );
+  const dailyExceedsCeiling = Boolean(
+    limits && parsedDaily !== null && parsedDaily > limits.bankMaxDailyLimit
+  );
+  const oneTimeExceedsDaily = Boolean(
+    hasChanges && effectiveNewOneTime > effectiveNewDaily
+  );
+  const dailyBelowTodayTransferred = Boolean(
+    limits &&
+    parsedDaily !== null &&
+    limits.todayTransferredAmount > 0 &&
+    parsedDaily < limits.todayTransferredAmount
+  );
+  const isOneTimeInvalidNumber = Boolean(parsedOneTime !== null && parsedOneTime <= 0);
+  const isDailyInvalidNumber = Boolean(parsedDaily !== null && parsedDaily <= 0);
+
+  const hasValidationError =
+    oneTimeExceedsCeiling ||
+    dailyExceedsCeiling ||
+    oneTimeExceedsDaily ||
+    dailyBelowTodayTransferred ||
+    isOneTimeInvalidNumber ||
+    isDailyInvalidNumber;
+
   const handleSubmitUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setModalError(null);
@@ -134,59 +197,59 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
       return;
     }
 
-    const oneTimeVal = customOneTime ? parseFloat(customOneTime) : null;
-    const dailyVal = customDaily ? parseFloat(customDaily) : null;
-
-    if (oneTimeVal !== null) {
-      if (oneTimeVal <= 0) {
-        setModalError("Custom one-time limit must be greater than zero.");
-        return;
-      }
-      if (limits && oneTimeVal > limits.bankMaxOneTimeLimit) {
-        setModalError(
-          `Custom one-time limit cannot exceed Bank Maximum Limit of ${formatAmount(
-            limits.bankMaxOneTimeLimit
-          )} ${currency}.`
-        );
-        return;
-      }
-    }
-
-    if (dailyVal !== null) {
-      if (dailyVal <= 0) {
-        setModalError("Custom daily limit must be greater than zero.");
-        return;
-      }
-      if (limits && dailyVal > limits.bankMaxDailyLimit) {
-        setModalError(
-          `Custom daily limit cannot exceed Bank Maximum Daily Limit of ${formatAmount(
-            limits.bankMaxDailyLimit
-          )} ${currency}.`
-        );
-        return;
-      }
-    }
-
-    if (oneTimeVal && dailyVal && oneTimeVal > dailyVal) {
-      setModalError("One-time limit cannot be greater than the daily limit.");
+    if (!hasChanges) {
+      setModalError("Please enter a new limit to update.");
       return;
+    }
+
+    if (hasValidationError) {
+      if (oneTimeExceedsCeiling) {
+        setModalError(`Custom one-time limit cannot exceed Bank ceiling of ${formatAmount(limits?.bankMaxOneTimeLimit)} ${currency}.`);
+        return;
+      }
+      if (dailyExceedsCeiling) {
+        setModalError(`Custom daily limit cannot exceed Bank ceiling of ${formatAmount(limits?.bankMaxDailyLimit)} ${currency}.`);
+        return;
+      }
+      if (oneTimeExceedsDaily) {
+        setModalError("One-time limit cannot be greater than the daily limit.");
+        return;
+      }
+      if (dailyBelowTodayTransferred) {
+        setModalError(`Custom daily limit cannot be less than today's already transferred amount of ${formatAmount(limits?.todayTransferredAmount)} ${currency}.`);
+        return;
+      }
+      if (isOneTimeInvalidNumber || isDailyInvalidNumber) {
+        setModalError("Limits must be greater than zero.");
+        return;
+      }
     }
 
     try {
       setSubmitting(true);
       const updated = await updateAccountTransferLimits(accountNumber, {
         transactionPin: transactionPin.trim(),
-        customOneTimeLimit: oneTimeVal,
-        customDailyLimit: dailyVal,
+        customOneTimeLimit: parsedOneTime,
+        customDailyLimit: parsedDaily,
       });
 
       setLimits(updated);
       setModalSuccess("Transfer limits updated successfully!");
       if (onLimitsUpdated) onLimitsUpdated();
 
-      setTimeout(() => {
-        setIsModalOpen(false);
-      }, 1500);
+      // Navigation behavior:
+      if (returnTo === "/transfer") {
+        setTimeout(() => {
+          setIsModalOpen(false);
+          navigate(returnTo, { state: returnState });
+        }, 1200);
+      } else {
+        await fetchLimits();
+        setTimeout(() => {
+          setIsModalOpen(false);
+          setModalSuccess(null);
+        }, 1200);
+      }
     } catch (err: any) {
       setModalError(
         err?.response?.data?.message ||
@@ -196,13 +259,6 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const formatAmount = (num: number | null | undefined) => {
-    if (num === null || num === undefined) return "—";
-    return new Intl.NumberFormat("en-US", {
-      maximumFractionDigits: 2,
-    }).format(num);
   };
 
   if (loading) {
@@ -257,7 +313,7 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
           <button
             type="button"
             onClick={handleOpenModal}
-            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-[#00A3C4] to-[#0284C7] hover:from-[#0891B2] hover:to-[#0369A1] shadow-sm shadow-cyan-500/25 transition"
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-[#00A3C4] to-[#0284C7] hover:from-[#0891B2] hover:to-[#0369A1] shadow-sm shadow-cyan-500/25 transition cursor-pointer"
           >
             <Sliders className="w-3.5 h-3.5" />
             <span>Customize Limits</span>
@@ -348,63 +404,73 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
         )}
       </section>
 
-      {/* Customize Limits Modal */}
+      {/* Customize Limits Modal (Compact, sleek & refined) */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
           {/* Backdrop */}
           <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in"
+            className="absolute inset-0 bg-black/60 backdrop-blur-xs animate-in fade-in"
             onClick={handleCloseModal}
           />
 
-          {/* Dialog */}
-          <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+          {/* Dialog Card: Compact 460px width, max 92vh, scrollable if screen is short */}
+          <div className="relative w-full max-w-[460px] max-h-[92vh] flex flex-col rounded-2xl bg-white p-4 sm:p-5 shadow-2xl animate-in zoom-in-95 duration-200">
             <button
               onClick={handleCloseModal}
               disabled={submitting}
-              className="absolute top-5 right-5 p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+              className="absolute top-3.5 right-3.5 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+              title="Close modal"
+              aria-label="Close modal"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
 
-            <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50 text-[#00A3C4]">
-                <Sliders className="w-5 h-5" />
+            {/* Header: Compact Icon, Title, Subtitle */}
+            <div className="flex items-center gap-3 pb-3 border-b border-slate-100 shrink-0">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-50 text-[#00A3C4] shrink-0">
+                <Sliders className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-tight">
                   Customize Transfer Limits
                 </h3>
-                <p className="text-xs text-slate-500">
-                  Account: {accountNumber}
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Account: <span className="font-mono font-medium text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">{accountNumber}</span>
                 </p>
               </div>
             </div>
 
             {modalSuccess ? (
-              <div className="py-8 flex flex-col items-center justify-center gap-3 text-center">
-                <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                  <CheckCircle2 className="w-7 h-7" />
+              <div className="py-6 flex flex-col items-center justify-center gap-2.5 text-center animate-in fade-in">
+                <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-sm">
+                  <CheckCircle2 className="w-6 h-6" />
                 </div>
-                <p className="text-sm font-bold text-slate-900">{modalSuccess}</p>
-                <p className="text-xs text-slate-500">
-                  Your new transfer limits are now securely applied.
+                <p className="text-sm font-bold text-emerald-800">{modalSuccess}</p>
+                <p className="text-[11px] text-slate-500">
+                  {returnTo === "/transfer"
+                    ? "Redirecting back to your transfer form..."
+                    : "Your new transfer limits are now securely applied."}
                 </p>
               </div>
             ) : (
-              <form onSubmit={handleSubmitUpdate} className="space-y-4 mt-4">
+              <form onSubmit={handleSubmitUpdate} className="space-y-3 mt-3 overflow-y-auto pr-0.5">
                 {modalError && (
-                  <div className="p-3 bg-red-50 text-red-600 rounded-xl text-xs flex items-start gap-2 border border-red-100">
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>{modalError}</span>
+                  <div className="p-2.5 bg-red-50 text-red-600 rounded-xl text-xs flex items-start gap-2 border border-red-200">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-red-500" />
+                    <span className="font-medium text-[11px]">{modalError}</span>
                   </div>
                 )}
 
-                {/* Custom One-Time Limit */}
+                {/* 1. Custom One-Time Limit */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Custom One-Time Limit ({currency})
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold text-slate-700">
+                      Custom One-Time Limit ({currency})
+                    </label>
+                    <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                      Current: <strong className="text-slate-800 font-bold">{formatAmount(currentOneTime)} {currency}</strong>
+                    </span>
+                  </div>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -417,21 +483,42 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
                       const raw = e.target.value.replace(/\D/g, "");
                       setCustomOneTime(raw);
                     }}
-                    placeholder={`e.g. 2,000,000 (Max: ${formatAmount(
-                      limits.bankMaxOneTimeLimit
-                    )})`}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-100 focus:border-[#00A3C4] transition"
+                    placeholder={`e.g. 2,000,000 (Max: ${formatAmount(limits.bankMaxOneTimeLimit)})`}
+                    className={`w-full h-[40px] px-3 rounded-xl border text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none transition ${
+                      oneTimeExceedsCeiling || oneTimeExceedsDaily
+                        ? "border-red-500 bg-red-50/20 focus:ring-2 focus:ring-red-100"
+                        : "border-slate-200 bg-white focus:ring-2 focus:ring-cyan-100 focus:border-[#00A3C4]"
+                    }`}
                   />
-                  <span className="text-[10px] text-slate-400 mt-1 block">
-                    Bank ceiling: {formatAmount(limits.bankMaxOneTimeLimit)} {currency}
-                  </span>
+                  <div className="mt-0.5 flex items-center justify-between text-[10px]">
+                    {oneTimeExceedsCeiling ? (
+                      <span className="text-red-500 font-medium flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        Cannot exceed Bank ceiling of {formatAmount(limits.bankMaxOneTimeLimit)} {currency}
+                      </span>
+                    ) : oneTimeExceedsDaily ? (
+                      <span className="text-red-500 font-medium flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        Cannot exceed daily limit
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">
+                        Bank ceiling: {formatAmount(limits.bankMaxOneTimeLimit)} {currency}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Custom Daily Limit */}
+                {/* 2. Custom Daily Limit */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Custom Daily Limit ({currency})
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold text-slate-700">
+                      Custom Daily Limit ({currency})
+                    </label>
+                    <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                      Current: <strong className="text-slate-800 font-bold">{formatAmount(currentDaily)} {currency}</strong>
+                    </span>
+                  </div>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -444,27 +531,106 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
                       const raw = e.target.value.replace(/\D/g, "");
                       setCustomDaily(raw);
                     }}
-                    placeholder={`e.g. 5,000,000 (Max: ${formatAmount(
-                      limits.bankMaxDailyLimit
-                    )})`}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-100 focus:border-[#00A3C4] transition"
+                    placeholder={`e.g. 5,000,000 (Max: ${formatAmount(limits.bankMaxDailyLimit)})`}
+                    className={`w-full h-[40px] px-3 rounded-xl border text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none transition ${
+                      dailyExceedsCeiling || dailyBelowTodayTransferred
+                        ? "border-red-500 bg-red-50/20 focus:ring-2 focus:ring-red-100"
+                        : "border-slate-200 bg-white focus:ring-2 focus:ring-cyan-100 focus:border-[#00A3C4]"
+                    }`}
                   />
-                  <span className="text-[10px] text-slate-400 mt-1 block">
-                    Bank ceiling: {formatAmount(limits.bankMaxDailyLimit)} {currency}
-                  </span>
+                  <div className="mt-0.5 flex items-center justify-between text-[10px]">
+                    {dailyExceedsCeiling ? (
+                      <span className="text-red-500 font-medium flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        Cannot exceed Bank ceiling of {formatAmount(limits.bankMaxDailyLimit)} {currency}
+                      </span>
+                    ) : dailyBelowTodayTransferred ? (
+                      <span className="text-red-500 font-medium flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        Cannot be less than today's transferred ({formatAmount(limits.todayTransferredAmount)} {currency})
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">
+                        Bank ceiling: {formatAmount(limits.bankMaxDailyLimit)} {currency}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Transaction PIN - 6 Individual Digit Boxes */}
-                <div className="pt-2 border-t border-slate-100">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-semibold text-slate-700 flex items-center gap-1">
-                      <KeyRound className="w-3.5 h-3.5 text-[#00A3C4]" />
-                      6-Digit Transaction PIN
-                    </label>
-                    <span className="text-[10px] text-slate-400">Security Verification</span>
+                {/* 3. Limit Changes Summary (Compact Preview) */}
+                <div className="p-2.5 rounded-xl bg-slate-50/90 border border-slate-200/70">
+                  <div className="flex items-center justify-between text-[10px] font-bold text-slate-600 mb-1.5">
+                    <span className="flex items-center gap-1">
+                      <Sliders className="w-3 h-3 text-[#00A3C4]" />
+                      Limit Changes Summary
+                    </span>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">
+                      Preview
+                    </span>
                   </div>
 
-                  <div className="flex justify-between items-center gap-2">
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    {/* One-Time Summary */}
+                    <div className="p-2 rounded-lg bg-white border border-slate-100 shadow-2xs">
+                      <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider block">
+                        One-Time
+                      </span>
+                      <div className="mt-0.5 flex items-center gap-1 font-semibold truncate">
+                        {parsedOneTime !== null ? (
+                          <>
+                            <span className="text-slate-400 text-[10px] line-through">
+                              {formatAmount(currentOneTime)}
+                            </span>
+                            <ArrowRight className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                            <span className="text-[#00A3C4] font-bold">
+                              {formatAmount(parsedOneTime)}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-slate-700 text-[11px]">
+                            {formatAmount(currentOneTime)} {currency}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Daily Summary */}
+                    <div className="p-2 rounded-lg bg-white border border-slate-100 shadow-2xs">
+                      <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider block">
+                        Daily
+                      </span>
+                      <div className="mt-0.5 flex items-center gap-1 font-semibold truncate">
+                        {parsedDaily !== null ? (
+                          <>
+                            <span className="text-slate-400 text-[10px] line-through">
+                              {formatAmount(currentDaily)}
+                            </span>
+                            <ArrowRight className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                            <span className="text-[#00A3C4] font-bold">
+                              {formatAmount(parsedDaily)}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-slate-700 text-[11px]">
+                            {formatAmount(currentDaily)} {currency}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Transaction PIN - Compact 6 Digit Boxes */}
+                <div className="pt-2 border-t border-slate-100">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
+                      <KeyRound className="w-3 h-3 text-[#00A3C4]" />
+                      6-Digit Transaction PIN
+                    </label>
+                    <span className="text-[9px] text-slate-400">Security Verification</span>
+                  </div>
+
+                  <div className="flex justify-between items-center gap-1.5 sm:gap-2">
                     {pinDigits.map((digit, idx) => (
                       <input
                         key={idx}
@@ -478,38 +644,38 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
                         onChange={(e) => handlePinChange(idx, e.target.value)}
                         onKeyDown={(e) => handlePinKeyDown(idx, e)}
                         onPaste={handlePinPaste}
-                        className={`w-11 h-12 text-center text-xl font-bold border-2 rounded-xl outline-none transition-all ${
+                        className={`w-9 sm:w-10 h-[38px] sm:h-[40px] text-center text-base sm:text-lg font-bold border-2 rounded-lg outline-none transition-all ${
                           digit
-                            ? "border-[#00A3C4] bg-cyan-50 text-[#00A3C4] ring-2 ring-blue-100"
+                            ? "border-[#00A3C4] bg-cyan-50 text-[#00A3C4] ring-1 ring-blue-100"
                             : "border-slate-200 bg-slate-50 text-slate-800"
                         } focus:border-[#00A3C4] focus:bg-cyan-50 focus:ring-2 focus:ring-cyan-200`}
                       />
                     ))}
                   </div>
-                  <p className="text-[10px] text-slate-400 mt-2 text-center">
+                  <p className="text-[9px] text-slate-400 mt-1 text-center">
                     Enter your 6-digit PIN to authorize the limit change
                   </p>
                 </div>
 
-                {/* Buttons */}
-                <div className="flex items-center gap-2 pt-2">
+                {/* 5. Buttons (Primary: Confirm Update, Secondary: Cancel) */}
+                <div className="flex items-center gap-2 pt-1.5">
                   <button
                     type="button"
                     onClick={handleCloseModal}
                     disabled={submitting}
-                    className="flex-1 py-2.5 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition"
+                    className="flex-1 h-[40px] rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    disabled={submitting || pinDigits.join("").length !== 6}
-                    className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white bg-[#00A3C4] hover:bg-[#0891B2] disabled:opacity-50 transition flex items-center justify-center gap-1.5 shadow-md shadow-cyan-500/20"
+                    disabled={submitting || pinDigits.join("").length !== 6 || hasValidationError || !hasChanges}
+                    className="flex-1 h-[40px] rounded-xl text-xs font-bold text-white bg-[#00A3C4] hover:bg-[#0891B2] disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-1.5 shadow-sm shadow-cyan-500/20 cursor-pointer"
                   >
                     {submitting ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Verifying PIN...</span>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Verifying...</span>
                       </>
                     ) : (
                       <>
