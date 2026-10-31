@@ -1,6 +1,7 @@
 package com.corebanking.service;
 
 import com.corebanking.dto.DailyCashSummaryDto;
+import com.corebanking.dto.OtcParametersDto;
 import com.corebanking.dto.OtcTransactionRequestDto;
 import com.corebanking.dto.OtcTransactionResponseDto;
 import com.corebanking.entity.*;
@@ -477,5 +478,26 @@ public class OtcTransactionService {
                 .withdrawalCount(withdrawalCount)
                 .currency("MMK")
                 .build();
+    }
+
+    /**
+     * Reads configured OTC system parameters (limits & minimum balances) directly from database.
+     */
+    public OtcParametersDto getOtcParameters() {
+        return OtcParametersDto.builder()
+                .minDepositAmount(getRequiredSystemParameter("OTC_MINIMUM_DEPOSIT_AMOUNT"))
+                .minWithdrawalAmount(getRequiredSystemParameter("OTC_MINIMUM_WITHDRAWAL_AMOUNT"))
+                .minimumBalance(getRequiredSystemParameter("MINIMUM_BALANCE"))
+                .build();
+    }
+
+    /**
+     * Checks if a counter voucher / slip reference ID is already used in the database.
+     */
+    public boolean isReferenceIdDuplicate(String refId) {
+        if (refId == null || refId.trim().isEmpty()) {
+            return false;
+        }
+        return manualTransactionsRepository.existsByReferenceId(refId.trim());
     }
 }
