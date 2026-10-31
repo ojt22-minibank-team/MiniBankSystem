@@ -1,5 +1,6 @@
 package com.corebanking.service;
 
+import com.corebanking.dto.CusTransactionHistoryItemDTO;
 import com.corebanking.dto.CusTransactionHistoryResponseDTO;
 import com.corebanking.entity.enums.TransactionStatus;
 import com.corebanking.entity.enums.TransactionType;
@@ -139,6 +140,35 @@ public class CusTransactionService {
                     .hasNext(hasNext)
                     .hasPrevious(hasPrev)
                     .build();
+        } catch (DataAccessException ex) {
+            handleDatabaseException(ex);
+            throw ex;
+        }
+    }
+
+    /**
+     * Retrieves single transaction detail for the authenticated customer.
+     */
+    public CusTransactionHistoryItemDTO getTransactionDetail(String transactionRef, String accountNumber) {
+        UUID customerId = getAuthenticatedCustomerId();
+        return getTransactionDetail(customerId, transactionRef, accountNumber);
+    }
+
+    /**
+     * Retrieves single transaction detail for an explicit customer UUID.
+     */
+    public CusTransactionHistoryItemDTO getTransactionDetail(UUID customerId, String transactionRef, String accountNumber) {
+        if (customerId == null) {
+            throw new CusAuthenticationException("Customer identity is required.");
+        }
+        if (accountNumber == null || accountNumber.trim().isEmpty()) {
+            throw new CusValidationException("Account number is required.");
+        }
+        if (transactionRef == null || transactionRef.trim().isEmpty()) {
+            throw new CusValidationException("Transaction reference is required.");
+        }
+        try {
+            return repository.getTransactionDetail(customerId, transactionRef.trim(), accountNumber.trim());
         } catch (DataAccessException ex) {
             handleDatabaseException(ex);
             throw ex;

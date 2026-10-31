@@ -149,6 +149,92 @@ public class CusTransactionHistoryRepository {
     }
 
     /**
+     * Retrieves single transaction detail for a given transaction reference and authenticated customer's account.
+     * Throws AccountNotFoundException if account does not belong to customer, or transaction is not found / does not involve this account.
+     */
+    public CusTransactionHistoryItemDTO getTransactionDetail(UUID customerId, String transactionRef, String accountNumber) {
+        byte[] accountId = verifyAndGetAccountId(customerId, accountNumber);
+
+        String sql = "SELECT bt.transaction_ref, bt.initiated_at AS transaction_date, bt.transaction_type, bt.status, " +
+                     "CASE WHEN bt.source_account_id = ? THEN 'SOURCE' ELSE 'DESTINATION' END AS account_side, " +
+                     "bt.amount, bt.currency, bt.service_fee, bt.description, " +
+                     "sa.account_number AS source_account_number, da.account_number AS destination_account_number, " +
+                     "bt.failure_code, bt.failure_message, bt.initiated_at, bt.completed_at, " +
+                     "CASE " +
+                     "  WHEN bt.transaction_type IN ('INTERNAL_TRANSFER', 'EXTERNAL_PAYMENT') THEN " +
+                     "    CASE WHEN bt.source_account_id = ? THEN dc.full_name WHEN bt.destination_account_id = ? THEN sc.full_name ELSE NULL END " +
+                     "  ELSE NULL " +
+                     "END AS counterparty_name, " +
+                     "CASE WHEN sa.customer_id IS NOT NULL AND da.customer_id IS NOT NULL AND sa.customer_id = da.customer_id THEN 1 ELSE 0 END AS is_own_account " +
+                     "FROM bank_transactions bt " +
+                     "LEFT JOIN accounts sa ON bt.source_account_id = sa.account_id " +
+                     "LEFT JOIN accounts da ON bt.destination_account_id = da.account_id " +
+                     "LEFT JOIN customers sc ON sa.customer_id = sc.customer_id " +
+                     "LEFT JOIN customers dc ON da.customer_id = dc.customer_id " +
+                     "WHERE bt.transaction_ref = ? AND (bt.source_account_id = ? OR bt.destination_account_id = ?)";
+
+        List<CusTransactionHistoryItemDTO> list = jdbcTemplate.query(
+            sql,
+            (ResultSet rs, int rowNum) -> {
+                Timestamp tsDate = rs.getTimestamp("transaction_date");
+                Timestamp tsInit = rs.getTimestamp("initiated_at");
+                Timestamp tsComp = rs.getTimestamp("completed_at");
+
+                String txnType = rs.getString("transaction_type");
+                String status = rs.getString("status");
+                String accountSide = rs.getString("account_side");
+                String srcAcc = rs.getString("source_account_number");
+                String dstAcc = rs.getString("destination_account_number");
+                String desc = rs.getString("description");
+                String counterpartyName = rs.getString("counterparty_name");
+                boolean isOwnAccount = rs.getInt("is_own_account") == 1;
+
+                String direction = "SOURCE".equals(accountSide)
+                        ? ("COMPLETED".equals(status) ? "OUT" : "NONE")
+                        : ("COMPLETED".equals(status) ? "IN" : "NONE");
+
+                String displayTitle = buildDisplayTitle(
+                        txnType,
+                        accountNumber,
+                        srcAcc,
+                        dstAcc,
+                        counterpartyName,
+                        isOwnAccount,
+                        desc
+                );
+
+                return CusTransactionHistoryItemDTO.builder()
+                        .transactionRef(rs.getString("transaction_ref"))
+                        .transactionDate(tsDate != null ? tsDate.toLocalDateTime() : null)
+                        .transactionType(txnType)
+                        .status(status)
+                        .direction(direction)
+                        .amount(rs.getBigDecimal("amount"))
+                        .currency(rs.getString("currency"))
+                        .serviceFee(rs.getBigDecimal("service_fee"))
+                        .description(desc)
+                        .sourceAccountNumber(srcAcc)
+                        .destinationAccountNumber(dstAcc)
+                        .failureCode(rs.getString("failure_code"))
+                        .failureMessage(rs.getString("failure_message"))
+                        .initiatedAt(tsInit != null ? tsInit.toLocalDateTime() : null)
+                        .completedAt(tsComp != null ? tsComp.toLocalDateTime() : null)
+                        .counterpartyName(counterpartyName)
+                        .isOwnAccount(isOwnAccount)
+                        .displayTitle(displayTitle)
+                        .build();
+            },
+            accountId, accountId, accountId, transactionRef, accountId, accountId
+        );
+
+        if (list.isEmpty()) {
+            throw new AccountNotFoundException("Transaction not found or access denied for this account");
+        }
+
+        return list.get(0);
+    }
+
+    /**
      * Resolves the account_id binary for the given account number and authenticated customer UUID.
      * Throws AccountNotFoundException if the account does not exist or does not belong to the customer.
      */

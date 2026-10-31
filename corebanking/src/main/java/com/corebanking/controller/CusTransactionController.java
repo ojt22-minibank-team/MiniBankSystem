@@ -1,5 +1,6 @@
 package com.corebanking.controller;
 
+import com.corebanking.dto.CusTransactionHistoryItemDTO;
 import com.corebanking.dto.CusTransactionHistoryResponseDTO;
 import com.corebanking.service.CusTransactionService;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,19 @@ public class CusTransactionController {
         CusTransactionHistoryResponseDTO response = transactionService.getTransactionHistory(
                 accountNumber, status, transactionType, fromDate, toDate, minAmount, maxAmount, page, size
         );
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Retrieves single transaction detail for the authenticated customer.
+     */
+    @GetMapping("/{transactionRef}")
+    public ResponseEntity<CusTransactionHistoryItemDTO> getTransactionDetail(
+            @PathVariable("transactionRef") String transactionRef,
+            @RequestParam("accountNumber") String accountNumber
+    ) {
+        log.info("Fetching transaction detail for ref: {}, account: {}", transactionRef, accountNumber);
+        CusTransactionHistoryItemDTO response = transactionService.getTransactionDetail(transactionRef, accountNumber);
         return ResponseEntity.ok(response);
     }
 

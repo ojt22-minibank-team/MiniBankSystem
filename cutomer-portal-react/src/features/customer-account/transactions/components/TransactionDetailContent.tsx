@@ -1,16 +1,24 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { toBlob } from "html-to-image";
 import {
-  X,
+  Building2,
   CheckCircle2,
   AlertCircle,
   XCircle,
   Clock,
+  RotateCcw,
+  Info,
   Copy,
   Check,
-  Building2,
-  Info,
   Printer,
-  RotateCcw,
+  ArrowLeft,
+  Share2,
+  Download,
+  Home,
+  History,
+  Loader2,
+  X,
 } from "lucide-react";
 import type { CusTransactionHistoryItemDTO } from "../types/transactionHistoryTypes";
 import {
@@ -22,9 +30,9 @@ import TransactionStatusBadge from "./TransactionStatusBadge";
 import TransferReceiptView from "../../../transfer/components/TransferReceiptView";
 import { mapHistoryItemToTransferReceiptData } from "../utils/transactionReceiptAdapter";
 
-interface TransactionDetailModalProps {
-  transaction: CusTransactionHistoryItemDTO | null;
-  onClose: () => void;
+interface TransactionDetailContentProps {
+  transaction: CusTransactionHistoryItemDTO;
+  onBack: () => void;
 }
 
 type DetailViewMode =
@@ -69,34 +77,91 @@ function maskAccount(accNo?: string | null): string {
   return clean;
 }
 
-export default function TransactionDetailModal({
+/* -------------------------------------------------------------------------- */
+/* Social & Chat Icons for Desktop Receipt Sharing                            */
+/* -------------------------------------------------------------------------- */
+
+const TelegramIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z" />
+  </svg>
+);
+
+const ViberIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M19.78 14.54c-.5-.33-1.03-.61-1.58-.84-.53-.22-1.11-.27-1.63-.07-.36.14-.68.39-.96.68l-.57.57c-.23.23-.55.33-.86.23-.9-.29-2.27-1.1-3.26-2.09-.99-.99-1.8-2.36-2.09-3.26-.1-.31 0-.63.23-.86l.57-.57c.29-.28.54-.6.68-.96.2-.52.15-1.1-.07-1.63-.23-.55-.51-1.08-.84-1.58-.45-.67-1.14-1.07-1.94-1.11-.8-.04-1.57.28-2.11.87l-.46.5c-.75.82-1.12 1.91-1.02 3 .27 2.8 1.92 6.09 4.38 8.55 2.46 2.46 5.75 4.11 8.55 4.38 1.09.1 2.18-.27 3-1.02l.5-.46c.59-.54.91-1.31.87-2.11-.04-.8-.44-1.49-1.11-1.94m-5.08-10.7c3.48.33 6.22 3.07 6.55 6.55m-6.55-4.14c1.98.27 3.54 1.83 3.81 3.81" />
+  </svg>
+);
+
+const MessengerIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M12 2C6.477 2 2 6.145 2 11.258c0 2.91 1.455 5.518 3.735 7.185V22l3.415-1.874c.905.25 1.865.385 2.85.385 5.523 0 10-4.145 10-9.253C22 6.145 17.523 2 12 2zm1.06 12.38l-2.695-2.875-5.258 2.875 5.786-6.142 2.76 2.875 5.193-2.875-5.786 6.142z" />
+  </svg>
+);
+
+const WhatsAppIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.888 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+  </svg>
+);
+
+const isMobileDevice = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const userAgent = navigator.userAgent || "";
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(userAgent);
+};
+
+async function copyImageToClipboard(blob: Blob): Promise<boolean> {
+  if (
+    typeof ClipboardItem !== "undefined" &&
+    navigator.clipboard &&
+    navigator.clipboard.write
+  ) {
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+export default function TransactionDetailContent({
   transaction,
-  onClose,
-}: TransactionDetailModalProps) {
+  onBack,
+}: TransactionDetailContentProps) {
+  const navigate = useNavigate();
   const [copied, setCopied] = useState<boolean>(false);
+  const [isSharing, setIsSharing] = useState<boolean>(false);
+  const [showShareModal, setShowShareModal] = useState<boolean>(false);
+  const [shareImageBlob, setShareImageBlob] = useState<Blob | null>(null);
+  const [shareImageUrl, setShareImageUrl] = useState<string | null>(null);
+  const [imageCopied, setImageCopied] = useState<boolean>(false);
 
-  // ESC key listener for modal dismissal
-  useEffect(() => {
-    if (!transaction) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [transaction, onClose]);
-
-  // Ensure body print class is cleanly removed if modal unmounts while printing
+  // Clean up print isolation class if unmounted while printing
   useEffect(() => {
     return () => {
       document.body.classList.remove("printing-transaction-history-receipt");
     };
   }, []);
 
-  if (!transaction) return null;
+  // Clean up object URL when component unmounts
+  useEffect(() => {
+    return () => {
+      if (shareImageUrl) {
+        URL.revokeObjectURL(shareImageUrl);
+      }
+    };
+  }, [shareImageUrl]);
 
   const viewMode = getViewMode(transaction.status);
   const isCompleted = viewMode === "SUCCESS_RECEIPT";
@@ -126,10 +191,125 @@ export default function TransactionDetailModal({
     try {
       await navigator.clipboard.writeText(transaction.transactionRef);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), 2500);
     } catch {
       // Ignore clipboard write failures gracefully
     }
+  };
+
+  const getReceiptBlob = async (element: HTMLElement): Promise<Blob> => {
+    const blob = await toBlob(element, {
+      pixelRatio: 2,
+      backgroundColor: "#ffffff",
+      filter: (node: Node) => {
+        if (node instanceof HTMLElement && node.classList.contains("no-print")) {
+          return false;
+        }
+        return true;
+      },
+    });
+    if (!blob) throw new Error("Failed to generate image blob");
+    return blob;
+  };
+
+  const handleShare = async () => {
+    if (isSharing) return;
+    setIsSharing(true);
+
+    try {
+      const receiptElement =
+        (document.getElementById("receipt-capture-area") as HTMLElement) ||
+        (document.querySelector(".print-receipt-container") as HTMLElement);
+
+      if (!receiptElement) {
+        throw new Error("Receipt element not found");
+      }
+
+      const blob = await getReceiptBlob(receiptElement);
+      const filename = `ekaraj-receipt-${transaction.transactionRef || Date.now()}.png`;
+      const file = new File([blob], filename, { type: "image/png" });
+
+      if (
+        isMobileDevice() &&
+        typeof navigator !== "undefined" &&
+        navigator.share &&
+        navigator.canShare &&
+        navigator.canShare({ files: [file] })
+      ) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: "EKARAJ BANK Transfer Receipt",
+            text: `Official EKARAJ BANK Transfer Receipt\nRef: ${transaction.transactionRef}\nAmount: ${Number(transaction.amount).toLocaleString()} ${transaction.currency || "MMK"}`,
+          });
+          return;
+        } catch (shareErr: unknown) {
+          if ((shareErr as Error)?.name === "AbortError") {
+            return;
+          }
+        }
+      }
+
+      const copiedOk = await copyImageToClipboard(blob);
+      setImageCopied(copiedOk);
+
+      if (shareImageUrl) {
+        URL.revokeObjectURL(shareImageUrl);
+      }
+      setShareImageBlob(blob);
+      setShareImageUrl(URL.createObjectURL(blob));
+      setShowShareModal(true);
+    } catch (err) {
+      console.error("Failed to share receipt image:", err);
+      if (typeof navigator !== "undefined" && navigator.share) {
+        try {
+          await navigator.share({
+            title: "EKARAJ BANK Transfer Receipt",
+            text: `EKARAJ BANK Transfer Receipt\nRef: ${transaction.transactionRef}\nAmount: ${Number(transaction.amount).toLocaleString()} ${transaction.currency || "MMK"}`,
+          });
+        } catch {
+          // User cancelled
+        }
+      }
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleShareToTelegram = async () => {
+    if (shareImageBlob) {
+      const ok = await copyImageToClipboard(shareImageBlob);
+      if (ok) setImageCopied(true);
+    }
+    window.open("https://web.telegram.org", "_blank", "noopener,noreferrer");
+  };
+
+  const handleShareToViber = async () => {
+    if (shareImageBlob) {
+      const ok = await copyImageToClipboard(shareImageBlob);
+      if (ok) setImageCopied(true);
+    }
+    try {
+      window.location.href = "viber://";
+    } catch {
+      window.open("https://www.viber.com", "_blank", "noopener,noreferrer");
+    }
+  };
+
+  const handleShareToMessenger = async () => {
+    if (shareImageBlob) {
+      const ok = await copyImageToClipboard(shareImageBlob);
+      if (ok) setImageCopied(true);
+    }
+    window.open("https://www.messenger.com", "_blank", "noopener,noreferrer");
+  };
+
+  const handleShareToWhatsApp = async () => {
+    if (shareImageBlob) {
+      const ok = await copyImageToClipboard(shareImageBlob);
+      if (ok) setImageCopied(true);
+    }
+    window.open("https://web.whatsapp.com", "_blank", "noopener,noreferrer");
   };
 
   const handlePrint = () => {
@@ -142,19 +322,10 @@ export default function TransactionDetailModal({
       window.removeEventListener("afterprint", cleanup);
     };
 
-    // Listen to afterprint event (fires on both print confirmation and cancellation)
     window.addEventListener("afterprint", cleanup);
-
-    // 1. Add print isolation class to body
     document.body.classList.add(printClassName);
-
-    // 2. Clear document title (existing convention to suppress browser print header)
     document.title = "";
-
-    // 3. Open native print dialog
     window.print();
-
-    // 4. Fallback cleanup in case afterprint does not fire in some browsers
     setTimeout(cleanup, 1000);
   };
 
@@ -212,64 +383,251 @@ export default function TransactionDetailModal({
   const serviceFeeNum = Number(transaction.serviceFee || 0);
   const totalDebitedNum = isOutgoing && isCompleted ? Number(transaction.amount || 0) + serviceFeeNum : null;
 
-  // If this is a completed INTERNAL_TRANSFER, reuse the shared TransferReceiptView
+  // For COMPLETED INTERNAL_TRANSFER, reuse the official TransferReceiptView
   if (isCompleted && isInternalTransfer) {
     const receiptData = mapHistoryItemToTransferReceiptData(transaction);
 
     return (
-      <div
-        className="transaction-history-receipt-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 sm:p-6 backdrop-blur-sm animate-in fade-in duration-200"
-        onClick={onClose}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="transaction-detail-title"
-      >
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-xl print:static print:w-full print:max-w-none print:m-0"
-        >
-          <TransferReceiptView
-            data={receiptData}
-            showQr={true}
-            onClose={onClose}
-            className="transaction-history-receipt-print max-h-[90vh] overflow-y-auto"
-            actions={
-              <div className="flex items-center justify-end gap-3">
+      <div className="w-full max-w-xl mx-auto print:max-w-none print:m-0">
+        <TransferReceiptView
+          data={receiptData}
+          showQr={true}
+          onClose={onBack}
+          className="transaction-history-receipt-print shadow-xl rounded-3xl"
+          actions={
+            <div className="space-y-3 pt-1">
+              {/* Row of 3 Primary Action Buttons: [ Share Receipt ] [ Download PDF ] [ Copy Ref ] */}
+              <div className="grid grid-cols-3 gap-2">
+                {/* 1. Share Receipt */}
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  disabled={isSharing}
+                  className="flex items-center justify-center gap-1.5 py-2.5 px-1.5 sm:px-2 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100 font-bold text-xs text-slate-700 transition shadow-2xs disabled:opacity-75 disabled:cursor-wait cursor-pointer"
+                  title="Share Receipt (opens social apps & copies slip to clipboard)"
+                >
+                  {isSharing ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#00A3C4] shrink-0" />
+                      <span className="truncate">Sharing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Share2 className="w-3.5 h-3.5 text-[#00A3C4] shrink-0" />
+                      <span className="truncate">Share Receipt</span>
+                    </>
+                  )}
+                </button>
+
+                {/* 2. Download PDF */}
                 <button
                   type="button"
                   onClick={handlePrint}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-[#0878E8]"
+                  className="flex items-center justify-center gap-1.5 py-2.5 px-1.5 sm:px-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 font-bold text-xs text-slate-700 transition shadow-2xs cursor-pointer"
+                  title="Download or Print PDF receipt"
                 >
-                  <Printer className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Print Receipt</span>
+                  <Download className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                  <span className="truncate">Download PDF</span>
+                </button>
+
+                {/* 3. Copy Ref */}
+                <button
+                  type="button"
+                  onClick={handleCopyRef}
+                  className="flex items-center justify-center gap-1.5 py-2.5 px-1.5 sm:px-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 font-bold text-xs text-slate-700 transition shadow-2xs cursor-pointer"
+                  title="Copy transaction reference code"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span className="text-emerald-700 truncate">Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                      <span className="truncate">Copy Ref</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Secondary Return / Navigation Buttons */}
+              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => navigate("/dashboard")}
+                  className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-slate-200 bg-white font-bold text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer"
+                >
+                  <Home className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Dashboard</span>
                 </button>
                 <button
                   type="button"
-                  onClick={onClose}
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-[#0878E8]"
+                  onClick={() => navigate("/transaction")}
+                  className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-slate-200 bg-white font-bold text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer"
                 >
-                  Close
+                  <History className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Transaction History</span>
                 </button>
               </div>
-            }
-          />
-        </div>
+            </div>
+          }
+        />
+
+        {/* Interactive Desktop Share Modal */}
+        {showShareModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in"
+              onClick={() => setShowShareModal(false)}
+            />
+            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-5 text-slate-800 animate-in zoom-in-95 border border-slate-100 max-h-[92vh] overflow-y-auto">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-cyan-50 text-[#00A3C4] flex items-center justify-center">
+                    <Share2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 leading-tight">
+                      Share Transfer Receipt
+                    </h3>
+                    <p className="text-[10px] font-medium text-slate-400">
+                      EKARAJ BANK Official Slip
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowShareModal(false)}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                  aria-label="Close modal"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Receipt Preview Thumbnail */}
+              {shareImageUrl && (
+                <div className="mb-3 p-1.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-center overflow-hidden">
+                  <img
+                    src={shareImageUrl}
+                    alt="Receipt Preview"
+                    className="max-h-40 w-auto object-contain rounded-xl shadow-2xs"
+                  />
+                </div>
+              )}
+
+              {/* Status Banner */}
+              {imageCopied && (
+                <div className="mb-3 p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl flex items-center gap-2 text-xs font-bold animate-in fade-in">
+                  <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>
+                    Slip image copied! Press <strong>Ctrl + V</strong> in your chat to paste.
+                  </span>
+                </div>
+              )}
+
+              {/* Quick Copy Image Button */}
+              <div className="mb-3">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (shareImageBlob) {
+                      const ok = await copyImageToClipboard(shareImageBlob);
+                      setImageCopied(ok);
+                    }
+                  }}
+                  className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl font-bold text-xs transition duration-200 shadow-sm cursor-pointer ${
+                    imageCopied
+                      ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20"
+                      : "bg-[#00A3C4] hover:bg-[#0891B2] text-white shadow-cyan-500/20"
+                  }`}
+                >
+                  {imageCopied ? (
+                    <>
+                      <Check className="w-4 h-4 shrink-0" />
+                      <span>Slip Image Copied to Clipboard!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4 shrink-0" />
+                      <span>Copy Slip Image</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Social / Chat Share Apps */}
+              <div className="pt-3 border-t border-slate-100">
+                <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">
+                  Open Chat App to Paste
+                </p>
+
+                <div className="grid grid-cols-4 gap-2">
+                  {/* Telegram */}
+                  <button
+                    type="button"
+                    onClick={handleShareToTelegram}
+                    className="flex flex-col items-center justify-center p-2 rounded-2xl border border-slate-200 hover:border-[#229ED9] hover:bg-[#229ED9]/5 transition group cursor-pointer"
+                    title="Open Telegram Web"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-[#229ED9]/10 text-[#229ED9] flex items-center justify-center group-hover:scale-110 transition">
+                      <TelegramIcon className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-700 mt-1">Telegram</span>
+                  </button>
+
+                  {/* Viber */}
+                  <button
+                    type="button"
+                    onClick={handleShareToViber}
+                    className="flex flex-col items-center justify-center p-2 rounded-2xl border border-slate-200 hover:border-[#7360F2] hover:bg-[#7360F2]/5 transition group cursor-pointer"
+                    title="Open Viber App"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-[#7360F2]/10 text-[#7360F2] flex items-center justify-center group-hover:scale-110 transition">
+                      <ViberIcon className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-700 mt-1">Viber</span>
+                  </button>
+
+                  {/* Messenger */}
+                  <button
+                    type="button"
+                    onClick={handleShareToMessenger}
+                    className="flex flex-col items-center justify-center p-2 rounded-2xl border border-slate-200 hover:border-[#0084FF] hover:bg-[#0084FF]/5 transition group cursor-pointer"
+                    title="Open Messenger"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-[#0084FF]/10 text-[#0084FF] flex items-center justify-center group-hover:scale-110 transition">
+                      <MessengerIcon className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-700 mt-1">Messenger</span>
+                  </button>
+
+                  {/* WhatsApp */}
+                  <button
+                    type="button"
+                    onClick={handleShareToWhatsApp}
+                    className="flex flex-col items-center justify-center p-2 rounded-2xl border border-slate-200 hover:border-[#25D366] hover:bg-[#25D366]/5 transition group cursor-pointer"
+                    title="Open WhatsApp Web"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-[#25D366]/10 text-[#25D366] flex items-center justify-center group-hover:scale-110 transition">
+                      <WhatsAppIcon className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-700 mt-1">WhatsApp</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div
-      className="transaction-history-receipt-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 sm:p-6 backdrop-blur-sm animate-in fade-in duration-200"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="transaction-detail-title"
-    >
-      <div
-        className="transaction-history-receipt-print relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white shadow-2xl transition-all border border-slate-200 animate-in zoom-in-95 duration-200 flex flex-col print-receipt-container"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="w-full max-w-xl mx-auto">
+      <div className="transaction-history-receipt-print relative w-full overflow-hidden rounded-3xl bg-white shadow-xl border border-slate-200 flex flex-col print-receipt-container">
         {/* Bank Header */}
         <div className="bg-[#08295C] px-6 py-4 text-white flex items-center justify-between border-b border-blue-900/50 shrink-0">
           <div className="flex items-center gap-2.5">
@@ -286,14 +644,6 @@ export default function TransactionDetailModal({
             <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-blue-800/60 text-blue-200 border border-blue-700/50">
               {formatTypeLabel(transaction.transactionType)}
             </span>
-            <button
-              type="button"
-              onClick={onClose}
-              className="no-print p-1.5 rounded-lg text-blue-200 hover:text-white hover:bg-blue-800/80 transition-colors focus:outline-none focus:ring-2 focus:ring-white/40"
-              aria-label="Close transaction details"
-            >
-              <X className="w-5 h-5" />
-            </button>
           </div>
         </div>
 
@@ -304,7 +654,7 @@ export default function TransactionDetailModal({
           >
             {statusIcon}
           </div>
-          <h3 id="transaction-detail-title" className="text-lg font-black text-slate-900 tracking-tight">
+          <h3 className="text-lg font-black text-slate-900 tracking-tight">
             {statusHeading}
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">{primaryTitle}</p>
@@ -318,7 +668,7 @@ export default function TransactionDetailModal({
           </div>
         </div>
 
-        {/* Modal Scrollable Body */}
+        {/* Card Body */}
         <div className="p-6 space-y-5 flex-1">
           {/* Status-specific Alerts / Notice Banners */}
           {viewMode === "REVERSED" && (
@@ -587,8 +937,8 @@ export default function TransactionDetailModal({
           </div>
         </div>
 
-        {/* Modal Footer */}
-        <div className="no-print p-4 sm:p-5 bg-slate-50/80 border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
+        {/* Footer / Actions */}
+        <div className="no-print p-4 sm:p-5 bg-slate-50/80 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-3 shrink-0">
           {isCompleted && (
             <button
               type="button"
@@ -601,10 +951,11 @@ export default function TransactionDetailModal({
           )}
           <button
             type="button"
-            onClick={onClose}
-            className="w-full sm:w-auto px-6 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-[#0878E8]"
+            onClick={onBack}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-6 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-[#0878E8]"
           >
-            Close
+            <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
+            <span>Back to Transactions</span>
           </button>
         </div>
       </div>
