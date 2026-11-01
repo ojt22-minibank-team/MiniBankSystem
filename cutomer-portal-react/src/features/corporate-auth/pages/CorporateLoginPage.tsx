@@ -41,8 +41,8 @@ export default function CorporateLoginPage() {
 
   return (
     <EkarajAuthLayout
-      title="EKARAJ BANK | Corporate Login"
-      portalLabel="EKARAJ BANK | Corporate Portal"
+      title="EKARAJ BANK  Corporate Login"
+      portalLabel="EKARAJ Bank  Corporate Portal"
       securityLabel="Secure Corporate Banking"
     >
       <section aria-label="Corporate login card" className="grid w-full max-w-[976px] rounded-3xl border border-[#CDC0A8] bg-[#F5F3EF] shadow-[0_18px_50px_-26px_rgba(18,46,82,0.3)] md:grid-cols-[0.92fr_1.08fr]">
@@ -78,7 +78,7 @@ export default function CorporateLoginPage() {
         <section aria-label="Corporate banking login" className="flex min-w-0 items-center px-5 py-3 sm:px-8 md:px-7 lg:px-9 md:[@media(max-height:700px)]:px-6 md:[@media(max-height:700px)]:py-1">
           <div className="mx-auto w-full max-w-[392px] md:[@media(max-height:700px)]:max-w-none">
             <div className="mb-4 md:[@media(max-height:700px)]:mb-2">
-              <h1 className="font-serif text-2xl font-medium leading-8 tracking-tight text-[#1A365D]">Corporate Login</h1>
+              <h1 className="font-serif text-2xl font-medium leading-8 tracking-tight text-[#1A365D]">Welcome to EKARAJ Bank Corporate Login</h1>
               <div aria-hidden="true" className="mt-1 h-px w-10 bg-[#C6A15B]" />
             </div>
             <form onSubmit={submit} autoComplete="off" noValidate className={corporateLoginFormClass}>
