@@ -64,6 +64,8 @@ export const API_ENDPOINTS = {
   OTC: {
     DEPOSIT: "/api/transactions/otc/deposit",
     WITHDRAW: "/api/transactions/otc/withdraw",
+    PARAMETERS: "/api/transactions/otc/parameters",
+    CHECK_REFERENCE: "/api/transactions/otc/check-reference",
   },
 
   // Teller Operations
