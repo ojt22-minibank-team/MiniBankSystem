@@ -11,11 +11,31 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
+  otpRequired?: boolean;
+  challengeGroupId?: string;
+  destinationMasked?: string;
   accessToken: string;
   refreshToken: string;
   username: string;
   roles: string[];
   permissions: string[];
+}
+
+export interface OtpVerifyRequest {
+  challengeGroupId: string;
+  otp: string;
+}
+
+export interface OtpResendRequest {
+  challengeGroupId: string;
+}
+
+export interface OtpResendResponse {
+  success: boolean;
+  message: string;
+  challengeGroupId: string;
+  resendNo?: number;
+  maxResendAttempts?: number;
 }
 
 export interface CoreApiResponse<T> {
@@ -366,3 +386,4 @@ export interface DailyCashSummaryResponse {
   withdrawalCount: number;
   currency: string;
 }
+

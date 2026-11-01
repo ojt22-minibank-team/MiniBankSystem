@@ -13,7 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
+import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -241,4 +242,15 @@ public ResponseEntity<Map<String, Object>> handleAuthException(AuthException ex)
     return buildErrorResponse(HttpStatus.UNAUTHORIZED, "AUTH_FAILED", ex.getMessage());
 }
 
+@ExceptionHandler(MissingRequestHeaderException.class)
+public ResponseEntity<Map<String, Object>> handleMissingRequestHeaderException(MissingRequestHeaderException ex) {
+    String msg = "Required request header '" + ex.getHeaderName() + "' is not present.";
+    return buildErrorResponse(HttpStatus.BAD_REQUEST, "MISSING_HEADER", msg);
 }
+
+@ExceptionHandler(HttpMessageNotReadableException.class)
+public ResponseEntity<Map<String, Object>> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex) {
+    return buildErrorResponse(HttpStatus.BAD_REQUEST, "INVALID_REQUEST_BODY", "Required request body is missing or invalid.");
+}
+}
+

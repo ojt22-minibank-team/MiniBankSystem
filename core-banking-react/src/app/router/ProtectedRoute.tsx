@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../features/auth/hooks/useAuth';
 
@@ -7,16 +7,19 @@ interface ProtectedRouteProps {
   requiredRole?: string | string[];
 }
 
-/**
- * Guards a route by checking:
- * 1. isAuthenticated — token present and auth state loaded
- * 2. requiredRole — user must have at least one of the specified roles (e.g. 'ADMIN' or ['ADMIN', 'AUDITOR'])
- *
- * Unauthenticated users are redirected to /login.
- * Authenticated users without the required role are redirected to /unauthorized.
- */
+// Token ဖျက်ပြီးမှ Login ကို ညွှန်းပေးမယ့် Helper Component
+function RoleRedirect({ logout }: { logout: () => void }) {
+  useEffect(() => {
+    if (logout) {
+      logout();
+    }
+  }, [logout]);
+  
+  return <Navigate to="/login" replace />;
+}
+
 export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -37,7 +40,8 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
     });
 
     if (!hasRole) {
-      return <Navigate to="/unauthorized" replace />;
+      // Permission မရှိရင် Token ဖျက်ပြီး Login ပြန်ဝင်ခိုင်းမယ်
+      return <RoleRedirect logout={logout} />;
     }
   }
 
