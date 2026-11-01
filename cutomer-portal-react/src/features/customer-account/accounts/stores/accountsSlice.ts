@@ -1,76 +1,109 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getMyAccounts } from '../api/customerAccountApi';
-import type { CustomerAccount } from '../types/accountTypes';
-import { submitP2PTransfer } from '../../../transfer/store/transferSlice';
+
+import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import axios from "axios";
+
+import { getMyAccounts } from "../api/customerAccountApi";
+import type { CustomerAccount } from "../types/accountTypes";
 
 interface AccountsState {
   accounts: CustomerAccount[];
   loading: boolean;
   error: string | null;
+  currentRequestId: string | null;
 }
 
-const initialState: AccountsState = {
+interface ThunkState {
+  accounts: AccountsState;
+}
+
+const createInitialState = (): AccountsState => ({
   accounts: [],
   loading: false,
   error: null,
-};
+  currentRequestId: null,
+});
 
-export const fetchMyAccounts = createAsyncThunk(
-  'accounts/fetchMyAccounts',
-  async (_, { rejectWithValue }) => {
+const LOAD_ERROR = "Failed to load accounts. Please try again.";
+
+export const fetchMyAccounts = createAsyncThunk<
+  CustomerAccount[],
+  void,
+  { state: ThunkState; rejectValue: string }
+>(
+  "accounts/fetchMyAccounts",
+  async (_, { rejectWithValue, signal }) => {
     try {
-      const data = await getMyAccounts();
-      return data;
-    } catch (error: any) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Failed to load accounts.'
-      );
+      return await getMyAccounts(signal);
+    } catch (error: unknown) {
+      if (signal.aborted) {
+        throw error;
+      }
+
+      if (axios.isAxiosError<{ message?: string }>(error)) {
+        const message = error.response?.data?.message;
+
+        return rejectWithValue(
+          typeof message === "string" && message.trim()
+            ? message
+            : LOAD_ERROR
+        );
+      }
+
+      return rejectWithValue(LOAD_ERROR);
     }
+  },
+  {
+    condition: (_, { getState }) => {
+      return !getState().accounts.loading;
+    },
   }
 );
 
 const accountsSlice = createSlice({
-  name: 'accounts',
-  initialState,
+  name: "accounts",
+  initialState: createInitialState(),
+
   reducers: {
-    clearAccounts: (state) => {
-      state.accounts = [];
-      state.loading = false;
-      state.error = null;
-    },
+    clearAccounts: () => createInitialState(),
   },
+
   extraReducers: (builder) => {
     builder
-      .addCase(fetchMyAccounts.pending, (state) => {
+      // Fetch accounts
+      .addCase(fetchMyAccounts.pending, (state, action) => {
         state.loading = true;
         state.error = null;
+        state.currentRequestId = action.meta.requestId;
       })
+
       .addCase(fetchMyAccounts.fulfilled, (state, action) => {
-        state.loading = false;
-        state.accounts = action.payload;
-      })
-      .addCase(fetchMyAccounts.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-      .addCase(submitP2PTransfer.fulfilled, (state, action) => {
-        const { sourceAccountNumber, totalDebitedAmount } = action.payload;
-        const sourceAcc = state.accounts.find(
-          (a) => a.accountNumber === sourceAccountNumber
-        );
-        if (sourceAcc) {
-          sourceAcc.availableBalance = Math.max(
-            0,
-            (Number(sourceAcc.availableBalance) || 0) - Number(totalDebitedAmount)
-          );
-          sourceAcc.currentBalance = Math.max(
-            0,
-            (Number(sourceAcc.currentBalance) || 0) - Number(totalDebitedAmount)
-          );
+        if (state.currentRequestId !== action.meta.requestId) {
+          return;
         }
+
+        state.accounts = action.payload;
+        state.loading = false;
+        state.error = null;
+        state.currentRequestId = null;
+      })
+
+      .addCase(fetchMyAccounts.rejected, (state, action) => {
+        if (state.currentRequestId !== action.meta.requestId) {
+          return;
+        }
+
+        state.loading = false;
+        state.currentRequestId = null;
+
+        if (action.meta.aborted) {
+          return;
+        }
+
+        state.error = action.payload ?? LOAD_ERROR;
       });
   },
 });
 
 export const { clearAccounts } = accountsSlice.actions;
+
 export default accountsSlice.reducer;

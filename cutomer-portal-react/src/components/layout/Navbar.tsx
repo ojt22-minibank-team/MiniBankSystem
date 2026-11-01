@@ -1,6 +1,4 @@
 import {
-  Search,
-  HelpCircle,
   ShieldCheck,
   User,
   Building2,
@@ -30,32 +28,14 @@ export default function Navbar() {
 
   return (
     <header className="no-print fixed left-64 right-0 top-0 z-20 flex h-20 items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0A192F] px-8 transition-colors duration-200">
-      {/* SEARCH */}
+      
       <div className="flex items-center">
-        <div className="relative w-[360px]">
-          <Search
-            size={18}
-            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-          />
-          <input
-            type="search"
-            placeholder="Search accounts or transactions"
-            aria-label="Search accounts or transactions"
-            className="h-10 w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 pl-10 pr-4 text-sm text-slate-700 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none transition-all duration-200 hover:border-slate-300 dark:hover:border-slate-600 focus:border-[#00A3C4] focus:bg-white dark:focus:bg-slate-800 focus:ring-4 focus:ring-cyan-50 dark:focus:ring-cyan-950/40"
-          />
-        </div>
+
+      
       </div>
 
       {/* RIGHT SECTION */}
       <div className="flex items-center gap-2">
-        {/* HELP */}
-        <button
-          type="button"
-          aria-label="Help and Support"
-          className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 transition hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-[#0A192F] dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-100 dark:focus:ring-cyan-950 cursor-pointer"
-        >
-          <HelpCircle size={19} />
-        </button>
 
         {/* NOTIFICATIONS DROPDOWN */}
         <NotificationDropdown />
