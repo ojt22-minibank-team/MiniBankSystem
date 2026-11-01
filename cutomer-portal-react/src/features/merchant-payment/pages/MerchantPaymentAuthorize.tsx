@@ -9,10 +9,11 @@ import { clearPendingPaymentRedirect } from '../../auth/utils/pendingPaymentRedi
 import { fetchPaymentDetails, fetchCustomerAccounts, authorizePayment } from '../api/merchantPaymentService';
 import type { PaymentDetails, CustomerAccount, PaymentReceipt as ReceiptType } from '../types/merchantPayment';
 
+import { EkarajCrown } from '../../../components/common/EkarajLogo';
 import { PinInput } from '../components/PinInput';
 import { PaymentReceipt } from '../components/PaymentReceipt';
 import { PaymentFailure } from '../components/PaymentFailure';
-import { WalletCards, CreditCard } from 'lucide-react';
+import { CreditCard } from 'lucide-react';
 
 const checkoutSchema = z.object({
   transactionPin: z.string()
@@ -162,7 +163,7 @@ export const MerchantPaymentAuthorize: React.FC = () => {
     );
   }
 
-  // TERMINAL ERRORS: Show the massive Failure Screen for everything EXCEPT "INVALID_PIN"
+  // TERMINAL ERRORS: Show the Failure Screen for everything EXCEPT "INVALID_PIN"
   if ((errorMessage && errorCode !== 'INVALID_PIN') || (errorMessage && !accounts.length) || !details) {
      return <PaymentFailure details={details} errorMessage={errorMessage || 'Failed to load payment details.'} onRetry={handleRetry} />;
   }
@@ -173,41 +174,39 @@ export const MerchantPaymentAuthorize: React.FC = () => {
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
-      {/* Group Header */}
-      <div className="flex items-center gap-3.5 border-b border-slate-200/80 pb-5">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-          <WalletCards className="h-6 w-6" />
-        </div>
+      {/* EKARAJ Brand Header */}
+      <div className="flex items-center gap-3.5 border-b border-slate-200/80 dark:border-slate-800 pb-5">
+        <EkarajCrown size={42} />
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Merchant Payment</h1>
-          <p className="text-xs text-slate-500">Secure Checkout Authorization</p>
+          <h1 className="text-xl font-bold text-[#0A192F] dark:text-white">EKARAJ BANK</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Merchant Payment Authorization</p>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-xs">
+      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#0A192F] p-6 sm:p-8 shadow-xs transition-colors">
         {/* INLINE ERROR: Only show here if the customer typed the wrong PIN */}
         {errorMessage && errorCode === 'INVALID_PIN' && (
-          <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-xs font-semibold text-red-600">
+          <div className="mb-5 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-center text-xs font-semibold text-red-600 dark:text-red-400">
             {errorMessage}
           </div>
         )}
         
         {/* Merchant & Order Details */}
-        <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-4 mb-6">
+        <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/50 p-4 mb-6">
           <div className="flex justify-between items-center mb-2.5">
-            <span className="text-slate-500 text-xs font-medium">Merchant</span>
-            <span className="font-semibold text-slate-900 text-sm">{details.merchantName}</span>
+            <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">Merchant</span>
+            <span className="font-semibold text-slate-900 dark:text-white text-sm">{details.merchantName}</span>
           </div>
           {details.orderId && (
             <div className="flex justify-between items-center mb-3">
-              <span className="text-slate-500 text-xs font-medium">Order ID</span>
-              <span className="font-mono text-xs text-slate-700">{details.orderId}</span>
+              <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">Order ID</span>
+              <span className="font-mono text-xs text-slate-700 dark:text-slate-300">{details.orderId}</span>
             </div>
           )}
-          <div className="flex justify-between items-center pt-3 border-t border-slate-200/60">
-            <span className="text-slate-500 text-xs font-medium">Total Amount</span>
-            <span className="text-xl font-bold text-blue-600">
-              {details.amount.toLocaleString()} <span className="text-xs font-semibold text-slate-500">{details.currency}</span>
+          <div className="flex justify-between items-center pt-3 border-t border-slate-200/60 dark:border-slate-800">
+            <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">Total Amount</span>
+            <span className="text-xl font-bold text-[#00A3C4] dark:text-cyan-400">
+              {details.amount.toLocaleString()} <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{details.currency}</span>
             </span>
           </div>
         </div>
@@ -215,27 +214,27 @@ export const MerchantPaymentAuthorize: React.FC = () => {
         <form onSubmit={handleSubmit(onSubmit)}>
           {accounts.length > 0 ? (
             <div className="mb-6 text-left">
-              <label className="block text-xs font-semibold text-slate-700 mb-2 uppercase tracking-wider">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wider">
                 Pay From
               </label>
-              <div className="w-full py-3 px-4 border border-slate-200 bg-slate-50/80 rounded-xl text-slate-800 text-sm font-medium flex justify-between items-center">
+              <div className="w-full py-3 px-4 border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/50 rounded-xl text-slate-800 dark:text-slate-200 text-sm font-medium flex justify-between items-center">
                 <div className="flex items-center space-x-3">
-                  <div className="h-9 w-9 rounded-xl bg-blue-100/70 text-blue-600 flex items-center justify-center font-bold">
+                  <div className="h-9 w-9 rounded-xl bg-cyan-50 dark:bg-cyan-950/40 text-[#00A3C4] flex items-center justify-center font-bold">
                     <CreditCard className="h-4 w-4" />
                   </div>
                   <div>
-                    <div className="text-slate-900 font-semibold text-sm">{accounts[0].accountType} Account</div>
-                    <div className="text-slate-500 text-xs font-mono">****{accounts[0].accountNumber.slice(-4)}</div>
+                    <div className="text-slate-900 dark:text-white font-semibold text-sm">{accounts[0].accountType} Account</div>
+                    <div className="text-slate-500 dark:text-slate-400 text-xs font-mono">****{accounts[0].accountNumber.slice(-4)}</div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider mb-0.5">Available Balance</div>
-                  <div className="text-slate-900 font-bold text-sm">{accounts[0].availableBalance.toLocaleString()} {accounts[0].currency}</div>
+                  <div className="text-slate-400 dark:text-slate-500 text-[10px] font-semibold uppercase tracking-wider mb-0.5">Available Balance</div>
+                  <div className="text-slate-900 dark:text-white font-bold text-sm">{accounts[0].availableBalance.toLocaleString()} {accounts[0].currency}</div>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl text-xs font-medium border border-red-100">
+            <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded-xl text-xs font-medium border border-red-100 dark:border-red-900/40">
               No active CURRENT accounts found to pay from.
             </div>
           )}
@@ -255,14 +254,14 @@ export const MerchantPaymentAuthorize: React.FC = () => {
                 navigate('/dashboard');
               }}
               disabled={isSubmitting}
-              className="flex-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-3.5 transition-colors text-sm"
+              className="flex-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium py-3.5 transition-colors text-sm"
             >
               Cancel
             </button>
             <button 
               type="submit" 
               disabled={isSubmitting || accounts.length === 0}
-              className="flex-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+              className="flex-1 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-[#00A3C4] to-[#0284C7] hover:from-[#0891B2] hover:to-[#0369A1] shadow-md shadow-cyan-500/25 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all py-3.5 flex items-center justify-center gap-2"
             >
               {isSubmitting ? 'Processing...' : `Pay ${details.amount.toLocaleString()} ${details.currency}`}
             </button>
