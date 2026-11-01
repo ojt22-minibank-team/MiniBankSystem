@@ -16,7 +16,7 @@ import {
 
 
 import { AuthHeading, AuthField, AuthCodeField, AuthNotice, AuthSecurityNote, AuthPinRules, AuthSuccess } from "../components/IndividualAuthUI";
-import { authPrimaryButtonClass, authLinkButtonClass, authCodeInputClass, authCodeToggleClass } from "../components/IndividualAuthStyles";
+import { authLinkButtonClass, authCodeInputClass, authCodeToggleClass } from "../components/IndividualAuthStyles";
 
 function PinResetCard({ children }: { children: ReactNode }) {
   return (
@@ -312,10 +312,10 @@ function PinResetNewPinPage() {
           </p>
           <button
             type="button"
-            onClick={() => navigate("/profile")}
-            className={authPrimaryButtonClass}
+            onClick={() => navigate("/settings")}
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#56ABC0] px-5 py-2.5 text-sm font-semibold text-[#122E52] shadow-[0_6px_16px_-6px_rgba(37,99,235,0.55)] transition hover:bg-[#4DA0B5] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none"
           >
-            Back to Profile
+            Back to Settings
           </button>
           <AuthSecurityNote title="Keep your PIN private">
             Never share your transaction PIN with anyone, including bank staff.
