@@ -135,7 +135,12 @@ export default function MyAccountsPage() {
 
   const [retryKey, setRetryKey] = useState(0);
 
-  const locationState = location.state as { accountNumber?: string } | null;
+  const locationState = location.state as {
+    accountNumber?: string;
+    autoOpenLimitModal?: boolean;
+    returnTo?: string;
+    returnState?: any;
+  } | null;
   const [selectedAccountNumber, setSelectedAccountNumber] = useState<string | null>(
     locationState?.accountNumber || null,
   );
@@ -191,7 +196,13 @@ export default function MyAccountsPage() {
         accountNumber={accounts[0].accountNumber}
         allAccounts={accounts}
         onSelectAccount={(accNo) => setSelectedAccountNumber(accNo)}
-        onBack={() => navigate(-1)}
+        onBack={() => {
+          if (locationState?.returnTo) {
+            navigate(locationState.returnTo, { state: locationState.returnState });
+          } else {
+            navigate(-1);
+          }
+        }}
       />
     );
   }
@@ -204,8 +215,12 @@ export default function MyAccountsPage() {
         allAccounts={accounts}
         onSelectAccount={(accNo) => setSelectedAccountNumber(accNo)}
         onBack={() => {
-          setSelectedAccountNumber(null);
-          navigate(location.pathname, { replace: true, state: null });
+          if (locationState?.returnTo) {
+            navigate(locationState.returnTo, { state: locationState.returnState });
+          } else {
+            setSelectedAccountNumber(null);
+            navigate(location.pathname, { replace: true, state: null });
+          }
         }}
       />
     );

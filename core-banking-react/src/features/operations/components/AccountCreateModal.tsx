@@ -213,7 +213,7 @@ export default function AccountCreateModal({
             ) : (
               <div className="pt-3 text-xs text-gray-600">
                 <p>• <strong>Required Approvals:</strong> 1 signature</p>
-                <p>• <strong>Daily Limit:</strong> 50,000,000 MMK</p>
+                <p>• <strong>Daily Limit:</strong> Default 10,000,000 MMK (System Parameter)</p>
               </div>
             )}
           </div>

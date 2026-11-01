@@ -259,29 +259,34 @@ html.dark .border-red-200:not([data-bank-card] *) {
   border-color: rgba(244, 63, 94, 0.3) !important;
 }
 
+/* Top-level @page rule completely hides browser URL header and page number footer */
+@page {
+  margin: 0;
+  size: auto;
+}
+
 @media print {
   @page {
-    size: A4 portrait;
-    margin: 0; /* Strips browser URL, date, and page 1/1 header/footer */
+    margin: 0 !important; /* Strips browser URL, date, and page 1/1 header/footer */
   }
   html, body {
     width: 100% !important;
-    height: 100% !important;
+    height: auto !important;
     min-height: 100% !important;
     background: #ffffff !important;
     color: #0f172a !important;
-    padding: 0 !important;
+    padding: 8mm 0 !important;
     margin: 0 !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
   body {
     display: flex !important;
     flex-direction: column !important;
-    justify-content: center !important;
+    justify-content: flex-start !important;
     align-items: center !important;
-    padding: 0 !important;
+    padding: 8mm 0 !important;
     margin: 0 !important;
   }
   header,
@@ -297,12 +302,9 @@ html.dark .border-red-200:not([data-bank-card] *) {
   #root > div,
   main,
   main > div {
-    height: 100% !important;
-    min-height: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: center !important;
-    align-items: center !important;
+    height: auto !important;
+    min-height: 0 !important;
+    display: block !important;
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
@@ -311,9 +313,9 @@ html.dark .border-red-200:not([data-bank-card] *) {
     box-shadow: none !important;
     border: 1.5px solid #cbd5e1 !important;
     border-radius: 16px !important;
-    max-width: 700px !important;
+    max-width: 680px !important;
     width: 100% !important;
-    margin: auto !important;
+    margin: 0 auto !important;
     overflow: hidden !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
