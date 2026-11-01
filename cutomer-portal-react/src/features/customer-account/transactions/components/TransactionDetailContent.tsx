@@ -12,7 +12,6 @@ import {
   Copy,
   Check,
   Printer,
-  ArrowLeft,
   Share2,
   Download,
   Home,
@@ -938,8 +937,8 @@ export default function TransactionDetailContent({
         </div>
 
         {/* Footer / Actions */}
-        <div className="no-print p-4 sm:p-5 bg-slate-50/80 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-3 shrink-0">
-          {isCompleted && (
+        {isCompleted && (
+          <div className="no-print p-4 sm:p-5 bg-slate-50/80 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-3 shrink-0">
             <button
               type="button"
               onClick={handlePrint}
@@ -948,16 +947,8 @@ export default function TransactionDetailContent({
               <Printer className="w-3.5 h-3.5 text-slate-500" />
               <span>Print Receipt</span>
             </button>
-          )}
-          <button
-            type="button"
-            onClick={onBack}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-6 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-[#0878E8]"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
-            <span>Back to Transactions</span>
-          </button>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
