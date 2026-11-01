@@ -279,7 +279,7 @@ export default function TransferReceiptView({
 
       {/* Official Banking E-Receipt Card */}
       <div
-        className={`print-receipt-container max-w-xl print:max-w-[700px] print:w-[700px] mx-auto bg-white rounded-3xl print:rounded-2xl shadow-2xl print:shadow-none border border-slate-200 print:border-slate-300 overflow-hidden relative print:break-inside-avoid ${className}`}
+        className={`print-receipt-container max-w-xl mx-auto bg-white rounded-3xl print:rounded-2xl shadow-2xl print:shadow-none border border-slate-200 print:border-slate-300 overflow-hidden relative print:break-inside-avoid ${className}`}
       >
         {/* Printable/Shareable Receipt Slip Body */}
         <div id="receipt-capture-area" className="relative bg-white overflow-hidden print:break-inside-avoid">
@@ -296,7 +296,7 @@ export default function TransferReceiptView({
           </div>
 
         {/* Official Bank Header: EKARAJ BANK with Official Receipt directly below */}
-        <div className="bg-gradient-to-r from-[#00A3C4] to-[#0284C7] px-5 sm:px-6 py-4 print:py-4.5 print:px-8 text-white flex items-center justify-between border-b border-cyan-600/30 relative z-10 shadow-xs">
+        <div className="receipt-header-section bg-gradient-to-r from-[#00A3C4] to-[#0284C7] px-5 sm:px-6 py-4 print:py-4.5 print:px-8 text-white flex items-center justify-between border-b border-cyan-600/30 relative z-10 shadow-xs">
           <div>
             <h2 className="text-base sm:text-lg print:text-xl font-black tracking-wide uppercase text-white leading-tight">
               EKARAJ BANK
@@ -323,7 +323,7 @@ export default function TransferReceiptView({
         </div>
 
         {/* Hero Section: Status & Amount */}
-        <div className="bg-white/95 px-6 pt-5 pb-3 print:pt-6 print:pb-4 text-center relative z-10">
+        <div className="receipt-hero-section bg-white/95 px-6 pt-5 pb-3 print:pt-6 print:pb-4 text-center relative z-10">
           <div className="inline-flex items-center justify-center gap-2 mb-2 print:mb-1.5">
             {statusConfig.theme === "failed" ? (
               <div className="w-6 h-6 sm:w-6.5 sm:h-6.5 print:w-7 print:h-7 rounded-full bg-rose-500 text-white flex items-center justify-center shadow-xs shadow-rose-500/40 shrink-0">
@@ -359,7 +359,7 @@ export default function TransferReceiptView({
         </div>
 
         {/* FROM ➔ TO Transfer Pathway Card */}
-        <div className="p-4 sm:p-5 print:px-8 print:py-4 bg-slate-50/70 border-b border-slate-100 relative z-10">
+        <div className="receipt-pathway-section p-4 sm:p-5 print:px-8 print:py-4 bg-slate-50/70 border-b border-slate-100 relative z-10">
           <div className="bg-white rounded-2xl print:rounded-xl border border-slate-200/90 p-4 print:p-4 shadow-2xs">
             {/* Header: FROM  →  TO */}
             <div className="flex items-center justify-between text-[10px] print:text-xs font-black uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-2 print:pb-1.5 mb-3 print:mb-2.5">
@@ -402,14 +402,14 @@ export default function TransferReceiptView({
         </div>
 
         {/* Transaction Details (Sequential Order 1 to 8) */}
-        <div className="px-6 pt-3.5 pb-2.5 print:px-8 print:pt-3.5 print:pb-2.5 bg-white/95 border-b border-slate-100 relative z-10">
+        <div className="receipt-details-wrapper px-6 pt-3.5 pb-2.5 print:px-8 print:pt-3.5 print:pb-2.5 bg-white/95 border-b border-slate-100 relative z-10">
           <div className="border-b border-slate-200/80 pb-2 mb-2 print:pb-2 print:mb-2">
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 print:text-[11px]">
               Transaction Details
             </h4>
           </div>
 
-          <div className="divide-y divide-slate-100 text-xs sm:text-[13px] print:text-sm">
+          <div className="receipt-details-list divide-y divide-slate-100 text-xs sm:text-[13px] print:text-sm">
             {/* 1. Transaction ID */}
             <div className="flex items-center justify-between py-2 sm:py-2.5 print:py-2 gap-3">
               <span className="text-slate-600 font-semibold shrink-0 print:text-[13px]">Transaction ID</span>
@@ -515,7 +515,7 @@ export default function TransferReceiptView({
 
         {/* Compact Integrated Transaction QR Section */}
         {showQr && (
-          <div className="py-2.5 px-6 border-b border-slate-100 print:border-b-0 flex flex-col print:flex-row print:items-center print:justify-between items-center justify-center text-center print:text-left relative z-10 bg-slate-50/50 print:bg-slate-50/30 print:px-8 print:py-3.5 print:break-inside-avoid">
+          <div className="receipt-qr-section py-2.5 px-6 border-b border-slate-100 print:border-b-0 flex flex-col print:flex-row print:items-center print:justify-between items-center justify-center text-center print:text-left relative z-10 bg-slate-50/50 print:bg-slate-50/30 print:px-8 print:py-3.5 print:break-inside-avoid">
             {/* Left side in print: Official bank footer notes */}
             <div className="hidden print:block space-y-1 text-slate-500 max-w-sm">
               <p className="text-[10px] print:text-[11px] font-bold text-slate-800 tracking-wider uppercase">
