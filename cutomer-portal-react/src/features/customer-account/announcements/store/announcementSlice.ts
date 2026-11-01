@@ -1,3 +1,4 @@
+
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
 import {
@@ -18,9 +19,7 @@ interface AnnouncementState {
   // announcementId -> requestId
   pendingRequests: Record<number, string>;
 
-  // Active request ID for mark-all operation
   markAllRequestId: string | null;
-
   fetchRequestId: string | null;
   actionError: string | null;
 }
@@ -29,7 +28,7 @@ interface ThunkState {
   announcements: AnnouncementState;
 }
 
-const initialState: AnnouncementState = {
+const createInitialState = (): AnnouncementState => ({
   announcements: [],
   loading: false,
   hasLoaded: false,
@@ -38,14 +37,18 @@ const initialState: AnnouncementState = {
   markAllRequestId: null,
   fetchRequestId: null,
   actionError: null,
-};
+});
 
-const LOAD_ERROR = "We couldn't load announcements. Please try again.";
+const LOAD_ERROR =
+  "We couldn't load announcements. Please try again.";
+
 const UPDATE_ERROR =
   "We couldn't update an announcement's read status. Please try again.";
+
 const MARK_ALL_ERROR =
   "We couldn't mark all announcements as read. Please try again.";
 
+// Fetch announcements
 export const fetchAnnouncements = createAsyncThunk<
   Announcement[],
   void,
@@ -55,8 +58,11 @@ export const fetchAnnouncements = createAsyncThunk<
   async (_, { rejectWithValue, signal }) => {
     try {
       return await getCustomerAnnouncements(signal);
-    } catch {
-      if (signal.aborted) throw new Error("Request aborted");
+    } catch (error: unknown) {
+      if (signal.aborted) {
+        throw error;
+      }
+
       return rejectWithValue(LOAD_ERROR);
     }
   },
@@ -67,6 +73,7 @@ export const fetchAnnouncements = createAsyncThunk<
   }
 );
 
+// Toggle announcement read status
 export const toggleAnnouncementRead = createAsyncThunk<
   { announcementId: number; isRead: boolean },
   number,
@@ -92,8 +99,11 @@ export const toggleAnnouncementRead = createAsyncThunk<
       }
 
       return { announcementId, isRead: nextIsRead };
-    } catch {
-      if (signal.aborted) throw new Error("Request aborted");
+    } catch (error: unknown) {
+      if (signal.aborted) {
+        throw error;
+      }
+
       return rejectWithValue(UPDATE_ERROR);
     }
   },
@@ -113,6 +123,7 @@ export const toggleAnnouncementRead = createAsyncThunk<
   }
 );
 
+// Mark all announcements as read
 export const markAllAnnouncementsRead = createAsyncThunk<
   void,
   void,
@@ -122,8 +133,11 @@ export const markAllAnnouncementsRead = createAsyncThunk<
   async (_, { rejectWithValue, signal }) => {
     try {
       await markAllAnnouncementsAsRead(signal);
-    } catch {
-      if (signal.aborted) throw new Error("Request aborted");
+    } catch (error: unknown) {
+      if (signal.aborted) {
+        throw error;
+      }
+
       return rejectWithValue(MARK_ALL_ERROR);
     }
   },
@@ -143,13 +157,17 @@ export const markAllAnnouncementsRead = createAsyncThunk<
 
 const announcementSlice = createSlice({
   name: "announcements",
-  initialState,
+  initialState: createInitialState(),
+
   reducers: {
     clearAnnouncementErrors: (state) => {
       state.error = null;
       state.actionError = null;
     },
+
+    clearAnnouncements: () => createInitialState(),
   },
+
   extraReducers: (builder) => {
     builder
       // Fetch announcements
@@ -175,7 +193,6 @@ const announcementSlice = createSlice({
 
         if (action.meta.aborted) return;
 
-        state.hasLoaded = true;
         state.error = action.payload ?? LOAD_ERROR;
       })
 
@@ -245,6 +262,9 @@ const announcementSlice = createSlice({
   },
 });
 
-export const { clearAnnouncementErrors } = announcementSlice.actions;
+export const {
+  clearAnnouncementErrors,
+  clearAnnouncements,
+} = announcementSlice.actions;
 
 export default announcementSlice.reducer;

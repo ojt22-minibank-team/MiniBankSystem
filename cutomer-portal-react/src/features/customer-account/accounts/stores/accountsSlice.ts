@@ -1,30 +1,34 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+
+import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import axios from "axios";
 
 import { getMyAccounts } from "../api/customerAccountApi";
 import type { CustomerAccount } from "../types/accountTypes";
-import { submitP2PTransfer } from "../../../transfer/store/transferSlice";
 
 interface AccountsState {
   accounts: CustomerAccount[];
   loading: boolean;
   error: string | null;
   currentRequestId: string | null;
-  activeTransferRequestId: string | null;
 }
 
-const initialState: AccountsState = {
+interface ThunkState {
+  accounts: AccountsState;
+}
+
+const createInitialState = (): AccountsState => ({
   accounts: [],
   loading: false,
   error: null,
   currentRequestId: null,
-  activeTransferRequestId: null,
-};
+});
+
+const LOAD_ERROR = "Failed to load accounts. Please try again.";
 
 export const fetchMyAccounts = createAsyncThunk<
   CustomerAccount[],
   void,
-  { rejectValue: string }
+  { state: ThunkState; rejectValue: string }
 >(
   "accounts/fetchMyAccounts",
   async (_, { rejectWithValue, signal }) => {
@@ -36,22 +40,33 @@ export const fetchMyAccounts = createAsyncThunk<
       }
 
       if (axios.isAxiosError<{ message?: string }>(error)) {
+        const message = error.response?.data?.message;
+
         return rejectWithValue(
-          error.response?.data?.message || "Failed to load accounts."
+          typeof message === "string" && message.trim()
+            ? message
+            : LOAD_ERROR
         );
       }
 
-      return rejectWithValue("Failed to load accounts.");
+      return rejectWithValue(LOAD_ERROR);
     }
+  },
+  {
+    condition: (_, { getState }) => {
+      return !getState().accounts.loading;
+    },
   }
 );
 
 const accountsSlice = createSlice({
   name: "accounts",
-  initialState,
+  initialState: createInitialState(),
+
   reducers: {
-    clearAccounts: () => initialState,
+    clearAccounts: () => createInitialState(),
   },
+
   extraReducers: (builder) => {
     builder
       // Fetch accounts
@@ -60,57 +75,31 @@ const accountsSlice = createSlice({
         state.error = null;
         state.currentRequestId = action.meta.requestId;
       })
+
       .addCase(fetchMyAccounts.fulfilled, (state, action) => {
-        if (state.currentRequestId !== action.meta.requestId) return;
-
-        state.loading = false;
-        state.accounts = action.payload;
-        state.currentRequestId = null;
-      })
-      .addCase(fetchMyAccounts.rejected, (state, action) => {
-        if (state.currentRequestId !== action.meta.requestId) return;
-
-        state.loading = false;
-        state.currentRequestId = null;
-
-        if (action.meta.aborted) return;
-
-        state.error = action.payload ?? "Failed to load accounts.";
-      })
-
-      // Track the active transfer request
-      .addCase(submitP2PTransfer.pending, (state, action) => {
-        state.activeTransferRequestId = action.meta.requestId;
-      })
-      .addCase(submitP2PTransfer.fulfilled, (state, action) => {
-        if (state.activeTransferRequestId !== action.meta.requestId) return;
-
-        const { sourceAccountNumber, totalDebitedAmount } = action.payload;
-
-        const sourceAccount = state.accounts.find(
-          (account) => account.accountNumber === sourceAccountNumber
-        );
-
-        if (sourceAccount) {
-          sourceAccount.availableBalance = Math.max(
-            0,
-            (Number(sourceAccount.availableBalance) || 0) -
-              Number(totalDebitedAmount)
-          );
-
-          sourceAccount.currentBalance = Math.max(
-            0,
-            (Number(sourceAccount.currentBalance) || 0) -
-              Number(totalDebitedAmount)
-          );
+        if (state.currentRequestId !== action.meta.requestId) {
+          return;
         }
 
-        state.activeTransferRequestId = null;
+        state.accounts = action.payload;
+        state.loading = false;
+        state.error = null;
+        state.currentRequestId = null;
       })
-      .addCase(submitP2PTransfer.rejected, (state, action) => {
-        if (state.activeTransferRequestId !== action.meta.requestId) return;
 
-        state.activeTransferRequestId = null;
+      .addCase(fetchMyAccounts.rejected, (state, action) => {
+        if (state.currentRequestId !== action.meta.requestId) {
+          return;
+        }
+
+        state.loading = false;
+        state.currentRequestId = null;
+
+        if (action.meta.aborted) {
+          return;
+        }
+
+        state.error = action.payload ?? LOAD_ERROR;
       });
   },
 });
