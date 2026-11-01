@@ -372,7 +372,7 @@ function PinResetOtpPage() {
 
 
       navigate(
-        "/profile"
+        "/settings"
       );
 
     };
@@ -461,7 +461,7 @@ function PinResetOtpPage() {
               className={authLinkButtonClass}
             >
               {" "}
-               Back to Profile
+               Back to Settings
             </button>
           </div>
           <AuthSecurityNote title="Secure verification">
