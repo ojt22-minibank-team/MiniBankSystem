@@ -43,19 +43,20 @@ export const formatNotificationMessage = (item: NotificationMessageTarget): stri
   const titleLower = (item.title || "").toLowerCase();
   const originalLower = original.toLowerCase();
 
-  const isSent =
-    item.transferDirection === "SENT" ||
-    titleLower.includes("transfer sent") ||
-    titleLower.includes("sent") ||
-    originalLower.startsWith("you have transferred") ||
-    originalLower.startsWith("you have successfully transferred");
-
   const isReceived =
     item.transferDirection === "RECEIVED" ||
     titleLower.includes("received") ||
     titleLower.includes("funds received") ||
     originalLower.startsWith("you received") ||
     originalLower.startsWith("you have successfully received");
+
+  const isSent = !isReceived && (
+    item.transferDirection === "SENT" ||
+    titleLower.includes("transfer sent") ||
+    titleLower.includes("sent") ||
+    originalLower.startsWith("you have transferred") ||
+    originalLower.startsWith("you have successfully transferred")
+  );
 
   const currency = item.currency || "MMK";
 

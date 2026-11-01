@@ -638,17 +638,53 @@ function FormStep({
 
       {/* 4. Description / Note (Optional) */}
       <div>
-        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-          Note / Payment Purpose (Optional)
-        </label>
-        <input
-          type="text"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="e.g. Project payment, rent, dinner split"
-          maxLength={100}
-          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:border-[#00A3C4] focus:bg-white focus:ring-2 focus:ring-cyan-100 outline-none transition"
-        />
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+            Note / Payment Purpose (Optional)
+          </label>
+        </div>
+        <div className="relative">
+          <input
+            type="text"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="e.g. Project payment, rent, dinner split"
+            maxLength={50}
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:border-[#00A3C4] focus:bg-white focus:ring-2 focus:ring-cyan-100 outline-none transition"
+          />
+        </div>
+
+        {/* Quick Purpose Tags & Character Limit Counter */}
+        <div className="flex items-center justify-between gap-2 mt-2 px-0.5">
+          <div className="flex items-center flex-wrap gap-1.5">
+            {["Family", "Salary", "Bill Payment", "Rent", "Donation","Other"].map((tag) => {
+              const isSelected = description.trim() === tag;
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => setDescription(isSelected ? "" : tag)}
+                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                    isSelected
+                      ? "bg-[#00A3C4] text-white border-[#00A3C4] shadow-xs shadow-cyan-500/20"
+                      : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-cyan-50 hover:text-[#00A3C4] hover:border-cyan-200"
+                  }`}
+                  aria-pressed={isSelected}
+                >
+                  {tag}
+                </button>
+              );
+            })}
+          </div>
+          <span
+            className={`text-xs font-medium tabular-nums shrink-0 transition-colors ${
+              description.length >= 50 ? "text-amber-600 font-bold" : "text-slate-400"
+            }`}
+            aria-live="polite"
+          >
+            {description.length}/50
+          </span>
+        </div>
       </div>
 
       {/* General Validation Error (suppressed when already shown inline in Amount) */}
@@ -929,11 +965,20 @@ function ReceiptStep({
 
   const handlePrint = () => {
     const originalTitle = document.title;
-    document.title = "";
+    document.title = result?.transactionRef
+      ? `EKARAJ_Bank_Official_Receipt_${result.transactionRef.replace(/[^a-zA-Z0-9_-]/g, "_")}`
+      : "EKARAJ_Bank_Official_Receipt";
     window.print();
+    window.addEventListener(
+      "afterprint",
+      () => {
+        document.title = originalTitle;
+      },
+      { once: true }
+    );
     setTimeout(() => {
       document.title = originalTitle;
-    }, 1000);
+    }, 1500);
   };
 
   const handleCopy = async () => {
@@ -1374,15 +1419,21 @@ export const P2PTransferForm = () => {
 
   const location = useLocation();
   const navigate = useNavigate();
-  const [sourceAccount, setSourceAccount] = useState("");
+  const [sourceAccount, setSourceAccount] = useState<string>(
+    () => (location.state as any)?.sourceAccount || ""
+  );
   const [destinationAccount, setDestinationAccount] = useState<string>(
     () => (location.state as any)?.destinationAccount || ""
   );
   const [recipientName, setRecipientName] = useState("");
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState("");
-  const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
+  const [amount, setAmount] = useState<string>(
+    () => (location.state as any)?.amount || ""
+  );
+  const [description, setDescription] = useState<string>(
+    () => (location.state as any)?.description || ""
+  );
   const [validationError, setValidationError] = useState("");
   const [recentAccounts, setRecentAccounts] = useState<string[]>([]);
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
@@ -1981,6 +2032,13 @@ export const P2PTransferForm = () => {
                             state: {
                               accountNumber: targetAcc,
                               autoOpenLimitModal: true,
+                              returnTo: "/transfer",
+                              returnState: {
+                                sourceAccount: targetAcc,
+                                destinationAccount,
+                                amount,
+                                description,
+                              },
                             },
                           });
                         }}

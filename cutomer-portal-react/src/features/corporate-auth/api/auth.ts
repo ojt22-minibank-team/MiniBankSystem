@@ -33,7 +33,7 @@ export async function loginCorporate(data: CorporateLoginRequest) {
   const response = await corporateApi.post<CorporateLoginResponse>(
     "/auth/login",
     data,
-    { timeout: 60_000  }
+    { timeout: 60_000 }
   );
   assertCorporateGeneration(generation);
   if (!response.data.success || !response.data.otpRequired) throw new Error(response.data.message || "Corporate login did not return an OTP challenge.");

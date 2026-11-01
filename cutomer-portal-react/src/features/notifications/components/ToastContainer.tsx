@@ -227,10 +227,19 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
   const handleOpenReceipt = () => {
     onDismiss();
     const ref = toast.transactionRef || toast.id;
+
+    // If already viewing a receipt, replace history to avoid stacking
+    const isAlreadyOnReceipt = location.pathname.startsWith("/receipt");
+    const currentFrom = (location.state as { from?: string } | null)?.from;
+    const originFrom = isAlreadyOnReceipt
+      ? (currentFrom && !currentFrom.startsWith("/receipt") ? currentFrom : "/dashboard")
+      : location.pathname;
+
     navigate(`/receipt/${encodeURIComponent(ref)}`, {
+      replace: isAlreadyOnReceipt,
       state: {
         notification: toast,
-        from: location.pathname,
+        from: originFrom,
       },
     });
   };

@@ -215,17 +215,41 @@ export default function TransactionReceiptPage() {
   const [shareImageUrl, setShareImageUrl] = useState<string | null>(null);
   const [imageCopied, setImageCopied] = useState<boolean>(false);
 
-  // If receiptData wasn't passed in route state (e.g. direct URL / refresh), look up by transactionRef
+  // Synchronize or fetch receiptData whenever transactionRef or location.state changes
   useEffect(() => {
-    if (receiptData) return;
+    // 1. If location state already provides receiptData matching the new transactionRef, use it directly
+    const stateReceipt = location.state?.receiptData as TransferReceiptData | undefined;
+    if (stateReceipt && (!transactionRef || stateReceipt.transactionRef === transactionRef)) {
+      setReceiptData(stateReceipt);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    const stateNoti = location.state?.notification;
+    if (
+      stateNoti &&
+      (!transactionRef ||
+        stateNoti.transactionRef === transactionRef ||
+        String(stateNoti.notificationId) === transactionRef ||
+        `NOTI-${stateNoti.notificationId}` === transactionRef)
+    ) {
+      setReceiptData(mapNotificationItemToReceipt(stateNoti, myAccountNumber, myDisplayName));
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    // 2. Otherwise fetch the receipt matching the current transactionRef
     let isCancelled = false;
 
-    async function loadFallback() {
+    async function loadReceipt() {
       try {
         setLoading(true);
         setError(null);
+        setReceiptData(null); // Clear old receipt so stale data is not displayed
 
-        // 1. Check existing notifications
+        // Check existing notifications
         const notis = await getMyNotifications();
         if (isCancelled) return;
 
@@ -272,12 +296,12 @@ export default function TransactionReceiptPage() {
       }
     }
 
-    void loadFallback();
+    void loadReceipt();
 
     return () => {
       isCancelled = true;
     };
-  }, [transactionRef, receiptData]);
+  }, [transactionRef, location.state, myAccountNumber, myDisplayName]);
 
   // Clean up object URL when component unmounts
   useEffect(() => {
@@ -288,15 +312,14 @@ export default function TransactionReceiptPage() {
     };
   }, [shareImageUrl]);
 
-  // Back Navigation: return to previous page or /transaction or /dashboard
+  // Back Navigation: return directly to original entry page (e.g. /dashboard or /transaction)
   const handleBack = useCallback(() => {
     const fromPath = (location.state as { from?: string } | null)?.from;
     if (fromPath && fromPath !== location.pathname && !fromPath.startsWith("/receipt")) {
       navigate(fromPath);
-    } else if (window.history.length > 1) {
-      navigate(-1);
     } else {
-      navigate("/transaction");
+      // Exit directly to dashboard without stepping backward through previous receipts
+      navigate("/dashboard");
     }
   }, [location, navigate]);
 
@@ -398,11 +421,20 @@ export default function TransactionReceiptPage() {
   // 2. Download PDF Action (Print / Save as PDF)
   const handlePrint = () => {
     const originalTitle = document.title;
-    document.title = "";
+    document.title = receiptData?.transactionRef
+      ? `EKARAJ_Bank_Official_Receipt_${receiptData.transactionRef.replace(/[^a-zA-Z0-9_-]/g, "_")}`
+      : "EKARAJ_Bank_Official_Receipt";
     window.print();
+    window.addEventListener(
+      "afterprint",
+      () => {
+        document.title = originalTitle;
+      },
+      { once: true }
+    );
     setTimeout(() => {
       document.title = originalTitle;
-    }, 1000);
+    }, 1500);
   };
 
   // 3. Copy Ref Action
