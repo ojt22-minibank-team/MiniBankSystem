@@ -46,6 +46,7 @@ import BeneficiariesPage from "../../features/beneficiaries/pages/BeneficiariesP
 import AccountStatementPage from "../../features/customer-account/statements/pages/AccountStatementPage";
 import TransactionHistoryPage from "../../features/customer-account/transactions/pages/TransactionHistoryPage";
 import TransactionReceiptPage from "../../features/transfer/pages/TransactionReceiptPage";
+import  HelpSupportPage  from "../../features/customer-account/help-support/pages/HelpSupportPage";
 
 // ======================================================
 // ROUTER
@@ -255,6 +256,11 @@ const router = createBrowserRouter([
             path: "/receipt/:transactionRef",
             element: <TransactionReceiptPage />,
           },
+
+          {
+            path: "/support",
+            element: <HelpSupportPage />,
+          }
 
         ],
 
