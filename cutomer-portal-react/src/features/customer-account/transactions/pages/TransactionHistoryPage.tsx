@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { History, AlertCircle, RefreshCw, AlertTriangle } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../../../../lib/redux";
@@ -21,7 +22,6 @@ import {
 import TransactionFilters from "../components/TransactionFilters";
 import TransactionTable from "../components/TransactionTable";
 import TransactionPagination from "../components/TransactionPagination";
-import TransactionDetailModal from "../components/TransactionDetailModal";
 
 const INITIAL_DRAFT_FILTERS: TransactionFilterDraft = {
   status: "",
@@ -42,6 +42,7 @@ const INITIAL_APPLIED_FILTERS: TransactionFilterApplied = {
 };
 
 export default function TransactionHistoryPage() {
+  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { accounts, loading: accountsLoading, error: accountsError } = useAppSelector(
     (state) => state.accounts
@@ -69,9 +70,6 @@ export default function TransactionHistoryPage() {
   const [historyData, setHistoryData] = useState<CusTransactionHistoryResponseDTO | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
-
-  // Selected transaction for detail modal
-  const [selectedTransaction, setSelectedTransaction] = useState<CusTransactionHistoryItemDTO | null>(null);
 
   // Load customer accounts on mount if needed
   useEffect(() => {
@@ -287,20 +285,32 @@ export default function TransactionHistoryPage() {
       <div className="transaction-history-page-content space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#00A3C4]/10 text-[#00A3C4] shadow-sm">
-            <History size={24} aria-hidden="true" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-              Transaction History
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500">
-              Review and filter real-time transaction activity across your accounts.
-            </p>
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#00A3C4]/10 text-[#00A3C4] shadow-sm">
+              <History size={24} aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              {/* Breadcrumb Navigation */}
+              <nav aria-label="Breadcrumb" className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold">
+                <Link
+                  to="/dashboard"
+                  className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
+                >
+                  Dashboard
+                </Link>
+                <span className="text-slate-300" aria-hidden="true">/</span>
+                <span className="text-[#00A3C4]" aria-current="page">Transaction History</span>
+              </nav>
+
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+                Transaction History
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-500">
+                Review and filter real-time transaction activity across your accounts.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
       {/* Account Loading Skeleton */}
       {accountsLoading && (
@@ -396,7 +406,17 @@ export default function TransactionHistoryPage() {
             isLoading={isLoadingHistory}
             hasFiltersApplied={hasFiltersApplied}
             onClearFilters={handleClearFilters}
-            onSelectTransaction={setSelectedTransaction}
+            onSelectTransaction={(tx: CusTransactionHistoryItemDTO) => {
+              navigate(
+                `/transaction/${encodeURIComponent(tx.transactionRef)}?accountNumber=${encodeURIComponent(activeAccountNumber)}`,
+                {
+                  state: {
+                    transaction: tx,
+                    from: "/transaction",
+                  },
+                }
+              );
+            }}
           />
 
           {/* Pagination */}
@@ -414,14 +434,6 @@ export default function TransactionHistoryPage() {
         </>
       )}
       </div>
-
-      {/* Transaction Detail Modal */}
-      {selectedTransaction && (
-        <TransactionDetailModal
-          transaction={selectedTransaction}
-          onClose={() => setSelectedTransaction(null)}
-        />
-      )}
     </div>
   );
 }

@@ -114,7 +114,7 @@ function resolveStatusConfig(data: TransferReceiptData): StatusConfig {
   }
 
   // 3. Successful Cases
-  let title = "Transfer Successful";
+  let title: string;
   if (typeUpper.includes("PAYMENT") || descLower.includes("merchant") || descLower.includes("payment")) {
     title = "Payment Successful";
   } else if (typeUpper.includes("WITHDRAW") || descLower.includes("withdraw")) {
@@ -550,7 +550,7 @@ export default function TransferReceiptView({
               </div>
 
               <p className="text-[9px] font-medium text-slate-400 leading-none">
-                Scan to verify transaction
+                Scan to view encoded transaction details.
               </p>
             </div>
           </div>
