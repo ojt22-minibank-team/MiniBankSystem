@@ -12,7 +12,7 @@ type EkarajAuthLayoutProps = {
 export function EkarajAuthLayout({
   title,
   children,
-  portalLabel = "Ekaraj Bank Customer Portal",
+  portalLabel = "EKARAJ BANK Customer Portal",
   securityLabel = "Secure Personal Banking",
 }: EkarajAuthLayoutProps) {
   return (

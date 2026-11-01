@@ -30,7 +30,11 @@ function acceptAuthentication(data: CorporateOtpResponse, generation: number, st
 
 export async function loginCorporate(data: CorporateLoginRequest) {
   const generation = beginCorporateLogin();
-  const response = await corporateApi.post<CorporateLoginResponse>("/auth/login", data);
+  const response = await corporateApi.post<CorporateLoginResponse>(
+    "/auth/login",
+    data,
+    { timeout: 60_000  }
+  );
   assertCorporateGeneration(generation);
   if (!response.data.success || !response.data.otpRequired) throw new Error(response.data.message || "Corporate login did not return an OTP challenge.");
   saveCorporateChallenge(response.data.challengeGroupId);

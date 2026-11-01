@@ -248,9 +248,14 @@ class CusCustomerSessionBaselineTest {
         when(cusJwtService.getClaims(OLD_REFRESH))
                 .thenThrow(new ExpiredJwtException(Jwts.header(), refreshClaims, "Synthetic expired JWT"));
 
-        assertThrows(ExpiredJwtException.class, () -> authService.refreshToken(refreshRequest(OLD_REFRESH)));
+        CusAuthenticationException exception = assertThrows(CusAuthenticationException.class,
+                () -> authService.refreshToken(refreshRequest(OLD_REFRESH)));
+        assertEquals("Invalid or expired refresh token.", exception.getMessage());
 
         verifyNoInteractions(sessionDelegate, authSessionsRepository, auditLogsRepository);
+        verifyNoInteractions(credentialsRepository);
+        verify(cusJwtService).getClaims(OLD_REFRESH);
+        verifyNoMoreInteractions(cusJwtService);
     }
 
     @Test
