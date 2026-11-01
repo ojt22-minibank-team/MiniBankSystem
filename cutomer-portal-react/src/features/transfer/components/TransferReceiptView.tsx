@@ -296,12 +296,12 @@ export default function TransferReceiptView({
           </div>
 
         {/* Official Bank Header: EKARAJ BANK with Official Receipt directly below */}
-        <div className="bg-[#08295C] px-5 sm:px-6 py-4 print:py-4.5 print:px-8 text-white flex items-center justify-between border-b border-blue-900/50 relative z-10">
+        <div className="bg-gradient-to-r from-[#00A3C4] to-[#0284C7] px-5 sm:px-6 py-4 print:py-4.5 print:px-8 text-white flex items-center justify-between border-b border-cyan-600/30 relative z-10 shadow-xs">
           <div>
             <h2 className="text-base sm:text-lg print:text-xl font-black tracking-wide uppercase text-white leading-tight">
               EKARAJ BANK
             </h2>
-            <p className="text-[10px] print:text-xs text-blue-200 font-semibold tracking-wider uppercase mt-0.5">
+            <p className="text-[10px] print:text-xs text-cyan-100 font-semibold tracking-wider uppercase mt-0.5">
               Official Transaction Receipt
             </p>
           </div>
