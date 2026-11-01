@@ -7,7 +7,7 @@ export default function TransferPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center gap-3.5">
+      <div className="mb-6 flex items-center gap-3.5 no-print">
         <button
           type="button"
           onClick={() => navigate(-1)}

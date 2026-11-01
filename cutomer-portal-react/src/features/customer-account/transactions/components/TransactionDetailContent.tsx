@@ -628,14 +628,14 @@ export default function TransactionDetailContent({
     <div className="w-full max-w-xl mx-auto">
       <div className="transaction-history-receipt-print relative w-full overflow-hidden rounded-3xl bg-white shadow-xl border border-slate-200 flex flex-col print-receipt-container">
         {/* Bank Header */}
-        <div className="bg-[#08295C] px-6 py-4 text-white flex items-center justify-between border-b border-blue-900/50 shrink-0">
+        <div className="bg-gradient-to-r from-[#00A3C4] to-[#0284C7] px-6 py-4 text-white flex items-center justify-between border-b border-cyan-600/30 shrink-0 shadow-xs">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/20 text-blue-300 border border-blue-400/30">
               <Building2 className="w-4 h-4" />
             </div>
             <div>
               <h2 className="text-xs font-black tracking-wider uppercase text-white">Mini Bank</h2>
-              <p className="text-[10px] text-blue-200 font-medium">Transaction Activity Detail</p>
+              <p className="text-[10px] text-cyan-100 font-medium">Transaction Activity Detail</p>
             </div>
           </div>
 

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../lib/redux";
 import { submitP2PTransfer, resetTransferState, clearTransferError } from "../store/transferSlice";
 import { fetchMyAccounts } from "../../customer-account/accounts/stores/accountsSlice";
+import { fetchDashboard } from "../../customer-account/dashboard/store/dashboardSlice";
 import { lookupDestinationAccount } from "../services/transferService";
 import { getBeneficiaries, addBeneficiary } from "../../beneficiaries/services/beneficiaryService";
 import type { Beneficiary } from "../../beneficiaries/types/beneficiaryTypes";
@@ -1234,7 +1235,7 @@ function ReceiptStep({
 
       {/* Interactive Desktop Share Modal */}
       {showShareModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 no-print">
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in"
             onClick={() => setShowShareModal(false)}
@@ -1695,6 +1696,7 @@ export const P2PTransferForm = () => {
       if (submitP2PTransfer.fulfilled.match(resultAction)) {
         saveDestination(destinationAccount);
         dispatch(fetchMyAccounts());
+        dispatch(fetchDashboard());
         window.dispatchEvent(new Event("new-notification-event"));
         setShowPinModal(false);
         setStep("receipt");
