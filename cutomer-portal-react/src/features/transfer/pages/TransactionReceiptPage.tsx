@@ -487,8 +487,8 @@ export default function TransactionReceiptPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/70 py-8 sm:py-12 px-4 flex flex-col justify-center items-center print:p-0 print:m-0 print:min-h-0 print:h-full print:w-full print:bg-white print:overflow-hidden print:flex print:flex-col print:justify-center print:items-center">
-      <div className="w-full max-w-xl print:max-w-[700px] print:w-[700px] mx-auto relative space-y-4 print:space-y-0 print:m-auto print:p-0">
+    <div className="min-h-screen bg-slate-50/70 py-8 sm:py-12 px-4 flex flex-col justify-center items-center print:p-0 print:m-0 print:min-h-0 print:h-auto print:w-full print:bg-white print:overflow-visible print:block">
+      <div className="w-full max-w-xl print:max-w-none print:w-full mx-auto relative space-y-4 print:space-y-0 print:m-0 print:p-0">
         {/* Loading State */}
         {loading && (
           <div className="py-24 bg-white rounded-3xl border border-slate-200 text-center flex flex-col items-center justify-center gap-3">
@@ -616,7 +616,7 @@ export default function TransactionReceiptPage() {
 
             {/* Interactive Desktop Share Modal */}
             {showShareModal && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 no-print">
                 <div
                   className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in"
                   onClick={() => setShowShareModal(false)}

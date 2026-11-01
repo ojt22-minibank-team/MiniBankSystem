@@ -62,7 +62,7 @@
                 </rectangle>
                 <!-- Detailed Description: Opening Balance -->
                 <staticText>
-                    <reportElement x="200" y="0" width="145" height="20" forecolor="#08295C" uuid="60f06518-ff35-43ea-8316-0925e0a6d598">
+                    <reportElement x="200" y="0" width="168" height="20" forecolor="#08295C" uuid="60f06518-ff35-43ea-8316-0925e0a6d598">
                         <property name="com.jaspersoft.studio.unit.height" value="px"/>
                     </reportElement>
                     <textElement verticalAlignment="Middle">
@@ -72,7 +72,7 @@
                 </staticText>
                 <!-- Balance: formatted OPENING_BALANCE -->
                 <textField>
-                    <reportElement x="485" y="0" width="65" height="20" forecolor="#08295C" uuid="ad616efb-2c59-4d69-8bc3-3b6833b3bdf2">
+                    <reportElement x="488" y="0" width="65" height="20" forecolor="#08295C" uuid="ad616efb-2c59-4d69-8bc3-3b6833b3bdf2">
                         <property name="com.jaspersoft.studio.unit.height" value="px"/>
                     </reportElement>
                     <textElement textAlignment="Right" verticalAlignment="Middle">
@@ -89,17 +89,17 @@
     <!-- =================================================================== -->
     <title>
         <band height="120" splitType="Stretch">
-            <!-- Top Center: Logo Image + ACE Bank Brand Text -->
+            <!-- Top Center: Logo Image + EKARAJ BANK Brand Text -->
             <image onErrorType="Blank">
-                <reportElement x="216" y="2" width="26" height="26" uuid="7cf2be41-bb89-4911-a831-29177a33bb58"/>
+                <reportElement x="189" y="2" width="26" height="26" uuid="7cf2be41-bb89-4911-a831-29177a33bb58"/>
                 <imageExpression><![CDATA[$P{LOGO} != null ? $P{LOGO} : "reports/assets/logo.png"]]></imageExpression>
             </image>
             <staticText>
-                <reportElement x="248" y="2" width="92" height="26" forecolor="#08295C" uuid="8f1618a8-8e6c-49a8-be8e-1616c27f6312"/>
+                <reportElement x="221" y="2" width="145" height="26" forecolor="#08295C" uuid="8f1618a8-8e6c-49a8-be8e-1616c27f6312"/>
                 <textElement verticalAlignment="Middle">
                     <font fontName="SansSerif" size="18" isBold="true"/>
                 </textElement>
-                <text><![CDATA[ACE Bank]]></text>
+                <text><![CDATA[EKARAJ BANK]]></text>
             </staticText>
 
             <!-- Top Right: Report Generated Date -->
@@ -249,7 +249,7 @@
                 <textElement verticalAlignment="Middle">
                     <font fontName="SansSerif" size="8"/>
                 </textElement>
-                <textFieldExpression><![CDATA["ACE Bank Account Statement | Acc: " + $P{ACCOUNT_NUMBER} + " (" + $P{ACCOUNT_TYPE} + ")"]]></textFieldExpression>
+                <textFieldExpression><![CDATA["EKARAJ BANK Account Statement | Acc: " + $P{ACCOUNT_NUMBER} + " (" + $P{ACCOUNT_TYPE} + ")"]]></textFieldExpression>
             </textField>
             <textField>
                 <reportElement x="350" y="0" width="205" height="14" forecolor="#64748B" uuid="559d814f-3760-482a-a92c-c5e317c2a7db"/>
@@ -276,42 +276,44 @@
                 </graphicElement>
             </rectangle>
             <staticText>
-                <reportElement x="5" y="0" width="105" height="24" forecolor="#FFFFFF" uuid="4526b71b-4370-49c7-8c38-89fa2d6b38c2"/>
+                <reportElement x="5" y="0" width="90" height="24" forecolor="#FFFFFF" uuid="4526b71b-4370-49c7-8c38-89fa2d6b38c2"/>
                 <textElement verticalAlignment="Middle">
-                    <font fontName="SansSerif" size="8" isBold="true"/>
+                    <font fontName="SansSerif" size="7" isBold="true"/>
                 </textElement>
                 <text><![CDATA[Transaction Date & Time]]></text>
             </staticText>
             <staticText>
-                <reportElement x="110" y="0" width="90" height="24" forecolor="#FFFFFF" uuid="dfbb7145-2f92-4826-b7b5-2eb3a846c2f9"/>
+                <reportElement x="100" y="0" width="100" height="24" forecolor="#FFFFFF" uuid="dfbb7145-2f92-4826-b7b5-2eb3a846c2f9"/>
+                <box rightPadding="4"/>
                 <textElement verticalAlignment="Middle">
                     <font fontName="SansSerif" size="8" isBold="true"/>
                 </textElement>
                 <text><![CDATA[Trn_Ref_No]]></text>
             </staticText>
             <staticText>
-                <reportElement x="200" y="0" width="145" height="24" forecolor="#FFFFFF" uuid="d93e1173-19cb-4ef9-813c-cf80d440c95a"/>
+                <reportElement x="200" y="0" width="168" height="24" forecolor="#FFFFFF" uuid="d93e1173-19cb-4ef9-813c-cf80d440c95a"/>
+                <box leftPadding="2"/>
                 <textElement verticalAlignment="Middle">
                     <font fontName="SansSerif" size="8" isBold="true"/>
                 </textElement>
                 <text><![CDATA[Detailed Description]]></text>
             </staticText>
             <staticText>
-                <reportElement x="345" y="0" width="70" height="24" forecolor="#FFFFFF" uuid="fcfeb168-1549-4364-bbcf-05fc085ee581"/>
+                <reportElement x="368" y="0" width="60" height="24" forecolor="#FFFFFF" uuid="fcfeb168-1549-4364-bbcf-05fc085ee581"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="8" isBold="true"/>
                 </textElement>
                 <text><![CDATA[Credit]]></text>
             </staticText>
             <staticText>
-                <reportElement x="415" y="0" width="70" height="24" forecolor="#FFFFFF" uuid="eeea6e88-349f-4315-9988-a28efbc2fa93"/>
+                <reportElement x="428" y="0" width="60" height="24" forecolor="#FFFFFF" uuid="eeea6e88-349f-4315-9988-a28efbc2fa93"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="8" isBold="true"/>
                 </textElement>
                 <text><![CDATA[Debit]]></text>
             </staticText>
             <staticText>
-                <reportElement x="485" y="0" width="65" height="24" forecolor="#FFFFFF" uuid="cf822eb1-a1b7-449e-bb9d-92c2df9e2c69"/>
+                <reportElement x="488" y="0" width="65" height="24" forecolor="#FFFFFF" uuid="cf822eb1-a1b7-449e-bb9d-92c2df9e2c69"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="8" isBold="true"/>
                 </textElement>
@@ -335,7 +337,7 @@
 
             <!-- Transaction Date & Time -->
             <textField textAdjust="StretchHeight" isBlankWhenNull="true">
-                <reportElement x="5" y="0" width="105" height="19" forecolor="#0F172A" uuid="2a563c78-cf9f-4952-ba13-fb467cebc627">
+                <reportElement x="5" y="0" width="95" height="19" forecolor="#0F172A" uuid="2a563c78-cf9f-4952-ba13-fb467cebc627">
                     <property name="com.jaspersoft.studio.unit.height" value="px"/>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
@@ -345,21 +347,48 @@
             </textField>
 
             <!-- Trn_Ref_No -->
-            <textField textAdjust="StretchHeight" isBlankWhenNull="true">
-                <reportElement x="110" y="0" width="90" height="19" forecolor="#0F172A" uuid="a6327cf1-3c48-4389-9a28-66d4957e0eb7">
+            <textField textAdjust="ScaleFont" isBlankWhenNull="true">
+                <reportElement x="100" y="0" width="100" height="19" forecolor="#0F172A" uuid="a6327cf1-3c48-4389-9a28-66d4957e0eb7">
                     <property name="com.jaspersoft.studio.unit.height" value="px"/>
                 </reportElement>
+                <box rightPadding="4"/>
                 <textElement verticalAlignment="Middle">
-                    <font fontName="SansSerif" size="8"/>
+                    <font fontName="SansSerif" size="7"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{transactionRef}]]></textFieldExpression>
             </textField>
 
-            <!-- Detailed Description -->
-            <textField textAdjust="StretchHeight" isBlankWhenNull="true">
-                <reportElement x="200" y="0" width="145" height="19" forecolor="#0F172A" uuid="c2865ffb-4a56-42bb-a320-b6aafe34f6d4">
+            <!-- Detailed Description (P2P Field 1: Fixed Label) -->
+            <textField textAdjust="ScaleFont" isBlankWhenNull="true">
+                <reportElement x="200" y="0" width="116" height="19" forecolor="#0F172A" uuid="c2865ffb-4a56-42bb-a320-b6aafe34f6d4">
                     <property name="com.jaspersoft.studio.unit.height" value="px"/>
+                    <printWhenExpression><![CDATA[$F{description} != null && ($F{description}.startsWith("P2P Transfer Debit from Acc:") || $F{description}.startsWith("P2P Transfer Credit to Acc:"))]]></printWhenExpression>
                 </reportElement>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{description}.startsWith("P2P Transfer Debit from Acc:") ? "P2P Transfer Debit from Acc:" : "P2P Transfer Credit to Acc:"]]></textFieldExpression>
+            </textField>
+
+            <!-- Detailed Description (P2P Field 2: Fixed Account Number starting at exact same X) -->
+            <textField textAdjust="ScaleFont" isBlankWhenNull="true">
+                <reportElement x="316" y="0" width="52" height="19" forecolor="#0F172A" uuid="d3865ffb-4a56-42bb-a320-b6aafe34f6d5">
+                    <property name="com.jaspersoft.studio.unit.height" value="px"/>
+                    <printWhenExpression><![CDATA[$F{description} != null && ($F{description}.startsWith("P2P Transfer Debit from Acc:") || $F{description}.startsWith("P2P Transfer Credit to Acc:"))]]></printWhenExpression>
+                </reportElement>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{description}.substring($F{description}.lastIndexOf(" ") + 1).trim()]]></textFieldExpression>
+            </textField>
+
+            <!-- Detailed Description (Non-P2P Fallback Full Description) -->
+            <textField textAdjust="StretchHeight" isBlankWhenNull="true">
+                <reportElement x="200" y="0" width="168" height="19" forecolor="#0F172A" uuid="e4865ffb-4a56-42bb-a320-b6aafe34f6d6">
+                    <property name="com.jaspersoft.studio.unit.height" value="px"/>
+                    <printWhenExpression><![CDATA[$F{description} == null || (!$F{description}.startsWith("P2P Transfer Debit from Acc:") && !$F{description}.startsWith("P2P Transfer Credit to Acc:"))]]></printWhenExpression>
+                </reportElement>
+                <box leftPadding="2"/>
                 <textElement verticalAlignment="Middle">
                     <font fontName="SansSerif" size="8"/>
                 </textElement>
@@ -368,7 +397,7 @@
 
             <!-- Credit Amount -->
             <textField isBlankWhenNull="true">
-                <reportElement x="345" y="0" width="70" height="19" forecolor="#0F172A" uuid="603caeb1-9ff4-4ff5-bba4-1e5ff017f9fb">
+                <reportElement x="368" y="0" width="60" height="19" forecolor="#0F172A" uuid="603caeb1-9ff4-4ff5-bba4-1e5ff017f9fb">
                     <property name="com.jaspersoft.studio.unit.height" value="px"/>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
@@ -379,7 +408,7 @@
 
             <!-- Debit Amount -->
             <textField isBlankWhenNull="true">
-                <reportElement x="415" y="0" width="70" height="19" forecolor="#0F172A" uuid="885ecb2a-6058-45b9-b5f7-640fb0db8b29">
+                <reportElement x="428" y="0" width="60" height="19" forecolor="#0F172A" uuid="885ecb2a-6058-45b9-b5f7-640fb0db8b29">
                     <property name="com.jaspersoft.studio.unit.height" value="px"/>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
@@ -390,7 +419,7 @@
 
             <!-- Running Balance -->
             <textField isBlankWhenNull="true">
-                <reportElement x="485" y="0" width="65" height="19" forecolor="#08295C" uuid="bb3b890f-7828-4ef9-8dcf-e56847c20c02">
+                <reportElement x="488" y="0" width="65" height="19" forecolor="#08295C" uuid="bb3b890f-7828-4ef9-8dcf-e56847c20c02">
                     <property name="com.jaspersoft.studio.unit.height" value="px"/>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
@@ -447,7 +476,7 @@
             </rectangle>
             <!-- Column 3: Detailed Description -> Closing Balance -->
             <staticText>
-                <reportElement x="200" y="0" width="145" height="20" forecolor="#08295C" uuid="8d641d40-f1d2-43bb-a53b-0164c414bb44">
+                <reportElement x="200" y="0" width="168" height="20" forecolor="#08295C" uuid="8d641d40-f1d2-43bb-a53b-0164c414bb44">
                     <property name="com.jaspersoft.studio.unit.height" value="px"/>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
@@ -457,7 +486,7 @@
             </staticText>
             <!-- Column 6: Balance -> formatted CLOSING_BALANCE -->
             <textField>
-                <reportElement x="485" y="0" width="65" height="20" forecolor="#08295C" uuid="45465e90-c20e-436e-b3f4-e7529853a48e">
+                <reportElement x="488" y="0" width="65" height="20" forecolor="#08295C" uuid="45465e90-c20e-436e-b3f4-e7529853a48e">
                     <property name="com.jaspersoft.studio.unit.height" value="px"/>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
@@ -479,7 +508,7 @@
             </rectangle>
             <!-- Column 2: Trn_Ref_No -> No. of Credit: <count> -->
             <textField>
-                <reportElement x="110" y="20" width="90" height="20" forecolor="#0F172A" uuid="a63e2617-bb19-482f-87eb-4cb928787f81">
+                <reportElement x="100" y="20" width="100" height="20" forecolor="#0F172A" uuid="a63e2617-bb19-482f-87eb-4cb928787f81">
                     <property name="com.jaspersoft.studio.unit.height" value="px"/>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
@@ -489,7 +518,7 @@
             </textField>
             <!-- Column 3: Detailed Description -> Credit Total -->
             <staticText>
-                <reportElement x="200" y="20" width="145" height="20" forecolor="#08295C" uuid="f04b2b2a-19fb-449e-b7a4-1e5ff017f911">
+                <reportElement x="200" y="20" width="168" height="20" forecolor="#08295C" uuid="f04b2b2a-19fb-449e-b7a4-1e5ff017f911">
                     <property name="com.jaspersoft.studio.unit.height" value="px"/>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
@@ -499,7 +528,7 @@
             </staticText>
             <!-- Column 4: Credit -> formatted TOTAL_CREDIT -->
             <textField>
-                <reportElement x="345" y="20" width="70" height="20" forecolor="#08295C" uuid="ef17bb3a-a1fb-4299-8cf0-2ca0f074be91">
+                <reportElement x="368" y="20" width="60" height="20" forecolor="#08295C" uuid="ef17bb3a-a1fb-4299-8cf0-2ca0f074be91">
                     <property name="com.jaspersoft.studio.unit.height" value="px"/>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
@@ -521,7 +550,7 @@
             </rectangle>
             <!-- Column 2: Trn_Ref_No -> No. of Debit: <count> -->
             <textField>
-                <reportElement x="110" y="40" width="90" height="20" forecolor="#0F172A" uuid="603caeb1-9ff4-4ff5-bba4-1e5ff017f9e2">
+                <reportElement x="100" y="40" width="100" height="20" forecolor="#0F172A" uuid="603caeb1-9ff4-4ff5-bba4-1e5ff017f9e2">
                     <property name="com.jaspersoft.studio.unit.height" value="px"/>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
@@ -531,7 +560,7 @@
             </textField>
             <!-- Column 3: Detailed Description -> Debit Total -->
             <staticText>
-                <reportElement x="200" y="40" width="145" height="20" forecolor="#08295C" uuid="998ecb2a-6058-45b9-b5f7-640fb0db8b33">
+                <reportElement x="200" y="40" width="168" height="20" forecolor="#08295C" uuid="998ecb2a-6058-45b9-b5f7-640fb0db8b33">
                     <property name="com.jaspersoft.studio.unit.height" value="px"/>
                 </reportElement>
                 <textElement verticalAlignment="Middle">
@@ -541,7 +570,7 @@
             </staticText>
             <!-- Column 5: Debit -> formatted TOTAL_DEBIT with leading minus sign -->
             <textField>
-                <reportElement x="415" y="40" width="70" height="20" forecolor="#08295C" uuid="885ecb2a-6058-45b9-b5f7-640fb0db8be2">
+                <reportElement x="428" y="40" width="60" height="20" forecolor="#08295C" uuid="885ecb2a-6058-45b9-b5f7-640fb0db8be2">
                     <property name="com.jaspersoft.studio.unit.height" value="px"/>
                 </reportElement>
                 <textElement textAlignment="Right" verticalAlignment="Middle">

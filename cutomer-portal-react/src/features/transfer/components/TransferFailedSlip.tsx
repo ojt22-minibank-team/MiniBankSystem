@@ -151,7 +151,7 @@ export default function TransferFailedSlip({
       </div>
 
       {/* Official Bank Header: EKARAJ BANK with Failure Notice */}
-      <div className="bg-[#08295C] px-5 sm:px-6 py-4 text-white flex items-center justify-between border-b border-blue-900/50 relative z-10">
+      <div className="bg-gradient-to-r from-[#00A3C4] to-[#0284C7] px-5 sm:px-6 py-4 text-white flex items-center justify-between border-b border-cyan-600/30 relative z-10 shadow-xs">
         <div>
           <h2 className="text-base sm:text-lg font-black tracking-wide uppercase text-white leading-tight">
             EKARAJ BANK
