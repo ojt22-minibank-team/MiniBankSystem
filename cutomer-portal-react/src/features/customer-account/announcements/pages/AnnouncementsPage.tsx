@@ -37,10 +37,16 @@ export default function AnnouncementsPage() {
     loading,
     hasLoaded,
     error,
-    pendingIds,
-    isMarkingAllRead,
+    pendingRequests,
+    markAllRequestId,
     actionError,
   } = useAppSelector((state) => state.announcements);
+
+  const pendingIds = useMemo(
+    () => Object.keys(pendingRequests || {}).map(Number),
+    [pendingRequests]
+  );
+  const isMarkingAllRead = Boolean(markAllRequestId);
 
   const [filter, setFilter] = useState<AnnouncementFilter>("ALL");
 

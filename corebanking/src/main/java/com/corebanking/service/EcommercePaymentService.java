@@ -34,6 +34,7 @@ public class EcommercePaymentService {
     private final LedgerEntryRepository ledgerEntryRepository;
     private final FeeScheduleRepository feeScheduleRepository;
     private final AsyncNotificationService asyncNotificationService;
+    private final TransferLimitService transferLimitService;
 
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public EcommercePaymentResponseDto processEcommercePayment(EcommercePaymentRequestDto request, String idempotencyKey) {
@@ -100,7 +101,7 @@ public class EcommercePaymentService {
 
         // Minimum Balance Rule Enforcement
         BigDecimal customerAvailable = customerAccount.getAvailableBalance();
-        BigDecimal minBalance = customerAccount.getMinimumBalance() != null ? customerAccount.getMinimumBalance() : BigDecimal.ZERO;
+        BigDecimal minBalance = transferLimitService.getMinimumBalance();
         BigDecimal postDeductionBalance = customerAvailable.subtract(totalRequiredAmount);
 
         if (postDeductionBalance.compareTo(minBalance) < 0) {
@@ -111,16 +112,21 @@ public class EcommercePaymentService {
         }
 
         // Daily Limit Check
-        if (customerAccount.getDailyTransferLimit() != null && customerAccount.getDailyTransferLimit().compareTo(BigDecimal.ZERO) > 0) {
+        BigDecimal dailyLimit = transferLimitService.getDailyTransferLimit();
+        if (dailyLimit != null && dailyLimit.compareTo(BigDecimal.ZERO) > 0) {
             LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
             LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
             BigDecimal todayTotal = bankTransactionRepository.findTodayTotalTransferredAmount(
                     customerAccount.getAccountId(), startOfDay, endOfDay);
 
-            if (todayTotal.add(request.getAmount()).compareTo(customerAccount.getDailyTransferLimit()) > 0) {
+            if (todayTotal == null) {
+                todayTotal = BigDecimal.ZERO;
+            }
+
+            if (todayTotal.add(request.getAmount()).compareTo(dailyLimit) > 0) {
                 throw new TransactionException(String.format(
                         "Payment breaches daily limit of %s %s. Transferred today: %s, Attempted: %s",
-                        customerAccount.getDailyTransferLimit(), customerAccount.getCurrency(), todayTotal, request.getAmount()
+                        dailyLimit, customerAccount.getCurrency(), todayTotal, request.getAmount()
                 ));
             }
         }
