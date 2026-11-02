@@ -21,7 +21,7 @@ import com.corebanking.entity.enums.SessionSubjectType;
 import com.corebanking.entity.enums.UpdatedByType;
 import com.corebanking.exception.CusAuthenticationException;
 import com.corebanking.exception.CusSessionExpiredException;
-import com.corebanking.repository.CusAccountsRepository;
+import com.corebanking.repository.AccountRepository;
 import com.corebanking.repository.CusAuditLogsRepository;
 import com.corebanking.repository.CusAuthSessionsRepository;
 import com.corebanking.repository.CusCorporateCredentialRepository;
@@ -99,7 +99,7 @@ class CusCustomerSessionBaselineTest {
     private static final String NEXT_HASH = "240ed8a5a40c552345939f3895bfc6dee9b610df2ac5a78ed83fc001648b2f0b";
 
     @Mock private CusCustomerRepository customerRepository;
-    @Mock private CusAccountsRepository accountsRepository;
+    @Mock private AccountRepository accountsRepository;
     @Mock private CusCredentialsRepository credentialsRepository;
     @Mock private CusLoginAttemptsRepository loginAttemptsRepository;
     @Mock private CusOtpChallengesRepository otpChallengesRepository;
