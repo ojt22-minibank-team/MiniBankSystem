@@ -1,5 +1,7 @@
 package com.corebanking.service;
 
+import com.corebanking.dto.CusSessionClientMetadata;
+
 import com.corebanking.dto.CusCorporateLoginRequest;
 import com.corebanking.dto.CusCorporateLoginResponse;
 import com.corebanking.dto.CusCorporateOtpVerifyRequest;
@@ -27,7 +29,11 @@ public class CusCorporateAuthService {
     private final CusCorporateCredentialRepository corporateCredentialRepository;
 
     public CusCorporateLoginResponse login(CusCorporateLoginRequest request) {
-        UUID corporateUserId = corporateCredentialService.authenticateCredentials(request);
+        return login(request, CusSessionClientMetadata.EMPTY);
+    }
+
+    public CusCorporateLoginResponse login(CusCorporateLoginRequest request, CusSessionClientMetadata metadata) {
+        UUID corporateUserId = corporateCredentialService.authenticateCredentials(request, metadata);
         OtpChallenge challenge = corporateOtpService.createLoginOtp(corporateUserId);
         return new CusCorporateLoginResponse(
                 true,
@@ -42,6 +48,10 @@ public class CusCorporateAuthService {
     }
 
     public CusCorporateOtpVerifyResponse verifyLoginOtp(CusCorporateOtpVerifyRequest request) {
+        return verifyLoginOtp(request, CusSessionClientMetadata.EMPTY);
+    }
+
+    public CusCorporateOtpVerifyResponse verifyLoginOtp(CusCorporateOtpVerifyRequest request, CusSessionClientMetadata metadata) {
         UUID corporateUserId = corporateOtpService.verifyLoginOtp(request);
         CorporateCredential credentials = corporateCredentialRepository.findById(corporateUserId)
                 .orElseThrow(() -> new CusAuthenticationException("Invalid login credentials."));
@@ -60,7 +70,7 @@ public class CusCorporateAuthService {
             );
         }
         CusTokenResponse tokens = corporateSessionService.createAuthenticatedSession(
-                request.getChallengeGroupId()
+                request.getChallengeGroupId(), metadata
         );
         return completedLoginResponse(tokens, "OTP verified successfully.");
     }
@@ -70,16 +80,28 @@ public class CusCorporateAuthService {
     }
 
     public CusCorporateOtpVerifyResponse completeFirstLogin(String challengeGroupId) {
-        CusTokenResponse tokens = corporateSessionService.createAuthenticatedSession(challengeGroupId);
+        return completeFirstLogin(challengeGroupId, CusSessionClientMetadata.EMPTY);
+    }
+
+    public CusCorporateOtpVerifyResponse completeFirstLogin(String challengeGroupId, CusSessionClientMetadata metadata) {
+        CusTokenResponse tokens = corporateSessionService.createAuthenticatedSession(challengeGroupId, metadata);
         return completedLoginResponse(tokens, "Login successful.");
     }
 
     public CusTokenResponse refreshToken(CusRefreshTokenRequest request) {
-        return corporateSessionService.refreshToken(request);
+        return refreshToken(request, CusSessionClientMetadata.EMPTY);
+    }
+
+    public CusTokenResponse refreshToken(CusRefreshTokenRequest request, CusSessionClientMetadata metadata) {
+        return corporateSessionService.refreshToken(request, metadata);
     }
 
     public void logout(String authorizationHeader) {
-        corporateSessionService.logout(authorizationHeader);
+        logout(authorizationHeader, CusSessionClientMetadata.EMPTY);
+    }
+
+    public void logout(String authorizationHeader, CusSessionClientMetadata metadata) {
+        corporateSessionService.logout(authorizationHeader, metadata);
     }
 
     private CusCorporateOtpVerifyResponse completedLoginResponse(CusTokenResponse tokens, String message) {

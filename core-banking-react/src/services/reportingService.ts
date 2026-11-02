@@ -7,6 +7,10 @@ import type {
   LedgerFilterParams,
   AccountFilterParams,
   AuditFilterParams,
+  FeeRevenueReport,
+  FeeFilterParams,
+  LargeTransactionReport,
+  LargeTxFilterParams,
 } from '../types/reports/reporting.types';
 
 const BASE = '/api/v1/reports';
@@ -70,6 +74,35 @@ export async function fetchAuditTrailLogs(
       },
     }
   );
+  return res.data;
+}
+
+export async function fetchFeeRevenueSummary(
+  params: FeeFilterParams
+): Promise<FeeRevenueReport> {
+  const res = await axiosInstance.get<FeeRevenueReport>(`${BASE}/fee-revenue`, {
+    headers: authHeaders(),
+    params: {
+      startDate: params.startDate,
+      endDate: params.endDate,
+      channel: params.channel || undefined,
+    },
+  });
+  return res.data;
+}
+
+export async function fetchLargeTransactions(
+  params: LargeTxFilterParams
+): Promise<LargeTransactionReport> {
+  const res = await axiosInstance.get<LargeTransactionReport>(`${BASE}/large-transactions`, {
+    headers: authHeaders(),
+    params: {
+      startDate: params.startDate,
+      endDate: params.endDate,
+      threshold: params.threshold || undefined,
+      transactionType: params.transactionType || undefined,
+    },
+  });
   return res.data;
 }
 
@@ -140,4 +173,41 @@ export async function exportAuditTrail(
   });
   const ext = format === 'excel' ? 'xlsx' : format === 'pdf' ? 'pdf' : 'csv';
   triggerDownload(res.data as Blob, `Audit_Trail_Log.${ext}`);
+}
+
+export async function exportFeeRevenue(
+  params: FeeFilterParams,
+  format: 'csv' | 'excel' | 'pdf'
+): Promise<void> {
+  const res = await axiosInstance.get(`${BASE}/fee-revenue/export`, {
+    headers: authHeaders(),
+    params: {
+      startDate: params.startDate,
+      endDate: params.endDate,
+      channel: params.channel || undefined,
+      format,
+    },
+    responseType: 'blob',
+  });
+  const ext = format === 'excel' ? 'xlsx' : format === 'pdf' ? 'pdf' : 'csv';
+  triggerDownload(res.data as Blob, `Fee_Revenue_Report.${ext}`);
+}
+
+export async function exportLargeTransactions(
+  params: LargeTxFilterParams,
+  format: 'csv' | 'excel' | 'pdf'
+): Promise<void> {
+  const res = await axiosInstance.get(`${BASE}/large-transactions/export`, {
+    headers: authHeaders(),
+    params: {
+      startDate: params.startDate,
+      endDate: params.endDate,
+      threshold: params.threshold || undefined,
+      transactionType: params.transactionType || undefined,
+      format,
+    },
+    responseType: 'blob',
+  });
+  const ext = format === 'excel' ? 'xlsx' : format === 'pdf' ? 'pdf' : 'csv';
+  triggerDownload(res.data as Blob, `Large_Transactions_AML.${ext}`);
 }

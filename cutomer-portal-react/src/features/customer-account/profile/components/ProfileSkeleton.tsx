@@ -21,8 +21,7 @@ const ProfileFieldSkeleton = () => {
 
 export default function ProfileSkeleton() {
   return (
-    <div className="min-h-[calc(100vh-80px)] bg-[#F5F7FB]">
-      <div className="mx-auto max-w-7xl space-y-8 px-6 py-8">
+    <div className="mx-auto max-w-5xl space-y-6">
 
         {/* ================================================================
             PROFILE HEADER
@@ -157,6 +156,5 @@ export default function ProfileSkeleton() {
         </section>
 
       </div>
-    </div>
   );
 }

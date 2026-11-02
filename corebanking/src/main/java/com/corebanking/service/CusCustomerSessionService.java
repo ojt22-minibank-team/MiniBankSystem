@@ -1,5 +1,6 @@
 package com.corebanking.service;
 
+import com.corebanking.dto.CusSessionClientMetadata;
 import com.corebanking.dto.CusRefreshTokenRequest;
 import com.corebanking.dto.CusTokenResponse;
 import com.corebanking.entity.AuditLogs;
@@ -17,6 +18,13 @@ import com.corebanking.repository.CusAuthSessionsRepository;
 import com.corebanking.repository.CusCredentialsRepository;
 import com.corebanking.repository.CusJwtRevokedTokensRepository;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.IncorrectClaimException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.MissingClaimException;
+import io.jsonwebtoken.PrematureJwtException;
+import io.jsonwebtoken.UnsupportedJwtException;
+import io.jsonwebtoken.security.SignatureException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +54,12 @@ public class CusCustomerSessionService {
 	)
 public CusTokenResponse refreshToken(
       CusRefreshTokenRequest request) {
+        return refreshToken(request, CusSessionClientMetadata.EMPTY);
+    }
+
+    @Transactional(noRollbackFor = CusSessionExpiredException.class)
+    public CusTokenResponse refreshToken(
+      CusRefreshTokenRequest request, CusSessionClientMetadata metadata) {
 
   // =====================================================
   // 1. REQUEST VALIDATION
@@ -70,10 +84,15 @@ public CusTokenResponse refreshToken(
   // 2. VERIFY REFRESH JWT
   // =====================================================
 
-  Claims claims =
-          cusJwtService.getClaims(
-                  oldRefreshToken
-          );
+  Claims claims;
+  try {
+      claims = cusJwtService.getClaims(oldRefreshToken);
+  } catch (MalformedJwtException | ExpiredJwtException
+          | SignatureException | IncorrectClaimException
+          | MissingClaimException | PrematureJwtException | UnsupportedJwtException ex) {
+      // Client credential errors only; signing-key/configuration failures propagate.
+      throw new CusAuthenticationException("Invalid or expired refresh token.");
+  }
 
 
   // =====================================================
@@ -248,7 +267,7 @@ public CusTokenResponse refreshToken(
           session.getSessionUuid(),
           null,
           "{\"status\":\"ACTIVE\","
-                  + "\"refreshTokenRotated\":true}"
+                  + "\"refreshTokenRotated\":true}", metadata
   );
 
 
@@ -269,6 +288,12 @@ public CusTokenResponse refreshToken(
     )
  public void logout(
          String authorizationHeader) {
+        logout(authorizationHeader, CusSessionClientMetadata.EMPTY);
+    }
+
+    @Transactional(noRollbackFor = CusSessionExpiredException.class)
+    public void logout(
+         String authorizationHeader, CusSessionClientMetadata metadata) {
 
      // =====================================================
      // 1. AUTHORIZATION HEADER CHECK
@@ -477,7 +502,7 @@ public CusTokenResponse refreshToken(
              "{\"status\":\"ACTIVE\"}",
 
              "{\"status\":\"REVOKED\","
-                     + "\"reason\":\"USER_LOGOUT\"}"
+                     + "\"reason\":\"USER_LOGOUT\"}", metadata
      );
  }
 
@@ -492,9 +517,22 @@ public CusTokenResponse refreshToken(
          String entityId,
          String oldValues,
          String newValues) {
+        saveAuditLog(actorType, actorCustomer, actionType, entityType, entityId, oldValues, newValues, CusSessionClientMetadata.EMPTY);
+    }
+
+    private void saveAuditLog(
+         ActorType actorType,
+         Customers actorCustomer,
+         String actionType,
+         String entityType,
+         String entityId,
+         String oldValues,
+         String newValues, CusSessionClientMetadata metadata) {
 
      AuditLogs auditLog =
              AuditLogs.builder()
+                     .ipAddress(metadata == null ? null : metadata.ipAddress())
+                     .userAgent(metadata == null ? null : metadata.userAgent())
 
                      .actorType(
                              actorType

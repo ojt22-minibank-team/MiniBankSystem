@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
 import AdminLayout from '../../../components/layout/AdminLayout';
-import Button from '../../../components/common/Button';
 import DataTable from '../../../components/common/DataTable';
 import ParameterCreateModal from '../components/ParameterCreateModal';
 import ParameterEditModal from '../components/ParameterEditModal';
@@ -127,6 +126,10 @@ export default function SystemRulesPage() {
     });
   }, [feeSchedules, feeSearch, feeStatusFilter]);
 
+  const activeFeesCount = useMemo(() => {
+    return feeSchedules.filter((f) => f.active).length;
+  }, [feeSchedules]);
+
   // Deactivate fee handler
   const handleConfirmDeactivateFee = async () => {
     if (!selectedFee) return;
@@ -167,13 +170,13 @@ export default function SystemRulesPage() {
   const parameterColumns = [
     {
       key: 'parameterKey',
-      header: 'Parameter Key',
+      header: 'Parameter Key & Scope',
       render: (row: SystemParameterResponse) => (
         <div>
-          <span className="font-mono text-xs font-bold text-gray-900 block">
+          <span className="font-mono text-xs font-bold text-[#1E1B4B] block">
             {row.parameterKey}
           </span>
-          <span className="text-xs text-gray-500 block truncate max-w-[280px]">
+          <span className="text-[11px] text-zinc-500 block truncate max-w-[320px] font-medium mt-0.5">
             {row.description || 'No description provided.'}
           </span>
         </div>
@@ -183,7 +186,7 @@ export default function SystemRulesPage() {
       key: 'parameterValue',
       header: 'Configured Value',
       render: (row: SystemParameterResponse) => (
-        <span className="rounded bg-slate-100 border border-slate-200 px-2.5 py-1 text-xs font-mono font-semibold text-slate-800">
+        <span className="rounded-xl bg-purple-900/5 border border-purple-900/10 px-3 py-1 text-xs font-mono font-bold text-[#1E1B4B]">
           {row.parameterValue}
         </span>
       ),
@@ -192,10 +195,10 @@ export default function SystemRulesPage() {
       key: 'updatedAt',
       header: 'Last Updated',
       render: (row: SystemParameterResponse) => (
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-zinc-500 font-medium">
           <p>{formatDateTime(row.updatedAt)}</p>
           {row.updatedByType && (
-            <p className="text-gray-400">by {row.updatedByType}</p>
+            <p className="text-zinc-400 text-[10px]">by {row.updatedByType}</p>
           )}
         </div>
       ),
@@ -203,42 +206,38 @@ export default function SystemRulesPage() {
     {
       key: 'actions',
       header: 'Actions',
-      className: 'text-right',
+      align: 'right' as const,
       render: (row: SystemParameterResponse) => (
         <div className="flex justify-end">
-          <Button
-            variant="secondary"
-            size="sm"
+          <button
+            type="button"
             onClick={() => {
               setSelectedParam(row);
-              setIsEditOpenParam(true);
+              setIsEditParamOpen(true);
             }}
+            className="inline-flex items-center gap-1.5 rounded-full border border-purple-950/15 bg-white/80 px-3.5 py-1 text-xs font-bold text-[#1E1B4B] shadow-xs hover:bg-[#1E1B4B] hover:text-white transition-all"
           >
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
-            Edit
-          </Button>
+            <span>Edit</span>
+          </button>
         </div>
       ),
     },
   ];
 
-  const setIsEditOpenParam = (open: boolean) => {
-    setIsEditParamOpen(open);
-  };
-
   // Fee table columns
   const feeColumns = [
     {
       key: 'feeCode',
-      header: 'Fee Code / Type',
+      header: 'Fee Code / Operation',
       render: (row: FeeScheduleResponse) => (
         <div>
-          <span className="font-mono text-xs font-bold text-gray-900 block">
+          <span className="font-mono text-xs font-bold text-[#1E1B4B] block">
             {row.feeCode}
           </span>
-          <span className="text-xs text-gray-500 block">
+          <span className="text-[11px] text-zinc-500 font-medium block mt-0.5">
             {row.transactionType.replace(/_/g, ' ')}
           </span>
         </div>
@@ -246,19 +245,19 @@ export default function SystemRulesPage() {
     },
     {
       key: 'feeValue',
-      header: 'Fee Rate / Value',
+      header: 'Fee Rate / Formula',
       render: (row: FeeScheduleResponse) => (
         <div>
-          <span className="font-semibold text-gray-900 text-sm">
+          <span className="font-bold text-[#1E1B4B] text-xs font-mono">
             {row.feeType === 'PERCENTAGE'
               ? `${row.feeValue}%`
               : `${row.feeValue.toFixed(2)} ${row.currency}`}
           </span>
-          <span className="rounded bg-blue-50 text-blue-700 px-1.5 py-0.5 text-[10px] font-semibold ml-1.5 uppercase">
+          <span className="status-pill-purple text-[10px] ml-1.5 uppercase">
             {row.feeType}
           </span>
           {(row.minimumFee != null || row.maximumFee != null) && (
-            <p className="text-[11px] text-gray-400 mt-0.5">
+            <p className="text-[10px] text-zinc-400 mt-0.5 font-mono">
               {row.minimumFee != null ? `Min: ${row.minimumFee}` : ''}
               {row.minimumFee != null && row.maximumFee != null ? ' · ' : ''}
               {row.maximumFee != null ? `Max: ${row.maximumFee}` : ''}
@@ -271,9 +270,9 @@ export default function SystemRulesPage() {
       key: 'activePeriod',
       header: 'Active Schedule',
       render: (row: FeeScheduleResponse) => (
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-zinc-500 font-medium">
           <p>From: {new Date(row.activeFrom).toLocaleDateString()}</p>
-          <p className="text-gray-400">
+          <p className="text-zinc-400 text-[10px]">
             Until: {row.activeUntil ? new Date(row.activeUntil).toLocaleDateString() : 'Indefinite'}
           </p>
         </div>
@@ -282,14 +281,14 @@ export default function SystemRulesPage() {
     {
       key: 'active',
       header: 'Status',
+      align: 'center' as const,
       render: (row: FeeScheduleResponse) => (
         <span
-          className={[
-            'rounded-full px-2.5 py-0.5 text-xs font-semibold',
+          className={
             row.active
-              ? 'bg-green-100 text-green-700'
-              : 'bg-gray-100 text-gray-500',
-          ].join(' ')}
+              ? 'status-pill-emerald'
+              : 'status-pill-amber'
+          }
         >
           {row.active ? 'Active' : 'Inactive'}
         </span>
@@ -298,19 +297,19 @@ export default function SystemRulesPage() {
     {
       key: 'actions',
       header: 'Actions',
-      className: 'text-right',
+      align: 'right' as const,
       render: (row: FeeScheduleResponse) => (
-        <div className="flex items-center justify-end gap-1.5">
-          <Button
-            variant="secondary"
-            size="sm"
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
             onClick={() => {
               setSelectedFee(row);
               setIsEditFeeOpen(true);
             }}
+            className="inline-flex items-center gap-1 rounded-full border border-purple-950/15 bg-white/80 px-3 py-1 text-xs font-bold text-[#1E1B4B] shadow-xs hover:bg-[#1E1B4B] hover:text-white transition-all"
           >
             Edit
-          </Button>
+          </button>
 
           {row.active ? (
             <button
@@ -318,7 +317,7 @@ export default function SystemRulesPage() {
                 setSelectedFee(row);
                 setIsDeactivateFeeOpen(true);
               }}
-              className="rounded px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+              className="rounded-full px-3 py-1 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors"
             >
               Deactivate
             </button>
@@ -328,7 +327,7 @@ export default function SystemRulesPage() {
                 setSelectedFee(row);
                 setIsActivateFeeOpen(true);
               }}
-              className="rounded px-2.5 py-1 text-xs font-medium text-green-600 hover:bg-green-50 transition-colors"
+              className="rounded-full px-3 py-1 text-xs font-bold text-emerald-600 hover:bg-emerald-50 transition-colors"
             >
               Activate
             </button>
@@ -339,171 +338,205 @@ export default function SystemRulesPage() {
   ];
 
   return (
-    <AdminLayout pageTitle="System Rules Configuration">
-      {/* Page Header */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">System Rules & Configuration</h2>
-          <p className="mt-0.5 text-sm text-gray-500">
-            Configure core banking operational thresholds, security timeouts, and transaction fee schedules.
-          </p>
-        </div>
+    <AdminLayout pageTitle="System Rules">
+      <div className="max-w-[1440px] mx-auto space-y-6">
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => {
-              if (activeTab === 'parameters') loadParameters();
-              else loadFees();
-            }}
-            disabled={activeTab === 'parameters' ? isLoadingParams : isLoadingFees}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            <svg
-              className={[
-                'h-4 w-4',
-                (activeTab === 'parameters' ? isLoadingParams : isLoadingFees) ? 'animate-spin' : '',
-              ].join(' ')}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Refresh
-          </button>
-
-          {activeTab === 'parameters' ? (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => setIsCreateParamOpen(true)}
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              New Parameter
-            </Button>
-          ) : (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => setIsCreateFeeOpen(true)}
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              New Fee Schedule
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Success Notification */}
-      {successMessage && (
-        <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800 flex items-center justify-between shadow-sm animate-fade-in">
-          <div className="flex items-center gap-2">
-            <svg className="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            <span className="font-medium">{successMessage}</span>
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
+          <div>
+            <h2 className="text-2xl sm:text-[28px] font-black text-[#1E1B4B] tracking-tight">
+              System Rules & Fee Matrix
+            </h2>
+            <p className="mt-0.5 text-xs sm:text-sm text-zinc-500 font-medium">
+              Ekaraj Bank Core Controls: Operating parameters, liquidity reserve thresholds, and dynamic fee schedules
+            </p>
           </div>
-          <button onClick={() => setSuccessMessage(null)} className="text-green-600 hover:text-green-800">
-            ✕
-          </button>
-        </div>
-      )}
 
-      {/* Error Alert */}
-      {error && (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-start gap-3">
-          <svg className="h-5 w-5 text-red-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-          </svg>
-          <div className="flex-1">
-            <p className="font-semibold">Configuration Error</p>
-            <p className="mt-0.5">{error}</p>
-          </div>
-          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600">
-            ✕
-          </button>
-        </div>
-      )}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                if (activeTab === 'parameters') loadParameters();
+                else loadFees();
+              }}
+              disabled={activeTab === 'parameters' ? isLoadingParams : isLoadingFees}
+              className="flex items-center gap-2 rounded-full border border-purple-950/15 bg-white/80 px-4 py-2 text-xs font-bold text-[#1E1B4B] hover:bg-white shadow-xs transition-colors disabled:opacity-50"
+            >
+              <svg
+                className={[
+                  'h-4 w-4',
+                  (activeTab === 'parameters' ? isLoadingParams : isLoadingFees) ? 'animate-spin' : '',
+                ].join(' ')}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Refresh</span>
+            </button>
 
-      {/* Tab Selector */}
-      <div className="mb-6 border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          <button
-            onClick={() => setActiveTab('parameters')}
-            className={[
-              'py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2',
-              activeTab === 'parameters'
-                ? 'border-blue-600 text-blue-600 font-semibold'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-            ].join(' ')}
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            System Parameters ({parameters.length})
-          </button>
-
-          <button
-            onClick={() => setActiveTab('fees')}
-            className={[
-              'py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2',
-              activeTab === 'fees'
-                ? 'border-blue-600 text-blue-600 font-semibold'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-            ].join(' ')}
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Fee Schedules ({feeSchedules.length})
-          </button>
-        </nav>
-      </div>
-
-      {/* TAB 1: SYSTEM PARAMETERS */}
-      {activeTab === 'parameters' && (
-        <div className="space-y-6">
-          {/* Search Card */}
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="relative max-w-md">
-              <input
-                type="text"
-                placeholder="Search parameter key, value, or description..."
-                value={paramSearch}
-                onChange={(e) => setParamSearch(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 pl-10 pr-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            {activeTab === 'parameters' ? (
+              <button
+                type="button"
+                onClick={() => setIsCreateParamOpen(true)}
+                className="btn-liquid-gold px-5 py-2 text-xs flex items-center gap-2"
+              >
+                <svg className="h-4 w-4 text-[#1E1B4B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
-              </div>
-              {paramSearch && (
-                <button
-                  onClick={() => setParamSearch('')}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
-                >
-                  ✕
-                </button>
-              )}
+                <span>New Parameter</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsCreateFeeOpen(true)}
+                className="btn-liquid-gold px-5 py-2 text-xs flex items-center gap-2"
+              >
+                <svg className="h-4 w-4 text-[#1E1B4B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>New Fee Schedule</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 3 Summary KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)]">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              System Parameters
+            </span>
+            <div className="flex items-baseline justify-between mt-3">
+              <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
+                {parameters.length}
+              </span>
+              <span className="status-pill-emerald text-[11px]">
+                Enforced Core
+              </span>
             </div>
           </div>
 
-          {/* Parameters Table Card */}
-          <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-slate-50/50">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Showing {filteredParameters.length} of {parameters.length} system parameters
-              </p>
+          <div className="glass-panel p-6">
+            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+              Active Fee Schedules
+            </span>
+            <div className="flex items-baseline justify-between mt-3">
+              <span className="text-2xl sm:text-[28px] font-black text-[#1E1B4B] font-mono tabular-nums">
+                {activeFeesCount}
+              </span>
+              <span className="status-pill-amber text-[11px]">
+                Active Tariffs
+              </span>
+            </div>
+          </div>
+
+          <div className="glass-panel p-6">
+            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+              Security Protocol
+            </span>
+            <div className="flex items-baseline justify-between mt-3">
+              <span className="text-xl sm:text-2xl font-black text-[#1E1B4B]">
+                Pessimistic Locks
+              </span>
+              <span className="status-pill-purple text-[11px]">
+                Double Spending Guard
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Success & Error notifications */}
+        {successMessage && (
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-50/80 backdrop-blur-md px-5 py-3 text-xs font-semibold text-emerald-800 flex items-center justify-between">
+            <span>{successMessage}</span>
+            <button onClick={() => setSuccessMessage(null)} className="text-emerald-700 hover:text-emerald-950 font-bold">
+              ✕
+            </button>
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-2xl border border-red-500/30 bg-red-50/80 backdrop-blur-md px-5 py-4 text-xs font-semibold text-red-700 flex items-start justify-between">
+            <div>
+              <p className="font-bold">Configuration Error</p>
+              <p className="mt-0.5">{error}</p>
+            </div>
+            <button onClick={() => setError(null)} className="text-red-700 hover:text-red-950 font-bold">
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Tab Switcher (No Emojis, No Black background - Clean Light Theme) */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center rounded-lg bg-slate-100 p-1 border border-slate-200/60 shadow-xs">
+            <button
+              type="button"
+              onClick={() => setActiveTab('parameters')}
+              className={[
+                'px-4 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-2 cursor-pointer',
+                activeTab === 'parameters'
+                  ? 'bg-white text-sky-600 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900',
+              ].join(' ')}
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />
+              </svg>
+              <span>System Parameters ({parameters.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('fees')}
+              className={[
+                'px-4 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-2 cursor-pointer',
+                activeTab === 'fees'
+                  ? 'bg-white text-sky-600 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900',
+              ].join(' ')}
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+              </svg>
+              <span>Fee Schedules ({feeSchedules.length})</span>
+            </button>
+          </div>
+        </div>
+
+        {/* TAB 1: SYSTEM PARAMETERS */}
+        {activeTab === 'parameters' && (
+          <div className="glass-panel p-6 space-y-5">
+            {/* Search Card */}
+            <div className="pb-4 border-b border-purple-950/10">
+              <div className="relative max-w-md">
+                <input
+                  type="text"
+                  placeholder="Search parameter key, value, or description..."
+                  value={paramSearch}
+                  onChange={(e) => setParamSearch(e.target.value)}
+                  className="w-full rounded-full border border-purple-950/15 bg-white/70 py-2 pl-10 pr-4 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-400/25 focus:border-amber-500"
+                />
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-zinc-400">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                {paramSearch && (
+                  <button
+                    onClick={() => setParamSearch('')}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-zinc-400 hover:text-zinc-600"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className="p-4">
+            <div>
               <DataTable
                 columns={parameterColumns}
                 data={filteredParameters}
@@ -517,25 +550,22 @@ export default function SystemRulesPage() {
               />
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* TAB 2: FEE SCHEDULES */}
-      {activeTab === 'fees' && (
-        <div className="space-y-6">
-          {/* Search and Filters Card */}
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              {/* Search Box */}
+        {/* TAB 2: FEE SCHEDULES */}
+        {activeTab === 'fees' && (
+          <div className="glass-panel p-6 space-y-5">
+            {/* Search and Filters */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-purple-950/10">
               <div className="relative flex-1 max-w-md">
                 <input
                   type="text"
                   placeholder="Search fee code, transaction type, currency..."
                   value={feeSearch}
                   onChange={(e) => setFeeSearch(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 pl-10 pr-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-full border border-purple-950/15 bg-white/70 py-2 pl-10 pr-4 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-400/25 focus:border-amber-500"
                 />
-                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-zinc-400">
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
@@ -543,7 +573,7 @@ export default function SystemRulesPage() {
                 {feeSearch && (
                   <button
                     onClick={() => setFeeSearch('')}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-zinc-400 hover:text-zinc-600"
                   >
                     ✕
                   </button>
@@ -552,14 +582,13 @@ export default function SystemRulesPage() {
 
               {/* Status Filter */}
               <div className="flex items-center gap-2">
-                <label htmlFor="fee-status-filter" className="text-xs font-semibold uppercase text-gray-500">
+                <span className="text-xs font-bold uppercase text-[#1E1B4B]">
                   Status:
-                </label>
+                </span>
                 <select
-                  id="fee-status-filter"
                   value={feeStatusFilter}
                   onChange={(e) => setFeeStatusFilter(e.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE')}
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="rounded-full border border-purple-950/15 bg-white/80 px-4 py-2 text-xs font-semibold text-[#1E1B4B] focus:outline-none focus:ring-2 focus:ring-amber-400/25"
                 >
                   <option value="ALL">All Fee Schedules ({feeSchedules.length})</option>
                   <option value="ACTIVE">
@@ -571,17 +600,8 @@ export default function SystemRulesPage() {
                 </select>
               </div>
             </div>
-          </div>
 
-          {/* Fee Schedules Table Card */}
-          <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-slate-50/50">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Showing {filteredFees.length} of {feeSchedules.length} fee schedule configurations
-              </p>
-            </div>
-
-            <div className="p-4">
+            <div>
               <DataTable
                 columns={feeColumns}
                 data={filteredFees}
@@ -595,69 +615,69 @@ export default function SystemRulesPage() {
               />
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Modals */}
-      <ParameterCreateModal
-        isOpen={isCreateParamOpen}
-        onClose={() => setIsCreateParamOpen(false)}
-        onSuccess={() => {
-          handleShowSuccess('System parameter created successfully.');
-          loadParameters();
-        }}
-      />
+        {/* Modals */}
+        <ParameterCreateModal
+          isOpen={isCreateParamOpen}
+          onClose={() => setIsCreateParamOpen(false)}
+          onSuccess={() => {
+            handleShowSuccess('System parameter created successfully.');
+            loadParameters();
+          }}
+        />
 
-      <ParameterEditModal
-        isOpen={isEditParamOpen}
-        onClose={() => setIsEditParamOpen(false)}
-        parameter={selectedParam}
-        onSuccess={() => {
-          handleShowSuccess('System parameter updated successfully.');
-          loadParameters();
-        }}
-      />
+        <ParameterEditModal
+          isOpen={isEditParamOpen}
+          onClose={() => setIsEditParamOpen(false)}
+          parameter={selectedParam}
+          onSuccess={() => {
+            handleShowSuccess('System parameter updated successfully.');
+            loadParameters();
+          }}
+        />
 
-      <FeeScheduleCreateModal
-        isOpen={isCreateFeeOpen}
-        onClose={() => setIsCreateFeeOpen(false)}
-        onSuccess={() => {
-          handleShowSuccess('Fee schedule created successfully.');
-          loadFees();
-        }}
-      />
+        <FeeScheduleCreateModal
+          isOpen={isCreateFeeOpen}
+          onClose={() => setIsCreateFeeOpen(false)}
+          onSuccess={() => {
+            handleShowSuccess('Fee schedule created successfully.');
+            loadFees();
+          }}
+        />
 
-      <FeeScheduleEditModal
-        isOpen={isEditFeeOpen}
-        onClose={() => setIsEditFeeOpen(false)}
-        feeSchedule={selectedFee}
-        onSuccess={() => {
-          handleShowSuccess('Fee schedule updated successfully.');
-          loadFees();
-        }}
-      />
+        <FeeScheduleEditModal
+          isOpen={isEditFeeOpen}
+          onClose={() => setIsEditFeeOpen(false)}
+          feeSchedule={selectedFee}
+          onSuccess={() => {
+            handleShowSuccess('Fee schedule updated successfully.');
+            loadFees();
+          }}
+        />
 
-      <ConfirmModal
-        isOpen={isDeactivateFeeOpen}
-        onClose={() => setIsDeactivateFeeOpen(false)}
-        onConfirm={handleConfirmDeactivateFee}
-        title="Deactivate Fee Schedule"
-        message={`Are you sure you want to deactivate fee schedule "${selectedFee?.feeCode}"? Transactions will no longer apply this fee rule.`}
-        confirmText="Deactivate"
-        variant="danger"
-        isLoading={actionLoading}
-      />
+        <ConfirmModal
+          isOpen={isDeactivateFeeOpen}
+          onClose={() => setIsDeactivateFeeOpen(false)}
+          onConfirm={handleConfirmDeactivateFee}
+          title="Deactivate Fee Schedule"
+          message={`Are you sure you want to deactivate fee schedule "${selectedFee?.feeCode}"? Transactions will no longer apply this fee rule.`}
+          confirmText="Deactivate"
+          variant="danger"
+          isLoading={actionLoading}
+        />
 
-      <ConfirmModal
-        isOpen={isActivateFeeOpen}
-        onClose={() => setIsActivateFeeOpen(false)}
-        onConfirm={handleConfirmActivateFee}
-        title="Activate Fee Schedule"
-        message={`Are you sure you want to activate fee schedule "${selectedFee?.feeCode}"? It will become active according to its configured schedule.`}
-        confirmText="Activate"
-        variant="primary"
-        isLoading={actionLoading}
-      />
+        <ConfirmModal
+          isOpen={isActivateFeeOpen}
+          onClose={() => setIsActivateFeeOpen(false)}
+          onConfirm={handleConfirmActivateFee}
+          title="Activate Fee Schedule"
+          message={`Are you sure you want to activate fee schedule "${selectedFee?.feeCode}"? It will become active according to its configured schedule.`}
+          confirmText="Activate"
+          variant="primary"
+          isLoading={actionLoading}
+        />
+      </div>
     </AdminLayout>
   );
 }

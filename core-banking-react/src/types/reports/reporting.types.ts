@@ -74,3 +74,60 @@ export interface AuditFilterParams {
   page: number;
   pageSize: number;
 }
+
+
+export interface FeeRevenueItem {
+  transactionType: string;
+  channel: string;
+  transactionCount: number;
+  totalVolume: number;
+  totalFeeRevenue: number;
+  avgFeePerTx: number;
+}
+
+export interface FeeRevenueReport {
+  startDate: string;
+  endDate: string;
+  channel: string;
+  grandTotalTransactions: number;
+  grandTotalVolume: number;
+  grandTotalFeeRevenue: number;
+  items: FeeRevenueItem[];
+}
+
+export interface FeeFilterParams {
+  startDate: string;
+  endDate: string;
+  channel?: string;
+}
+
+export interface LargeTransactionItem {
+  transactionRef: string;
+  transactionTime: string;
+  transactionType: string;
+  channel: string;
+  amount: number;
+  currency: string;
+  sourceAccountNo: string;
+  sourceCustomerName: string;
+  destAccountNo: string;
+  destCustomerName: string;
+  riskLevel: 'STANDARD' | 'MEDIUM RISK' | 'HIGH RISK';
+}
+
+export interface LargeTransactionReport {
+  startDate: string;
+  endDate: string;
+  thresholdAmount: number;
+  transactionType: string;
+  totalFlaggedCount: number;
+  totalFlaggedVolume: number;
+  items: LargeTransactionItem[];
+}
+
+export interface LargeTxFilterParams {
+  startDate: string;
+  endDate: string;
+  threshold?: number;
+  transactionType?: string;
+}

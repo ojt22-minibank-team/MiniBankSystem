@@ -14,8 +14,10 @@ import com.corebanking.entity.enums.CustomerType;
 import com.corebanking.entity.enums.GenderType;
 import com.corebanking.entity.enums.MfaMethod;
 import com.corebanking.entity.enums.UpdatedByType;
+import com.corebanking.repository.CompanyInfoRepository;
 import com.corebanking.repository.CustomerCredentialsRepository;
 import com.corebanking.repository.CustomerRepository;
+import com.corebanking.repository.PersonalInfoRepository;
 import com.corebanking.repository.StaffUsersRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -38,6 +40,8 @@ import java.util.stream.Collectors;
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
+    private final PersonalInfoRepository personalInfoRepository;
+    private final CompanyInfoRepository companyInfoRepository;
     private final CustomerCredentialsRepository customerCredentialsRepository;
     private final StaffUsersRepository staffUsersRepository;
     private final PasswordEncoder passwordEncoder;
@@ -68,6 +72,18 @@ public class CustomerService {
         LocalDateTime now = LocalDateTime.now();
 
         // String မှ CustomerType Enum သို့ ပြောင်းလဲခြင်း
+        // Duplicate Checks (Email, Phone)
+        if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
+            if (customerRepository.existsByEmail(dto.getEmail().trim())) {
+                throw new IllegalArgumentException("Email address is already registered in the system: " + dto.getEmail().trim());
+            }
+        }
+        if (dto.getPhone() != null && !dto.getPhone().isBlank()) {
+            if (customerRepository.existsByPhone(dto.getPhone().trim())) {
+                throw new IllegalArgumentException("Phone number is already registered in the system: " + dto.getPhone().trim());
+            }
+        }
+
         CustomerType customerType = CustomerType.PERSONAL;
         if (dto.getCustomerType() != null && !dto.getCustomerType().isBlank()) {
             try {
@@ -78,6 +94,26 @@ public class CustomerService {
         }
 
         // Full Name သတ်မှတ်ခြင်း
+        // Duplicate Checks by Customer Type (NRC, Registration Number, Tax ID)
+        if (customerType == CustomerType.PERSONAL) {
+            if (dto.getNrc() != null && !dto.getNrc().isBlank()) {
+                if (personalInfoRepository.existsByNrc(dto.getNrc().trim())) {
+                    throw new IllegalArgumentException("NRC number is already registered: " + dto.getNrc().trim());
+                }
+            }
+        } else {
+            if (dto.getRegistrationNumber() != null && !dto.getRegistrationNumber().isBlank()) {
+                if (companyInfoRepository.existsByRegistrationNumber(dto.getRegistrationNumber().trim())) {
+                    throw new IllegalArgumentException("Company registration number is already registered: " + dto.getRegistrationNumber().trim());
+                }
+            }
+            if (dto.getTaxId() != null && !dto.getTaxId().isBlank()) {
+                if (companyInfoRepository.existsByTaxId(dto.getTaxId().trim())) {
+                    throw new IllegalArgumentException("Tax ID is already registered: " + dto.getTaxId().trim());
+                }
+            }
+        }
+
         String resolvedFullName;
         if (customerType == CustomerType.COMPANY) {
             if (dto.getCompanyName() == null || dto.getCompanyName().isBlank()) {

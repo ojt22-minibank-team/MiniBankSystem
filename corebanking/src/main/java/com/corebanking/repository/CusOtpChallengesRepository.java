@@ -66,6 +66,11 @@ public interface CusOtpChallengesRepository
             int resendNo
     );
 
+    /** Latest reset row including rotated/consumed rows: never search only an old group. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<OtpChallenge> findFirstByCustomer_CustomerIdAndSubjectTypeAndPurposeOrderByOtpIdDesc(
+            UUID customerId, OtpSubjectType subjectType, OtpPurpose purpose);
+
     @EntityGraph(attributePaths = "customer")
     Optional<OtpChallenge> findTopByChallengeGroupIdAndSubjectTypeAndPurposeOrderByOtpIdDesc(
             String challengeGroupId,
@@ -84,6 +89,8 @@ public interface CusOtpChallengesRepository
             OtpPurpose purpose
     );
 
+    /** Caller holds the customer credential lock. Current read, not an RR snapshot. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<OtpChallenge> findByCustomerAndPurposeAndStatus(
             Customers customer,
             OtpPurpose purpose,
@@ -175,6 +182,7 @@ public interface CusOtpChallengesRepository
 	           AND o.purpose = :purpose
 	           AND o.status = :status
 	           AND o.consumedAt IS NOT NULL
+	           AND o.expiresAt > :now
 	        """)
 	int claimVerifiedPasswordResetChallengeIfMatch(
 
@@ -278,6 +286,7 @@ public interface CusOtpChallengesRepository
 	           AND o.purpose = :purpose
 	           AND o.status = :status
 	           AND o.consumedAt IS NOT NULL
+	           AND o.expiresAt > :now
 	        """)
 	int claimVerifiedPinResetChallengeIfMatch(
 

@@ -14,7 +14,7 @@ export default function AccountBalance({
   const formattedAmount = new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount);
+  }).format(Number.isFinite(amount) ? amount : 0);
 
   return (
     <div className={className}>

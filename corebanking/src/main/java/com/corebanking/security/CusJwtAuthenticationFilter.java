@@ -197,7 +197,9 @@ public class CusJwtAuthenticationFilter
             // =================================================
 
             AuthSession session =
-                    cusSessionService
+                    isNotificationPollingRequest(request)
+                            ? cusSessionService.validateAccessSessionWithoutActivity(claims)
+                            : cusSessionService
                             .validateAccessSession(
                                     claims
                             );
@@ -341,6 +343,14 @@ public class CusJwtAuthenticationFilter
      );
  }
 
+
+    // Only these exact background GETs omit activity writes; authentication is unchanged.
+    private boolean isNotificationPollingRequest(HttpServletRequest request) {
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        return HttpMethod.GET.matches(request.getMethod())
+                && (path.equals("/api/customer/notifications")
+                    || path.equals("/api/customer/notifications/unread-count"));
+    }
 
     // =========================================================
     // WHICH URLs SHOULD SKIP THIS FILTER?

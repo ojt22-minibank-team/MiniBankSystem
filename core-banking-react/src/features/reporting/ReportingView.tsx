@@ -3,6 +3,8 @@ import ReportFilterBar, { type ReportTab } from './components/ReportFilterBar';
 import DailyLedgerPanel from './components/DailyLedgerPanel';
 import AccountStatusPanel from './components/AccountStatusPanel';
 import AuditTrailPanel from './components/AuditTrailPanel';
+import FeeRevenuePanel from './components/FeeRevenuePanel';
+import LargeTransactionPanel from './components/LargeTransactionPanel';
 
 const today = new Date().toISOString().slice(0, 10);
 const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
@@ -11,7 +13,7 @@ const monthAgoDt = monthAgo + 'T00:00';
 
 function tabStyle(active: boolean): React.CSSProperties {
   return {
-    padding: '9px 20px',
+    padding: '9px 18px',
     borderRadius: '8px',
     border: 'none',
     fontSize: '13px',
@@ -32,12 +34,16 @@ const ReportingView: React.FC = () => {
   const [ledgerStatus, setLedgerStatus] = useState('');
   const [ledgerTransactionType, setLedgerTransactionType] = useState('');
   const [accountStatus, setAccountStatus] = useState('');
-
+  
   const [auditStartDate, setAuditStartDate] = useState(monthAgoDt);
   const [auditEndDate, setAuditEndDate] = useState(todayDt);
   const [staffId, setStaffId] = useState('');
   const [actionType, setActionType] = useState('');
   const [accountNo, setAccountNo] = useState('');
+
+  const [feeChannel, setFeeChannel] = useState('');
+  const [amlThreshold, setAmlThreshold] = useState<number>(10000000);
+  const [amlTransactionType, setAmlTransactionType] = useState('');
 
   // Applied filter states (applied on Search / Reset)
   const [appliedStartDate, setAppliedStartDate] = useState(monthAgo);
@@ -52,16 +58,24 @@ const ReportingView: React.FC = () => {
   const [appliedActionType, setAppliedActionType] = useState('');
   const [appliedAccountNo, setAppliedAccountNo] = useState('');
 
+  const [appliedFeeChannel, setAppliedFeeChannel] = useState('');
+  const [appliedAmlThreshold, setAppliedAmlThreshold] = useState<number>(10000000);
+  const [appliedAmlTransactionType, setAppliedAmlTransactionType] = useState('');
+
   const [hasSearched, setHasSearched] = useState<Record<ReportTab, boolean>>({
     ledger: false,
     account: false,
     audit: false,
+    fee: false,
+    aml: false,
   });
 
   const [searchKeys, setSearchKeys] = useState<Record<ReportTab, number>>({
     ledger: 0,
     account: 0,
     audit: 0,
+    fee: 0,
+    aml: 0,
   });
 
   const [isSearching, setIsSearching] = useState(false);
@@ -77,6 +91,9 @@ const ReportingView: React.FC = () => {
     setAppliedStaffId(staffId);
     setAppliedActionType(actionType);
     setAppliedAccountNo(accountNo);
+    setAppliedFeeChannel(feeChannel);
+    setAppliedAmlThreshold(amlThreshold);
+    setAppliedAmlTransactionType(amlTransactionType);
 
     setHasSearched((prev) => ({ ...prev, [activeTab]: true }));
     setSearchKeys((prev) => ({ ...prev, [activeTab]: prev[activeTab] + 1 }));
@@ -110,6 +127,22 @@ const ReportingView: React.FC = () => {
       setAppliedStaffId('');
       setAppliedActionType('');
       setAppliedAccountNo('');
+    } else if (activeTab === 'fee') {
+      setStartDate(monthAgo);
+      setEndDate(today);
+      setFeeChannel('');
+      setAppliedStartDate(monthAgo);
+      setAppliedEndDate(today);
+      setAppliedFeeChannel('');
+    } else if (activeTab === 'aml') {
+      setStartDate(monthAgo);
+      setEndDate(today);
+      setAmlThreshold(10000000);
+      setAmlTransactionType('');
+      setAppliedStartDate(monthAgo);
+      setAppliedEndDate(today);
+      setAppliedAmlThreshold(10000000);
+      setAppliedAmlTransactionType('');
     }
 
     setHasSearched((prev) => ({ ...prev, [activeTab]: false }));
@@ -132,6 +165,16 @@ const ReportingView: React.FC = () => {
       title: 'Ready to View Audit Trail Logs',
       description:
         'Specify your desired time window, staff ID, or account number above, then click the "Search" button to retrieve audit logs.',
+    },
+    fee: {
+      title: 'Ready to Generate Fee & Revenue Report',
+      description:
+        'Select your date range and channel filters above, then click the "Search" button to analyze collected fees and non-interest income.',
+    },
+    aml: {
+      title: 'Ready to Generate Large Transaction & AML Report',
+      description:
+        'Define the threshold amount and transaction filters above, then click the "Search" button to flag high-value AML compliance records.',
     },
   };
 
@@ -175,6 +218,18 @@ const ReportingView: React.FC = () => {
         >
           Audit Trail Logs
         </button>
+        <button
+          style={tabStyle(activeTab === 'fee')}
+          onClick={() => setActiveTab('fee')}
+        >
+          Fee & Revenue Breakdown
+        </button>
+        <button
+          style={tabStyle(activeTab === 'aml')}
+          onClick={() => setActiveTab('aml')}
+        >
+          Large Transactions (AML)
+        </button>
       </div>
 
       <ReportFilterBar
@@ -199,6 +254,12 @@ const ReportingView: React.FC = () => {
         onAuditStartDateChange={setAuditStartDate}
         auditEndDate={auditEndDate}
         onAuditEndDateChange={setAuditEndDate}
+        feeChannel={feeChannel}
+        onFeeChannelChange={setFeeChannel}
+        amlThreshold={amlThreshold}
+        onAmlThresholdChange={setAmlThreshold}
+        amlTransactionType={amlTransactionType}
+        onAmlTransactionTypeChange={setAmlTransactionType}
         onSearch={handleSearch}
         onReset={handleReset}
         loading={isSearching}
@@ -218,6 +279,7 @@ const ReportingView: React.FC = () => {
           />
         </div>
       )}
+
       {hasSearched.account && (
         <div style={{ display: activeTab === 'account' ? 'block' : 'none' }}>
           <AccountStatusPanel
@@ -231,6 +293,7 @@ const ReportingView: React.FC = () => {
           />
         </div>
       )}
+
       {hasSearched.audit && (
         <div style={{ display: activeTab === 'audit' ? 'block' : 'none' }}>
           <AuditTrailPanel
@@ -242,6 +305,35 @@ const ReportingView: React.FC = () => {
             searchKey={searchKeys.audit}
             onLoadingChange={(l) => {
               if (activeTab === 'audit') setIsSearching(l);
+            }}
+          />
+        </div>
+      )}
+
+      {hasSearched.fee && (
+        <div style={{ display: activeTab === 'fee' ? 'block' : 'none' }}>
+          <FeeRevenuePanel
+            startDate={appliedStartDate}
+            endDate={appliedEndDate}
+            channel={appliedFeeChannel}
+            searchKey={searchKeys.fee}
+            onLoadingChange={(l) => {
+              if (activeTab === 'fee') setIsSearching(l);
+            }}
+          />
+        </div>
+      )}
+
+      {hasSearched.aml && (
+        <div style={{ display: activeTab === 'aml' ? 'block' : 'none' }}>
+          <LargeTransactionPanel
+            startDate={appliedStartDate}
+            endDate={appliedEndDate}
+            threshold={appliedAmlThreshold}
+            transactionType={appliedAmlTransactionType}
+            searchKey={searchKeys.aml}
+            onLoadingChange={(l) => {
+              if (activeTab === 'aml') setIsSearching(l);
             }}
           />
         </div>

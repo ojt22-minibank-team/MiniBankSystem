@@ -6,6 +6,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @EnableScheduling
 @SpringBootApplication
+@org.springframework.scheduling.annotation.EnableAsync
 public class CorebankingApplication {
 
 	public static void main(String[] args) {

@@ -7,10 +7,13 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 
 import com.corebanking.entity.AuthSession;
 import com.corebanking.entity.enums.UpdatedByType;
+import com.corebanking.entity.enums.SessionSubjectType;
 
 
 public interface CusAuthSessionsRepository
@@ -20,6 +23,41 @@ public interface CusAuthSessionsRepository
     Optional<AuthSession> findBySessionUuid(
             String sessionUuid
     );
+
+    /** Caller detaches its provisional session first; this is a current read. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM AuthSession s WHERE s.sessionUuid = :sessionUuid AND s.subjectType = :subjectType")
+    Optional<AuthSession> findForActivity(
+            @Param("sessionUuid") String sessionUuid,
+            @Param("subjectType") SessionSubjectType subjectType);
+
+    /** The session row is already locked and time is sampled after that lock. */
+    @Modifying(flushAutomatically = true)
+    @Query("""
+            UPDATE AuthSession s
+               SET s.lastSeenAt = greatest(s.lastSeenAt, :now),
+                   s.updatedAt = greatest(s.updatedAt, :now),
+                   s.updatedByType = :actorType,
+                   s.updatedById = :ownerId
+             WHERE s.sessionUuid = :sessionUuid
+               AND s.subjectType = :subjectType
+               AND ((s.subjectType = com.corebanking.entity.enums.SessionSubjectType.CUSTOMER
+                     AND s.customer.customerId = :ownerId)
+                 OR (s.subjectType = com.corebanking.entity.enums.SessionSubjectType.CORPORATE_USER
+                     AND s.corporateUser.corporateUserId = :ownerId))
+               AND s.tokenVersionAtIssue = :tokenVersion
+               AND s.revokedAt IS NULL
+               AND s.refreshExpiresAt > :now
+               AND timestampadd(HOUR, 24, s.issuedAt) > :now
+               AND timestampadd(MINUTE, s.idleTimeoutMinutes, s.lastSeenAt) > :now
+            """)
+    int touchIfValid(
+            @Param("sessionUuid") String sessionUuid,
+            @Param("subjectType") SessionSubjectType subjectType,
+            @Param("ownerId") UUID ownerId,
+            @Param("tokenVersion") long tokenVersion,
+            @Param("actorType") UpdatedByType actorType,
+            @Param("now") LocalDateTime now);
 
 
     // =========================================================
@@ -74,10 +112,10 @@ public interface CusAuthSessionsRepository
             UPDATE AuthSession s
                SET s.refreshTokenHash = :newRefreshTokenHash,
                    s.refreshExpiresAt = :newRefreshExpiresAt,
-                   s.lastSeenAt = :now,
+                   s.lastSeenAt = greatest(s.lastSeenAt, :now),
                    s.updatedByType = :updatedByType,
                    s.updatedById = :updatedById,
-                   s.updatedAt = :now
+                   s.updatedAt = greatest(s.updatedAt, :now)
              WHERE s.sessionUuid = :sessionUuid
                AND s.refreshTokenHash = :expectedOldRefreshTokenHash
                AND s.revokedAt IS NULL

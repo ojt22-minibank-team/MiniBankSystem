@@ -4,7 +4,7 @@ import AnnouncementCard from "./AnnouncementCard";
 import type {
   Announcement,
   AnnouncementFilter,
-} from "../../types/announcementTypes";
+} from "../types/announcementTypes";
 
 interface AnnouncementListProps {
   announcements: Announcement[];

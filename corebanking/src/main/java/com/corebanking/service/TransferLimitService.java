@@ -46,47 +46,121 @@ public class TransferLimitService {
     // =========================================================================
 
     // Retail Savings Account Limits
-    private static final BigDecimal SAVINGS_MAX_ONETIME = new BigDecimal("5000000.00");
-    private static final BigDecimal SAVINGS_STRANGER_ONETIME = new BigDecimal("1000000.00");
-    private static final BigDecimal SAVINGS_MAX_DAILY = new BigDecimal("10000000.00");
+    // Parameter keys in system_parameters table
+    public static final String KEY_SAVING_ONETIME = "ONE_TIME_LIMIT_FOR_SAVING_ACCOUNT";
+    public static final String KEY_CURRENT_ONETIME = "ONE_TIME_LIMIT_FOR_CURRENT_ACCOUNT";
+    public static final String KEY_SAVED_BENEFICIARY_ONETIME = "ONE_TIME_LIMIT_FOR_SAVE_ACCOUNT";
+    public static final String KEY_UNSAVED_STRANGER_ONETIME = "ONE_TIME_LIMIT_FOR_UNSAVE_ACCOUNT";
+    public static final String KEY_UNSAVED_STRANGER_ONETIME_ALT = "ONE_TIME_LIMIT_FOR_UN_SAVE_ACCOUNT";
+    public static final String KEY_DAILY_LIMIT = "DAILY_TRANSFER_LIMIT";
+    public static final String KEY_MINIMUM_BALANCE = "MINIMUM_BALANCE";
 
-    // Retail Current Account Limits
-    private static final BigDecimal CURRENT_MAX_ONETIME = new BigDecimal("15000000.00");
-    private static final BigDecimal CURRENT_STRANGER_ONETIME = new BigDecimal("3000000.00");
-    private static final BigDecimal CURRENT_MAX_DAILY = new BigDecimal("30000000.00");
+    // Retail Limits (Fallback Defaults)
+    public static final BigDecimal DEFAULT_SAVINGS_ONETIME = new BigDecimal("2000000.00");
+    public static final BigDecimal DEFAULT_CURRENT_ONETIME = new BigDecimal("3000000.00");
+    public static final BigDecimal DEFAULT_SAVED_BENEFICIARY_ONETIME = new BigDecimal("3000000.00");
+    public static final BigDecimal DEFAULT_UNSAVED_STRANGER_ONETIME = new BigDecimal("1000000.00");
+    public static final BigDecimal DEFAULT_DAILY_LIMIT = new BigDecimal("10000000.00");
+    public static final BigDecimal DEFAULT_MINIMUM_BALANCE = new BigDecimal("10000.00");
 
     // Corporate / Company Account Limits
-    private static final BigDecimal CORPORATE_MAX_ONETIME = new BigDecimal("50000000.00");
-    private static final BigDecimal CORPORATE_STRANGER_ONETIME = new BigDecimal("10000000.00");
-    private static final BigDecimal CORPORATE_MAX_DAILY = new BigDecimal("200000000.00");
+    public static final BigDecimal CORPORATE_MAX_ONETIME = new BigDecimal("50000000.00");
+    public static final BigDecimal CORPORATE_STRANGER_ONETIME = new BigDecimal("10000000.00");
+    public static final BigDecimal CORPORATE_MAX_DAILY = new BigDecimal("200000000.00");
 
     /**
      * Resolves Bank Maximum Limit Rules for a given account category and type.
      */
+    /**
+     * Reads a numeric parameter from SystemParameters with a fallback default.
+     */
+    private BigDecimal getSystemParameter(String key, BigDecimal defaultValue) {
+        return systemParametersRepository.findByParameterKeyIgnoreCase(key)
+                .map(param -> {
+                    try {
+                        String val = param.getParameterValue().trim();
+                        return new BigDecimal(val);
+                    } catch (Exception e) {
+                        log.warn("Invalid system parameter value for key {}: {}. Falling back to default: {}", key, param.getParameterValue(), defaultValue);
+                        return defaultValue;
+                    }
+                })
+                .orElse(defaultValue);
+    }
+
+    /**
+     * Resolves the unsaved stranger one-time limit checking both KEY_UNSAVED_STRANGER_ONETIME and KEY_UNSAVED_STRANGER_ONETIME_ALT.
+     */
+    private BigDecimal getUnsavedStrangerLimit(BigDecimal defaultValue) {
+        BigDecimal val = getSystemParameter(KEY_UNSAVED_STRANGER_ONETIME, null);
+        if (val != null) return val;
+        return getSystemParameter(KEY_UNSAVED_STRANGER_ONETIME_ALT, defaultValue);
+    }
+
     public BankTransferLimitRule getBankLimits(AccountCategory category, AccountType type) {
+        BigDecimal dailyLimit = getSystemParameter(KEY_DAILY_LIMIT, DEFAULT_DAILY_LIMIT);
+
         if (category == AccountCategory.CORPORATE) {
+            BigDecimal maxOneTime = getSystemParameter("ONE_TIME_LIMIT_FOR_CORPORATE_ACCOUNT", CORPORATE_MAX_ONETIME);
+            BigDecimal strangerOneTime = getSystemParameter("ONE_TIME_STRANGER_LIMIT_FOR_CORPORATE_ACCOUNT", CORPORATE_STRANGER_ONETIME);
+            BigDecimal maxDaily = getSystemParameter("DAILY_TRANSFER_LIMIT_FOR_CORPORATE_ACCOUNT", dailyLimit);
+
             return BankTransferLimitRule.builder()
-                    .maxOneTimeLimit(CORPORATE_MAX_ONETIME)
-                    .strangerOneTimeLimit(CORPORATE_STRANGER_ONETIME)
-                    .maxDailyLimit(CORPORATE_MAX_DAILY)
+                    .maxOneTimeLimit(maxOneTime)
+                    .strangerOneTimeLimit(strangerOneTime.min(maxOneTime))
+                    .maxDailyLimit(maxDaily)
                     .build();
         }
+        BigDecimal savedBeneficiaryLimit = getSystemParameter(KEY_SAVED_BENEFICIARY_ONETIME, DEFAULT_SAVED_BENEFICIARY_ONETIME);
+        BigDecimal unsavedStrangerLimit = getUnsavedStrangerLimit(DEFAULT_UNSAVED_STRANGER_ONETIME);
 
+        BigDecimal effectiveBeneficiaryLimit;
         if (type == AccountType.CURRENT) {
-            return BankTransferLimitRule.builder()
-                    .maxOneTimeLimit(CURRENT_MAX_ONETIME)
-                    .strangerOneTimeLimit(CURRENT_STRANGER_ONETIME)
-                    .maxDailyLimit(CURRENT_MAX_DAILY)
-                    .build();
+            BigDecimal currentAccountLimit = getSystemParameter(KEY_CURRENT_ONETIME, DEFAULT_CURRENT_ONETIME);
+            // Current accounts dynamically reflect ONE_TIME_LIMIT_FOR_SAVE_ACCOUNT or ONE_TIME_LIMIT_FOR_CURRENT_ACCOUNT
+            effectiveBeneficiaryLimit = currentAccountLimit.max(savedBeneficiaryLimit);
+        } else {
+            // Savings accounts dynamically reflect ONE_TIME_LIMIT_FOR_SAVING_ACCOUNT
+            effectiveBeneficiaryLimit = getSystemParameter(KEY_SAVING_ONETIME, DEFAULT_SAVINGS_ONETIME);
         }
 
-        // Default to Retail Savings
+        // Stranger limit is dynamically governed by ONE_TIME_LIMIT_FOR_UNSAVE_ACCOUNT, capped at beneficiary limit
+        BigDecimal effectiveStrangerLimit = unsavedStrangerLimit.min(effectiveBeneficiaryLimit);
+
         return BankTransferLimitRule.builder()
-                .maxOneTimeLimit(SAVINGS_MAX_ONETIME)
-                .strangerOneTimeLimit(SAVINGS_STRANGER_ONETIME)
-                .maxDailyLimit(SAVINGS_MAX_DAILY)
+                .maxOneTimeLimit(effectiveBeneficiaryLimit)
+                .strangerOneTimeLimit(effectiveStrangerLimit)
+                .maxDailyLimit(dailyLimit)
                 .build();
     }
+
+    /**
+     * Retrieves the bank-wide daily transfer limit configured in system_parameters (default: 10,000,000 MMK).
+     */
+    public BigDecimal getDailyTransferLimit() {
+        return getSystemParameter(KEY_DAILY_LIMIT, DEFAULT_DAILY_LIMIT);
+    }
+
+    /**
+     * Retrieves the bank-wide minimum balance configured in system_parameters (default: 10,000 MMK).
+     */
+    public BigDecimal getMinimumBalance() {
+        return getSystemParameter(KEY_MINIMUM_BALANCE, DEFAULT_MINIMUM_BALANCE);
+    }
+
+    /**
+     * Resolves the required minimum balance for an account dynamically from DB system_parameters.
+     * If the account entity has an explicit minimumBalance > 0, the maximum of account-level and system-level is enforced.
+     */
+    public BigDecimal getEffectiveMinimumBalance(Accounts account) {
+        BigDecimal systemMinBalance = getMinimumBalance();
+        if (account != null && account.getMinimumBalance() != null && account.getMinimumBalance().compareTo(BigDecimal.ZERO) > 0) {
+            return account.getMinimumBalance().max(systemMinBalance);
+        }
+        return systemMinBalance;
+    }
+
+
 
     /**
      * Parameter key for storing user custom one-time limit without schema modification.
@@ -169,9 +243,10 @@ public class TransferLimitService {
                         rule.getMaxOneTimeLimit(), currency, destAccount.getAccountNumber()
                 ));
             } else {
+                String accType = sourceAccount.getAccountType() != null ? sourceAccount.getAccountType().name() : "account";
                 throw new TransactionException(String.format(
-                        "Transfer amount of %,.2f %s exceeds your one-time transfer limit of %,.2f %s.",
-                        transferAmount, currency, effectiveOneTimeLimit, currency
+                        "Transfer amount of %,.2f %s exceeds your one-time transfer limit of %,.2f %s for %s account.",
+                        transferAmount, currency, effectiveOneTimeLimit, currency, accType
                 ));
             }
         }
@@ -219,7 +294,18 @@ public class TransferLimitService {
 
         BankTransferLimitRule rule = getBankLimits(account.getAccountCategory(), account.getAccountType());
         BigDecimal customOneTime = getUserCustomOneTimeLimit(account.getAccountNumber());
-        BigDecimal customDaily = account.getDailyTransferLimit();
+        if (customOneTime != null && customOneTime.compareTo(rule.getMaxOneTimeLimit()) > 0) {
+            customOneTime = rule.getMaxOneTimeLimit();
+        }
+
+        BigDecimal customDaily = null;
+        if (account.getDailyTransferLimit() != null && account.getDailyTransferLimit().compareTo(BigDecimal.ZERO) > 0) {
+            if (account.getDailyTransferLimit().compareTo(rule.getMaxDailyLimit()) <= 0) {
+                customDaily = account.getDailyTransferLimit();
+            } else {
+                customDaily = rule.getMaxDailyLimit();
+            }
+        }
 
         BigDecimal effectiveOneTimeBeneficiary = getEffectiveOneTimeLimit(account, true);
         BigDecimal effectiveOneTimeStranger = getEffectiveOneTimeLimit(account, false);
@@ -250,6 +336,7 @@ public class TransferLimitService {
                 .effectiveDailyLimit(effectiveDaily)
                 .todayTransferredAmount(todayTransferred)
                 .remainingDailyLimit(remainingDaily)
+                .minimumBalance(getEffectiveMinimumBalance(account))
                 .build();
     }
 
@@ -330,6 +417,17 @@ public class TransferLimitService {
                 throw new TransactionException(String.format(
                         "Custom daily limit cannot exceed Bank Maximum Daily Limit of %,.2f %s for %s accounts.",
                         rule.getMaxDailyLimit(), account.getCurrency(), account.getAccountType()));
+            }
+
+            // Validate that new daily limit is not less than today's already transferred amount
+            LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+            LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
+            BigDecimal todayTransferred = bankTransactionRepository.findTodayTotalTransferredAmount(
+                    account.getAccountId(), startOfDay, endOfDay);
+            if (todayTransferred != null && request.getCustomDailyLimit().compareTo(todayTransferred) < 0) {
+                throw new TransactionException(String.format(
+                        "Custom daily limit cannot be less than today's already transferred amount of %,.2f %s.",
+                        todayTransferred, account.getCurrency()));
             }
         }
 

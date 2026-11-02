@@ -39,6 +39,15 @@ class ReportServiceTest {
     @Mock
     private ReportRepository reportRepository;
 
+    @Mock
+    private com.corebanking.repository.LargeTransactionRepository largeTransactionRepository;
+
+    @Mock
+    private com.corebanking.repository.FeeRevenueRepository feeRevenueRepository;
+
+    @org.mockito.Spy
+    private JasperReportService jasperReportService = new JasperReportService();
+
     @InjectMocks
     private ReportService reportService;
 
