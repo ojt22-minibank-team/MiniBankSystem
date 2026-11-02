@@ -130,10 +130,7 @@ export default function DashboardPage() {
 
             {/* 3. BOTTOM SECTION: Recent Transactions (Full Width, without redundant bottom Statistic card) */}
             <div className="pt-2">
-              <RecentTransactions
-                accountNumber={primaryAccount?.accountNumber}
-                showBalance={showBalance}
-              />
+              <RecentTransactions accounts={accounts} />
             </div>
           </div>
         )}

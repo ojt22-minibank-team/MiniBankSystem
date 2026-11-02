@@ -7,6 +7,7 @@ import type {
   CustomerAccount,
   AccountStatus,
 } from "../types/accountTypes";
+import { submitP2PTransfer } from "../../../transfer/store/transferSlice";
 
 interface AccountsState {
   accounts: CustomerAccount[];
@@ -121,6 +122,39 @@ const accountsSlice = createSlice({
         if (action.meta.aborted) return;
 
         state.error = action.payload ?? LOAD_ERROR;
+      })
+
+      // Immediate balance updates on P2P Transfer (Debit source, Credit destination if self-transfer)
+      .addCase(submitP2PTransfer.fulfilled, (state, action) => {
+        const { sourceAccountNumber, destinationAccountNumber, amount, totalDebitedAmount } = action.payload;
+
+        // 1. Debit Source Account (subtract totalDebitedAmount including fee)
+        const sourceAcc = state.accounts.find(
+          (acc) => acc.accountNumber?.trim() === sourceAccountNumber?.trim()
+        );
+        if (sourceAcc) {
+          const debited = Number(totalDebitedAmount) || Number(amount);
+          sourceAcc.availableBalance = Math.max(
+            0,
+            (Number(sourceAcc.availableBalance) || 0) - debited
+          );
+          sourceAcc.currentBalance = Math.max(
+            0,
+            (Number(sourceAcc.currentBalance) || 0) - debited
+          );
+        }
+
+        // 2. Credit Destination Account (If it is a Self-Transfer between user's own accounts)
+        if (destinationAccountNumber) {
+          const destAcc = state.accounts.find(
+            (acc) => acc.accountNumber?.trim() === destinationAccountNumber?.trim()
+          );
+          if (destAcc) {
+            const credited = Number(amount);
+            destAcc.availableBalance = (Number(destAcc.availableBalance) || 0) + credited;
+            destAcc.currentBalance = (Number(destAcc.currentBalance) || 0) + credited;
+          }
+        }
       });
   },
 });

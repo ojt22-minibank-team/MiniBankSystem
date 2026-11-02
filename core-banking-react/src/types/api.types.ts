@@ -377,3 +377,9 @@ export interface DailyCashSummaryResponse {
   currency: string;
 }
 
+
+export interface OtcParametersResponse {
+  minDepositAmount: number;
+  minWithdrawalAmount: number;
+  minimumBalance: number;
+}
