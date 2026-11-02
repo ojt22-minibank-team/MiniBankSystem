@@ -24,6 +24,9 @@ function logoutIndividualCustomer(): Promise<number | null> {
   // Invalidate synchronously, while retaining credentials for backend revocation.
   const generation = invalidateAuthenticationGeneration();
 
+  // Reset balance visibility for the next login session.
+sessionStorage.removeItem("customer-portal:balance-visible");
+
   const promise = (async () => {
     try {
       // Bind revocation to this session even if Axios dispatch runs after a new login.

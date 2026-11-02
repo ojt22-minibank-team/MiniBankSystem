@@ -20,11 +20,24 @@ export default function DashboardPage() {
   const { t } = useTranslation("dashboard");
 
   // Balance visible by default, with toggle state shared across components
-  const [showBalance, setShowBalance] = useState(false);
+// Persist balance visibility during the current login session
+const [showBalance, setShowBalance] = useState<boolean>(() => {
+  return (
+    sessionStorage.getItem("customer-portal:balance-visible") === "true"
+  );
+});
 
-  const handleToggleBalance = () => {
-    setShowBalance((prev) => !prev);
-  };
+const handleToggleBalance = () => {
+  const next = !showBalance;
+
+  setShowBalance(next);
+
+  sessionStorage.setItem(
+    "customer-portal:balance-visible",
+    String(next),
+  );
+};
+
 
   useEffect(() => {
     const request = dispatch(fetchDashboard());
