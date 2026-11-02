@@ -1,0 +1,239 @@
+/**
+ * EKARAJ BANK - Theme Stylesheet
+ * Brand Color System & Utility Classes
+ */
+
+:root {
+  /* Ekaraj Brand Colors */
+  --ekaraj-navy-dark: #060e1a;
+  --ekaraj-navy: #0a192f;
+  --ekaraj-navy-light: #153564;
+  --ekaraj-royal-blue: #1e40af;
+  --ekaraj-cyan: #00a3c4;
+  --ekaraj-cyan-hover: #0891b2;
+  --ekaraj-cyan-light: #e0f7fa;
+  --ekaraj-gold: #d4af37;
+  --ekaraj-gold-light: #fef9c3;
+  --ekaraj-gold-dark: #b38a20;
+  --ekaraj-platinum: #e2e8f0;
+  --ekaraj-platinum-sheen: #f8fafc;
+
+  /* App Theme Variables (Light Mode) */
+  --app-bg: #f4f6f9;
+  --surface: #ffffff;
+  --surface-secondary: #f8fafc;
+  --text-primary: #0a192f;
+  --text-secondary: #64748b;
+  --border-default: #e2e8f0;
+  --brand-primary: #00a3c4;
+  --sidebar-bg: #0a192f;
+}
+
+.dark {
+  --ekaraj-navy-dark: #03070d;
+  --ekaraj-navy: #071222;
+  --ekaraj-navy-light: #0d1e38;
+
+  /* App Theme Variables (Dark Mode) */
+  --app-bg: #060e1a;
+  --surface: #0a192f;
+  --surface-secondary: #0f2445;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --border-default: #1b3152;
+  --brand-primary: #22d3ee;
+  --sidebar-bg: #040913;
+}
+
+/* ========================================================
+   AUTHENTIC BRUSHED PLATINUM CARD TEXTURE
+   ======================================================== */
+.card-brushed-platinum {
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.05) 0px,
+      rgba(255, 255, 255, 0.05) 1px,
+      transparent 1px,
+      transparent 2px
+    ),
+    linear-gradient(
+      135deg,
+      #ffffff 0%,
+      #f1f5f9 22%,
+      #e2e8f0 48%,
+      #cbd5e1 75%,
+      #94a3b8 100%
+    );
+  box-shadow:
+    0 18px 36px -10px rgba(10, 25, 47, 0.28),
+    0 4px 12px -2px rgba(10, 25, 47, 0.12),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 2px 0 rgba(15, 23, 42, 0.25);
+}
+
+.card-brushed-navy {
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.03) 0px,
+      rgba(255, 255, 255, 0.03) 1px,
+      transparent 1px,
+      transparent 2px
+    ),
+    linear-gradient(
+      135deg,
+      #0a192f 0%,
+      #0f2a52 45%,
+      #173b6f 80%,
+      #1b4685 100%
+    );
+  box-shadow:
+    0 18px 36px -10px rgba(6, 14, 26, 0.5),
+    0 4px 12px -2px rgba(6, 14, 26, 0.25),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.5);
+}
+
+.card-brushed-gold {
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.06) 0px,
+      rgba(255, 255, 255, 0.06) 1px,
+      transparent 1px,
+      transparent 2px
+    ),
+    linear-gradient(
+      135deg,
+      #fffbeb 0%,
+      #fef3c7 25%,
+      #fde68a 55%,
+      #e5c378 80%,
+      #b38a20 100%
+    );
+  box-shadow:
+    0 18px 36px -10px rgba(133, 100, 20, 0.35),
+    0 4px 12px -2px rgba(133, 100, 20, 0.15),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 2px 0 rgba(89, 66, 11, 0.3);
+}
+
+.card-brushed-obsidian {
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.02) 0px,
+      rgba(255, 255, 255, 0.02) 1px,
+      transparent 1px,
+      transparent 2px
+    ),
+    linear-gradient(
+      135deg,
+      #1e293b 0%,
+      #0f172a 40%,
+      #090d16 80%,
+      #020617 100%
+    );
+  box-shadow:
+    0 18px 36px -10px rgba(0, 0, 0, 0.6),
+    0 4px 12px -2px rgba(0, 0, 0, 0.3),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.8);
+}
+
+/* Authentic Embossed 3D Credit Card Stamped Font */
+.embossed-text-silver {
+  color: #334155;
+  text-shadow:
+    0 1px 1px rgba(255, 255, 255, 0.9),
+    0 -1px 1px rgba(15, 23, 42, 0.45);
+}
+
+.embossed-text-gold {
+  color: #59420b;
+  text-shadow:
+    0 1px 1px rgba(255, 255, 255, 0.8),
+    0 -1px 1px rgba(89, 66, 11, 0.5);
+}
+
+.embossed-text-navy {
+  color: #e2e8f0;
+  text-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.8),
+    0 -1px 1px rgba(255, 255, 255, 0.2);
+}
+
+/* Metallic cyan bevel text (like the 'EB' monogram) */
+.metallic-cyan-text {
+  background: linear-gradient(180deg, #38bdf8 0%, #00a3c4 50%, #0891b2 85%, #0e7490 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 1px 1px rgba(15, 23, 42, 0.25));
+}
+
+/* ========================================================
+   BUTTON CLASSES
+   ======================================================== */
+.btn-ekaraj-primary {
+  background: linear-gradient(135deg, #0a192f 0%, #153564 100%);
+  color: #ffffff;
+  border-radius: 0.75rem;
+  padding: 0.625rem 1.125rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 1px 3px rgba(10, 25, 47, 0.15);
+  transition: all 0.2s ease;
+}
+
+.btn-ekaraj-primary:hover {
+  background: linear-gradient(135deg, #0f2445 0%, #1e4785 100%);
+  box-shadow: 0 4px 12px rgba(10, 25, 47, 0.25);
+  transform: translateY(-1px);
+}
+
+.btn-ekaraj-cyan {
+  background: linear-gradient(135deg, #00a3c4 0%, #0891b2 50%, #0284c7 100%);
+  color: #ffffff;
+  border-radius: 0.75rem;
+  padding: 0.625rem 1.125rem;
+  font-weight: 700;
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 14px rgba(0, 163, 196, 0.35);
+  transition: all 0.2s ease;
+}
+
+.btn-ekaraj-cyan:hover {
+  background: linear-gradient(135deg, #0891b2 0%, #0284c7 50%, #0369a1 100%);
+  box-shadow: 0 6px 20px rgba(0, 163, 196, 0.45);
+  transform: translateY(-1px);
+}
+
+.btn-ekaraj-gold {
+  background: linear-gradient(135deg, #e5c378 0%, #d4af37 50%, #b38a20 100%);
+  color: #0a192f;
+  border-radius: 0.75rem;
+  padding: 0.625rem 1.125rem;
+  font-weight: 700;
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 14px rgba(212, 175, 55, 0.3);
+  transition: all 0.2s ease;
+}
+
+.btn-ekaraj-gold:hover {
+  filter: brightness(1.06);
+  box-shadow: 0 6px 18px rgba(212, 175, 55, 0.4);
+  transform: translateY(-1px);
+}

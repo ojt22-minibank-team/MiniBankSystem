@@ -23,10 +23,14 @@ export const submitP2PTransfer = createAsyncThunk(
       const response = await executeP2PTransfer(data);
       return response;
     } catch (error: any) {
-      
-      return rejectWithValue(
-        error.response?.data?.message || 'Transfer failed. Please try again later.'
-      );
+      const status = error.response?.status;
+      const message =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        'Transfer failed. Please try again later.';
+      const code = error.response?.data?.code || error.code;
+      return rejectWithValue({ status, message, code });
     }
   }
 );
@@ -35,6 +39,9 @@ const transferSlice = createSlice({
   name: 'transfer',
   initialState,
   reducers: {
+    clearTransferError: (state) => {
+      state.error = null;
+    },
     resetTransferState: (state) => {
       state.loading = false;
       state.success = false;
@@ -56,10 +63,11 @@ const transferSlice = createSlice({
       .addCase(submitP2PTransfer.rejected, (state, action) => {
         state.loading = false;
         state.success = false;
-        state.error = action.payload as string;
+        const payload = action.payload as any;
+        state.error = (typeof payload === 'string' ? payload : payload?.message) || 'Transfer failed.';
       });
   },
 });
 
-export const { resetTransferState } = transferSlice.actions;
+export const { resetTransferState, clearTransferError } = transferSlice.actions;
 export default transferSlice.reducer;

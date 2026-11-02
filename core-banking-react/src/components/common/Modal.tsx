@@ -44,23 +44,23 @@ export default function Modal({
       aria-modal="true"
       aria-labelledby="modal-title"
     >
-      {/* Backdrop */}
+      {/* Liquid Backdrop */}
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-[#0F0B24]/50 backdrop-blur-md transition-opacity duration-300"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Panel */}
+      {/* Liquid Glass Panel with Specular Rim */}
       <div
         className={[
-          'relative z-10 w-full rounded-xl bg-white shadow-xl',
+          'relative z-10 w-full rounded-3xl bg-white/95 backdrop-blur-2xl border border-white/90 shadow-[0_24px_70px_-15px_rgba(30,27,75,0.3)] specular-rim overflow-hidden transition-all duration-300',
           sizeClasses[size],
         ].join(' ')}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-          <h2 id="modal-title" className="text-lg font-semibold text-gray-900">
+        <div className="flex items-center justify-between border-b border-purple-950/10 px-6 py-4.5 bg-gradient-to-r from-purple-50/40 via-white/50 to-amber-50/20">
+          <h2 id="modal-title" className="text-lg font-black text-[#1E1B4B] tracking-tight">
             {title}
           </h2>
           <Button
@@ -68,20 +68,20 @@ export default function Modal({
             size="sm"
             onClick={onClose}
             aria-label="Close modal"
-            className="!p-1.5"
+            className="!p-1.5 rounded-full hover:bg-purple-950/10 text-zinc-500 hover:text-zinc-900"
           >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </Button>
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5">{children}</div>
+        <div className="px-6 py-5 max-h-[80vh] overflow-y-auto">{children}</div>
 
         {/* Footer */}
         {footer && (
-          <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4">
+          <div className="flex justify-end gap-3 border-t border-purple-950/10 bg-purple-50/20 px-6 py-4">
             {footer}
           </div>
         )}

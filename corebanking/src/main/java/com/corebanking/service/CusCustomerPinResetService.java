@@ -7,6 +7,7 @@ import com.corebanking.dto.CusPinResetOtpVerifyRequest;
 import com.corebanking.dto.CusPinResetOtpVerifyResponse;
 import com.corebanking.dto.CusPinResetStartResponse;
 import com.corebanking.entity.AuditLogs;
+import com.corebanking.dto.CusSessionClientMetadata;
 import com.corebanking.entity.AuthSession;
 import com.corebanking.entity.CustomerCredentials;
 import com.corebanking.entity.Customers;
@@ -28,6 +29,8 @@ import com.corebanking.repository.CusCredentialsRepository;
 import com.corebanking.repository.CusOtpChallengesRepository;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.mail.MailException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -54,6 +57,9 @@ public class CusCustomerPinResetService {
     private final CusEmailService cusEmailService;
     private final CusAuditLogsRepository auditLogsRepository;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
     private static final int OTP_EXPIRY_MINUTES = 5;
     private static final int MAX_OTP_ATTEMPTS = 5;
     private static final int MAX_OTP_RESENDS = 5;
@@ -64,6 +70,14 @@ public class CusCustomerPinResetService {
 )
 public CusPinResetStartResponse requestPinReset(
       String authorizationHeader) {
+    return requestPinReset(authorizationHeader, CusSessionClientMetadata.EMPTY);
+}
+
+@Transactional(
+      noRollbackFor = CusEmailException.class
+)
+public CusPinResetStartResponse requestPinReset(
+      String authorizationHeader, CusSessionClientMetadata metadata) {
 
   // =====================================================
   // 1. ACCESS TOKEN REQUIRED
@@ -117,6 +131,9 @@ public CusPinResetStartResponse requestPinReset(
   // 4. VALIDATE ACTIVE SESSION
   // =====================================================
 
+  CustomerCredentials lockedResetCredentials = CusCustomerOtpLocks.lockCustomer(
+          entityManager, credentialsRepository, CusCustomerOtpLocks.customerSubject(claims.getSubject()));
+
   AuthSession session =
           cusSessionService
                   .validateAccessSession(
@@ -157,36 +174,6 @@ public CusPinResetStartResponse requestPinReset(
               "No registered email address is available for PIN reset."
       );
   }
-
-
-  // =====================================================
-  // 7. EXPIRE OLD ACTIVE PIN RESET OTPs
-  // =====================================================
-
-  var activePinResetOtps =
-          otpChallengesRepository
-                  .findByCustomerAndPurposeAndStatus(
-                          customer,
-                          OtpPurpose.PIN_RESET,
-                          OtpStatus.ACTIVE
-                  );
-
-
-  for (OtpChallenge otp : activePinResetOtps) {
-
-      otp.setStatus(
-              OtpStatus.EXPIRED
-      );
-
-      markOtpUpdatedByCustomer(
-              otp
-      );
-  }
-
-
-  otpChallengesRepository.saveAll(
-          activePinResetOtps
-  );
 
 
   // =====================================================
@@ -289,6 +276,39 @@ public CusPinResetStartResponse requestPinReset(
 
 
   // =====================================================
+  // Expire predecessors after INSERT; avoid an empty InnoDB gap lock.
+  // =====================================================
+
+  var activePinResetOtps =
+          otpChallengesRepository
+                  .findByCustomerAndPurposeAndStatus(
+                          customer,
+                          OtpPurpose.PIN_RESET,
+                          OtpStatus.ACTIVE
+                  )
+                     .stream()
+                     .filter(otp -> !savedOtp.getOtpId().equals(otp.getOtpId()))
+                     .toList();
+
+
+  for (OtpChallenge otp : activePinResetOtps) {
+
+      otp.setStatus(
+              OtpStatus.EXPIRED
+      );
+
+      markOtpUpdatedByCustomer(
+              otp
+      );
+  }
+
+
+  otpChallengesRepository.saveAll(
+          activePinResetOtps
+  );
+
+
+  // =====================================================
   // 10. SEND EMAIL
   // =====================================================
 
@@ -311,7 +331,8 @@ public CusPinResetStartResponse requestPinReset(
               null,
               "{\"purpose\":\"PIN_RESET\","
                       + "\"status\":\"ACTIVE\","
-                      + "\"resendNo\":0}"
+                      + "\"resendNo\":0}",
+              metadata
       );
 
 
@@ -342,7 +363,8 @@ public CusPinResetStartResponse requestPinReset(
               ),
               "{\"status\":\"ACTIVE\"}",
               "{\"status\":\"EXPIRED\","
-                      + "\"reason\":\"EMAIL_SEND_FAILED\"}"
+                      + "\"reason\":\"EMAIL_SEND_FAILED\"}",
+              metadata
       );
 
 
@@ -371,6 +393,15 @@ public CusPinResetStartResponse requestPinReset(
 public CusOtpResendResponse resendPinResetOtp(
      String authorizationHeader,
      CusOtpResendRequest request) {
+    return resendPinResetOtp(authorizationHeader, request, CusSessionClientMetadata.EMPTY);
+}
+
+@Transactional(
+     noRollbackFor = CusEmailException.class
+)
+public CusOtpResendResponse resendPinResetOtp(
+     String authorizationHeader,
+     CusOtpResendRequest request, CusSessionClientMetadata metadata) {
 
  // =====================================================
  // 1. ACCESS TOKEN REQUIRED
@@ -420,6 +451,9 @@ public CusOtpResendResponse resendPinResetOtp(
  // 3. VALIDATE CURRENT SESSION
  // =====================================================
 
+ CustomerCredentials lockedResetCredentials = CusCustomerOtpLocks.lockCustomer(
+         entityManager, credentialsRepository, CusCustomerOtpLocks.customerSubject(claims.getSubject()));
+
  AuthSession session =
          cusSessionService
                  .validateAccessSession(
@@ -464,16 +498,8 @@ public CusOtpResendResponse resendPinResetOtp(
  // =====================================================
 
  OtpChallenge latestOtp =
-         otpChallengesRepository
-                 .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
-                         challengeGroupId,
-                         OtpPurpose.PIN_RESET
-                 )
-                 .orElseThrow(() ->
-                         new CusOtpException(
-                                 "Invalid PIN reset challenge."
-                         )
-                 );
+         CusCustomerOtpLocks.current(entityManager, otpChallengesRepository, lockedResetCredentials,
+                  challengeGroupId, OtpPurpose.PIN_RESET);
 
 
  // =====================================================
@@ -691,7 +717,8 @@ public CusOtpResendResponse resendPinResetOtp(
                      + "\"status\":\"ACTIVE\","
                      + "\"resendNo\":"
                      + savedOtp.getResendNo()
-                     + "}"
+                     + "}",
+             metadata
      );
 
 
@@ -722,7 +749,8 @@ public CusOtpResendResponse resendPinResetOtp(
              ),
              "{\"status\":\"ACTIVE\"}",
              "{\"status\":\"EXPIRED\","
-                     + "\"reason\":\"EMAIL_SEND_FAILED\"}"
+                     + "\"reason\":\"EMAIL_SEND_FAILED\"}",
+             metadata
      );
 
 
@@ -749,6 +777,15 @@ public CusOtpResendResponse resendPinResetOtp(
 public CusPinResetOtpVerifyResponse verifyPinResetOtp(
      String authorizationHeader,
      CusPinResetOtpVerifyRequest request) {
+    return verifyPinResetOtp(authorizationHeader, request, CusSessionClientMetadata.EMPTY);
+}
+
+@Transactional(
+     noRollbackFor = CusOtpException.class
+)
+public CusPinResetOtpVerifyResponse verifyPinResetOtp(
+     String authorizationHeader,
+     CusPinResetOtpVerifyRequest request, CusSessionClientMetadata metadata) {
 
  // =====================================================
  // 1. ACCESS TOKEN REQUIRED
@@ -793,6 +830,9 @@ public CusPinResetOtpVerifyResponse verifyPinResetOtp(
  // =====================================================
  // 2. VALIDATE SESSION
  // =====================================================
+
+ CustomerCredentials lockedResetCredentials = CusCustomerOtpLocks.lockCustomer(
+         entityManager, credentialsRepository, CusCustomerOtpLocks.customerSubject(claims.getSubject()));
 
  AuthSession session =
          cusSessionService
@@ -845,16 +885,8 @@ public CusPinResetOtpVerifyResponse verifyPinResetOtp(
  // =====================================================
 
  OtpChallenge otpChallenge =
-         otpChallengesRepository
-                 .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
-                         challengeGroupId,
-                         OtpPurpose.PIN_RESET
-                 )
-                 .orElseThrow(() ->
-                         new CusOtpException(
-                                 "Invalid PIN reset challenge."
-                         )
-                 );
+         CusCustomerOtpLocks.current(entityManager, otpChallengesRepository, lockedResetCredentials,
+                  challengeGroupId, OtpPurpose.PIN_RESET);
 
 
  // =====================================================
@@ -957,7 +989,8 @@ public CusPinResetOtpVerifyResponse verifyPinResetOtp(
              ),
              "{\"status\":\"ACTIVE\"}",
              "{\"status\":\"EXPIRED\","
-                     + "\"reason\":\"TIME_EXPIRED\"}"
+                     + "\"reason\":\"TIME_EXPIRED\"}",
+             metadata
      );
 
 
@@ -1061,7 +1094,8 @@ public CusPinResetOtpVerifyResponse verifyPinResetOtp(
                      + failedAttempts
                      + ",\"status\":\""
                      + otpChallenge.getStatus().name()
-                     + "\"}"
+                     + "\"}",
+             metadata
      );
 
 
@@ -1132,7 +1166,8 @@ public CusPinResetOtpVerifyResponse verifyPinResetOtp(
          ),
          "{\"status\":\"ACTIVE\"}",
          "{\"status\":\"CONSUMED\","
-                 + "\"purpose\":\"PIN_RESET\"}"
+                 + "\"purpose\":\"PIN_RESET\"}",
+         metadata
  );
 
 
@@ -1151,6 +1186,13 @@ public CusPinResetOtpVerifyResponse verifyPinResetOtp(
 public void resetTransactionPin(
      String authorizationHeader,
      CusPinResetConfirmRequest request) {
+    resetTransactionPin(authorizationHeader, request, CusSessionClientMetadata.EMPTY);
+}
+
+@Transactional
+public void resetTransactionPin(
+     String authorizationHeader,
+     CusPinResetConfirmRequest request, CusSessionClientMetadata metadata) {
 
  // =====================================================
  // 1. ACCESS TOKEN REQUIRED
@@ -1195,6 +1237,9 @@ public void resetTransactionPin(
  // =====================================================
  // 2. VALIDATE CURRENT SESSION
  // =====================================================
+
+ CustomerCredentials lockedResetCredentials = CusCustomerOtpLocks.lockCustomer(
+         entityManager, credentialsRepository, CusCustomerOtpLocks.customerSubject(claims.getSubject()));
 
  AuthSession session =
          cusSessionService
@@ -1282,16 +1327,8 @@ public void resetTransactionPin(
  // =====================================================
 
  OtpChallenge verifiedChallenge =
-         otpChallengesRepository
-                 .findTopByChallengeGroupIdAndPurposeOrderByOtpIdDesc(
-                         verifiedChallengeGroupId,
-                         OtpPurpose.PIN_RESET
-                 )
-                 .orElseThrow(() ->
-                         new CusOtpException(
-                                 "Invalid PIN reset authorization."
-                         )
-                 );
+         CusCustomerOtpLocks.current(entityManager, otpChallengesRepository, lockedResetCredentials,
+                  verifiedChallengeGroupId, OtpPurpose.PIN_RESET);
 
 
  // =====================================================
@@ -1300,7 +1337,9 @@ public void resetTransactionPin(
 
  if (verifiedChallenge.getStatus()
          != OtpStatus.CONSUMED
-         || verifiedChallenge.getConsumedAt() == null) {
+         || verifiedChallenge.getConsumedAt() == null
+         || verifiedChallenge.getExpiresAt() == null
+         || !verifiedChallenge.getExpiresAt().isAfter(LocalDateTime.now())) {
 
      throw new CusOtpException(
              "PIN reset authorization is not valid."
@@ -1421,7 +1460,7 @@ public void resetTransactionPin(
 
  credentials =
          credentialsRepository
-                 .findById(
+                 .findByCustomerIdForUpdate(
                          authenticatedCustomerId
                  )
                  .orElseThrow(() ->
@@ -1506,7 +1545,8 @@ public void resetTransactionPin(
          null,
          "{\"pinChanged\":true,"
                  + "\"failedPinAttemptCount\":0,"
-                 + "\"pinLocked\":false}"
+                 + "\"pinLocked\":false}",
+         metadata
  );
 }
 
@@ -1616,10 +1656,12 @@ public void resetTransactionPin(
          String entityType,
          String entityId,
          String oldValues,
-         String newValues) {
+         String newValues, CusSessionClientMetadata metadata) {
 
      AuditLogs auditLog =
              AuditLogs.builder()
+                     .ipAddress(metadata == null ? null : metadata.ipAddress())
+                     .userAgent(metadata == null ? null : metadata.userAgent())
 
                      .actorType(
                              actorType

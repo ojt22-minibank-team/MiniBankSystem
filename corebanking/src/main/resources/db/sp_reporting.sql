@@ -1,169 +1,169 @@
--- ============================================================
--- Group 2 Reporting Subsystem -- MySQL Stored Procedures
--- Database: cbd
--- FIXED: Corrected table/column names to match actual JPA entity schema.
---   bank_transactions  (was: transactions)
---   staff_users        (was: staff)
---   audit_logs         (was: audit_log)
---   initiated_at       (was: created_at on transactions)
---   service_fee        (was: fee)
---   transaction_id     (was: id on transactions)
---   account_id, current_balance  (was: id, balance on accounts)
---   actor_staff_id     (was: staff_id on audit_logs)
---   old_values/new_values  (was: old_value/new_value)
--- Transaction types updated to real enum values.
--- ==========================================================
+-- =============================================
+-- Group 2 Reporting Subsystem - Stored Procedures
+-- =============================================
 
-DROP PROCEDURE IF EXISTS sp_get_daily_ledger_summary;
+-- =============================================
+-- 1. SP: sp_get_daily_ledger_summary
+-- =============================================
+DELIMITER //
 
-DELIMITER $$
+DROP PROCEDURE IF EXISTS sp_get_daily_ledger_summary //
 
 CREATE PROCEDURE sp_get_daily_ledger_summary(
     IN p_start_date DATE,
     IN p_end_date   DATE,
-    IN p_transaction_status VARCHAR(50)
+    IN p_status     VARCHAR(25)
 )
 BEGIN
-    SELECT
-        DATE(t.initiated_at)            AS report_date,
-        t.transaction_type              AS transaction_type,
-        COUNT(t.transaction_id)         AS transaction_count,
-        COALESCE(SUM(t.amount), 0)      AS total_amount,
-        COALESCE(SUM(t.service_fee), 0) AS total_fee,
-        t.currency                      AS currency
-    FROM bank_transactions t
-    WHERE
-        DATE(t.initiated_at) BETWEEN p_start_date AND p_end_date
-        AND t.transaction_type IN (
-            'INTERNAL_TRANSFER', 'OTC_DEPOSIT', 'OTC_WITHDRAWAL',
-            'EXTERNAL_PAYMENT', 'LEDGER_ADJUSTMENT', 'REFUND'
-        )
-        AND (
-            p_transaction_status IS NULL
-            OR p_transaction_status = ''
-            OR t.status = p_transaction_status
-        )
-    GROUP BY
-        DATE(t.initiated_at),
-        t.transaction_type,
-        t.currency
-    ORDER BY
-        report_date ASC,
-        t.transaction_type ASC;
-END$$
+    SELECT 
+        DATE(bt.completed_at)                          AS report_date,
+        bt.transaction_type                            AS transaction_type,
+        COUNT(bt.transaction_id)                       AS transaction_count,
+        COALESCE(SUM(bt.amount), 0.0000)               AS total_amount,
+        COALESCE(SUM(bt.service_fee), 0.0000)          AS total_fee,
+        bt.currency                                    AS currency
+    FROM bank_transactions bt
+    WHERE bt.completed_at >= CAST(CONCAT(p_start_date, ' 00:00:00') AS DATETIME)
+      AND bt.completed_at <= CAST(CONCAT(p_end_date, ' 23:59:59') AS DATETIME)
+      AND (p_status IS NULL OR p_status = '' OR bt.status = p_status)
+    GROUP BY DATE(bt.completed_at), bt.transaction_type, bt.currency
+    ORDER BY report_date DESC, total_amount DESC;
+END //
 
 DELIMITER ;
 
--- -----------------------------------------------------------------------
+-- =============================================
+-- 2. SP: sp_get_customer_account_status_summary
+-- =============================================
+DELIMITER //
 
-DROP PROCEDURE IF EXISTS sp_get_customer_account_status_summary;
-
-DELIMITER $$
+DROP PROCEDURE IF EXISTS sp_get_customer_account_status_summary //
 
 CREATE PROCEDURE sp_get_customer_account_status_summary(
     IN p_start_date     DATE,
     IN p_end_date       DATE,
-    IN p_account_status VARCHAR(50)
+    IN p_account_status VARCHAR(20)
 )
 BEGIN
-    -- RS1: Per-status breakdown
-    SELECT
-        a.status                AS account_status,
-        COUNT(a.account_id)     AS account_count,
-        SUM(CASE WHEN DATE(a.created_at) BETWEEN p_start_date AND p_end_date THEN 1 ELSE 0 END) AS new_accounts_in_range,
-        COALESCE(AVG(a.current_balance), 0) AS avg_balance,
-        COALESCE(MIN(a.current_balance), 0) AS min_balance,
-        COALESCE(MAX(a.current_balance), 0) AS max_balance
+    -- Result Set 1: Account Status Distribution
+    SELECT 
+        a.status                                       AS account_status,
+        COUNT(a.account_id)                            AS account_count,
+        SUM(CASE 
+            WHEN a.created_at >= CAST(CONCAT(p_start_date, ' 00:00:00') AS DATETIME)
+             AND a.created_at <= CAST(CONCAT(p_end_date, ' 23:59:59') AS DATETIME) 
+            THEN 1 ELSE 0 
+        END)                                           AS new_accounts_in_range,
+        COALESCE(AVG(a.current_balance), 0.0000)       AS avg_balance,
+        COALESCE(MIN(a.current_balance), 0.0000)       AS min_balance,
+        COALESCE(MAX(a.current_balance), 0.0000)       AS max_balance
     FROM accounts a
-    WHERE a.deleted_at IS NULL
-      AND (p_account_status IS NULL OR p_account_status = '' OR a.status = p_account_status)
-    GROUP BY a.status
-    ORDER BY account_count DESC;
+    WHERE (p_account_status IS NULL OR p_account_status = '' OR a.status = p_account_status)
+    GROUP BY a.status;
 
-    -- RS2: Balance bracket distribution
-    SELECT
-        CASE
-            WHEN a.current_balance < 0       THEN 'NEGATIVE'
-            WHEN a.current_balance < 100     THEN '0-100'
-            WHEN a.current_balance < 1000    THEN '100-1K'
-            WHEN a.current_balance < 10000   THEN '1K-10K'
-            WHEN a.current_balance < 100000  THEN '10K-100K'
-            WHEN a.current_balance < 1000000 THEN '100K-1M'
-            ELSE                                  '1M+'
-        END AS balance_bracket,
-        COUNT(a.account_id)                 AS bracket_count,
-        COALESCE(SUM(a.current_balance), 0) AS bracket_total_balance,
-        a.status                            AS account_status
+    -- Result Set 2: Balance Bracket Distribution
+    SELECT 
+        CASE 
+            WHEN a.current_balance < 100000            THEN '0 - 100K'
+            WHEN a.current_balance < 1000000           THEN '100K - 1M'
+            WHEN a.current_balance < 10000000          THEN '1M - 10M'
+            ELSE '10M+'
+        END                                            AS balance_bracket,
+        a.status                                       AS account_status,
+        COUNT(a.account_id)                            AS bracket_count,
+        COALESCE(SUM(a.current_balance), 0.0000)       AS bracket_total_balance
     FROM accounts a
-    WHERE a.deleted_at IS NULL
-      AND (p_account_status IS NULL OR p_account_status = '' OR a.status = p_account_status)
+    WHERE (p_account_status IS NULL OR p_account_status = '' OR a.status = p_account_status)
     GROUP BY balance_bracket, a.status
-    ORDER BY FIELD(balance_bracket,'NEGATIVE','0-100','100-1K','1K-10K','10K-100K','100K-1M','1M+'), a.status;
-END$$
+    ORDER BY MIN(a.current_balance) ASC;
+END //
 
 DELIMITER ;
 
--- -----------------------------------------------------------------------
+-- =============================================
+-- 3. SP: sp_fee_revenue_report
+-- =============================================
+DELIMITER //
 
-DROP PROCEDURE IF EXISTS sp_get_system_audit_trail_log;
+DROP PROCEDURE IF EXISTS sp_fee_revenue_report //
+DROP PROCEDURE IF EXISTS sp_fee_revemue_report //
 
-DELIMITER $$
-
-CREATE PROCEDURE sp_get_system_audit_trail_log(
-    IN p_staff_id    VARCHAR(64),
-    IN p_action_type VARCHAR(100),
-    IN p_start_date  DATETIME,
-    IN p_end_date    DATETIME,
-    IN p_account_no  VARCHAR(50),
-    IN p_page        INT,
-    IN p_page_size   INT
+CREATE PROCEDURE sp_fee_revenue_report(
+    IN p_start_date DATE,
+    IN p_end_date   DATE,
+    IN p_channel    VARCHAR(20)
 )
 BEGIN
-    DECLARE v_offset INT;
-    DECLARE v_limit  INT;
-    SET v_limit  = IF(p_page_size IS NULL OR p_page_size <= 0, 20, p_page_size);
-    SET v_offset = IF(p_page IS NULL OR p_page <= 0, 0, (p_page - 1) * v_limit);
+    SELECT 
+        bt.transaction_type                            AS transaction_type,
+        bt.channel                                     AS channel,
+        COUNT(bt.transaction_id)                       AS transaction_count,
+        COALESCE(SUM(bt.amount), 0.0000)               AS total_volume,
+        COALESCE(SUM(bt.service_fee), 0.0000)          AS total_fee_revenue,
+        COALESCE(AVG(bt.service_fee), 0.0000)          AS avg_fee_per_tx
+    FROM bank_transactions bt
+    WHERE bt.status = 'COMPLETED'
+      AND bt.completed_at >= CAST(CONCAT(p_start_date, ' 00:00:00') AS DATETIME)
+      AND bt.completed_at <= CAST(CONCAT(p_end_date, ' 23:59:59') AS DATETIME)
+      AND (p_channel IS NULL OR p_channel = '' OR bt.channel = p_channel)
+    GROUP BY bt.transaction_type, bt.channel
+    ORDER BY total_fee_revenue DESC;
+END //
 
-    -- RS1: total count
-    SELECT COUNT(*) AS total_count
-    FROM audit_logs al
-    LEFT JOIN staff_users s ON s.staff_id = al.actor_staff_id
-    LEFT JOIN customers c ON c.customer_id = al.actor_customer_id
-    LEFT JOIN corporate_users cu ON cu.corporate_user_id = al.actor_corporate_user_id
-    WHERE (p_staff_id    IS NULL OR p_staff_id    = '' OR al.request_id = p_staff_id OR s.staff_no = p_staff_id OR c.customer_code = p_staff_id OR cu.corporate_user_code = p_staff_id)
-      AND (p_action_type IS NULL OR p_action_type = '' OR al.action_type  = p_action_type)
-      AND (p_account_no  IS NULL OR p_account_no  = '' OR al.entity_id    = p_account_no)
-      AND (p_start_date  IS NULL OR al.created_at >= p_start_date)
-      AND (p_end_date    IS NULL OR al.created_at <= p_end_date);
+DELIMITER ;
 
-    -- RS2: paginated rows
-    SELECT
-        al.audit_id                                                         AS log_id,
-        al.actor_type                                                       AS actor_type,
-        COALESCE(al.action_category, '')                                    AS action_category,
-        COALESCE(s.staff_no, c.customer_code, cu.corporate_user_code, '')   AS staff_id,
-        COALESCE(s.username, c.email, cu.email, '')                         AS staff_username,
-        COALESCE(s.full_name, c.full_name, cu.full_name, '')                 AS staff_full_name,
-        al.action_type                                                      AS action_type,
-        al.entity_type                                                      AS entity_type,
-        al.entity_id                                                        AS entity_id,
-        al.old_values                                                       AS old_value,
-        al.new_values                                                       AS new_value,
-        al.ip_address                                                       AS ip_address,
-        COALESCE(al.description, al.user_agent, '')                         AS description,
-        al.created_at                                                       AS created_at
-    FROM audit_logs al
-    LEFT JOIN staff_users s ON s.staff_id = al.actor_staff_id
-    LEFT JOIN customers c ON c.customer_id = al.actor_customer_id
-    LEFT JOIN corporate_users cu ON cu.corporate_user_id = al.actor_corporate_user_id
-    WHERE (p_staff_id    IS NULL OR p_staff_id    = '' OR al.request_id = p_staff_id OR s.staff_no = p_staff_id OR c.customer_code = p_staff_id OR cu.corporate_user_code = p_staff_id)
-      AND (p_action_type IS NULL OR p_action_type = '' OR al.action_type  = p_action_type)
-      AND (p_account_no  IS NULL OR p_account_no  = '' OR al.entity_id    = p_account_no)
-      AND (p_start_date  IS NULL OR al.created_at >= p_start_date)
-      AND (p_end_date    IS NULL OR al.created_at <= p_end_date)
-    ORDER BY al.created_at DESC
-    LIMIT  v_limit
-    OFFSET v_offset;
-END$$
+-- =============================================
+-- 4. SP: sp_large_transaction_aml_report
+-- =============================================
+DELIMITER //
+
+DROP PROCEDURE IF EXISTS sp_large_transaction_aml_report //
+DROP PROCEDURE IF EXISTS sp_large_transactions_aml_report //
+
+CREATE PROCEDURE sp_large_transaction_aml_report(
+    IN p_start_date  DATE,
+    IN p_end_date    DATE,
+    IN p_min_amount  DECIMAL(18, 4),
+    IN p_tx_type     VARCHAR(25)
+)
+BEGIN
+    SELECT 
+        bt.transaction_ref                             AS transaction_ref,
+        bt.completed_at                                AS transaction_time,
+        bt.transaction_type                            AS transaction_type,
+        bt.channel                                     AS channel,
+        bt.amount                                      AS amount,
+        bt.currency                                    AS currency,
+        COALESCE(src_acc.account_number, 'N/A')        AS source_account_no,
+        COALESCE(src_cust.full_name, 'N/A')            AS source_customer_name,
+        COALESCE(dest_acc.account_number, 'N/A')       AS dest_account_no,
+        COALESCE(dest_cust.full_name, 'N/A')           AS dest_customer_name,
+        CASE 
+            WHEN bt.amount >= (COALESCE(p_min_amount, 10000000.0000) * 2) THEN 'HIGH RISK'
+            WHEN bt.amount >= COALESCE(p_min_amount, 10000000.0000)       THEN 'MEDIUM RISK'
+            ELSE 'STANDARD'
+        END                                            AS risk_level
+    FROM bank_transactions bt
+    LEFT JOIN accounts src_acc   ON bt.source_account_id = src_acc.account_id
+    LEFT JOIN customers src_cust ON src_acc.customer_id = src_cust.customer_id
+    LEFT JOIN accounts dest_acc   ON bt.destination_account_id = dest_acc.account_id
+    LEFT JOIN customers dest_cust ON dest_acc.customer_id = dest_cust.customer_id
+    WHERE bt.status = 'COMPLETED'
+      AND bt.completed_at >= CAST(CONCAT(p_start_date, ' 00:00:00') AS DATETIME)
+      AND bt.completed_at <= CAST(CONCAT(p_end_date, ' 23:59:59') AS DATETIME)
+      AND bt.amount >= COALESCE(p_min_amount, 10000000.0000)
+      AND (p_tx_type IS NULL OR p_tx_type = '' OR bt.transaction_type = p_tx_type)
+    ORDER BY bt.amount DESC, bt.completed_at DESC;
+END //
+
+CREATE PROCEDURE sp_large_transactions_aml_report(
+    IN p_start_date  DATE,
+    IN p_end_date    DATE,
+    IN p_min_amount  DECIMAL(18, 4),
+    IN p_tx_type     VARCHAR(25)
+)
+BEGIN
+    CALL sp_large_transaction_aml_report(p_start_date, p_end_date, p_min_amount, p_tx_type);
+END //
 
 DELIMITER ;

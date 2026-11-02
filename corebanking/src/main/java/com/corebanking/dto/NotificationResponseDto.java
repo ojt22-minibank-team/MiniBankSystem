@@ -30,4 +30,6 @@ public class NotificationResponseDto {
     private String counterpartyName;
     private String counterpartyAccountNumber;
     private String transferDirection;
+    private String sourceAccountNumber;
+    private String destinationAccountNumber;
 }

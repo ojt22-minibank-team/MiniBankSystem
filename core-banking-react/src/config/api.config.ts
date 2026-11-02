@@ -1,4 +1,4 @@
-// Backend base URL — Spring Boot runs on port 8080
+// Backend base URL
 export const API_BASE_URL = "http://localhost:8080";
 
 export const API_ENDPOINTS = {
@@ -66,6 +66,8 @@ export const API_ENDPOINTS = {
   OTC: {
     DEPOSIT: "/api/transactions/otc/deposit",
     WITHDRAW: "/api/transactions/otc/withdraw",
+    PARAMETERS: "/api/transactions/otc/parameters",
+    CHECK_REFERENCE: "/api/transactions/otc/check-reference",
   },
 
   // Teller Operations
@@ -75,6 +77,12 @@ export const API_ENDPOINTS = {
 
   // Announcements (active, for authenticated staff / all)
   ANNOUNCEMENTS: "/api/announcements",
+
+  // Staff Audit Trail Logs
+  AUDIT_LOGS: {
+    BASE: "/api/v1/staff/audit-logs",
+    BY_ID: (id: number | string) => `/api/v1/staff/audit-logs/${id}`,
+  },
 } as const;
 
 // localStorage keys

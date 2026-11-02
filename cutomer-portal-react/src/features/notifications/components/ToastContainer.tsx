@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -7,8 +8,16 @@ import {
   Bell,
   User,
   ExternalLink,
+  Store,
+  CreditCard,
 } from "lucide-react";
 import type { NotificationItem } from "../types/notificationTypes";
+import {
+  maskAccountNumber,
+  formatNotificationMessage,
+} from "../utils/notificationFormatters";
+import { SESSION_TIMEOUT_EVENT } from "../../../utils/sessionEvents";
+import { hasTokens, subscribeToAuthenticationChanges } from "../../../utils/tokenStorage";
 
 export interface ToastData {
   id: string;
@@ -112,12 +121,26 @@ export const ToastContainer: React.FC = () => {
       }
     };
 
+    // 3. Clear active toasts on Session Timeout or Logout
+    const clearAllToasts = () => {
+      setToasts([]);
+    };
+
+    const unsubscribeAuth = subscribeToAuthenticationChanges(() => {
+      if (!hasTokens()) {
+        clearAllToasts();
+      }
+    });
+
     window.addEventListener("ws-notification-received", handleWsNotification);
     window.addEventListener("show-toast-notification", handleCustomToast);
+    window.addEventListener(SESSION_TIMEOUT_EVENT, clearAllToasts);
 
     return () => {
       window.removeEventListener("ws-notification-received", handleWsNotification);
       window.removeEventListener("show-toast-notification", handleCustomToast);
+      window.removeEventListener(SESSION_TIMEOUT_EVENT, clearAllToasts);
+      unsubscribeAuth();
     };
   }, [addToast]);
 
@@ -187,6 +210,9 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
     toast.transferDirection === "SENT" ||
     titleLower.includes("transfer sent") ||
     titleLower.includes("sent");
+  const isPayment =
+    toast.type === "PAYMENT" ||
+    titleLower.includes("payment");
 
   const formatAmount = (num: number | null | undefined) => {
     if (num === null || num === undefined) return null;
@@ -195,8 +221,27 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
     }).format(num);
   };
 
-  const handleOpenDropdown = () => {
-    window.dispatchEvent(new Event("open-notification-dropdown"));
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleOpenReceipt = () => {
+    onDismiss();
+    const ref = toast.transactionRef || toast.id;
+
+    // If already viewing a receipt, replace history to avoid stacking
+    const isAlreadyOnReceipt = location.pathname.startsWith("/receipt");
+    const currentFrom = (location.state as { from?: string } | null)?.from;
+    const originFrom = isAlreadyOnReceipt
+      ? (currentFrom && !currentFrom.startsWith("/receipt") ? currentFrom : "/dashboard")
+      : location.pathname;
+
+    navigate(`/receipt/${encodeURIComponent(ref)}`, {
+      replace: isAlreadyOnReceipt,
+      state: {
+        notification: toast,
+        from: originFrom,
+      },
+    });
   };
 
   return (
@@ -226,7 +271,11 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
               : "bg-slate-100 text-slate-600"
           }`}
         >
-          {isReceived ? (
+          {isPayment && isReceived ? (
+            <Store className="w-5 h-5" />
+          ) : isPayment && isSent ? (
+            <CreditCard className="w-5 h-5" />
+          ) : isReceived ? (
             <ArrowDownLeft className="w-5 h-5" />
           ) : isSent ? (
             <ArrowUpRight className="w-5 h-5" />
@@ -252,11 +301,11 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
                   isReceived
                     ? "bg-emerald-100 text-emerald-800"
                     : isSent
-                    ? "bg-blue-100 text-blue-800"
+                    ? "bg-rose-100 text-rose-800"
                     : "bg-slate-100 text-slate-700"
                 }`}
               >
-                {isReceived ? "+" : isSent ? "-" : ""}
+                {isReceived ? "+ " : isSent ? "- " : ""}
                 {formatAmount(toast.amount)} {toast.currency || "MMK"}
               </span>
             )}
@@ -270,7 +319,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
                 {isReceived ? "From: " : isSent ? "To: " : ""}
                 {toast.counterpartyName}
                 {toast.counterpartyAccountNumber
-                  ? ` (${toast.counterpartyAccountNumber})`
+                  ? ` (${maskAccountNumber(toast.counterpartyAccountNumber)})`
                   : ""}
               </span>
             </div>
@@ -278,24 +327,18 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
 
           {/* Description / Message */}
           <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed line-clamp-2">
-            {toast.message}
+            {formatNotificationMessage(toast)}
           </p>
 
           {/* Footer with Ref & View action */}
           <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400">
-            {toast.transactionRef ? (
-              <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">
-                Ref: {toast.transactionRef}
-              </span>
-            ) : (
-              <span>Just now</span>
-            )}
+            <span>Just now</span>
 
             <button
-              onClick={handleOpenDropdown}
+              onClick={handleOpenReceipt}
               className="text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1 hover:underline transition"
             >
-              <span>View details</span>
+              <span>View slip</span>
               <ExternalLink className="w-2.5 h-2.5" />
             </button>
           </div>

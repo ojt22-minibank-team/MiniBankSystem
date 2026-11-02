@@ -43,7 +43,7 @@ export default function LoginPage() {
     if (error) dismissError();
   };
 
-  // If already authenticated, redirect immediately to dashboard
+  // If already authenticated, redirect to dashboard
   useEffect(() => {
     if (isAuthenticated) {
       navigate('/admin/dashboard', { replace: true });
@@ -88,7 +88,7 @@ export default function LoginPage() {
 
   const validateCredentials = (): boolean => {
     const errors: { username?: string; password?: string } = {};
-    if (!username.trim()) errors.username = 'Username is required.';
+    if (!username.trim()) errors.username = 'User ID or Phone Number is required.';
     if (!password) errors.password = 'Password is required.';
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -100,6 +100,13 @@ export default function LoginPage() {
   const handleCredentialsSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!validateCredentials()) return;
+
+    if (rememberMe) {
+      localStorage.setItem(REMEMBERED_USER_KEY, username.trim());
+    } else {
+      localStorage.removeItem(REMEMBERED_USER_KEY);
+      localStorage.removeItem(LEGACY_REMEMBERED_KEY);
+    }
 
     setErrorMessage(null);
     setSuccessInfo(null);
@@ -132,18 +139,18 @@ export default function LoginPage() {
         setErrorMessage(
           typeof backendMessage === 'string'
             ? backendMessage
-            : (backendMessage as any)?.message || 'Login failed. Please try again.'
+            : (backendMessage as any)?.message || 'Login failed. Please check your credentials.'
         );
       }
     } catch (err: any) {
       const backendMessage =
         err?.response?.data?.message ||
         err?.message ||
-        (typeof err === 'string' ? err : 'Login failed. Please try again.');
+        (typeof err === 'string' ? err : 'Login failed. Please check your credentials.');
       setErrorMessage(
         typeof backendMessage === 'string'
           ? backendMessage
-          : (backendMessage as any)?.message || 'Login failed. Please try again.'
+          : (backendMessage as any)?.message || 'Login failed. Please check your credentials.'
       );
     }
   };
@@ -293,11 +300,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 px-4">
-      {/* Background pattern */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-blue-600/10 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-blue-600/10 blur-3xl" />
+    <div className="relative min-h-screen w-full flex items-center justify-center bg-[#e8f1f4] p-4 sm:p-6 lg:p-8 select-none">
+      {/* Background Soft Ambient Glow */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 h-[600px] w-[600px] rounded-full bg-cyan-100/35 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 h-[600px] w-[600px] rounded-full bg-amber-100/25 blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-md">
@@ -498,18 +505,67 @@ export default function LoginPage() {
               </form>
             )}
 
-            {/* Footer note */}
-            <p className="mt-6 text-center text-xs text-gray-400">
-              Authorized personnel only. All activity is monitored and logged.
-            </p>
+        {/* ============================================================ */}
+        {/* RIGHT COLUMN: Pristine Full-Res Showcase Card (Exact Mockup) */}
+        {/* ============================================================ */}
+        <div className="hidden lg:col-span-5 lg:flex relative p-6 sm:p-7 items-center justify-center bg-slate-50/20">
+          <div className="relative w-full h-full max-h-[520px] rounded-[28px] overflow-hidden shadow-[0_20px_50px_-12px_rgba(26,58,110,0.18)] border border-[#dfba61]/70 ring-1 ring-[#caa13b]/30 flex items-center justify-center bg-white">
+            <img
+              src={ekarajShowcase}
+              alt="Welcome to Ekaraj Bank - Empowering your financial future with royal security"
+              className="w-full h-full object-cover object-center select-none"
+            />
           </div>
         </div>
 
-        {/* Version badge */}
-        <p className="mt-4 text-center text-xs text-slate-500">
-          CoreBank Portal &copy; {new Date().getFullYear()}
-        </p>
       </div>
+
+      {/* Forgot Password Modal Dialog */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <img src={ekarajCrown} alt="" className="h-6 w-auto" />
+                <h3 className="text-sm font-bold text-slate-900">
+                  Account Credential Assistance
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(false)}
+                className="text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="py-4 text-xs text-slate-600 space-y-2.5 leading-relaxed">
+              <p>
+                In compliance with Ekaraj Bank security protocols, password resets require identity verification or an active activation token.
+              </p>
+              <p>
+                If you have an invitation or setup token, you can activate your credentials directly via the Setup Portal.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(false)}
+                className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-900 focus:outline-none cursor-pointer"
+              >
+                Dismiss
+              </button>
+              <Link
+                to="/signup?tab=token"
+                onClick={() => setShowForgotModal(false)}
+                className="px-4 py-2 text-xs font-bold rounded-lg bg-gradient-to-r from-[#dfba61] to-[#caa13b] text-slate-950 hover:brightness-105 transition-all shadow-sm"
+              >
+                Go to Setup Portal →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

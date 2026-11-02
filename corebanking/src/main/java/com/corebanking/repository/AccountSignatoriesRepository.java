@@ -1,7 +1,10 @@
 package com.corebanking.repository;
 
 import com.corebanking.entity.AccountSignatories;
+import com.corebanking.entity.Customers;
 import com.corebanking.entity.enums.SignatoryRole;
+import com.corebanking.entity.enums.SignatoryStatus;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -30,4 +33,6 @@ public interface AccountSignatoriesRepository extends JpaRepository<AccountSigna
 
     // နည်းလမ်း ၂: Spring Data JPA Derived Method သုံးလိုပါက Underscore (_) ခံ၍ ရေးရပါမည်
     List<AccountSignatories> findByAccount_AccountNumber(String accountNumber);
+    
+    List<AccountSignatories> findByCustomerAndStatus(Customers customer, SignatoryStatus status);
 }

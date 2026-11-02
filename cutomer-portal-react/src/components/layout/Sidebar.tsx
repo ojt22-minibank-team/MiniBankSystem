@@ -1,14 +1,13 @@
 import {
   LayoutDashboard,
   WalletCards,
-  ArrowLeftRight,
-  History,
+  Send,
+  Clock,
   Users,
   User,
   Settings,
   HelpCircle,
   LogOut,
-  Building2,
   ChevronRight,
   Megaphone,
   FileText,
@@ -16,23 +15,21 @@ import {
 
 import {
   NavLink,
-  useNavigate,
 } from "react-router-dom";
 
 import {
   useEffect,
-  useState,
+  useSyncExternalStore,
 } from "react";
 
-import {
-  logoutCustomer,
-} from "../../services/authService";
-
-import {
-  clearTokens,
-} from "../../utils/tokenStorage";
+import { useTranslation } from "react-i18next";
+import { isIndividualLogoutInProgress, useIndividualLogout } from "../../features/auth/hooks/useIndividualLogout";
+import { getAuthenticationGeneration, subscribeToAuthenticationChanges } from "../../utils/tokenStorage";
 import { useAppDispatch ,useAppSelector } from "../../lib/redux";
 import { fetchAnnouncements } from "../../features/customer-account/announcements/store/announcementSlice";
+import { EkarajCrown } from "../common/EkarajLogo";
+
+
 
 
 // ======================================================
@@ -41,41 +38,55 @@ import { fetchAnnouncements } from "../../features/customer-account/announcement
 
 const mainMenuItems = [
   {
-    name: "Dashboard",
+    labelKey: "navigation.dashboard",
     path: "/dashboard",
     icon: LayoutDashboard,
+    iconColor: "text-blue-600",
+    bgColor: "bg-blue-50",
   },
   {
-    name: "My Accounts",
+    labelKey: "navigation.accounts",
     path: "/accounts",
     icon: WalletCards,
+    iconColor: "text-violet-600",
+    bgColor: "bg-violet-50",
   },
   {
-    name: "Transfer & Payments",
+    labelKey: "navigation.transfer",
     path: "/transfer",
-    icon: ArrowLeftRight,
+    icon: Send,
+    iconColor: "text-blue-600",
+    bgColor: "bg-blue-50",
   },
   {
-    name: "Transaction History",
+    labelKey: "navigation.transactionHistory",
     path: "/transaction",
-    icon: History,
+    icon: Clock,
+    iconColor: "text-amber-600",
+    bgColor: "bg-amber-50",
   },
   {
-    name: "Account Statement",
+    labelKey: "navigation.accountStatement",
     path: "/statements",
     icon: FileText,
+    iconColor: "text-sky-600",
+    bgColor: "bg-sky-50",
   },
   {
-    name: "Beneficiaries",
+    labelKey: "navigation.beneficiaries",
     path: "/beneficiaries",
     icon: Users,
+    iconColor: "text-emerald-600",
+    bgColor: "bg-emerald-50",
   },
-    {
-    name: "Announcements",
+  {
+    labelKey: "navigation.announcements",
     path: "/announcements",
     icon: Megaphone,
+    iconColor: "text-rose-600",
+    bgColor: "bg-rose-50",
   },
-];
+] as const;
 
 
 // ======================================================
@@ -84,21 +95,27 @@ const mainMenuItems = [
 
 const accountMenuItems = [
   {
-    name: "Profile",
+    labelKey: "navigation.profile",
     path: "/profile",
     icon: User,
+    iconColor: "text-indigo-600",
+    bgColor: "bg-indigo-50",
   },
   {
-    name: "Settings",
+    labelKey: "navigation.settings",
     path: "/settings",
     icon: Settings,
+    iconColor: "text-slate-600",
+    bgColor: "bg-slate-100",
   },
   {
-    name: "Help & Support",
+    labelKey: "navigation.support",
     path: "/support",
     icon: HelpCircle,
+    iconColor: "text-teal-600",
+    bgColor: "bg-teal-50",
   },
-];
+] as const;
 
 
 // ======================================================
@@ -107,17 +124,14 @@ const accountMenuItems = [
 
 export default function Sidebar() {
 
-  const navigate =
-    useNavigate();
+  const handleLogout = useIndividualLogout();
+  // A previous session's pending logout must not disable this session's button.
+  useSyncExternalStore(subscribeToAuthenticationChanges, getAuthenticationGeneration);
+  const loggingOut = isIndividualLogoutInProgress();
 
    const dispatch = useAppDispatch();
 
-  const [
-    loggingOut,
-    setLoggingOut,
-  ] = useState(false);
-
-
+  const { t } = useTranslation("common");
     useEffect(() => {
     void dispatch(fetchAnnouncements());
   }, [dispatch]);
@@ -128,92 +142,6 @@ export default function Sidebar() {
       (announcement) => !announcement.isRead,
     ).length,
   );
-
-
-  // ====================================================
-  // LOGOUT
-  // ====================================================
-
-  const handleLogout =
-    async () => {
-
-      // Double click မဖြစ်အောင်
-      if (loggingOut) {
-        return;
-      }
-
-
-      setLoggingOut(true);
-
-
-      try {
-
-        // ----------------------------------------------
-        // Backend Logout API
-        //
-        // POST /api/customer/auth/logout
-        //
-        // api.ts interceptor က
-        // Authorization: Bearer <accessToken>
-        // ကို automatically ထည့်ပေးမယ်
-        // ----------------------------------------------
-
-        await logoutCustomer();
-
-
-        console.log(
-          "Logout successful."
-        );
-
-
-      } catch (error) {
-
-        // Backend logout fail ဖြစ်သော်လည်း
-        // browser ထဲက local authentication data
-        // ကိုတော့ clear လုပ်ပေးမယ်
-
-        console.error(
-          "Logout API failed:",
-          error
-        );
-
-
-      } finally {
-
-        // ----------------------------------------------
-        // ACCESS TOKEN + REFRESH TOKEN CLEAR
-        // ----------------------------------------------
-
-        clearTokens();
-
-
-        // ----------------------------------------------
-        // Temporary login / OTP data CLEAR
-        // ----------------------------------------------
-
-        sessionStorage.removeItem(
-          "challengeGroupId"
-        );
-
-        sessionStorage.removeItem(
-          "maskedEmail"
-        );
-
-
-        // ----------------------------------------------
-        // LOGIN PAGE ပြန်ပို့
-        // ----------------------------------------------
-
-        navigate(
-          "/login",
-          {
-            replace: true,
-          }
-        );
-
-      }
-
-    };
 
 
   // ====================================================
@@ -233,8 +161,9 @@ export default function Sidebar() {
         w-64
         flex-col
         border-r
-        border-slate-200
-        bg-white
+        border-slate-200 dark:border-slate-800
+        bg-white dark:bg-[#0A192F]
+        transition-colors duration-200
       "
     >
 
@@ -249,7 +178,7 @@ export default function Sidebar() {
           shrink-0
           items-center
           border-b
-          border-slate-100
+          border-slate-100 dark:border-slate-800
           px-6
         "
       >
@@ -266,15 +195,15 @@ export default function Sidebar() {
               items-center
               justify-center
               rounded-xl
-              bg-[#08295C]
+              bg-gradient-to-br from-[#0A192F] to-[#153564]
               text-white
               shadow-sm
+              ring-1 ring-white/10
             "
           >
 
-            <Building2
-              size={21}
-              strokeWidth={2.2}
+            <EkarajCrown
+              size={28}
             />
 
           </div>
@@ -286,13 +215,13 @@ export default function Sidebar() {
 
             <h1
               className="
-                text-[17px]
-                font-bold
+                text-[16px]
+                font-extrabold
                 tracking-tight
-                text-[#08295C]
+                text-[#0A192F] dark:text-white
               "
             >
-              MiniBank
+              EKARAJ BANK
             </h1>
 
             <p
@@ -302,7 +231,7 @@ export default function Sidebar() {
                 text-slate-400
               "
             >
-              Customer Portal
+              {t("customerPortal")}
             </p>
 
           </div>
@@ -339,10 +268,10 @@ export default function Sidebar() {
               font-bold
               uppercase
               tracking-[0.12em]
-              text-slate-400
+              text-slate-400 dark:text-slate-500
             "
           >
-            Banking
+            {t("navigation.banking", { defaultValue: "Banking" })}
           </p>
 
 
@@ -378,16 +307,16 @@ export default function Sidebar() {
                           isActive
 
                             ? `
-                              bg-[#EAF3FF]
+                              bg-cyan-50/80 dark:bg-cyan-950/50
                               font-semibold
-                              text-[#0878E8]
+                              text-[#00A3C4]
                             `
 
                             : `
                               font-medium
-                              text-slate-600
-                              hover:bg-slate-50
-                              hover:text-[#08295C]
+                              text-slate-600 dark:text-slate-300
+                              hover:bg-slate-50 dark:hover:bg-slate-800/70
+                              hover:text-[#0A192F] dark:hover:text-white
                             `
                         }
                       `
@@ -418,16 +347,16 @@ export default function Sidebar() {
                               isActive
 
                                 ? `
-                                  bg-[#0878E8]
+                                  bg-gradient-to-r from-[#00A3C4] to-[#0284C7]
                                   text-white
                                   shadow-sm
+                                  shadow-cyan-500/20
                                 `
 
                                 : `
-                                  bg-slate-100
-                                  text-slate-500
-                                  group-hover:bg-slate-200
-                                  group-hover:text-[#08295C]
+                                  ${item.bgColor}
+                                  ${item.iconColor}
+                                  group-hover:scale-105
                                 `
                             }
                           `}
@@ -450,10 +379,10 @@ export default function Sidebar() {
                         <span
                           className="
                             flex-1
-                            truncate
+                            truncate text-[13.5px] leading-tight
                           "
                         >
-                          {item.name}
+                          {t(item.labelKey)}
                         </span>
 
                                          {/* Announcements unread count badge */}
@@ -478,7 +407,7 @@ export default function Sidebar() {
                             strokeWidth={2.5}
                             className="
                               shrink-0
-                              text-[#0878E8]
+                              text-[#00A3C4]
                             "
                           />
 
@@ -514,10 +443,10 @@ export default function Sidebar() {
               font-bold
               uppercase
               tracking-[0.12em]
-              text-slate-400
+              text-slate-400 dark:text-slate-500
             "
           >
-            Account
+            {t("navigation.account", { defaultValue: "Account" })}
           </p>
 
 
@@ -554,16 +483,16 @@ export default function Sidebar() {
                           isActive
 
                             ? `
-                              bg-[#EAF3FF]
+                              bg-cyan-50/80 dark:bg-cyan-950/50
                               font-semibold
-                              text-[#0878E8]
+                              text-[#00A3C4]
                             `
 
                             : `
                               font-medium
-                              text-slate-600
-                              hover:bg-slate-50
-                              hover:text-[#08295C]
+                              text-slate-600 dark:text-slate-300
+                              hover:bg-slate-50 dark:hover:bg-slate-800/70
+                              hover:text-[#0A192F] dark:hover:text-white
                             `
                         }
                       `
@@ -592,16 +521,16 @@ export default function Sidebar() {
                               isActive
 
                                 ? `
-                                  bg-[#0878E8]
+                                  bg-gradient-to-r from-[#00A3C4] to-[#0284C7]
                                   text-white
                                   shadow-sm
+                                  shadow-cyan-500/20
                                 `
 
                                 : `
-                                  bg-slate-100
-                                  text-slate-500
-                                  group-hover:bg-slate-200
-                                  group-hover:text-[#08295C]
+                                  ${item.bgColor}
+                                  ${item.iconColor}
+                                  group-hover:scale-105
                                 `
                             }
                           `}
@@ -625,7 +554,7 @@ export default function Sidebar() {
                             truncate
                           "
                         >
-                          {item.name}
+                          {t(item.labelKey)}
                         </span>
 
 
@@ -636,7 +565,7 @@ export default function Sidebar() {
                             strokeWidth={2.5}
                             className="
                               shrink-0
-                              text-[#0878E8]
+                              text-[#00A3C4]
                             "
                           />
 
@@ -661,99 +590,39 @@ export default function Sidebar() {
 
 
       {/* =====================================================
-          LOGOUT
+          LOGOUT (Modern Card Design)
       ====================================================== */}
 
-      <div
-        className="
-          shrink-0
-          border-t
-          border-slate-100
-          p-4
-        "
-      >
-
+      <div className="shrink-0 border-t border-slate-100 dark:border-slate-800 p-3.5">
         <button
           type="button"
-
-          // Logout button click
-          onClick={
-            handleLogout
-          }
-
-          // Logout လုပ်နေတုန်း
-          // ထပ်နှိပ်မရအောင်
-          disabled={
-            loggingOut
-          }
-
-          className="
-            group
-            flex
-            w-full
-            items-center
-            gap-3
-            rounded-xl
-            px-3
-            py-2.5
-            text-sm
-            font-medium
-            text-slate-500
-            transition-all
-            duration-200
-
-            hover:bg-red-50
-            hover:text-red-600
-
-            focus:outline-none
-            focus:ring-2
-            focus:ring-red-200
-
-            disabled:cursor-not-allowed
-            disabled:opacity-60
-          "
+          onClick={handleLogout}
+          disabled={loggingOut}
+          className="group relative flex w-full items-center justify-between rounded-2xl border border-red-100/80 dark:border-red-950/60 bg-gradient-to-r from-red-50/60 via-rose-50/40 to-slate-50/60 dark:from-red-950/20 dark:via-rose-950/15 dark:to-slate-900/40 p-2.5 transition-all duration-200 hover:border-red-200 dark:hover:border-red-900/80 hover:from-red-100/70 hover:to-rose-100/50 dark:hover:from-red-950/40 dark:hover:to-rose-950/30 hover:shadow-xs active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
         >
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Icon Box */}
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-100/80 dark:bg-red-950/80 text-red-600 dark:text-red-400 shadow-xs transition-all duration-200 group-hover:scale-105 group-hover:bg-red-600 group-hover:text-white">
+              <LogOut size={16} strokeWidth={2.2} />
+            </div>
 
-          <div
-            className="
-              flex
-              h-9
-              w-9
-              shrink-0
-              items-center
-              justify-center
-              rounded-lg
-              bg-slate-100
-              transition-colors
-              duration-200
-
-              group-hover:bg-red-100
-            "
-          >
-
-            <LogOut
-              size={17}
-            />
-
+            {/* Labels */}
+            <div className="text-left min-w-0">
+              <p className="truncate text-xs font-bold text-slate-800 dark:text-slate-200 transition-colors group-hover:text-red-700 dark:group-hover:text-red-300">
+                {loggingOut ? t("navigation.loggingOut") : t("navigation.logout")}
+              </p>
+              <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 group-hover:text-red-500/80">
+                End active session
+              </p>
+            </div>
           </div>
 
-
-          <span>
-
-            {
-              loggingOut
-                ? "Logging out..."
-                : "Logout"
-            }
-
-          </span>
-
+          {/* Right Indicator */}
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-slate-400 dark:text-slate-500 transition group-hover:translate-x-0.5 group-hover:text-red-600 dark:group-hover:text-red-400">
+            <ChevronRight size={14} strokeWidth={2.5} />
+          </div>
         </button>
-
       </div>
-
     </aside>
-
   );
-
 }

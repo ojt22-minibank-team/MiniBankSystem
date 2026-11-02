@@ -36,4 +36,8 @@ public class CusTransactionHistoryItemDTO {
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime completedAt;
+
+    private String counterpartyName;
+    private Boolean isOwnAccount;
+    private String displayTitle;
 }

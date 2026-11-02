@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { isAxiosError } from "axios";
 import {
   Bell,
   CheckCheck,
@@ -10,6 +12,8 @@ import {
   Loader2,
   X,
   User,
+  Store,
+  CreditCard,
 } from "lucide-react";
 import {
   getMyNotifications,
@@ -19,8 +23,26 @@ import {
 } from "../services/notificationService";
 import type { NotificationItem } from "../types/notificationTypes";
 import { useNotificationWebSocket } from "../hooks/useNotificationWebSocket";
+import {
+  maskAccountNumber,
+  formatNotificationMessage,
+} from "../utils/notificationFormatters";
+import {
+  getAccessToken,
+  getAuthenticationGeneration,
+  hasTokens,
+  isAuthenticationGenerationCurrent,
+  subscribeToAuthenticationChanges,
+} from "../../../utils/tokenStorage";
+import { SESSION_TIMEOUT_EVENT } from "../../../utils/sessionEvents";
+
+interface NotificationRequestScope {
+  generation: number;
+}
 
 export const NotificationDropdown: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"all" | "unread">("all");
   const [unreadCount, setUnreadCount] = useState<number>(0);
@@ -29,9 +51,20 @@ export const NotificationDropdown: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [markingAll, setMarkingAll] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  // Own pending work, including across effect cleanup/remount in the same generation.
+  const requestScopeRef = useRef<NotificationRequestScope | null>(null);
+  const isOpenRef = useRef(isOpen);
+  useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
+  const stopPollingRef = useRef<() => void>(() => {});
+  const startPollingRef = useRef<() => void>(() => {});
+
+  const isCurrent = useCallback((scope: NotificationRequestScope | null) =>
+    scope !== null && requestScopeRef.current === scope && hasTokens() &&
+    isAuthenticationGenerationCurrent(scope.generation), []);
 
   // Real-time WebSocket hook integration
   const handleRealtimeNotification = useCallback((newNoti: NotificationItem) => {
+    if (!isCurrent(requestScopeRef.current)) return;
     // Increment unread count in real-time
     setUnreadCount((prev) => prev + 1);
 
@@ -42,7 +75,7 @@ export const NotificationDropdown: React.FC = () => {
       }
       return [newNoti, ...prev];
     });
-  }, []);
+  }, [isCurrent]);
 
   const { isConnected: isWsConnected } = useNotificationWebSocket({
     onNotificationReceived: handleRealtimeNotification,
@@ -74,76 +107,149 @@ export const NotificationDropdown: React.FC = () => {
   };
 
   // Fetch unread count
-  const fetchUnreadCount = async () => {
+  const fetchUnreadCount = useCallback(async () => {
+    const scope = requestScopeRef.current;
+    if (!isCurrent(scope)) return;
+    const requestToken = getAccessToken();
+    if (!requestToken) return;
+
     try {
       const count = await getUnreadNotificationCount();
-      setUnreadCount(count);
-    } catch (err) {
-      // Silently catch in polling
+      if (isCurrent(scope) && requestToken === getAccessToken()) {
+        setUnreadCount(count);
+        // Recovery: If previous 403 or error stopped polling, but this fetch succeeded, safely resume polling
+        startPollingRef.current();
+      }
+    } catch (err: unknown) {
+      if (!isCurrent(scope)) return;
+      // Token Rotation Guard: If token was rotated while in flight, ignore 401/403 from the old token!
+      if (requestToken !== getAccessToken()) return;
+
+      if (isAxiosError(err) && (err.response?.status === 401 || err.response?.status === 403)) {
+        stopPollingRef.current();
+      }
     }
-  };
+  }, [isCurrent]);
 
   // Fetch full notifications list
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
+    const scope = requestScopeRef.current;
+    if (!isCurrent(scope)) return;
+    const requestToken = getAccessToken();
+    if (!requestToken) return;
+
     try {
       setLoading(true);
       setError(null);
       const data = await getMyNotifications();
-      if (Array.isArray(data)) {
-        setNotifications(data);
-      } else {
-        setNotifications([]);
+      if (!isCurrent(scope)) return;
+      if (requestToken === getAccessToken()) {
+        if (Array.isArray(data)) {
+          setNotifications(data);
+        } else {
+          setNotifications([]);
+        }
+        // Recovery: If manual fetch succeeded, safely resume polling
+        startPollingRef.current();
       }
-    } catch (err: any) {
-      console.error("Failed to fetch notifications", err);
+    } catch (err: unknown) {
+      if (!isCurrent(scope)) return;
+      // Token Rotation Guard: If token was rotated while in flight, ignore 401/403 from the old token!
+      if (requestToken !== getAccessToken()) return;
+
+      if (isAxiosError(err) && (err.response?.status === 401 || err.response?.status === 403)) {
+        stopPollingRef.current();
+      }
       setError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Failed to load notifications."
+        (isAxiosError<{ message?: string }>(err) ? err.response?.data?.message : undefined) ||
+        (err instanceof Error ? err.message : "Failed to load notifications.")
       );
     } finally {
-      setLoading(false);
+      if (isCurrent(scope)) setLoading(false);
     }
-  };
+  }, [isCurrent]);
 
-  // Initial fetch and polling every 20 seconds
+  // The existing auth store owns validity; this effect only owns notification work.
   useEffect(() => {
-    fetchUnreadCount();
-
-    const intervalId = setInterval(() => {
-      fetchUnreadCount();
-      if (isOpen) {
-        fetchNotifications();
+    let intervalId: number | undefined;
+    const stopPolling = () => {
+      if (intervalId !== undefined) {
+        window.clearInterval(intervalId);
+        intervalId = undefined;
       }
-    }, 20000);
+    };
+    stopPollingRef.current = stopPolling;
+
+    const startPolling = (targetScope = requestScopeRef.current) => {
+      if (!isCurrent(targetScope)) return;
+      if (intervalId !== undefined) return; // Prevent duplicate intervals
+
+      intervalId = window.setInterval(() => {
+        if (!isCurrent(targetScope)) return;
+        void fetchUnreadCount();
+        if (isOpenRef.current) void fetchNotifications();
+      }, 20000);
+    };
+    startPollingRef.current = () => startPolling();
+
+    const synchronize = () => {
+      const generation = getAuthenticationGeneration();
+      const authenticated = hasTokens() && isAuthenticationGenerationCurrent(generation);
+      if (authenticated && requestScopeRef.current?.generation === generation && intervalId !== undefined) return;
+
+      requestScopeRef.current = null;
+      stopPolling();
+      setIsOpen(false);
+      setUnreadCount(0);
+      setNotifications([]);
+      setLoading(false);
+      setMarkingAll(false);
+      setError(null);
+      if (!authenticated) return;
+
+      const scope = { generation };
+      requestScopeRef.current = scope;
+      void fetchUnreadCount();
+      startPolling(scope);
+    };
+
+    const handleSessionTimeout = () => {
+      requestScopeRef.current = null;
+      stopPolling();
+      setIsOpen(false);
+    };
 
     // Listen to custom notification trigger (e.g. from P2P transfer)
     const handleCustomNotify = () => {
-      fetchUnreadCount();
-      if (isOpen) {
-        fetchNotifications();
+      if (!isCurrent(requestScopeRef.current)) return;
+      void fetchUnreadCount();
+      if (isOpenRef.current) {
+        void fetchNotifications();
       }
     };
-    window.addEventListener("new-notification-event", handleCustomNotify);
-
-    return () => {
-      clearInterval(intervalId);
-      window.removeEventListener("new-notification-event", handleCustomNotify);
-    };
-  }, [isOpen]);
-
-  // Listen to open-notification-dropdown event from Toast
-  useEffect(() => {
     const handleOpenFromToast = () => {
+      if (!isCurrent(requestScopeRef.current)) return;
       setIsOpen(true);
-      fetchNotifications();
-      fetchUnreadCount();
+      void fetchNotifications();
+      void fetchUnreadCount();
     };
+    const unsubscribe = subscribeToAuthenticationChanges(synchronize);
+    window.addEventListener(SESSION_TIMEOUT_EVENT, handleSessionTimeout);
+    window.addEventListener("new-notification-event", handleCustomNotify);
     window.addEventListener("open-notification-dropdown", handleOpenFromToast);
+    window.addEventListener("storage", synchronize);
+    synchronize();
+
     return () => {
+      requestScopeRef.current = null;
+      stopPolling();
+      unsubscribe();
+      window.removeEventListener(SESSION_TIMEOUT_EVENT, handleSessionTimeout);
+      window.removeEventListener("new-notification-event", handleCustomNotify);
       window.removeEventListener("open-notification-dropdown", handleOpenFromToast);
+      window.removeEventListener("storage", synchronize);
     };
-  }, []);
+  }, [fetchNotifications, fetchUnreadCount, isCurrent]);
 
   const formatAmount = (num: number | null | undefined) => {
     if (num === null || num === undefined) return null;
@@ -172,6 +278,7 @@ export const NotificationDropdown: React.FC = () => {
 
   // Open/Close toggle
   const handleToggle = () => {
+    if (!isCurrent(requestScopeRef.current)) return;
     const nextState = !isOpen;
     setIsOpen(nextState);
     if (nextState) {
@@ -187,9 +294,12 @@ export const NotificationDropdown: React.FC = () => {
 
   // Mark single as read
   const handleMarkAsRead = async (item: NotificationItem) => {
+    const scope = requestScopeRef.current;
+    if (!isCurrent(scope)) return;
     if (!isItemUnread(item)) return;
     try {
       await markNotificationAsRead(item.notificationId);
+      if (!isCurrent(scope)) return;
       setNotifications((prev) =>
         prev.map((n) =>
           n.notificationId === item.notificationId
@@ -198,16 +308,41 @@ export const NotificationDropdown: React.FC = () => {
         )
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch (err) {
-      console.error("Failed to mark as read", err);
+    } catch {
+      // A failed or obsolete request must not affect another session.
     }
+  };
+
+  // Deep-link directly to Receipt / Slip view
+  const handleNotificationClick = (item: NotificationItem) => {
+    void handleMarkAsRead(item);
+    setIsOpen(false);
+    const ref = item.transactionRef || (item.notificationId ? `NOTI-${item.notificationId}` : "");
+
+    // If already viewing a receipt, replace history so clicking multiple notifications doesn't stack receipts
+    const isAlreadyOnReceipt = location.pathname.startsWith("/receipt");
+    const currentFrom = (location.state as { from?: string } | null)?.from;
+    const originFrom = isAlreadyOnReceipt
+      ? (currentFrom && !currentFrom.startsWith("/receipt") ? currentFrom : "/dashboard")
+      : location.pathname;
+
+    navigate(`/receipt/${encodeURIComponent(ref)}`, {
+      replace: isAlreadyOnReceipt,
+      state: {
+        notification: item,
+        from: originFrom,
+      },
+    });
   };
 
   // Mark all as read
   const handleMarkAllAsRead = async () => {
+    const scope = requestScopeRef.current;
+    if (!isCurrent(scope)) return;
     try {
       setMarkingAll(true);
       await markAllNotificationsAsRead();
+      if (!isCurrent(scope)) return;
       setNotifications((prev) =>
         prev.map((n) => ({
           ...n,
@@ -217,10 +352,10 @@ export const NotificationDropdown: React.FC = () => {
         }))
       );
       setUnreadCount(0);
-    } catch (err) {
-      console.error("Failed to mark all as read", err);
+    } catch {
+      // A failed or obsolete request must not affect another session.
     } finally {
-      setMarkingAll(false);
+      if (isCurrent(scope)) setMarkingAll(false);
     }
   };
 
@@ -229,12 +364,33 @@ export const NotificationDropdown: React.FC = () => {
     const titleLower = item.title.toLowerCase();
     const isFailed = titleLower.includes("fail") || titleLower.includes("reject");
     const isReceived =
-      titleLower.includes("received") || titleLower.includes("funds received");
+      item.transferDirection === "RECEIVED" ||
+      titleLower.includes("received") ||
+      titleLower.includes("funds received");
+    const isPayment =
+      item.notificationType === "PAYMENT" ||
+      titleLower.includes("payment");
 
     if (isFailed) {
       return (
         <div className="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0 border border-red-100">
           <AlertCircle className="w-5 h-5" />
+        </div>
+      );
+    }
+
+    if (isPayment && isReceived) {
+      return (
+        <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100 shadow-xs">
+          <Store className="w-5 h-5" />
+        </div>
+      );
+    }
+
+    if (isPayment && !isReceived) {
+      return (
+        <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100 shadow-xs">
+          <CreditCard className="w-5 h-5" />
         </div>
       );
     }
@@ -263,7 +419,7 @@ export const NotificationDropdown: React.FC = () => {
         className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition focus:outline-none focus:ring-2 focus:ring-blue-100 ${
           isOpen
             ? "bg-blue-50 text-blue-600 shadow-inner"
-            : "text-slate-500 hover:bg-slate-50 hover:text-[#08295C]"
+            : "text-slate-500 hover:bg-slate-50 hover:text-[#0A192F]"
         }`}
       >
         <Bell size={19} />
@@ -278,7 +434,7 @@ export const NotificationDropdown: React.FC = () => {
 
       {/* Dropdown Panel */}
       {isOpen && (
-        <div className="absolute right-0 mt-3 w-80 sm:w-96 rounded-2xl bg-white shadow-2xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-3 duration-200">
+        <div className="absolute -right-14 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 mt-3 w-80 sm:w-96 rounded-2xl bg-white shadow-2xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-3 duration-200">
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/70">
             <div>
@@ -403,7 +559,7 @@ export const NotificationDropdown: React.FC = () => {
                 return (
                   <div
                     key={item.notificationId}
-                    onClick={() => handleMarkAsRead(item)}
+                    onClick={() => handleNotificationClick(item)}
                     className={`px-5 py-3.5 flex items-start gap-3.5 transition cursor-pointer select-none ${
                       unread
                         ? "bg-blue-50/40 hover:bg-blue-50/70"
@@ -432,53 +588,65 @@ export const NotificationDropdown: React.FC = () => {
                       </div>
 
                       {/* Prominent Account Holder Name + Account Number */}
-                      {item.counterpartyName && (
-                        <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                          <User className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                          <span className="truncate">
-                            {item.transferDirection === "RECEIVED"
-                              ? "From: "
-                              : item.transferDirection === "SENT"
-                              ? "To: "
-                              : ""}
-                            {item.counterpartyName}
-                            {item.counterpartyAccountNumber
-                              ? ` (${item.counterpartyAccountNumber})`
-                              : ""}
-                          </span>
-                        </div>
-                      )}
+                      {(() => {
+                        const itemTitleLower = (item.title || "").toLowerCase();
+                        const isItemReceived =
+                          item.transferDirection === "RECEIVED" ||
+                          itemTitleLower.includes("received") ||
+                          itemTitleLower.includes("funds received");
 
-                      <p className="text-[11px] text-slate-600 mt-1 leading-relaxed line-clamp-2">
-                        {item.message}
-                      </p>
+                        return (
+                          <>
+                            {item.counterpartyName && (
+                              <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                                <User className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                <span className="truncate">
+                                  {isItemReceived ? "From: " : "To: "}
+                                  {item.counterpartyName}
+                                  {item.counterpartyAccountNumber
+                                    ? ` (${maskAccountNumber(item.counterpartyAccountNumber)})`
+                                    : ""}
+                                </span>
+                              </div>
+                            )}
 
-                      <div className="mt-1.5 flex items-center justify-between gap-2">
-                        {item.transactionRef ? (
-                          <span className="inline-block text-[9px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">
-                            Ref: {item.transactionRef}
-                          </span>
-                        ) : <span />}
+                            <p className="text-[11px] text-slate-600 mt-1 leading-relaxed line-clamp-2">
+                              {formatNotificationMessage(item)}
+                            </p>
 
-                        {item.amount !== undefined && item.amount !== null && (
-                          <span
-                            className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                              item.transferDirection === "RECEIVED"
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                                : item.transferDirection === "SENT"
-                                ? "bg-blue-50 text-blue-700 border border-blue-100"
-                                : "bg-slate-100 text-slate-600"
-                            }`}
-                          >
-                            {item.transferDirection === "RECEIVED"
-                              ? "+"
-                              : item.transferDirection === "SENT"
-                              ? "-"
-                              : ""}
-                            {formatAmount(item.amount)} {item.currency || "MMK"}
-                          </span>
-                        )}
-                      </div>
+                            <div className="mt-1.5 flex items-center justify-end gap-2">
+                              {(() => {
+                                const isItemFailed = itemTitleLower.includes("fail") || itemTitleLower.includes("reject");
+
+                                return (
+                                  <>
+                                    {isItemFailed && (
+                                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
+                                        Failed
+                                      </span>
+                                    )}
+                                    {item.amount !== undefined && item.amount !== null && (
+                                      <span
+                                        className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                                          isItemFailed
+                                            ? "bg-red-50 text-red-700 border border-red-200"
+                                            : isItemReceived
+                                            ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                                            : "bg-rose-50 text-rose-700 border border-rose-100"
+                                        }`}
+                                      >
+                                        {isItemFailed
+                                          ? `- ${formatAmount(item.amount)} ${item.currency || "MMK"} (Failed)`
+                                          : `${isItemReceived ? "+ " : "- "}${formatAmount(item.amount)} ${item.currency || "MMK"}`}
+                                      </span>
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
 
                     {unread && (

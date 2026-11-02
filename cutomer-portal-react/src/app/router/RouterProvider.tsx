@@ -1,11 +1,13 @@
-
 import {
   createBrowserRouter,
   RouterProvider,
+  Navigate,
+  useParams,
 } from "react-router-dom";
 
 import ProtectedRoute from "../../features/auth/components/ProtectedRoute";
 import SessionTimeoutProvider from "../../features/auth/components/SessionTimeoutProvider";
+import { corporateAuthRoutes } from "../../features/corporate-auth/routes";
 
 // ======================================================
 // AUTH PAGES
@@ -30,22 +32,39 @@ import PinResetNewPinPage from "../../features/auth/pages/PinResetNewPinPage";
 // CUSTOMER PAGES
 // ======================================================
 
-import DashboardPage from "../../features/customer-account/dashboard/DashboardPage";
+import DashboardPage from "../../features/customer-account/dashboard/pages/DashboardPage";
 import MainLayout from "../../components/layout/MainLayout";
-import MyAccountsPage from "../../features/customer-account/accounts/MyaccountPage";
-import ProfilePage from "../../features/customer-account/profile/ProfilePage";
+import MyAccountsPage from "../../features/customer-account/accounts/pages/MyaccountPage";
+import { MerchantPaymentAuthorize } from "../../features/merchant-payment/pages/MerchantPaymentAuthorize";
+import { MerchantPaymentRouteGuard } from "../../features/merchant-payment/components/MerchantPaymentRouteGuard";
+import ProfilePage from "../../features/customer-account/profile/pages/ProfilePage";
 import { P2PTransferForm } from "../../features/transfer/components/P2PTransferForm";
-import AccountDetailPage from "../../features/customer-account/accounts/AccountDetailPage";
 import SettingsPage from "../../features/customer-account/settings/pages/SettingsPage";
-import AnnouncementsPage from "../../features/customer-account/announcements/AnnouncementsPage";
+import AnnouncementsPage from "../../features/customer-account/announcements/pages/AnnouncementsPage";
+
 import BeneficiariesPage from "../../features/beneficiaries/pages/BeneficiariesPage";
 import AccountStatementPage from "../../features/customer-account/statements/pages/AccountStatementPage";
+import TransactionHistoryPage from "../../features/customer-account/transactions/pages/TransactionHistoryPage";
+import TransactionDetailPage from "../../features/customer-account/transactions/pages/TransactionDetailPage";
+import TransactionReceiptPage from "../../features/transfer/pages/TransactionReceiptPage";
+import  HelpSupportPage  from "../../features/customer-account/help-support/pages/HelpSupportPage";
 
 // ======================================================
 // ROUTER
 // ======================================================
 
+
+function AccountRouteRedirect() {
+  const { accountNumber } = useParams<{ accountNumber: string }>();
+  return <Navigate to="/accounts" state={{ accountNumber }} replace />;
+}
+
 const router = createBrowserRouter([
+
+  // =========================================
+  // PUBLIC AUTH PAGES & STANDALONE PAGES
+  // =========================================
+  ...corporateAuthRoutes,
 
   // ====================================================
   // PUBLIC AUTH PAGES
@@ -87,6 +106,8 @@ const router = createBrowserRouter([
   },
 
 
+
+  // =========================================
   // ====================================================
   // FORGOT PASSWORD / PASSWORD RESET
   // ====================================================
@@ -104,6 +125,40 @@ const router = createBrowserRouter([
   {
     path: "/password-reset/new-password",
     element: <ResetPasswordPage />,
+  },
+
+
+  // ====================================================
+  // MERCHANT PAYMENT CHECKOUT (PRE-LOGIN REDIRECT GUARD)
+  // ====================================================
+
+  {
+    element: <MerchantPaymentRouteGuard />,
+
+    children: [
+      {
+        element: (
+          <SessionTimeoutProvider>
+            <MainLayout />
+          </SessionTimeoutProvider>
+        ),
+
+        children: [
+          {
+            path: "/checkout",
+            element: <MerchantPaymentAuthorize />,
+          },
+          {
+            path: "/merchant-payment/authorize",
+            element: <MerchantPaymentAuthorize />,
+          },
+          {
+            path: "/merchant-payment",
+            element: <MerchantPaymentAuthorize />,
+          },
+        ],
+      },
+    ],
   },
 
 
@@ -137,13 +192,28 @@ const router = createBrowserRouter([
           },
 
           {
+            path: "/account",
+            element: <Navigate to="/accounts" replace />,
+          },
+
+          {
             path: "/accounts/:accountNumber",
-            element: <AccountDetailPage />,
+            element: <AccountRouteRedirect />,
           },
 
           {
             path: "/statements",
             element: <AccountStatementPage />,
+          },
+
+          {
+            path: "/transaction",
+            element: <TransactionHistoryPage />,
+          },
+
+          {
+            path: "/transaction/:transactionRef",
+            element: <TransactionDetailPage />,
           },
 
           {
@@ -183,12 +253,32 @@ const router = createBrowserRouter([
             element: <BeneficiariesPage />,
           },
 
+          {
+            path: "/receipt",
+            element: <TransactionReceiptPage />,
+          },
+
+          {
+            path: "/receipt/:transactionRef",
+            element: <TransactionReceiptPage />,
+          },
+
+          {
+            path: "/support",
+            element: <HelpSupportPage />,
+          }
+
         ],
 
       },
 
     ],
 
+  },
+
+  {
+    path: "*",
+    element: <Navigate to="/dashboard" replace />,
   },
 
 ]);

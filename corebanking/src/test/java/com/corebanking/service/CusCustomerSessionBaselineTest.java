@@ -136,6 +136,7 @@ class CusCustomerSessionBaselineTest {
         sessionService = new CusSessionService(authSessionsRepository, credentialsRepository,
                 auditLogsRepository, corporateCredentialRepository);
         ReflectionTestUtils.setField(authService, "entityManager", entityManager);
+        CusSessionActivityTestSupport.wire(sessionService, authSessionsRepository, () -> session);
         customer = Customers.builder().customerId(CUSTOMER_ID).customerCode("CUS-SESSION-001")
                 .customerType(CustomerType.PERSONAL).status(CustomerStatus.ACTIVE).build();
         credentials = CustomerCredentials.builder().customerId(CUSTOMER_ID).customer(customer)
@@ -247,9 +248,14 @@ class CusCustomerSessionBaselineTest {
         when(cusJwtService.getClaims(OLD_REFRESH))
                 .thenThrow(new ExpiredJwtException(Jwts.header(), refreshClaims, "Synthetic expired JWT"));
 
-        assertThrows(ExpiredJwtException.class, () -> authService.refreshToken(refreshRequest(OLD_REFRESH)));
+        CusAuthenticationException exception = assertThrows(CusAuthenticationException.class,
+                () -> authService.refreshToken(refreshRequest(OLD_REFRESH)));
+        assertEquals("Invalid or expired refresh token.", exception.getMessage());
 
         verifyNoInteractions(sessionDelegate, authSessionsRepository, auditLogsRepository);
+        verifyNoInteractions(credentialsRepository);
+        verify(cusJwtService).getClaims(OLD_REFRESH);
+        verifyNoMoreInteractions(cusJwtService);
     }
 
     @Test
@@ -367,9 +373,6 @@ class CusCustomerSessionBaselineTest {
     void validCustomerSessionPreservesIdentityAndLifetime(String path) {
         stubSessionLookup();
         stubCredentials();
-        if (path.equals("ACCESS")) {
-            when(authSessionsRepository.save(session)).thenReturn(session);
-        }
         LocalDateTime initialActivity = session.getLastSeenAt();
 
         assertSame(session, validate(path, pathClaims(path)));
@@ -383,7 +386,8 @@ class CusCustomerSessionBaselineTest {
             assertEquals(NOW, session.getLastSeenAt());
             assertEquals(UpdatedByType.CUSTOMER, session.getUpdatedByType());
             assertEquals(CUSTOMER_ID, session.getUpdatedById());
-            verify(authSessionsRepository).save(session);
+            verify(authSessionsRepository).touchIfValid(SID, SessionSubjectType.CUSTOMER, CUSTOMER_ID, 7L, UpdatedByType.CUSTOMER, NOW);
+            verify(authSessionsRepository, never()).save(any());
         } else {
             assertEquals(initialActivity, session.getLastSeenAt());
             verify(authSessionsRepository, never()).save(any());
@@ -585,9 +589,6 @@ class CusCustomerSessionBaselineTest {
         stubSessionLookup();
         stubCredentials();
         session.setLastSeenAt(NOW.minusMinutes(5).plusNanos(1));
-        if (path.equals("ACCESS")) {
-            when(authSessionsRepository.save(session)).thenReturn(session);
-        }
         assertSame(session, validate(path, pathClaims(path)));
         assertNoRevoke();
     }
@@ -673,16 +674,38 @@ class CusCustomerSessionBaselineTest {
     }
 
     @Test
-    void accessActivitySaveFailurePropagates() {
+    void accessActivityWriteFailurePropagatesWithoutDirtyingTheSession() {
         stubSessionLookup();
         stubCredentials();
-        when(authSessionsRepository.save(session))
-                .thenThrow(new DataAccessResourceFailureException("Synthetic activity write failure"));
+        LocalDateTime previous = session.getLastSeenAt();
+        doThrow(new DataAccessResourceFailureException("Synthetic activity write failure"))
+                .when(authSessionsRepository).touchIfValid(SID, SessionSubjectType.CUSTOMER, CUSTOMER_ID, 7L, UpdatedByType.CUSTOMER, NOW);
 
         assertThrows(DataAccessResourceFailureException.class, () -> sessionService.validateAccessSession(accessClaims));
+        assertEquals(previous, session.getLastSeenAt());
+        verify(authSessionsRepository, never()).save(any());
+    }
 
-        assertEquals(NOW, session.getLastSeenAt());
-        // In-memory mutation is observable; database rollback is not proven here.
+    @Test
+    void zeroChangedRowsAcceptsOnlyAnAlreadyCurrentValidActivityState() {
+        stubSessionLookup(); stubCredentials();
+        session.setLastSeenAt(NOW); session.setUpdatedAt(NOW);
+        session.setUpdatedByType(UpdatedByType.CUSTOMER); session.setUpdatedById(CUSTOMER_ID);
+        doReturn(0).when(authSessionsRepository).touchIfValid(SID, SessionSubjectType.CUSTOMER, CUSTOMER_ID, 7L, UpdatedByType.CUSTOMER, NOW);
+        assertSame(session, sessionService.validateAccessSession(accessClaims));
+        assertNull(session.getRevokedAt());
+        verify(authSessionsRepository, never()).save(any());
+        verifyNoInteractions(auditLogsRepository);
+    }
+
+    @Test
+    void unexplainedZeroActivityRowsFailClosedWithoutAnEntitySave() {
+        stubSessionLookup(); stubCredentials();
+        LocalDateTime previous = session.getLastSeenAt();
+        doReturn(0).when(authSessionsRepository).touchIfValid(SID, SessionSubjectType.CUSTOMER, CUSTOMER_ID, 7L, UpdatedByType.CUSTOMER, NOW);
+        assertThrows(CusAuthenticationException.class, () -> sessionService.validateAccessSession(accessClaims));
+        assertEquals(previous, session.getLastSeenAt());
+        verify(authSessionsRepository, never()).save(any());
     }
 
     @Test

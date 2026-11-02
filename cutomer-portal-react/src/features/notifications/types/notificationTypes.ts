@@ -16,6 +16,8 @@ export interface NotificationItem {
   counterpartyName?: string | null;
   counterpartyAccountNumber?: string | null;
   transferDirection?: "SENT" | "RECEIVED" | null;
+  sourceAccountNumber?: string | null;
+  destinationAccountNumber?: string | null;
 }
 
 export interface UnreadCountResponse {

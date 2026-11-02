@@ -1,6 +1,8 @@
 package com.corebanking.repository;
 
 import com.corebanking.entity.Accounts;
+import com.corebanking.entity.Customers;
+
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -36,4 +38,6 @@ public interface AccountRepository extends JpaRepository<Accounts, UUID> {
     
  // Customer Code ဖြင့် အကောင့်အားလုံးကို ရှာဖွေသည့် Method (အသစ်ထည့်သွင်းပါ)
     List<Accounts> findByCustomerCustomerCode(String customerCode);
+    
+    List<Accounts> findByCustomer(Customers customer);
 }
