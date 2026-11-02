@@ -89,11 +89,11 @@ export default function RouterProvider() {
           }
         />
 
-        {/* OTC Banking (Deposit & Withdrawal) */}
+        {/* OTC Banking (Deposit & Withdrawal - Teller only) */}
         <Route
           path="/admin/otc"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredRole="TELLER">
               <OtcTransactionPage />
             </ProtectedRoute>
           }

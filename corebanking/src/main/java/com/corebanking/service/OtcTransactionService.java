@@ -503,11 +503,7 @@ public class OtcTransactionService {
             }
         }
 
-        return staffUsersRepository.findByUsername("teller.zin")
-                .or(() -> staffUsersRepository.findByUsername("admin.nay"))
-                .or(() -> staffUsersRepository.findByUsername("admin"))
-                .or(() -> staffUsersRepository.findAll().stream().filter(s -> s.getStatus() == StaffUserStatus.ACTIVE).findFirst())
-                .orElseThrow(() -> new RuntimeException("No active staff record found in the system"));
+        throw new TransactionException("Authentication required: Valid authenticated staff account is required to perform OTC operations.");
     }
 
     private String generateTransactionRef(String prefix) {
