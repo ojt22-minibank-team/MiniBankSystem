@@ -35,6 +35,7 @@ import com.corebanking.entity.enums.CustomerType;
 import com.corebanking.entity.enums.MfaMethod;
 import com.corebanking.entity.enums.SignatoryRole;
 import com.corebanking.entity.enums.SignatoryStatus;
+import com.corebanking.entity.enums.StaffUserStatus;
 import com.corebanking.entity.enums.UpdatedByType;
 import com.corebanking.repository.AccountRepository;
 import com.corebanking.repository.AccountSignatoriesRepository;
@@ -45,9 +46,11 @@ import com.corebanking.repository.CorporateUserRepository;
 import com.corebanking.repository.CustomerCredentialsRepository;
 import com.corebanking.repository.CustomerRepository;
 import com.corebanking.repository.StaffUsersRepository;
+import com.corebanking.security.JwtService;
 import com.corebanking.util.PasswordGeneratorUtil;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -60,6 +63,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Service
@@ -78,6 +82,10 @@ public class AccountService {
     private final CorporateCredentialRepository corporateCredentialRepository;
     private final CorporateAccountAccessRepository corporateAccountAccessRepository;
     private final BankTransactionRepository bankTransactionRepository;
+    private final AuditTrailService auditTrailService;
+
+    @Autowired(required = false)
+    private JwtService jwtService;
 
     /**
      * ၁။ Retail Account (Savings / Current) အသစ်ဖွင့်လှစ်ခြင်း
@@ -112,6 +120,26 @@ public class AccountService {
                 .build();
 
         Accounts savedAccount = accountRepository.save(account);
+
+        // Record Audit Trail
+        java.util.Map<String, Object> newAccountSnapshot = new java.util.LinkedHashMap<>();
+        newAccountSnapshot.put("accountNumber", savedAccount.getAccountNumber());
+        newAccountSnapshot.put("customerCode", customer.getCustomerCode());
+        newAccountSnapshot.put("accountType", savedAccount.getAccountType().name());
+        newAccountSnapshot.put("accountCategory", savedAccount.getAccountCategory().name());
+        newAccountSnapshot.put("status", savedAccount.getStatus().name());
+        newAccountSnapshot.put("currency", savedAccount.getCurrency());
+        newAccountSnapshot.put("initialDeposit", initialDeposit);
+
+        if (auditTrailService != null) auditTrailService.logDataChange(
+                "ACCOUNT",
+                "CREATE_ACCOUNT",
+                "ACCOUNT",
+                savedAccount.getAccountNumber(),
+                null,
+                newAccountSnapshot,
+                "Created new " + savedAccount.getAccountType() + " account: " + savedAccount.getAccountNumber() + " for customer " + customer.getCustomerCode()
+        );
 
         // Record Initial Deposit Transaction in ledger/bank_transactions if deposit > 0
         recordInitialDepositTransaction(savedAccount, initialDeposit, staff, customer);
@@ -408,6 +436,25 @@ public class AccountService {
             );
         }
 
+        java.util.Map<String, Object> newCorpAccountSnapshot = new java.util.LinkedHashMap<>();
+        newCorpAccountSnapshot.put("accountNumber", accountNumber);
+        newCorpAccountSnapshot.put("companyCustomerCode", company.getCustomerCode());
+        newCorpAccountSnapshot.put("accountType", accountType.name());
+        newCorpAccountSnapshot.put("accountCategory", AccountCategory.CORPORATE.name());
+        newCorpAccountSnapshot.put("status", AccountStatus.ACTIVE.name());
+        newCorpAccountSnapshot.put("currency", currency);
+        newCorpAccountSnapshot.put("initialDeposit", initialDeposit);
+
+        if (auditTrailService != null) auditTrailService.logDataChange(
+                "ACCOUNT",
+                "CREATE_ACCOUNT",
+                "ACCOUNT",
+                accountNumber,
+                null,
+                newCorpAccountSnapshot,
+                "Created corporate account: " + accountNumber + " for company " + company.getFullName()
+        );
+
         return accountNumber;
     }
 
@@ -443,10 +490,45 @@ public class AccountService {
             account.setClosedAt(LocalDateTime.now());
         }
 
+        StaffUsers staff = getCurrentAuthenticatedStaff();
+        AccountStatus oldStatus = account.getStatus();
         account.setStatus(dto.getStatus());
         account.setUpdatedAt(LocalDateTime.now());
+        if (staff != null) {
+            account.setUpdatedByType(UpdatedByType.STAFF);
+            account.setUpdatedById(staff.getStaffId());
+        }
 
         Accounts updatedAccount = accountRepository.save(account);
+
+        String staffIdentifier = (staff != null) ? staff.getUsername() : "STAFF";
+
+        java.util.Map<String, Object> oldSnapshot = new java.util.LinkedHashMap<>();
+        oldSnapshot.put("accountNumber", updatedAccount.getAccountNumber());
+        oldSnapshot.put("status", oldStatus != null ? oldStatus.name() : "UNKNOWN");
+
+        java.util.Map<String, Object> newSnapshot = new java.util.LinkedHashMap<>();
+        newSnapshot.put("accountNumber", updatedAccount.getAccountNumber());
+        newSnapshot.put("status", updatedAccount.getStatus().name());
+        newSnapshot.put("updatedByStaff", staffIdentifier);
+        if (dto.getReason() != null && !dto.getReason().isBlank()) {
+            newSnapshot.put("reason", dto.getReason().trim());
+        }
+
+        String actionDesc = "Updated account status from " + oldStatus + " to " + updatedAccount.getStatus()
+                + " for account " + updatedAccount.getAccountNumber() + " by staff " + staffIdentifier
+                + (dto.getReason() != null && !dto.getReason().isBlank() ? " (Reason: " + dto.getReason().trim() + ")" : "");
+
+        if (auditTrailService != null) auditTrailService.logDataChange(
+                "ACCOUNT",
+                dto.getStatus() == AccountStatus.CLOSED ? "CLOSE_ACCOUNT" : "UPDATE_ACCOUNT_STATUS",
+                "ACCOUNT",
+                updatedAccount.getAccountNumber(),
+                oldSnapshot,
+                newSnapshot,
+                actionDesc
+        );
+
         return mapToResponseDTO(updatedAccount);
     }
 
@@ -477,6 +559,17 @@ public class AccountService {
         account.setUpdatedAt(LocalDateTime.now());
 
         Accounts updatedAccount = accountRepository.save(account);
+
+        if (auditTrailService != null) auditTrailService.logDataChange(
+                "ACCOUNT",
+                "ADD_JOINT_HOLDER",
+                "ACCOUNT",
+                updatedAccount.getAccountNumber(),
+                java.util.Map.of("isJointAccount", false),
+                java.util.Map.of("isJointAccount", true, "jointCustomerCode", dto.getJointCustomerCode()),
+                "Added joint holder " + dto.getJointCustomerCode() + " to account " + updatedAccount.getAccountNumber()
+        );
+
         return mapToResponseDTO(updatedAccount);
     }
 
@@ -500,13 +593,51 @@ public class AccountService {
             if (staffOpt.isPresent()) {
                 return staffOpt.get();
             }
+            try {
+                UUID uuid = UUID.fromString(currentStaffUsername);
+                var staffById = staffUsersRepository.findById(uuid);
+                if (staffById.isPresent()) {
+                    return staffById.get();
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // Fallback: check HTTP request Authorization header if SecurityContext was not populated
+        if (jwtService != null) {
+            var requestOpt = com.corebanking.util.AuditContextUtil.getCurrentHttpRequest();
+            if (requestOpt.isPresent()) {
+                String authHeader = requestOpt.get().getHeader("Authorization");
+                if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                    String token = authHeader.substring(7).trim();
+                    if (!token.isBlank() && jwtService.isTokenValid(token)) {
+                        var claims = jwtService.extractAllClaims(token);
+                        String staffIdStr = claims.get("staff_id", String.class);
+                        if (staffIdStr != null && !staffIdStr.isBlank()) {
+                            try {
+                                UUID staffId = UUID.fromString(staffIdStr);
+                                var staffById = staffUsersRepository.findById(staffId);
+                                if (staffById.isPresent()) {
+                                    return staffById.get();
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                        String sub = claims.getSubject();
+                        if (sub != null && !sub.isBlank()) {
+                            var staffBySub = staffUsersRepository.findByUsername(sub);
+                            if (staffBySub.isPresent()) {
+                                return staffBySub.get();
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         return staffUsersRepository.findByUsername("admin.nay")
                 .or(() -> staffUsersRepository.findByUsername("teller.zin"))
                 .or(() -> staffUsersRepository.findByUsername("admin"))
-                .or(() -> staffUsersRepository.findAll().stream().findFirst())
-                .orElseThrow(() -> new RuntimeException("No active staff record found in the system"));
+                .or(() -> staffUsersRepository.findAll().stream().filter(s -> s.getStatus() == StaffUserStatus.ACTIVE).findFirst())
+                .orElse(null);
     }
 
     private String generateUniqueAccountNumber(AccountType type) {
