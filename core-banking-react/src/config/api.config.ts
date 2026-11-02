@@ -5,6 +5,8 @@ export const API_ENDPOINTS = {
   // Auth
   AUTH: {
     LOGIN: "/api/auth/login",
+    VERIFY_OTP: "/api/auth/verify-otp",
+    RESEND_OTP: "/api/auth/resend-otp",
     LOGOUT: "/api/auth/logout",
     REFRESH: "/api/auth/refresh",
     STAFF_PASSWORD_SETUP_COMPLETE: "/api/auth/staff-password-setup/complete",
@@ -90,3 +92,4 @@ export const STORAGE_KEYS = {
   USERNAME: "cb_username",
   ROLES: "cb_roles",
 } as const;
+
