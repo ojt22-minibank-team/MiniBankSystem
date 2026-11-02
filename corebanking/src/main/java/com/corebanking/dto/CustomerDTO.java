@@ -4,12 +4,16 @@ package com.corebanking.dto;
 
 import java.time.LocalDate;
 
-
-
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
    @Getter
    @Setter
+   @Builder
+   @NoArgsConstructor
+   @AllArgsConstructor
 
 public class CustomerDTO {
 
@@ -19,6 +23,7 @@ public class CustomerDTO {
     private String email;
     private String address;
     private String status;
+    
 
     // Personal Customer Fields
     private String fullName;
@@ -69,5 +74,6 @@ public class CustomerDTO {
         if (address != null && !address.isBlank()) return address;
         return businessAddress;
     }
+
 	
 }

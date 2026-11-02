@@ -23,22 +23,22 @@ export default function AccountCreateModal({
   const [customerCode, setCustomerCode] = useState('');
   const [retailAccountType, setRetailAccountType] = useState<'SAVINGS' | 'CURRENT'>('SAVINGS');
   const [retailCurrency, setRetailCurrency] = useState('MMK');
-  const [retailInitialDeposit, setRetailInitialDeposit] = useState<number | ''>(0);
+  const [retailInitialDeposit, setRetailInitialDeposit] = useState<number | ''>('');
 
   // Corporate Account Fields
   const [companyCustomerCode, setCompanyCustomerCode] = useState('');
   const [corporateAccountType, setCorporateAccountType] = useState<'CURRENT' | 'SAVINGS'>('CURRENT');
   const [corporateCurrency, setCorporateCurrency] = useState('MMK');
-  const [corporateInitialDeposit, setCorporateInitialDeposit] = useState<number | ''>(0);
+  const [corporateInitialDeposit, setCorporateInitialDeposit] = useState<number | ''>('');
 
-  // CEO Details (Approver)
+  // CEO Details (Approver) - Required CEO Customer Code
   const [ceoCustomerCode, setCeoCustomerCode] = useState('');
   const [ceoFullName, setCeoFullName] = useState('');
   const [ceoEmail, setCeoEmail] = useState('');
   const [ceoPhone, setCeoPhone] = useState('');
 
-  // Maker Details (Initiator)
-  const [makerCustomerCode, setMakerCustomerCode] = useState('');
+  // Accountant Details (Maker / Initiator) - Required Accountant Customer Code
+  const [accountantCustomerCode, setAccountantCustomerCode] = useState('');
   const [makerFullName, setMakerFullName] = useState('');
   const [makerEmail, setMakerEmail] = useState('');
   const [makerPhone, setMakerPhone] = useState('');
@@ -55,19 +55,19 @@ export default function AccountCreateModal({
     setCustomerCode('');
     setRetailAccountType('SAVINGS');
     setRetailCurrency('MMK');
-    setRetailInitialDeposit(0);
+    setRetailInitialDeposit('');
 
     setCompanyCustomerCode('');
     setCorporateAccountType('CURRENT');
     setCorporateCurrency('MMK');
-    setCorporateInitialDeposit(0);
+    setCorporateInitialDeposit('');
 
     setCeoCustomerCode('');
     setCeoFullName('');
     setCeoEmail('');
     setCeoPhone('');
 
-    setMakerCustomerCode('');
+    setAccountantCustomerCode('');
     setMakerFullName('');
     setMakerEmail('');
     setMakerPhone('');
@@ -89,16 +89,80 @@ export default function AccountCreateModal({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const clearError = (field: string) => {
+    if (errors[field]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
 
     if (accountCategory === 'RETAIL') {
       if (!customerCode.trim()) {
-        errs.customerCode = 'Customer code is required.';
+        errs.customerCode = 'Customer code is required';
+      }
+
+      if (!retailAccountType) {
+        errs.retailAccountType = 'Account type is required';
+      }
+
+      if (!retailCurrency) {
+        errs.retailCurrency = 'Currency is required';
+      }
+
+      if (
+        retailInitialDeposit === '' ||
+        retailInitialDeposit === null ||
+        retailInitialDeposit === undefined ||
+        Number.isNaN(Number(retailInitialDeposit))
+      ) {
+        errs.retailInitialDeposit = 'Initial deposit amount is required';
+      } else if (Number(retailInitialDeposit) < 0) {
+        errs.retailInitialDeposit = 'Initial deposit cannot be negative';
       }
     } else {
       if (!companyCustomerCode.trim()) {
-        errs.companyCustomerCode = 'Company customer code is required.';
+        errs.companyCustomerCode = 'Company customer code is required';
+      }
+
+      if (!corporateAccountType) {
+        errs.corporateAccountType = 'Account type is required';
+      }
+
+      if (!corporateCurrency) {
+        errs.corporateCurrency = 'Currency is required';
+      }
+
+      if (
+        corporateInitialDeposit === '' ||
+        corporateInitialDeposit === null ||
+        corporateInitialDeposit === undefined ||
+        Number.isNaN(Number(corporateInitialDeposit))
+      ) {
+        errs.corporateInitialDeposit = 'Initial deposit amount is required';
+      } else if (Number(corporateInitialDeposit) < 0) {
+        errs.corporateInitialDeposit = 'Initial deposit cannot be negative';
+      }
+
+      if (!ceoCustomerCode.trim()) {
+        errs.ceoCustomerCode = 'CEO customer code is required';
+      }
+
+      if (!accountantCustomerCode.trim()) {
+        errs.accountantCustomerCode = 'Accountant customer code is required';
+      }
+
+      if (ceoEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ceoEmail.trim())) {
+        errs.ceoEmail = 'Please enter a valid email address';
+      }
+
+      if (makerEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(makerEmail.trim())) {
+        errs.makerEmail = 'Please enter a valid email address';
       }
     }
 
@@ -128,11 +192,12 @@ export default function AccountCreateModal({
         const payload: CorporateAccountCreateDTO = {
           companyCustomerCode: companyCustomerCode.trim(),
           accountType: corporateAccountType,
-          ceoCustomerCode: ceoCustomerCode.trim() || undefined,
+          ceoCustomerCode: ceoCustomerCode.trim(),
+          accountantCustomerCode: accountantCustomerCode.trim(),
+          makerCustomerCode: accountantCustomerCode.trim(),
           ceoFullName: ceoFullName.trim() || undefined,
           ceoEmail: ceoEmail.trim() || undefined,
           ceoPhone: ceoPhone.trim() || undefined,
-          makerCustomerCode: makerCustomerCode.trim() || undefined,
           makerFullName: makerFullName.trim() || undefined,
           makerEmail: makerEmail.trim() || undefined,
           makerPhone: makerPhone.trim() || undefined,
@@ -146,10 +211,16 @@ export default function AccountCreateModal({
     } catch (err) {
       const axErr = err as AxiosError<{ message?: string }>;
       const msg = axErr.response?.data?.message || (typeof axErr.response?.data === 'string' ? axErr.response.data : '');
-      setApiError(msg || 'Failed to open account. Please verify the customer code is correct and belongs to a COMPANY customer.');
+      setApiError(msg || 'Failed to open account. Please verify customer codes are correct and belong to valid active customers.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSwitchCategory = (category: 'RETAIL' | 'CORPORATE') => {
+    setAccountCategory(category);
+    setErrors({});
+    setApiError(null);
   };
 
   return (
@@ -189,7 +260,7 @@ export default function AccountCreateModal({
                 <button
                   type="button"
                   onClick={() => handleCopy(createdAccountNumber)}
-                  className="rounded border border-gray-300 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                  className="rounded border border-gray-300 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer"
                 >
                   {copied ? 'Copied!' : 'Copy'}
                 </button>
@@ -206,8 +277,8 @@ export default function AccountCreateModal({
             {accountCategory === 'CORPORATE' ? (
               <div className="pt-3 text-xs text-gray-600 space-y-1">
                 <p className="font-semibold text-gray-800">Dual Authorization Configured:</p>
-                <p>• <strong>Approver:</strong> Authorizer / Signatory (can_view = 1, can_approve = 1)</p>
-                <p>• <strong>MAKER:</strong> Initiator (can_view = 1, can_initiate = 1)</p>
+                <p>• <strong>Approver (CEO):</strong> Authorizer / Signatory (can_view = 1, can_approve = 1)</p>
+                <p>• <strong>Maker (Accountant):</strong> Initiator (can_view = 1, can_initiate = 1)</p>
                 <p>• <strong>Required Approvals:</strong> 2 signatures</p>
               </div>
             ) : (
@@ -225,7 +296,7 @@ export default function AccountCreateModal({
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
           {apiError && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {apiError}
@@ -240,9 +311,9 @@ export default function AccountCreateModal({
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setAccountCategory('RETAIL')}
+                onClick={() => handleSwitchCategory('RETAIL')}
                 className={[
-                  'flex items-center justify-center gap-2 rounded-xl border p-3.5 text-sm font-semibold transition-all',
+                  'flex items-center justify-center gap-2 rounded-xl border p-3.5 text-sm font-semibold transition-all cursor-pointer',
                   accountCategory === 'RETAIL'
                     ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm'
                     : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
@@ -255,9 +326,9 @@ export default function AccountCreateModal({
               </button>
               <button
                 type="button"
-                onClick={() => setAccountCategory('CORPORATE')}
+                onClick={() => handleSwitchCategory('CORPORATE')}
                 className={[
-                  'flex items-center justify-center gap-2 rounded-xl border p-3.5 text-sm font-semibold transition-all',
+                  'flex items-center justify-center gap-2 rounded-xl border p-3.5 text-sm font-semibold transition-all cursor-pointer',
                   accountCategory === 'CORPORATE'
                     ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm'
                     : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
@@ -275,44 +346,87 @@ export default function AccountCreateModal({
           {accountCategory === 'RETAIL' && (
             <div className="space-y-4 rounded-xl border border-gray-100 bg-gray-50/50 p-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Customer Code *</label>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Customer Code <span className="text-red-500">*</span>
+                </label>
                 <Input
                   placeholder="e.g. CUST-20261017-1049"
                   value={customerCode}
-                  onChange={(e) => setCustomerCode(e.target.value)}
-                  error={errors.customerCode}
+                  onChange={(e) => {
+                    setCustomerCode(e.target.value);
+                    clearError('customerCode');
+                  }}
+                  className={errors.customerCode ? '!border-red-500 !bg-red-50/20 focus:!border-red-500' : ''}
                 />
-                <p className="mt-1 text-xs text-gray-500">
-                  The primary retail customer who will own this account.
-                </p>
+                {errors.customerCode ? (
+                  <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
+                    {errors.customerCode}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-gray-500">
+                    The primary retail customer who will own this account.
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Account Product Type</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Account Product Type <span className="text-red-500">*</span>
+                  </label>
                   <select
                     value={retailAccountType}
-                    onChange={(e) => setRetailAccountType(e.target.value as any)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                    onChange={(e) => {
+                      setRetailAccountType(e.target.value as 'SAVINGS' | 'CURRENT');
+                      clearError('retailAccountType');
+                    }}
+                    className={`w-full rounded-xl border px-3 py-2.5 text-xs sm:text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all cursor-pointer ${
+                      errors.retailAccountType
+                        ? 'border-red-500 focus:border-red-500 bg-red-50/20'
+                        : 'border-slate-200 hover:border-slate-300 focus:border-sky-500'
+                    }`}
                   >
                     <option value="SAVINGS">SAVINGS (Prefix: 100...)</option>
                     <option value="CURRENT">CURRENT (Prefix: 200...)</option>
                   </select>
+                  {errors.retailAccountType && (
+                    <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
+                      {errors.retailAccountType}
+                    </p>
+                  )}
                 </div>
+
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Currency</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Currency <span className="text-red-500">*</span>
+                  </label>
                   <select
                     value={retailCurrency}
-                    onChange={(e) => setRetailCurrency(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                    onChange={(e) => {
+                      setRetailCurrency(e.target.value);
+                      clearError('retailCurrency');
+                    }}
+                    className={`w-full rounded-xl border px-3 py-2.5 text-xs sm:text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all cursor-pointer ${
+                      errors.retailCurrency
+                        ? 'border-red-500 focus:border-red-500 bg-red-50/20'
+                        : 'border-slate-200 hover:border-slate-300 focus:border-sky-500'
+                    }`}
                   >
                     <option value="MMK">MMK (Myanmar Kyat)</option>
                     <option value="USD">USD (US Dollar)</option>
                   </select>
+                  {errors.retailCurrency && (
+                    <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
+                      {errors.retailCurrency}
+                    </p>
+                  )}
                 </div>
+
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-semibold text-gray-700">Initial Deposit</label>
+                    <label className="block text-xs font-semibold text-gray-700">
+                      Initial Deposit <span className="text-red-500">*</span>
+                    </label>
                     <span className="text-[10px] text-gray-500 font-medium">Quick Fill:</span>
                   </div>
                   <Input
@@ -321,14 +435,26 @@ export default function AccountCreateModal({
                     step="0.01"
                     placeholder="0.00"
                     value={retailInitialDeposit}
-                    onChange={(e) => setRetailInitialDeposit(e.target.value === '' ? '' : Number(e.target.value))}
+                    onChange={(e) => {
+                      setRetailInitialDeposit(e.target.value === '' ? '' : Number(e.target.value));
+                      clearError('retailInitialDeposit');
+                    }}
+                    className={errors.retailInitialDeposit ? '!border-red-500 !bg-red-50/20 focus:!border-red-500' : ''}
                   />
+                  {errors.retailInitialDeposit && (
+                    <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
+                      {errors.retailInitialDeposit}
+                    </p>
+                  )}
                   <div className="flex gap-1.5 mt-1.5">
                     {[10000, 50000, 100000, 500000].map((amt) => (
                       <button
                         key={amt}
                         type="button"
-                        onClick={() => setRetailInitialDeposit(amt)}
+                        onClick={() => {
+                          setRetailInitialDeposit(amt);
+                          clearError('retailInitialDeposit');
+                        }}
                         className="text-[10px] bg-white border border-gray-200 hover:border-blue-400 hover:bg-blue-50 text-gray-700 hover:text-blue-700 px-2 py-0.5 rounded transition-all shadow-2xs cursor-pointer"
                       >
                         +{amt.toLocaleString()}
@@ -344,41 +470,83 @@ export default function AccountCreateModal({
           {accountCategory === 'CORPORATE' && (
             <div className="space-y-4 rounded-xl border border-gray-100 bg-gray-50/50 p-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Company Customer Code *</label>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Company Customer Code <span className="text-red-500">*</span>
+                </label>
                 <Input
                   placeholder="e.g. CUST-20261017-9922 (Company Type)"
                   value={companyCustomerCode}
-                  onChange={(e) => setCompanyCustomerCode(e.target.value)}
-                  error={errors.companyCustomerCode}
+                  onChange={(e) => {
+                    setCompanyCustomerCode(e.target.value);
+                    clearError('companyCustomerCode');
+                  }}
+                  className={errors.companyCustomerCode ? '!border-red-500 !bg-red-50/20 focus:!border-red-500' : ''}
                 />
+                {errors.companyCustomerCode && (
+                  <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
+                    {errors.companyCustomerCode}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Account Product Type</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Account Product Type <span className="text-red-500">*</span>
+                  </label>
                   <select
                     value={corporateAccountType}
-                    onChange={(e) => setCorporateAccountType(e.target.value as any)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                    onChange={(e) => {
+                      setCorporateAccountType(e.target.value as 'CURRENT' | 'SAVINGS');
+                      clearError('corporateAccountType');
+                    }}
+                    className={`w-full rounded-xl border px-3 py-2.5 text-xs sm:text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all cursor-pointer ${
+                      errors.corporateAccountType
+                        ? 'border-red-500 focus:border-red-500 bg-red-50/20'
+                        : 'border-slate-200 hover:border-slate-300 focus:border-sky-500'
+                    }`}
                   >
                     <option value="CURRENT">CURRENT (Prefix: 200...)</option>
                     <option value="SAVINGS">SAVINGS (Prefix: 100...)</option>
                   </select>
+                  {errors.corporateAccountType && (
+                    <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
+                      {errors.corporateAccountType}
+                    </p>
+                  )}
                 </div>
+
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Currency</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Currency <span className="text-red-500">*</span>
+                  </label>
                   <select
                     value={corporateCurrency}
-                    onChange={(e) => setCorporateCurrency(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                    onChange={(e) => {
+                      setCorporateCurrency(e.target.value);
+                      clearError('corporateCurrency');
+                    }}
+                    className={`w-full rounded-xl border px-3 py-2.5 text-xs sm:text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all cursor-pointer ${
+                      errors.corporateCurrency
+                        ? 'border-red-500 focus:border-red-500 bg-red-50/20'
+                        : 'border-slate-200 hover:border-slate-300 focus:border-sky-500'
+                    }`}
                   >
                     <option value="MMK">MMK (Myanmar Kyat)</option>
                     <option value="USD">USD (US Dollar)</option>
                   </select>
+                  {errors.corporateCurrency && (
+                    <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
+                      {errors.corporateCurrency}
+                    </p>
+                  )}
                 </div>
+
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-semibold text-gray-700">Initial Deposit</label>
+                    <label className="block text-xs font-semibold text-gray-700">
+                      Initial Deposit <span className="text-red-500">*</span>
+                    </label>
                     <span className="text-[10px] text-gray-500 font-medium">Quick Fill:</span>
                   </div>
                   <Input
@@ -387,14 +555,26 @@ export default function AccountCreateModal({
                     step="0.01"
                     placeholder="0.00"
                     value={corporateInitialDeposit}
-                    onChange={(e) => setCorporateInitialDeposit(e.target.value === '' ? '' : Number(e.target.value))}
+                    onChange={(e) => {
+                      setCorporateInitialDeposit(e.target.value === '' ? '' : Number(e.target.value));
+                      clearError('corporateInitialDeposit');
+                    }}
+                    className={errors.corporateInitialDeposit ? '!border-red-500 !bg-red-50/20 focus:!border-red-500' : ''}
                   />
+                  {errors.corporateInitialDeposit && (
+                    <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
+                      {errors.corporateInitialDeposit}
+                    </p>
+                  )}
                   <div className="flex gap-1.5 mt-1.5">
                     {[50000, 100000, 500000, 1000000].map((amt) => (
                       <button
                         key={amt}
                         type="button"
-                        onClick={() => setCorporateInitialDeposit(amt)}
+                        onClick={() => {
+                          setCorporateInitialDeposit(amt);
+                          clearError('corporateInitialDeposit');
+                        }}
                         className="text-[10px] bg-white border border-gray-200 hover:border-blue-400 hover:bg-blue-50 text-gray-700 hover:text-blue-700 px-2 py-0.5 rounded transition-all shadow-2xs cursor-pointer"
                       >
                         +{amt.toLocaleString()}
@@ -409,10 +589,10 @@ export default function AccountCreateModal({
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-xs font-bold uppercase tracking-wider text-blue-900">
-                      1. Primary Approver (Authorizer / Checker) <span className="font-normal text-gray-500 lowercase">(optional)</span>
+                      1. CEO / Primary Approver (Authorizer / Checker) <span className="text-red-500">*</span>
                     </h4>
                     <p className="text-[11px] text-gray-500 mt-0.5">
-                      Auto-generated from company profile if left blank.
+                      Required authorizer customer code for dual approval corporate accounts.
                     </p>
                   </div>
                   <span className="text-[11px] font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded">
@@ -421,15 +601,26 @@ export default function AccountCreateModal({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Approver Customer Code</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      CEO Customer Code <span className="text-red-500">*</span>
+                    </label>
                     <Input
-                      placeholder="e.g. CUST-2026... (Existing customer)"
+                      placeholder="e.g. CUST-20261017-1049"
                       value={ceoCustomerCode}
-                      onChange={(e) => setCeoCustomerCode(e.target.value)}
+                      onChange={(e) => {
+                        setCeoCustomerCode(e.target.value);
+                        clearError('ceoCustomerCode');
+                      }}
+                      className={errors.ceoCustomerCode ? '!border-red-500 !bg-red-50/20 focus:!border-red-500' : ''}
                     />
+                    {errors.ceoCustomerCode && (
+                      <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
+                        {errors.ceoCustomerCode}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Approver Full Name (or Override)</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">CEO Full Name (Optional Override)</label>
                     <Input
                       placeholder="e.g. U Thant Zin (Approver / MD)"
                       value={ceoFullName}
@@ -439,16 +630,25 @@ export default function AccountCreateModal({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Approver Email</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">CEO Email</label>
                     <Input
                       type="email"
                       placeholder="approver@company.com"
                       value={ceoEmail}
-                      onChange={(e) => setCeoEmail(e.target.value)}
+                      onChange={(e) => {
+                        setCeoEmail(e.target.value);
+                        clearError('ceoEmail');
+                      }}
+                      className={errors.ceoEmail ? '!border-red-500 !bg-red-50/20 focus:!border-red-500' : ''}
                     />
+                    {errors.ceoEmail && (
+                      <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
+                        {errors.ceoEmail}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Approver Phone</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">CEO Phone</label>
                     <Input
                       placeholder="+95 911111111"
                       value={ceoPhone}
@@ -458,15 +658,15 @@ export default function AccountCreateModal({
                 </div>
               </div>
 
-              {/* Maker Configuration */}
+              {/* Accountant / Maker Configuration */}
               <div className="rounded-lg border border-purple-200 bg-purple-50/50 p-3.5 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-xs font-bold uppercase tracking-wider text-purple-900">
-                      2. Maker Signatory (Initiator / Accountant) <span className="font-normal text-gray-500 lowercase">(optional)</span>
+                      2. Accountant / Maker Signatory (Initiator) <span className="text-red-500">*</span>
                     </h4>
                     <p className="text-[11px] text-gray-500 mt-0.5">
-                      Auto-generated from company profile if left blank.
+                      Required accountant customer code for initiating corporate payments and transfers.
                     </p>
                   </div>
                   <span className="text-[11px] font-semibold text-purple-700 bg-purple-100 px-2 py-0.5 rounded">
@@ -475,15 +675,26 @@ export default function AccountCreateModal({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Maker Customer Code</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Accountant Customer Code <span className="text-red-500">*</span>
+                    </label>
                     <Input
-                      placeholder="e.g. CUST-2026... (Existing customer)"
-                      value={makerCustomerCode}
-                      onChange={(e) => setMakerCustomerCode(e.target.value)}
+                      placeholder="e.g. CUST-20261017-2055"
+                      value={accountantCustomerCode}
+                      onChange={(e) => {
+                        setAccountantCustomerCode(e.target.value);
+                        clearError('accountantCustomerCode');
+                      }}
+                      className={errors.accountantCustomerCode ? '!border-red-500 !bg-red-50/20 focus:!border-red-500' : ''}
                     />
+                    {errors.accountantCustomerCode && (
+                      <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
+                        {errors.accountantCustomerCode}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Maker Full Name (or Override)</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Accountant Full Name (Optional Override)</label>
                     <Input
                       placeholder="e.g. Daw Khin Khin (Accountant)"
                       value={makerFullName}
@@ -493,16 +704,25 @@ export default function AccountCreateModal({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Maker Email</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Accountant Email</label>
                     <Input
                       type="email"
                       placeholder="accountant@company.com"
                       value={makerEmail}
-                      onChange={(e) => setMakerEmail(e.target.value)}
+                      onChange={(e) => {
+                        setMakerEmail(e.target.value);
+                        clearError('makerEmail');
+                      }}
+                      className={errors.makerEmail ? '!border-red-500 !bg-red-50/20 focus:!border-red-500' : ''}
                     />
+                    {errors.makerEmail && (
+                      <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
+                        {errors.makerEmail}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Maker Phone</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Accountant Phone</label>
                     <Input
                       placeholder="+95 922222222"
                       value={makerPhone}
