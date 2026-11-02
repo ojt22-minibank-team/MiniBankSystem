@@ -74,7 +74,7 @@ class CusIndividualAuthenticationFocusedUnitTest {
     @BeforeEach
     void setUp() {
         customers = dependency(CusCustomerRepository.class);
-        var accounts = dependency(CusAccountsRepository.class);
+        var accounts = dependency(AccountRepository.class);
         credentials = dependency(CusCredentialsRepository.class);
         otps = dependency(CusOtpChallengesRepository.class);
         audits = dependency(CusAuditLogsRepository.class);
