@@ -73,6 +73,7 @@ public class AccountService {
     private final AccountSignatoriesRepository accountSignatoriesRepository;
     private final CustomerCredentialsRepository customerCredentialsRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AsyncNotificationService asyncNotificationService;
     private final CompanyInfoRepository companyInfoRepository;
     private final CorporateUserRepository corporateUserRepository;
     private final CorporateCredentialRepository corporateCredentialRepository;
@@ -558,7 +559,10 @@ public class AccountService {
                 .updatedByType(UpdatedByType.STAFF)
                 .build();
 
-        bankTransactionRepository.save(transaction);
+        BankTransactions savedTxn = bankTransactionRepository.save(transaction);
+        if (customer != null && asyncNotificationService != null) {
+            asyncNotificationService.sendDepositNotificationAsync(customer, account, savedTxn);
+        }
     }
 
     private AccountResponseDTO mapToResponseDTO(Accounts account) {

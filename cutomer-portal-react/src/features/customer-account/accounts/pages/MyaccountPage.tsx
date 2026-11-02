@@ -2,11 +2,10 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AlertCircle,
-  ArrowLeft,
   RefreshCw,
   WalletCards,
 } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { useAppDispatch, useAppSelector } from "../../../../lib/redux";
 import { fetchMyAccounts } from "../stores/accountsSlice";
@@ -232,27 +231,27 @@ export default function MyAccountsPage() {
       className="mx-auto max-w-7xl space-y-3.5 px-4 py-2.5 sm:px-6 sm:py-3.5 md:px-8"
       aria-busy={loading}
     >
-      {/* Header with Step-Back Arrow */}
+      {/* Header with Breadcrumb Navigation */}
       <header className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between pb-0.5">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-2xs transition-all hover:border-[#00A3C4] hover:bg-cyan-50/50 hover:text-[#00A3C4]"
-            title="Go back"
-            aria-label="Go back"
-          >
-            <ArrowLeft size={16} />
-          </button>
+        <div>
+          {/* Breadcrumb Navigation */}
+          <nav aria-label="Breadcrumb" className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold">
+            <Link
+              to="/dashboard"
+              className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
+            >
+              Dashboard
+            </Link>
+            <span className="text-slate-300" aria-hidden="true">/</span>
+            <span className="text-[#00A3C4]" aria-current="page">My Accounts</span>
+          </nav>
 
-          <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#0A192F]">
-              {t("title", { defaultValue: "My Accounts" })}
-            </h1>
-            <p className="mt-0.5 text-xs font-medium text-slate-400">
-              Manage your linked bank accounts and view details
-            </p>
-          </div>
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#0A192F]">
+            {t("title", { defaultValue: "My Accounts" })}
+          </h1>
+          <p className="mt-0.5 text-xs font-medium text-slate-400">
+            Manage your linked bank accounts and view details
+          </p>
         </div>
 
         {/* Account count pill */}
