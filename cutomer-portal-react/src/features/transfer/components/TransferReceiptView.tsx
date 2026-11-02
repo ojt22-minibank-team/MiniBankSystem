@@ -202,34 +202,25 @@ export default function TransferReceiptView({
     ].join("\n");
   }, [data, completedDate, statusConfig.badgeLabel]);
 
-  // Memo Resolution: Never display long notification sentences; default to "Internal Transfer" or appropriate transfer text
+  // Memo Resolution: Display sender's typed memo, or default to "Internal Transfer" if not provided
   const formattedMemo = useMemo(() => {
     const raw = (data.description || "").trim();
 
-    // Check if it's a long notification message/sentence rather than a short memo
-    const isLongSentence =
-      raw.length > 35 ||
-      raw.toLowerCase().startsWith("you have") ||
+    // Discard legacy system notification messages that were mistakenly stored as description
+    const isSystemNotificationSentence =
+      raw.toLowerCase().startsWith("you have transferred") ||
       raw.toLowerCase().startsWith("you received") ||
-      raw.toLowerCase().startsWith("transfer of") ||
-      raw.toLowerCase().includes("transferred") ||
-      raw.toLowerCase().includes("received");
+      raw.toLowerCase().startsWith("p2p fund transfer");
 
-    if (!raw || isLongSentence) {
+    if (!raw || isSystemNotificationSentence) {
       if (statusConfig.theme === "failed") {
         return "Transaction Failed";
       }
-      if (data.direction === "IN") {
-        return "Funds Received";
-      }
-      if (statusConfig.transferTypeLabel === "Merchant Payment") {
-        return "Merchant Payment";
-      }
-      return statusConfig.transferTypeLabel || "Internal Transfer";
+      return "Internal Transfer";
     }
 
     return raw.startsWith('"') && raw.endsWith('"') ? raw : `"${raw}"`;
-  }, [data.description, data.direction, statusConfig]);
+  }, [data.description, statusConfig.theme]);
 
   return (
     <>
@@ -296,12 +287,12 @@ export default function TransferReceiptView({
           </div>
 
         {/* Official Bank Header: EKARAJ BANK with Official Receipt directly below */}
-        <div className="receipt-header-section bg-gradient-to-r from-[#00A3C4] to-[#0284C7] px-5 sm:px-6 py-4 print:py-4.5 print:px-8 text-white flex items-center justify-between border-b border-cyan-600/30 relative z-10 shadow-xs">
+        <div className="receipt-header-section bg-[#EFF6FF] dark:bg-[#071328] px-5 sm:px-6 py-4 print:py-4.5 print:px-8 text-[#001D77] dark:text-white flex items-center justify-between border-b border-blue-100 dark:border-slate-800 relative z-10">
           <div>
-            <h2 className="text-base sm:text-lg print:text-xl font-black tracking-wide uppercase text-white leading-tight">
+            <h2 className="text-base sm:text-lg print:text-xl font-black tracking-wide uppercase text-[#001D77] dark:text-blue-300 leading-tight">
               EKARAJ BANK
             </h2>
-            <p className="text-[10px] print:text-xs text-cyan-100 font-semibold tracking-wider uppercase mt-0.5">
+            <p className="text-[10px] print:text-xs text-[#4B5869] dark:text-slate-400 font-semibold tracking-wider uppercase mt-0.5">
               Official Transaction Receipt
             </p>
           </div>
@@ -312,7 +303,7 @@ export default function TransferReceiptView({
               <button
                 type="button"
                 onClick={onClose}
-                className="no-print p-1.5 -mr-1.5 sm:-mr-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 active:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-white/40 cursor-pointer"
+                className="no-print p-1.5 -mr-1.5 sm:-mr-2 rounded-lg text-slate-400 hover:text-[#001D77] hover:bg-blue-100/60 dark:hover:bg-slate-800 dark:hover:text-blue-300 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-slate-700 cursor-pointer"
                 aria-label="Close receipt"
                 title="Close"
               >
@@ -375,10 +366,11 @@ export default function TransferReceiptView({
               {/* Sender */}
               <div className="space-y-0.5 min-w-0">
                 <p className="text-xs sm:text-sm print:text-sm font-black text-slate-900 truncate">
-                  {normalizeDisplayName(
-                    data.sourceDisplayName,
-                    data.direction === "IN" ? "Sender" : "My Account"
-                  )}
+                  {data.isOwnAccount
+                    ? "My Account"
+                    : data.direction === "IN"
+                    ? normalizeDisplayName(data.sourceDisplayName, "Sender")
+                    : "My Account"}
                 </p>
                 <p className="text-xs print:text-[13px] font-bold text-slate-600 truncate font-mono">
                   {maskAccount(data.sourceAccountNumber)}
@@ -388,10 +380,11 @@ export default function TransferReceiptView({
               {/* Recipient */}
               <div className="text-right space-y-0.5 min-w-0">
                 <p className="text-xs sm:text-sm print:text-sm font-black text-slate-900 truncate">
-                  {normalizeDisplayName(
-                    data.destinationDisplayName,
-                    data.direction === "IN" ? "My Account" : "Recipient"
-                  )}
+                  {data.isOwnAccount
+                    ? "My Account"
+                    : data.direction === "IN"
+                    ? "My Account"
+                    : normalizeDisplayName(data.destinationDisplayName, "Recipient")}
                 </p>
                 <p className="text-xs print:text-[13px] font-bold text-slate-600 truncate font-mono">
                   {maskAccount(data.destinationAccountNumber)}

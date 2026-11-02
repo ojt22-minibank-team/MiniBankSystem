@@ -1,5 +1,6 @@
+import { ReceiptImageZoomViewer } from "../../../components/common/ReceiptImageZoomViewer";
 import React, { useState, useEffect, useRef } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../lib/redux";
 import { submitP2PTransfer, resetTransferState, clearTransferError } from "../store/transferSlice";
 import { fetchMyAccounts } from "../../customer-account/accounts/stores/accountsSlice";
@@ -958,6 +959,7 @@ function ReceiptStep({
   const [shareImageBlob, setShareImageBlob] = useState<Blob | null>(null);
   const [shareImageUrl, setShareImageUrl] = useState<string | null>(null);
   const [imageCopied, setImageCopied] = useState(false);
+  const [imageSaved, setImageSaved] = useState(false);
 
   const receiptData = React.useMemo(
     () => mapP2PResponseToReceiptData(result, recipientName),
@@ -1053,6 +1055,21 @@ function ReceiptStep({
     }
     // Directly open WhatsApp Web to chats
     window.open("https://web.whatsapp.com", "_blank", "noopener,noreferrer");
+  };
+
+    const handleDownloadImage = () => {
+    if (!shareImageUrl && !shareImageBlob) return;
+    const url = shareImageUrl || (shareImageBlob ? URL.createObjectURL(shareImageBlob) : null);
+    if (!url) return;
+    const link = document.createElement("a");
+    link.href = url;
+    const refCode = result?.transactionRef ? String(result.transactionRef).replace(/[^a-zA-Z0-9_-]/g, "_") : Date.now();
+    link.download = `ekaraj-receipt-${refCode}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setImageSaved(true);
+    setTimeout(() => setImageSaved(false), 3000);
   };
 
   const handleShare = async () => {
@@ -1266,15 +1283,9 @@ function ReceiptStep({
               </button>
             </div>
 
-            {/* Receipt Preview Thumbnail */}
+            {/* Receipt Preview Thumbnail with Interactive Zoom & Pan */}
             {shareImageUrl && (
-              <div className="mb-3 p-1.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-center overflow-hidden">
-                <img
-                  src={shareImageUrl}
-                  alt="Receipt Preview"
-                  className="max-h-40 w-auto object-contain rounded-xl shadow-2xs"
-                />
-              </div>
+              <ReceiptImageZoomViewer src={shareImageUrl} alt="EKARAJ BANK Official Slip" />
             )}
 
             {/* Status / Feedback Banner */}
@@ -1287,8 +1298,8 @@ function ReceiptStep({
               </div>
             )}
 
-            {/* Quick Actions (Full-width Copy Image Button) */}
-            <div className="mb-3">
+            {/* Quick Actions (Copy Image + Save Image to Device) */}
+            <div className="mb-3 space-y-2">
               <button
                 type="button"
                 onClick={async () => {
@@ -1312,6 +1323,28 @@ function ReceiptStep({
                   <>
                     <Copy className="w-4 h-4 shrink-0" />
                     <span>Copy Receipt Image</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadImage}
+                className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl font-bold text-xs transition duration-200 cursor-pointer border ${
+                  imageSaved
+                    ? "bg-emerald-50 border-emerald-300 text-emerald-700"
+                    : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700"
+                }`}
+              >
+                {imageSaved ? (
+                  <>
+                    <Check className="w-4 h-4 shrink-0 text-emerald-600" />
+                    <span>Saved to Device (Downloads)!</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 shrink-0 text-slate-500" />
+                    <span>Save Image to Device (Download PNG)</span>
                   </>
                 )}
               </button>
@@ -1388,7 +1421,7 @@ function ReceiptStep({
 
             {/* Helpful Instruction Tip */}
             <div className="mt-3 p-2 bg-slate-50 rounded-xl border border-slate-100 text-[10px] text-slate-500 leading-normal text-center">
-              💡 <strong>Tip:</strong> Receipt image is automatically copied. Open any chat app above, then press <kbd className="px-1 py-0.5 bg-white border border-slate-200 rounded font-mono font-bold text-slate-700">Ctrl + V</kbd> to paste.
+              💡 <strong>Device Storage:</strong> Click <strong>Save Image</strong> to download the slip into your device's <strong>Downloads</strong> folder, or press <kbd className="px-1 py-0.5 bg-white border border-slate-200 rounded font-mono font-bold text-slate-700">Ctrl + V</kbd> to paste directly into any chat app above.
             </div>
           </div>
         </div>
@@ -1884,7 +1917,20 @@ export const P2PTransferForm = () => {
         />
       ) : (
         /* 2-Column Responsive Layout for Step 1 & Step 2 */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="space-y-4">
+          {/* Breadcrumb Navigation */}
+          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-xs font-semibold no-print">
+            <Link
+              to="/dashboard"
+              className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
+            >
+              Dashboard
+            </Link>
+            <span className="text-slate-300" aria-hidden="true">/</span>
+            <span className="text-[#00A3C4]" aria-current="page">Internal Transfer</span>
+          </nav>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Main Left Column (Step Wizard Form) */}
           <div className="lg:col-span-8 xl:col-span-8 bg-white dark:bg-[#0A192F] rounded-3xl p-6 sm:p-7 shadow-sm border border-slate-200 dark:border-slate-800">
             {/* Header with Visual Stepper */}
@@ -2126,6 +2172,7 @@ export const P2PTransferForm = () => {
             </div>
           </div>
         </div>
+      </div>
       )}
     </>
   );

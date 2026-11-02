@@ -94,6 +94,27 @@ export default function MainLayout() {
     void dispatch(fetchMyAccounts());
   }, [accounts.length, dispatch, authenticationGeneration]);
 
+  // Automatically refresh accounts and balances when incoming funds or transfers arrive
+  useEffect(() => {
+    const handleIncomingFund = (e: Event) => {
+      const customEvent = e as CustomEvent<{ transferDirection?: string; title?: string; message?: string }>;
+      const noti = customEvent?.detail;
+      const titleLower = (noti?.title || "").toLowerCase();
+      const messageLower = (noti?.message || "").toLowerCase();
+      const isReceived =
+        noti?.transferDirection === "RECEIVED" ||
+        titleLower.includes("received") ||
+        messageLower.includes("you received");
+
+      if (isReceived) {
+        dispatch(fetchMyAccounts());
+      }
+    };
+
+    window.addEventListener("ws-notification-received", handleIncomingFund);
+    return () => window.removeEventListener("ws-notification-received", handleIncomingFund);
+  }, [dispatch]);
+
   return (
     <div className="min-h-screen bg-[#F4F6F9] dark:bg-[#060E1A] text-[#0A192F] dark:text-slate-100 flex flex-col transition-colors duration-200">
       <ToastContainer />

@@ -37,6 +37,7 @@ public class OtcTransactionService {
     private final LedgerEntryRepository ledgerEntryRepository;
     private final SystemParametersRepository systemParametersRepository;
     private final ManualTransactionsRepository manualTransactionsRepository;
+    private final AsyncNotificationService asyncNotificationService;
 
     /**
      * Reads a mandatory system parameter from database.
@@ -147,6 +148,11 @@ public class OtcTransactionService {
         // Double-entry General Ledger
         recordDepositLedgerEntries(txn, account, depositAmount, balanceBefore);
         recordManualTransaction(txn, account, staff, ManualOperationType.CASH_DEPOSIT, depositAmount, customRefId, request.getManualAuditNote().trim());
+
+                // Asynchronously dispatch real-time WebSocket notification to customer
+        if (account.getCustomer() != null && asyncNotificationService != null) {
+            asyncNotificationService.sendDepositNotificationAsync(account.getCustomer(), account, txn);
+        }
 
         log.info("OTC Deposit successful. Ref: {}, Account: {}, New Balance: {}", txnRef, account.getAccountNumber(), account.getCurrentBalance());
 
@@ -260,6 +266,11 @@ public class OtcTransactionService {
         // Double-entry General Ledger
         recordWithdrawalLedgerEntries(txn, account, withdrawAmount, balanceBefore);
         recordManualTransaction(txn, account, staff, ManualOperationType.CASH_WITHDRAWAL, withdrawAmount, customRefId, request.getManualAuditNote().trim());
+
+                // Asynchronously dispatch real-time WebSocket notification to customer
+        if (account.getCustomer() != null && asyncNotificationService != null) {
+            asyncNotificationService.sendWithdrawalNotificationAsync(account.getCustomer(), account, txn);
+        }
 
         log.info("OTC Withdrawal successful. Ref: {}, Account: {}, New Balance: {}", txnRef, account.getAccountNumber(), account.getCurrentBalance());
 

@@ -1,3 +1,4 @@
+import { ReceiptImageZoomViewer } from "../../../components/common/ReceiptImageZoomViewer";
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { toBlob } from "html-to-image";
@@ -80,7 +81,7 @@ async function copyImageToClipboard(blob: Blob): Promise<boolean> {
 function mapNotificationItemToReceipt(
   noti: NotificationItem | { [key: string]: unknown },
   fallbackAccountNumber?: string,
-  fallbackDisplayName?: string
+  _fallbackDisplayName?: string
 ): TransferReceiptData {
   const isSent =
     noti.transferDirection === "SENT" ||
@@ -98,26 +99,31 @@ function mapNotificationItemToReceipt(
   const notiDestAcc =
     (typeof (noti as any).destinationAccountNumber === "string" && (noti as any).destinationAccountNumber) || "";
   const createdAt = (typeof noti.createdAt === "string" && noti.createdAt) || new Date().toISOString();
-  const defaultMemo = isSent ? "Internal Transfer" : "Funds Received";
+
+  // Use sender's memo if provided, otherwise fallback to "Internal Transfer"
+  const rawMemo =
+    (typeof (noti as any).description === "string" && (noti as any).description.trim()) || "";
+  const effectiveMemo = rawMemo || "Internal Transfer";
 
   const myAccount = fallbackAccountNumber || "";
-  const myName = fallbackDisplayName || "My Account";
 
   const resolvedSourceAcc = isSent
     ? (notiSourceAcc || myAccount || "")
     : (notiSourceAcc || counterpartyAccount || "-");
 
+  // When I send (OUT): FROM is always "My Account". When I receive (IN): FROM is the sender's name
   const resolvedSourceDisplay = isSent
-    ? myName
+    ? "My Account"
     : (counterpartyName || "Sender");
 
   const resolvedDestAcc = isSent
     ? (notiDestAcc || counterpartyAccount || "-")
     : (notiDestAcc || myAccount || "");
 
+  // When I send (OUT): TO is recipient name. When I receive (IN): TO is always "My Account"
   const resolvedDestDisplay = isSent
     ? (counterpartyName || "Recipient")
-    : myName;
+    : "My Account";
 
   return {
     transactionRef: ref,
@@ -132,7 +138,7 @@ function mapNotificationItemToReceipt(
     destinationDisplayName: resolvedDestDisplay,
     direction: isSent ? "OUT" : "IN",
     isOwnAccount: false,
-    description: defaultMemo,
+    description: effectiveMemo,
     status: "COMPLETED",
     badgeLabel: isSent ? "TRANSFER SENT" : "FUNDS RECEIVED",
     transactionType: "TRANSFER",
@@ -214,6 +220,7 @@ export default function TransactionReceiptPage() {
   const [shareImageBlob, setShareImageBlob] = useState<Blob | null>(null);
   const [shareImageUrl, setShareImageUrl] = useState<string | null>(null);
   const [imageCopied, setImageCopied] = useState<boolean>(false);
+  const [imageSaved, setImageSaved] = useState<boolean>(false);
 
   // Synchronize or fetch receiptData whenever transactionRef or location.state changes
   useEffect(() => {
@@ -351,6 +358,21 @@ export default function TransactionReceiptPage() {
   };
 
   // 1. Share Receipt Action
+    const handleDownloadImage = () => {
+    if (!shareImageUrl && !shareImageBlob) return;
+    const url = shareImageUrl || (shareImageBlob ? URL.createObjectURL(shareImageBlob) : null);
+    if (!url) return;
+    const link = document.createElement("a");
+    link.href = url;
+    const refCode = receiptData?.transactionRef ? String(receiptData.transactionRef).replace(/[^a-zA-Z0-9_-]/g, "_") : Date.now();
+    link.download = `ekaraj-receipt-${refCode}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setImageSaved(true);
+    setTimeout(() => setImageSaved(false), 3000);
+  };
+
   const handleShare = async () => {
     if (isSharing || !receiptData) return;
     setIsSharing(true);
@@ -647,15 +669,9 @@ export default function TransactionReceiptPage() {
                     </button>
                   </div>
 
-                  {/* Receipt Preview Thumbnail */}
+                  {/* Receipt Preview Thumbnail with Interactive Zoom & Pan */}
                   {shareImageUrl && (
-                    <div className="mb-3 p-1.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-center overflow-hidden">
-                      <img
-                        src={shareImageUrl}
-                        alt="Receipt Preview"
-                        className="max-h-40 w-auto object-contain rounded-xl shadow-2xs"
-                      />
-                    </div>
+                    <ReceiptImageZoomViewer src={shareImageUrl} alt="EKARAJ BANK Official Slip" />
                   )}
 
                   {/* Status Banner */}
@@ -668,8 +684,8 @@ export default function TransactionReceiptPage() {
                     </div>
                   )}
 
-                  {/* Quick Copy Image Button */}
-                  <div className="mb-3">
+                  {/* Quick Actions (Copy Slip Image + Save Image to Device) */}
+                  <div className="mb-3 space-y-2">
                     <button
                       type="button"
                       onClick={async () => {
@@ -693,6 +709,28 @@ export default function TransactionReceiptPage() {
                         <>
                           <Copy className="w-4 h-4 shrink-0" />
                           <span>Copy Slip Image</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleDownloadImage}
+                      className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl font-bold text-xs transition duration-200 cursor-pointer border ${
+                        imageSaved
+                          ? "bg-emerald-50 border-emerald-300 text-emerald-700"
+                          : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700"
+                      }`}
+                    >
+                      {imageSaved ? (
+                        <>
+                          <Check className="w-4 h-4 shrink-0 text-emerald-600" />
+                          <span>Saved to Device (Downloads)!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4 shrink-0 text-slate-500" />
+                          <span>Save Image to Device (Download PNG)</span>
                         </>
                       )}
                     </button>
