@@ -5,6 +5,7 @@ import com.corebanking.dto.CustomerResponseDTO;
 import com.corebanking.entity.CustomerCredentials;
 import com.corebanking.entity.Customers;
 import com.corebanking.entity.StaffUsers;
+import com.corebanking.entity.enums.CustomerType;
 
 import com.corebanking.repository.CompanyInfoRepository;
 import com.corebanking.repository.CustomerCredentialsRepository;
@@ -103,8 +104,8 @@ class CustomerServiceTest {
 				.email("yoon@test.com").phone("09123456789").customerType("PERSONAL")
 				.address("No. 123, Bogyoke Road, Yangon").occupation("Software Engineer").build();
 
-		when(customerRepository.existsByEmail("yoon@test.com")).thenReturn(false);
 		when(customerRepository.existsByPhone("09123456789")).thenReturn(false);
+		when(customerRepository.existsByEmailAndCustomerType("yoon@test.com", CustomerType.PERSONAL)).thenReturn(false);
 		when(personalInfoRepository.existsByNrc("12/DAGANA(N)123456")).thenReturn(false);
 		when(customerRepository.existsByCustomerCode(anyString())).thenReturn(false);
 
@@ -140,8 +141,8 @@ class CustomerServiceTest {
 				.email("info@acetech.com").phone("09123456789").customerType("COMPANY")
 				.address("Tower A, Level 15, Hledan Centre, Yangon").build();
 
-		when(customerRepository.existsByEmail("info@acetech.com")).thenReturn(false);
 		when(customerRepository.existsByPhone("09123456789")).thenReturn(false);
+		when(customerRepository.existsByEmailAndCustomerType("info@acetech.com", CustomerType.COMPANY)).thenReturn(false);
 		when(companyInfoRepository.existsByRegistrationNumber("REG-2026-9988")).thenReturn(false);
 		when(companyInfoRepository.existsByTaxId("TAX-998877")).thenReturn(false);
 		when(customerRepository.existsByCustomerCode(anyString())).thenReturn(false);
@@ -155,6 +156,7 @@ class CustomerServiceTest {
 
 		assertNotNull(response);
 		assertNotNull(response.getCustomerCode());
+		assertTrue(response.getCustomerCode().startsWith("COMP-"));
 		assertEquals("Ace Tech Co., Ltd", response.getFullName());
 		assertEquals("info@acetech.com", response.getEmail());
 		assertEquals("09123456789", response.getPhone());
@@ -201,29 +203,81 @@ class CustomerServiceTest {
 
 	
 	@Test
-	@DisplayName("testRegisterCustomer_DuplicateEmail_ThrowsException: When email exists, throws duplicate exception")
+	@DisplayName("testRegisterPersonalCustomer_DuplicateEmail_ThrowsException: Second personal customer with same email throws exception")
 	void testRegisterCustomer_DuplicateEmail_ThrowsException() {
 		CustomerDTO duplicateEmailDto = CustomerDTO.builder().fullName("Daw Yoon").nrc("12/DAGANA(N)123456")
 				.email("existing@test.com").phone("09123456789").customerType("PERSONAL").build();
 
-		when(customerRepository.existsByEmail("existing@test.com")).thenReturn(true);
+		when(customerRepository.existsByPhone("09123456789")).thenReturn(false);
+		when(customerRepository.existsByEmailAndCustomerType("existing@test.com", CustomerType.PERSONAL)).thenReturn(true);
 
 		IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
 				() -> customerService.createCustomer(duplicateEmailDto));
 
-		assertTrue(ex.getMessage().contains("Email address is already registered"));
+		assertTrue(ex.getMessage().contains("Email is already associated with an existing Personal customer"));
 		verify(customerRepository, never()).save(any(Customers.class));
 		verify(customerRepository, never()).saveAndFlush(any(Customers.class));
 	}
 
-	
+	@Test
+	@DisplayName("testRegisterCompanyCustomer_DuplicateEmail_ThrowsException: Second company customer with same email throws exception")
+	void testRegisterCompanyCustomer_DuplicateEmail_ThrowsException() {
+		CustomerDTO companyDto = CustomerDTO.builder().companyName("Beta Tech Co., Ltd")
+				.registrationNumber("REG-2026-1122").taxId("TAX-112233").businessType("FINTECH")
+				.email("info@acetech.com").phone("09123456789").customerType("COMPANY")
+				.address("Tower B, Yangon").build();
+
+		when(customerRepository.existsByPhone("09123456789")).thenReturn(false);
+		when(customerRepository.existsByEmailAndCustomerType("info@acetech.com", CustomerType.COMPANY)).thenReturn(true);
+
+		IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+				() -> customerService.createCustomer(companyDto));
+
+		assertTrue(ex.getMessage().contains("Email is already associated with an existing Company customer"));
+		verify(customerRepository, never()).save(any(Customers.class));
+		verify(customerRepository, never()).saveAndFlush(any(Customers.class));
+	}
+
+	@Test
+	@DisplayName("testRegisterSameEmail_AllowedForPersonalAndCompany: Same email allowed for 1 Personal and 1 Company")
+	void testRegisterSameEmail_AllowedForPersonalAndCompany() {
+		CustomerDTO personalDto = CustomerDTO.builder().fullName("Daw Yoon").nrc("12/DAGANA(N)123456")
+				.email("shared@bank.com").phone("09111111111").customerType("PERSONAL")
+				.address("Yangon").occupation("Engineer").build();
+
+		when(customerRepository.existsByPhone("09111111111")).thenReturn(false);
+		when(customerRepository.existsByEmailAndCustomerType("shared@bank.com", CustomerType.PERSONAL)).thenReturn(false);
+		when(personalInfoRepository.existsByNrc("12/DAGANA(N)123456")).thenReturn(false);
+		when(customerRepository.existsByCustomerCode(anyString())).thenReturn(false);
+		when(customerRepository.saveAndFlush(any(Customers.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		when(passwordEncoder.encode(anyString())).thenReturn("hashed_secure_password");
+		when(customerCredentialsRepository.saveAndFlush(any(CustomerCredentials.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		CustomerResponseDTO personalResponse = customerService.createCustomer(personalDto);
+		assertNotNull(personalResponse);
+		assertEquals("PERSONAL", personalResponse.getCustomerType());
+
+		CustomerDTO companyDto = CustomerDTO.builder().companyName("Ace Tech Co., Ltd")
+				.registrationNumber("REG-2026-9988").taxId("TAX-998877").businessType("FINTECH")
+				.email("shared@bank.com").phone("09222222222").customerType("COMPANY")
+				.address("Yangon").build();
+
+		when(customerRepository.existsByPhone("09222222222")).thenReturn(false);
+		when(customerRepository.existsByEmailAndCustomerType("shared@bank.com", CustomerType.COMPANY)).thenReturn(false);
+		when(companyInfoRepository.existsByRegistrationNumber("REG-2026-9988")).thenReturn(false);
+		when(companyInfoRepository.existsByTaxId("TAX-998877")).thenReturn(false);
+
+		CustomerResponseDTO companyResponse = customerService.createCustomer(companyDto);
+		assertNotNull(companyResponse);
+		assertEquals("COMPANY", companyResponse.getCustomerType());
+	}
+
 	@Test
 	@DisplayName("testRegisterCustomer_DuplicatePhone_ThrowsException: When phone exists, throws duplicate exception")
 	void testRegisterCustomer_DuplicatePhone_ThrowsException() {
 		CustomerDTO duplicatePhoneDto = CustomerDTO.builder().fullName("Daw Yoon").nrc("12/DAGANA(N)123456")
 				.email("yoon.unique@test.com").phone("09123456789").customerType("PERSONAL").build();
 
-		when(customerRepository.existsByEmail("yoon.unique@test.com")).thenReturn(false);
 		when(customerRepository.existsByPhone("09123456789")).thenReturn(true);
 
 		IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
@@ -234,15 +288,14 @@ class CustomerServiceTest {
 		verify(customerRepository, never()).saveAndFlush(any(Customers.class));
 	}
 
-	
 	@Test
 	@DisplayName("testRegisterCustomer_DuplicateNRC_ThrowsException: When NRC exists, throws duplicate exception")
 	void testRegisterCustomer_DuplicateNRC_ThrowsException() {
 		CustomerDTO duplicateNrcDto = CustomerDTO.builder().fullName("Daw Yoon").nrc("12/DAGANA(N)123456")
 				.email("yoon.unique@test.com").phone("09123456789").customerType("PERSONAL").build();
 
-		when(customerRepository.existsByEmail("yoon.unique@test.com")).thenReturn(false);
 		when(customerRepository.existsByPhone("09123456789")).thenReturn(false);
+		when(customerRepository.existsByEmailAndCustomerType("yoon.unique@test.com", CustomerType.PERSONAL)).thenReturn(false);
 		when(personalInfoRepository.existsByNrc("12/DAGANA(N)123456")).thenReturn(true);
 
 		IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,

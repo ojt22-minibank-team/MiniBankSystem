@@ -1,9 +1,12 @@
 package com.corebanking.repository;
 
 import com.corebanking.entity.Customers;
+import com.corebanking.entity.enums.CustomerType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -13,4 +16,8 @@ public interface CustomerRepository extends JpaRepository<Customers, UUID> {
     boolean existsByCustomerCode(String customerCode);
     boolean existsByEmail(String email);
     boolean existsByPhone(String phone);
+    boolean existsByEmailAndCustomerType(String email, CustomerType customerType);
+    boolean existsByEmailAndCustomerTypeIn(String email, Collection<CustomerType> customerTypes);
+    List<Customers> findByEmail(String email);
 }
+

@@ -4,7 +4,6 @@ import com.corebanking.dto.AccountCreateDTO;
 import com.corebanking.dto.AccountResponseDTO;
 import com.corebanking.dto.AccountStatusUpdateDTO;
 import com.corebanking.dto.CorporateAccountCreateDTO;
-import com.corebanking.dto.DepositRequestDTO;
 import com.corebanking.dto.JointHolderAddDTO;
 import com.corebanking.service.AccountService;
 
@@ -25,25 +24,21 @@ public class AccountController {
 
     private final AccountService accountService;
 
-    /**
-     * ၁။ [အသစ်ထည့်သွင်းချက်] စနစ်အတွင်းရှိ အကောင့်အားလုံး စာရင်းဆွဲယူခြင်း
-     * Dashboard Metrics နှင့် All Accounts Directory အတွက် အဓိက အသုံးပြုသည်
-     * GET /api/accounts
-     */
+    
     @GetMapping
     public ResponseEntity<List<AccountResponseDTO>> getAllAccounts() {
         List<AccountResponseDTO> accounts = accountService.getAllAccounts();
         return ResponseEntity.ok(accounts);
     }
 
-    // ၂။ Retail / Personal အကောင့်အသစ် ဖွင့်လှစ်ခြင်း
+    
     @PostMapping
     public ResponseEntity<AccountResponseDTO> createAccount(@Valid @RequestBody AccountCreateDTO dto) {
         AccountResponseDTO response = accountService.createAccount(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // ၃။ Company Account အား CEO နှင့် Accountant တို့ဖြင့် ဖွင့်လှစ်ခြင်း
+    
     @PostMapping("/corporate")
     public ResponseEntity<Map<String, Object>> createCorporateAccount(
             @Valid @RequestBody CorporateAccountCreateDTO dto) {
@@ -57,14 +52,14 @@ public class AccountController {
         ));
     }
 
-    // ၄။ Account Number ဖြင့် အသေးစိတ် ရှာဖွေခြင်း (Account Lookup)
+    
     @GetMapping("/{accountNumber}")
     public ResponseEntity<AccountResponseDTO> getAccountByNumber(@PathVariable String accountNumber) {
         AccountResponseDTO response = accountService.getAccountByNumber(accountNumber);
         return ResponseEntity.ok(response);
     }
 
-    // ၅။ Customer တစ်ဦးချင်းစီ ပိုင်ဆိုင်သည့် အကောင့်များအားလုံး စာရင်းဆွဲယူခြင်း
+    
     @GetMapping("/customer/{customerCode}")
     public ResponseEntity<List<AccountResponseDTO>> getAccountsByCustomerCode(
             @PathVariable String customerCode) {
@@ -72,7 +67,7 @@ public class AccountController {
         return ResponseEntity.ok(accounts);
     }
 
-    // ၆။ Account Status အခြေအနေ ပြင်ဆင်ခြင်း (PATCH Request)
+    
     @PatchMapping("/{accountNumber}/status")
     public ResponseEntity<AccountResponseDTO> updateAccountStatus(
             @PathVariable String accountNumber,
@@ -81,7 +76,7 @@ public class AccountController {
         return ResponseEntity.ok(response);
     }
 
-    // ၇။ အကောင့်ထဲသို့ Joint Holder ထည့်သွင်းခြင်း
+    
     @PostMapping("/{accountNumber}/joint-holders")
     public ResponseEntity<AccountResponseDTO> addJointHolder(
             @PathVariable String accountNumber,
