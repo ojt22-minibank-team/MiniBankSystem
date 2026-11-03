@@ -138,6 +138,12 @@ export type TransactionType =
 
 export type FeeType = 'FLAT' | 'PERCENTAGE';
 
+export interface OtcParametersResponse {
+  minDepositAmount?: number;
+  minWithdrawalAmount?: number;
+  minimumBalance?: number;
+}
+
 export interface FeeScheduleResponse {
   feeScheduleId: number;
   feeCode: string;
@@ -397,19 +403,3 @@ export interface DailyCashSummaryResponse {
   currency: string;
 }
 
-
-export interface OtcParametersResponse {
-  minDepositAmount: number;
-  minWithdrawalAmount: number;
-  minimumBalance: number;
-  maxOnetimeWithdrawal?: number;
-  maxDailyWithdrawal?: number;
-}
-
-export interface OtcAccountLimitResponse {
-  accountNumber: string;
-  maxOnetimeWithdrawal: number;
-  maxDailyWithdrawal: number;
-  todayWithdrawnAmount: number;
-  remainingDailyLimit: number;
-}
