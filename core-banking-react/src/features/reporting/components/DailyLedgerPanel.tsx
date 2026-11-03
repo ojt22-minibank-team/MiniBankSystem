@@ -36,7 +36,6 @@ const DailyLedgerPanel: React.FC<Props> = ({
 }) => {
   const [data, setData] = useState<DailyLedgerSummary[]>([]);
   const [loading, setLoading] = useState(false);
-  const [fetched, setFetched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadDuration, setLoadDuration] = useState<number | null>(null);
 
@@ -64,7 +63,6 @@ const DailyLedgerPanel: React.FC<Props> = ({
       const elapsedSec = (performance.now() - startTime) / 1000;
       setLoadDuration(elapsedSec);
       setData(result);
-      setFetched(true);
     } catch (e: unknown) {
       const elapsedSec = (performance.now() - startTime) / 1000;
       setLoadDuration(elapsedSec);
@@ -96,10 +94,6 @@ const DailyLedgerPanel: React.FC<Props> = ({
   const totalAmt = filteredData.reduce((s, r) => s + Number(r.totalAmount || 0), 0);
   const totalFee = filteredData.reduce((s, r) => s + Number(r.totalFee || 0), 0);
   const uniqueDates = new Set(filteredData.map((r) => r.reportDate)).size;
-
-  const chartData = [...filteredData].sort((a, b) => b.totalAmount - a.totalAmount).slice(0, 8);
-  const maxAmt = Math.max(...chartData.map((r) => r.totalAmount), 1);
-  const BAR_H = 120;
 
   const columns: Column<DailyLedgerSummary>[] = [
     {
@@ -174,88 +168,6 @@ const DailyLedgerPanel: React.FC<Props> = ({
           color="#0891b2"
         />
       </div>
-
-      {fetched && chartData.length > 0 && (
-        <div
-          style={{
-            backgroundColor: '#fff',
-            borderRadius: '10px',
-            border: '1px solid #e2e8f0',
-            padding: '20px 24px',
-            marginBottom: '20px',
-          }}
-        >
-          <div
-            style={{
-              fontSize: '13px',
-              fontWeight: 700,
-              color: '#1E40AF',
-              marginBottom: '12px',
-            }}
-          >
-            Top Transactions by Volume
-          </div>
-          <svg
-            width="100%"
-            height={BAR_H + 40}
-            viewBox={`0 0 ${chartData.length * 72} ${BAR_H + 40}`}
-            preserveAspectRatio="xMidYMid meet"
-          >
-            {chartData.map((r, i) => {
-              const barH = Math.max(4, (r.totalAmount / maxAmt) * BAR_H);
-              const color = typeColors[r.transactionType] ?? '#2563EB';
-              return (
-                <g key={i} transform={`translate(${i * 72}, 0)`}>
-                  <rect
-                    x={10}
-                    y={BAR_H - barH}
-                    width={50}
-                    height={barH}
-                    fill={color}
-                    rx={4}
-                    fillOpacity={0.85}
-                  />
-                  <text x={35} y={BAR_H + 14} textAnchor="middle" fontSize="9" fill="#64748b">
-                    {r.reportDate}
-                  </text>
-                  <text
-                    x={35}
-                    y={BAR_H - barH - 4}
-                    textAnchor="middle"
-                    fontSize="9"
-                    fill={color}
-                    fontWeight="bold"
-                  >
-                    {r.transactionCount}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
-          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '8px' }}>
-            {Array.from(new Set(chartData.map((r) => r.transactionType))).map((type) => {
-              const color = typeColors[type] ?? '#2563EB';
-              return (
-                <span
-                  key={type}
-                  style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                >
-                  <span
-                    style={{
-                      width: '12px',
-                      height: '12px',
-                      borderRadius: '2px',
-                      backgroundColor: color,
-                      display: 'inline-block',
-                    }}
-                  />
-                  {type}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       <div
         style={{
