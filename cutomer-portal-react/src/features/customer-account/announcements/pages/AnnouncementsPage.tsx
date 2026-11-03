@@ -10,6 +10,13 @@ import {
 import { useAppDispatch, useAppSelector } from "../../../../lib/redux";
 
 import {
+  getAuthenticationGeneration,
+  hasTokens,
+  isAuthenticationGenerationCurrent,
+  subscribeToAuthenticationChanges,
+} from "../../../../utils/tokenStorage";
+
+import {
   clearAnnouncementErrors,
   fetchAnnouncements,
   markAllAnnouncementsRead,
@@ -19,6 +26,10 @@ import {
 import AnnouncementList from "../components/AnnouncementList";
 
 import type { AnnouncementFilter } from "../types/announcementTypes";
+
+// Tracks the initial auto-fetch attempt for each authentication session.
+// Persists across component unmounts and remounts within this application runtime.
+let lastAutoFetchGeneration: number | null = null;
 
 const filters: {
   value: AnnouncementFilter;
@@ -42,6 +53,9 @@ export default function AnnouncementsPage() {
     actionError,
   } = useAppSelector((state) => state.announcements);
 
+  const [authenticationGeneration, setAuthenticationGeneration] =
+    useState(getAuthenticationGeneration);
+
   const pendingIds = useMemo(
     () => Object.keys(pendingRequests || {}).map(Number),
     [pendingRequests]
@@ -50,11 +64,46 @@ export default function AnnouncementsPage() {
 
   const [filter, setFilter] = useState<AnnouncementFilter>("ALL");
 
+  // Subscribe to login, logout and authentication changes.
   useEffect(() => {
-    if (!hasLoaded && !loading) {
-      void dispatch(fetchAnnouncements());
+    const unsubscribe = subscribeToAuthenticationChanges(() => {
+      setAuthenticationGeneration(getAuthenticationGeneration());
+    });
+
+    // Synchronize in case authentication changed before subscription.
+    setAuthenticationGeneration(getAuthenticationGeneration());
+
+    return unsubscribe;
+  }, []);
+
+  // Automatically fetch announcements once per valid authentication session.
+  useEffect(() => {
+    const generation = authenticationGeneration;
+
+    const isSessionValid =
+      hasTokens() &&
+      isAuthenticationGenerationCurrent(generation);
+
+    if (
+      !isSessionValid ||
+      lastAutoFetchGeneration === generation ||
+      hasLoaded ||
+      loading
+    ) {
+      return;
     }
-  }, [dispatch, hasLoaded, loading]);
+
+    // Mark the attempt before dispatch to prevent duplicate requests
+    // from React Strict Mode or component remounts.
+    lastAutoFetchGeneration = generation;
+
+    void dispatch(fetchAnnouncements());
+  }, [
+    dispatch,
+    authenticationGeneration,
+    hasLoaded,
+    loading,
+  ]);
 
   const unreadCount = useMemo(
     () => announcements.filter((item) => !item.isRead).length,
@@ -99,8 +148,19 @@ export default function AnnouncementsPage() {
     void dispatch(markAllAnnouncementsRead());
   };
 
+  // Manual refresh is intentionally independent of the auto-fetch attempt.
+  // It can retry after a failed initial request within the same session.
   const handleRefresh = () => {
     if (loading) return;
+
+    const generation = getAuthenticationGeneration();
+
+    const isSessionValid =
+      hasTokens() &&
+      isAuthenticationGenerationCurrent(generation);
+
+    if (!isSessionValid) return;
+
     void dispatch(fetchAnnouncements());
   };
 
