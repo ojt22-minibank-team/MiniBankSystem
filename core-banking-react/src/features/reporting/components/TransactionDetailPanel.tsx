@@ -4,6 +4,7 @@ import { fetchTransactionDetails, exportTransactionDetails } from '../../../serv
 import MetricCard from './MetricCard';
 import DataTable, { type Column } from './DataTable';
 import ExportButtons from './ExportButtons';
+import { formatDateTime } from '../../../utils/formatDate';
 
 interface Props {
   startDate: string;
@@ -112,7 +113,11 @@ const TransactionDetailPanel: React.FC<Props> = ({
       render: (_r, index) => (page - 1) * PAGE_SIZE + index + 1,
     },
     { key: 'ref', label: 'Reference' },
-    { key: 'date', label: 'Date & Time' },
+    {
+      key: 'date',
+      label: 'Date & Time',
+      render: (r) => formatDateTime(r.date),
+    },
     {
       key: 'amount',
       label: 'Amount',
@@ -199,7 +204,7 @@ const TransactionDetailPanel: React.FC<Props> = ({
           }}
         >
           <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
-            Transaction Details ({data.length} records{totalPages > 1 ? ` — Page ${page} of ${totalPages}` : ''})
+            Transaction Details ({data.length} records{totalPages > 1 ? ` â€” Page ${page} of ${totalPages}` : ''})
             {loadDuration !== null && (
               <span
                 style={{
@@ -212,7 +217,7 @@ const TransactionDetailPanel: React.FC<Props> = ({
                   borderRadius: '12px',
                 }}
               >
-                ⏱️ {loadDuration.toFixed(2)}s
+                â±ï¸ {loadDuration.toFixed(2)}s
               </span>
             )}
           </span>

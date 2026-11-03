@@ -6,6 +6,7 @@ import Modal from '../../../components/common/Modal';
 import { otcApi, accountsApi } from '../../../services/apiClient';
 import type { OtcTransactionResponseDto, AccountResponse, OtcParametersResponse, OtcAccountLimitResponse } from '../../../types/api.types';
 import { formatCurrency } from '../../../utils/formatCurrency';
+import { formatDate } from '../../../utils/formatDate';
 import type { AxiosError } from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
 import ekarajCrown from '../../../assets/ekaraj-crown-transparent.png';
@@ -51,7 +52,7 @@ function formatAmountToWords(amount: number, currency: string = 'MMK'): string {
  */
 function formatTransactionDateTime(dateInput?: string | Date | null): string {
   const d = dateInput ? (typeof dateInput === 'string' ? new Date(dateInput) : dateInput) : new Date();
-  if (isNaN(d.getTime())) return '—';
+  if (isNaN(d.getTime())) return 'â€”';
   return (
     d.toLocaleDateString('en-GB') +
     ', ' +
@@ -63,7 +64,7 @@ function formatTransactionDateTime(dateInput?: string | Date | null): string {
  * Masks account number for customer-facing documents to ensure data privacy (e.g. 1001****0014).
  */
 function maskAccountNumber(accountNumber?: string | null): string {
-  if (!accountNumber) return '—';
+  if (!accountNumber) return 'â€”';
   const clean = accountNumber.trim();
   if (clean.length <= 4) return clean;
   if (clean.length <= 8) {
@@ -464,7 +465,7 @@ export default function OtcTransactionPage() {
               <div>
                 <h3 className="font-bold text-gray-900 text-base">Transaction Completed Successfully</h3>
                 <p className="text-xs text-gray-600">
-                  Ref: <span className="font-mono font-semibold text-gray-900">{receipt.transactionRef}</span> • Official Bank Counter Voucher ready.
+                  Ref: <span className="font-mono font-semibold text-gray-900">{receipt.transactionRef}</span> â€¢ Official Bank Counter Voucher ready.
                 </p>
               </div>
             </div>
@@ -526,16 +527,16 @@ export default function OtcTransactionPage() {
                           EKARAJ BANK
                         </h1>
                         <span className="text-xs font-bold text-amber-700 font-sans tracking-wide">
-                          ( ဧကရာဇ် ဘဏ် )
+                          ( á€§á€€á€›á€¬á€‡á€º á€˜á€á€º )
                         </span>
                       </div>
                       <p className="mt-0.5 text-xs text-gray-600 font-medium">
-                        Ekaraj Commercial Bank PLC • Licensed Financial Institution
+                        Ekaraj Commercial Bank PLC â€¢ Licensed Financial Institution
                       </p>
                     </div>
                   </div>
                   <p className="text-xs text-gray-500 mt-2">
-                    <strong>Branch:</strong> Yangon Main Branch (Code: BR-001) • <strong>Station:</strong> Counter #02 (Teller Counter)
+                    <strong>Branch:</strong> Yangon Main Branch (Code: BR-001) â€¢ <strong>Station:</strong> Counter #02 (Teller Counter)
                   </p>
                 </div>
 
@@ -583,7 +584,7 @@ export default function OtcTransactionPage() {
               </div>
               <div className="sm:col-span-3 min-w-0">
                 <span className="text-gray-500 block text-[10px] uppercase font-bold tracking-wider">Counter Slip / Voucher No</span>
-                <span className="font-mono font-bold text-blue-800 text-xs sm:text-[13px] block break-all">{receipt.manualReferenceId || '—'}</span>
+                <span className="font-mono font-bold text-blue-800 text-xs sm:text-[13px] block break-all">{receipt.manualReferenceId || 'â€”'}</span>
               </div>
               <div className="sm:col-span-2 min-w-0">
                 <span className="text-gray-500 block text-[10px] uppercase font-bold tracking-wider">Channel</span>
@@ -617,9 +618,9 @@ export default function OtcTransactionPage() {
                 <div>
                   <span className="text-gray-500 block text-[11px]">Customer NRC / National ID</span>
                   <span className="font-semibold text-gray-800 font-mono block mt-0.5">
-                    {verifiedAccount?.nrc || '—'}
+                    {verifiedAccount?.nrc || 'â€”'}
                   </span>
-                  <span className="text-[11px] text-gray-500">Phone: {verifiedAccount?.phone || '—'}</span>
+                  <span className="text-[11px] text-gray-500">Phone: {verifiedAccount?.phone || 'â€”'}</span>
                 </div>
               </div>
             </div>
@@ -639,7 +640,7 @@ export default function OtcTransactionPage() {
                   Amount In Words:
                 </span>
                 <span className="font-serif italic font-bold text-gray-800 text-sm block mt-0.5">
-                  “ {formatAmountToWords(receipt.amount, receipt.currency)} ”
+                  â€œ {formatAmountToWords(receipt.amount, receipt.currency)} â€
                 </span>
               </div>
 
@@ -669,7 +670,7 @@ export default function OtcTransactionPage() {
             {/* Customer Statement Narration */}
             <div className="text-xs border border-gray-200 rounded-xl p-3.5 bg-white">
               <span className="text-gray-500 font-semibold block text-[11px] uppercase tracking-wider">Customer Statement Narration:</span>
-              <p className="font-medium text-gray-800 mt-0.5 text-xs sm:text-sm">{receipt.description || '—'}</p>
+              <p className="font-medium text-gray-800 mt-0.5 text-xs sm:text-sm">{receipt.description || 'â€”'}</p>
             </div>
 
             {/* Dual Signatures Section */}
@@ -690,7 +691,7 @@ export default function OtcTransactionPage() {
                   <div>
                     <span className="font-bold text-gray-900 block">Authorized Bank Teller & Official Stamp</span>
                     <span className="text-[11px] text-gray-500 block mt-0.5">
-                      Teller: {receipt.tellerUsername} • Date: {receipt.transactedAt ? new Date(receipt.transactedAt).toLocaleDateString() : '—'}
+                      Teller: {receipt.tellerUsername} â€¢ Date: {receipt.transactedAt ? formatDate(receipt.transactedAt) : 'â€”'}
                     </span>
                   </div>
                 </div>
@@ -859,7 +860,7 @@ export default function OtcTransactionPage() {
                         <svg className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
-                        <span>Account Identity Verified ✓</span>
+                        <span>Account Identity Verified âœ“</span>
                       </div>
                       <span
                         className={[
@@ -920,9 +921,9 @@ export default function OtcTransactionPage() {
                         <div className="min-w-0">
                           <span className="text-gray-500 block text-[11px] font-medium">NRC / National ID</span>
                           <span className="font-semibold text-gray-900 font-mono block text-xs mt-0.5">
-                            {verifiedAccount.nrc || '—'}
+                            {verifiedAccount.nrc || 'â€”'}
                           </span>
-                          <span className="text-[11px] text-gray-500 block mt-0.5">Phone: {verifiedAccount.phone || '—'}</span>
+                          <span className="text-[11px] text-gray-500 block mt-0.5">Phone: {verifiedAccount.phone || 'â€”'}</span>
                         </div>
 
                         <div className="min-w-0">
@@ -1147,7 +1148,7 @@ export default function OtcTransactionPage() {
                 </span>
               </div>
               <div className="text-gray-600 font-mono text-[11px] mt-0.5">
-                Acc: <strong className="text-gray-900">{verifiedAccount?.accountNumber}</strong> • NRC: {verifiedAccount?.nrc || '—'}
+                Acc: <strong className="text-gray-900">{verifiedAccount?.accountNumber}</strong> â€¢ NRC: {verifiedAccount?.nrc || 'â€”'}
               </div>
             </div>
           </div>

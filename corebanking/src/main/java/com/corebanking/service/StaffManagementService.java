@@ -33,6 +33,8 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class StaffManagementService {
 
+    private static final String INITIAL_LOCKED_PASSWORD_HASH = "$2a$10$7EqJtq98hPqEX7fNZaFWoOhi5sP6.n1E2Gk0W9uU4t7U6YQZ6s2rS";
+
     private final StaffUsersRepository staffUsersRepository;
     private final StaffUserRolesRepository staffUserRolesRepository;
     private final RolesRepository rolesRepository;
@@ -45,6 +47,7 @@ public class StaffManagementService {
     // 1. CREATE STAFF
     // =====================================================
 
+    @Transactional
     public StaffResponse createStaff(StaffCreateRequest request) {
 
         if (staffUsersRepository.existsByEmailIgnoreCase(
@@ -95,11 +98,7 @@ public class StaffManagementService {
         staff.setEmail(request.getEmail());
         staff.setPhone(request.getPhone());
 
-        staff.setPasswordHash(
-                passwordEncoder.encode(
-                    java.util.UUID.randomUUID().toString()
-                )
-            );
+        staff.setPasswordHash(INITIAL_LOCKED_PASSWORD_HASH);
 
         staff.setMustChangePassword(true);
         staff.setPasswordChangedAt(null);
@@ -612,14 +611,14 @@ public class StaffManagementService {
         };
     }
 
-    public synchronized String generateUniqueStaffNo(String roleCode) {
+    public String generateUniqueStaffNo(String roleCode) {
         String prefix = getRolePrefix(roleCode);
-        List<StaffUsers> allStaff = staffUsersRepository.findAll();
+        List<String> staffNos = staffUsersRepository.findStaffNosByPrefix(prefix);
         int maxSeq = 0;
         Pattern pattern = Pattern.compile("^" + Pattern.quote(prefix) + "-(\\d+)$");
-        for (StaffUsers s : allStaff) {
-            if (s.getStaffNo() != null) {
-                Matcher m = pattern.matcher(s.getStaffNo().trim());
+        for (String staffNo : staffNos) {
+            if (staffNo != null) {
+                Matcher m = pattern.matcher(staffNo.trim());
                 if (m.matches()) {
                     try {
                         int val = Integer.parseInt(m.group(1));

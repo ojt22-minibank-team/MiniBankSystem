@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { AuditLogItem } from '../../../types/audit.types';
+import { formatDateTime } from '../../../utils/formatDate';
 
 interface AuditLogDetailModalProps {
   log: AuditLogItem | null;
@@ -73,7 +74,7 @@ export default function AuditLogDetailModal({ log, onClose }: AuditLogDetailModa
                 )}
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Timestamp: {log.createdAt ? new Date(log.createdAt).toLocaleString() : '-'}
+                Timestamp: {log.createdAt ? formatDateTime(log.createdAt) : '-'}
               </p>
             </div>
           </div>
@@ -93,7 +94,7 @@ export default function AuditLogDetailModal({ log, onClose }: AuditLogDetailModa
               onClick={onClose}
               className="h-8 w-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 flex items-center justify-center transition-colors"
             >
-              ✕
+              âœ•
             </button>
           </div>
         </div>

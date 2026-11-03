@@ -4,10 +4,11 @@ import DataTable from '../../../components/common/DataTable';
 import { customersApi } from '../../../services/apiClient';
 import type { CustomerResponse, CustomerDetailResponse } from '../../../types/api.types';
 import type { AxiosError } from 'axios';
+import { formatDate } from '../../../utils/formatDate';
 import CustomerCreateModal from '../components/CustomerCreateModal';
 import CustomerDetailModal from '../components/CustomerDetailModal';
 
-// ── Constants ────────────────────────────────────────────────────────
+// â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const PAGE_SIZE = 10;
 
 type StatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE' | 'FROZEN';
@@ -15,25 +16,25 @@ type SortField = 'createdAt' | 'customerCode';
 type SortDir = 'asc' | 'desc';
 
 export default function CustomersPage() {
-  // ── Data state ───────────────────────────────────────────────────
+  // â”€â”€ Data state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [customers, setCustomers] = useState<CustomerResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  // ── Customer Detail State ─────────────────────────────────────────
+  // â”€â”€ Customer Detail State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerDetailResponse | null>(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  // ── Search / filter / sort / page state ──────────────────────────
+  // â”€â”€ Search / filter / sort / page state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [currentPage, setCurrentPage] = useState(1);
 
-  // ── Fetch ────────────────────────────────────────────────────────
+  // â”€â”€ Fetch â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const load = () => {
     setIsLoading(true);
     setError(null);
@@ -63,7 +64,7 @@ export default function CustomersPage() {
 
   useEffect(() => { load(); }, []);
 
-  // ── Derived data pipeline: search → filter → sort ────────────────
+  // â”€â”€ Derived data pipeline: search â†’ filter â†’ sort â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const processed = useMemo(() => {
     let list = [...customers];
 
@@ -108,7 +109,7 @@ export default function CustomersPage() {
     [customers],
   );
 
-  // ── Pagination helpers ───────────────────────────────────────────
+  // â”€â”€ Pagination helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const totalPages = Math.max(1, Math.ceil(processed.length / PAGE_SIZE));
 
   useEffect(() => {
@@ -120,7 +121,7 @@ export default function CustomersPage() {
     [processed, currentPage],
   );
 
-  // ── Column definitions ──────────────────────────────────────────
+  // â”€â”€ Column definitions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const columns = [
     {
       key: 'customerCode',
@@ -190,7 +191,7 @@ export default function CustomersPage() {
       key: 'createdAt',
       header: 'Created',
       render: (row: CustomerResponse) =>
-        new Date(row.createdAt).toLocaleDateString(),
+        formatDate(row.createdAt),
     },
     {
       key: 'actions',
@@ -212,7 +213,7 @@ export default function CustomersPage() {
     },
   ];
 
-  // ── Render ──────────────────────────────────────────────────────
+  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <AdminLayout pageTitle="Customers">
       <div className="max-w-[1440px] mx-auto space-y-6">
@@ -259,7 +260,7 @@ export default function CustomersPage() {
             </span>
             <div className="flex items-baseline justify-between mt-3">
               <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
-                {isLoading ? 'Loading…' : customers.length}
+                {isLoading ? 'Loadingâ€¦' : customers.length}
               </span>
               <span className="status-pill-emerald text-[11px]">
                 KYC Registered
@@ -305,7 +306,7 @@ export default function CustomersPage() {
           </div>
         ) : (
           <div className="liquid-glass rounded-3xl p-6 space-y-5">
-            {/* ── Toolbar: search · filter · sort ─────────────────── */}
+            {/* â”€â”€ Toolbar: search Â· filter Â· sort â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <div className="flex flex-wrap items-center gap-3 pb-4 border-b border-slate-100">
               {/* Search */}
               <div className="relative flex-1 min-w-[240px]">
@@ -317,7 +318,7 @@ export default function CustomersPage() {
                 </svg>
                 <input
                   type="text"
-                  placeholder="Search by name, code, email, or phone…"
+                  placeholder="Search by name, code, email, or phoneâ€¦"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-10 pr-4 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-sky-100 focus:border-sky-500 transition-all shadow-xs"
@@ -349,7 +350,7 @@ export default function CustomersPage() {
               {/* Sort direction toggle */}
               <button
                 onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
-                title={sortDir === 'desc' ? 'Sorted descending – click to toggle' : 'Sorted ascending – click to toggle'}
+                title={sortDir === 'desc' ? 'Sorted descending â€“ click to toggle' : 'Sorted ascending â€“ click to toggle'}
                 className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs transition-colors cursor-pointer"
               >
                 {sortDir === 'desc' ? (
@@ -370,7 +371,7 @@ export default function CustomersPage() {
               </button>
             </div>
 
-            {/* ── Table ───────────────────────────────────────────── */}
+            {/* â”€â”€ Table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <div>
               <DataTable
                 columns={columns}
@@ -380,7 +381,7 @@ export default function CustomersPage() {
                 keyExtractor={(row: CustomerResponse) => row.customerCode}
               />
 
-              {/* ── Pagination ──────────────────────────────────────── */}
+              {/* â”€â”€ Pagination â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
               {!isLoading && totalPages > 1 && (
                 <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-100">
                   <span className="text-xs font-medium text-slate-500">
@@ -393,7 +394,7 @@ export default function CustomersPage() {
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
-                      ← Prev
+                      â† Prev
                     </button>
 
                     {Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -411,7 +412,7 @@ export default function CustomersPage() {
                       .map((item, idx) =>
                         item === 'ellipsis' ? (
                           <span key={`e-${idx}`} className="px-2 text-slate-400">
-                            …
+                            â€¦
                           </span>
                         ) : (
                           <button
@@ -434,7 +435,7 @@ export default function CustomersPage() {
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
-                      Next →
+                      Next â†’
                     </button>
                   </div>
                 </div>

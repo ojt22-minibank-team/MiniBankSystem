@@ -38,4 +38,9 @@ public interface StaffUsersRepository extends JpaRepository<StaffUsers, UUID> {
     boolean existsByStaffNo(
             @Param("staffNo") String staffNo
     );
+
+    @Query("SELECT s.staffNo FROM StaffUsers s WHERE s.staffNo LIKE CONCAT(:prefix, '-%')")
+    java.util.List<String> findStaffNosByPrefix(@Param("prefix") String prefix);
+
+    Optional<StaffUsers> findFirstByStatus(com.corebanking.entity.enums.StaffUserStatus status);
 }
