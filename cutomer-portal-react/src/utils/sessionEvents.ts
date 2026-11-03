@@ -4,11 +4,15 @@ export const SESSION_TIMEOUT_EVENT =
 
 export interface SessionTimeoutDetail {
   message?: string;
+  sourceGeneration: number;
+  invalidatedGeneration: number;
 }
 
 
 export const dispatchSessionTimeout = (
-  message?: string
+  message: string | undefined,
+  sourceGeneration: number,
+  invalidatedGeneration: number
 ) => {
 
   window.dispatchEvent(
@@ -17,6 +21,8 @@ export const dispatchSessionTimeout = (
       {
         detail: {
           message,
+          sourceGeneration,
+          invalidatedGeneration,
         },
       }
     )
