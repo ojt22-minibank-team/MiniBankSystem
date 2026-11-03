@@ -6,6 +6,8 @@ import com.corebanking.dto.AuditTrailLogDTO;
 import com.corebanking.dto.AuditTrailPageDTO;
 import com.corebanking.dto.BalanceBracketDTO;
 import com.corebanking.dto.DailyLedgerSummaryDTO;
+import com.corebanking.dto.TransactionDetailReportDTO;
+import java.math.BigDecimal;
 import com.corebanking.entity.AuditLogs;
 import com.corebanking.entity.CorporateUser;
 import com.corebanking.entity.Customers;
@@ -254,5 +256,47 @@ public class ReportRepository {
                 .description(description != null ? description : "")
                 .createdAt(al.getCreatedAt())
                 .build();
+    }
+
+    // -------------------------------------------------------
+    // SP 5: Transaction Detail Report
+    // -------------------------------------------------------
+    public List<TransactionDetailReportDTO> getTransactionDetails(
+            LocalDate startDate, LocalDate endDate,
+            String status, String type, String channel,
+            BigDecimal minAmount, BigDecimal maxAmount) {
+
+        return jdbcTemplate.execute((Connection con) -> {
+            CallableStatement cs = con.prepareCall("{CALL sp_get_transaction_detail_report(?, ?, ?, ?, ?, ?, ?)}");
+            cs.setObject(1, startDate);
+            cs.setObject(2, endDate);
+            cs.setString(3, (status == null || status.isBlank()) ? null : status);
+            cs.setString(4, (type == null || type.isBlank()) ? null : type);
+            cs.setString(5, (channel == null || channel.isBlank()) ? null : channel);
+            cs.setObject(6, minAmount);
+            cs.setObject(7, maxAmount);
+            return cs;
+        }, (CallableStatement cs) -> {
+            List<TransactionDetailReportDTO> result = new ArrayList<>();
+            boolean hasRs = cs.execute();
+            if (hasRs) {
+                try (ResultSet rs = cs.getResultSet()) {
+                    while (rs.next()) {
+                        result.add(TransactionDetailReportDTO.builder()
+                                .ref(rs.getString("ref"))
+                                .date(rs.getObject("tx_date", LocalDateTime.class))
+                                .amount(rs.getBigDecimal("amount"))
+                                .fee(rs.getBigDecimal("fee"))
+                                .sourceAccount(rs.getString("source_account"))
+                                .destAccount(rs.getString("dest_account"))
+                                .status(rs.getString("status"))
+                                .channel(rs.getString("channel"))
+                                .currency(rs.getString("currency"))
+                                .build());
+                    }
+                }
+            }
+            return result;
+        });
     }
 }

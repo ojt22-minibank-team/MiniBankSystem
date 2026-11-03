@@ -10,6 +10,7 @@ import com.corebanking.dto.FeeRevenueItemDTO;
 import com.corebanking.dto.FeeRevenueReportDTO;
 import com.corebanking.dto.LargeTransactionItemDTO;
 import com.corebanking.dto.LargeTransactionReportDTO;
+import com.corebanking.dto.TransactionDetailReportDTO;
 import com.corebanking.repository.FeeRevenueRepository;
 import com.corebanking.repository.LargeTransactionRepository;
 import com.corebanking.repository.ReportRepository;
@@ -518,5 +519,90 @@ public class ReportService {
             workbook.write(out);
             return out.toByteArray();
         }
+    }
+
+    // -------------------------------------------------------
+    // Transaction Detail Report
+    // -------------------------------------------------------
+
+    public List<TransactionDetailReportDTO> getTransactionDetails(
+            LocalDate startDate, LocalDate endDate,
+            String status, String type, String channel,
+            BigDecimal minAmount, BigDecimal maxAmount) {
+        return reportRepository.getTransactionDetails(
+                startDate, endDate, status, type, channel, minAmount, maxAmount);
+    }
+
+    public byte[] exportTransactionDetailsCsv(
+            LocalDate startDate, LocalDate endDate,
+            String status, String type, String channel,
+            BigDecimal minAmount, BigDecimal maxAmount) {
+        List<TransactionDetailReportDTO> rows = getTransactionDetails(
+                startDate, endDate, status, type, channel, minAmount, maxAmount);
+        StringBuilder sb = new StringBuilder();
+        sb.append("No,Reference,Date,Amount,Fee,Source Account,Destination Account,Status,Channel,Currency\n");
+        int no = 1;
+        for (TransactionDetailReportDTO r : rows) {
+            sb.append(no++).append(',')
+              .append(safe(r.getRef())).append(',')
+              .append(fmt(r.getDate())).append(',')
+              .append(safe(r.getAmount())).append(',')
+              .append(safe(r.getFee())).append(',')
+              .append(safe(r.getSourceAccount())).append(',')
+              .append(safe(r.getDestAccount())).append(',')
+              .append(safe(r.getStatus())).append(',')
+              .append(safe(r.getChannel())).append(',')
+              .append(safe(r.getCurrency())).append('\n');
+        }
+        return sb.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    public byte[] exportTransactionDetailsExcel(
+            LocalDate startDate, LocalDate endDate,
+            String status, String type, String channel,
+            BigDecimal minAmount, BigDecimal maxAmount) throws IOException {
+        List<TransactionDetailReportDTO> rows = getTransactionDetails(
+                startDate, endDate, status, type, channel, minAmount, maxAmount);
+        try (SXSSFWorkbook workbook = new SXSSFWorkbook(100);
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            org.apache.poi.ss.usermodel.Sheet sheet = createTrackedSheet(workbook, "Transaction Details");
+            org.apache.poi.ss.usermodel.Row header = sheet.createRow(0);
+            String[] cols = {"No", "Reference", "Date", "Amount", "Fee", "Source Account", "Destination Account", "Status", "Channel", "Currency"};
+            for (int i = 0; i < cols.length; i++) header.createCell(i).setCellValue(cols[i]);
+
+            int rowIdx = 1;
+            int no = 1;
+            for (TransactionDetailReportDTO r : rows) {
+                org.apache.poi.ss.usermodel.Row row = sheet.createRow(rowIdx++);
+                row.createCell(0).setCellValue(no++);
+                row.createCell(1).setCellValue(safe(r.getRef()));
+                row.createCell(2).setCellValue(fmt(r.getDate()));
+                row.createCell(3).setCellValue(r.getAmount() != null ? r.getAmount().doubleValue() : 0.0);
+                row.createCell(4).setCellValue(r.getFee() != null ? r.getFee().doubleValue() : 0.0);
+                row.createCell(5).setCellValue(safe(r.getSourceAccount()));
+                row.createCell(6).setCellValue(safe(r.getDestAccount()));
+                row.createCell(7).setCellValue(safe(r.getStatus()));
+                row.createCell(8).setCellValue(safe(r.getChannel()));
+                row.createCell(9).setCellValue(safe(r.getCurrency()));
+            }
+            for (int i = 0; i < cols.length; i++) sheet.autoSizeColumn(i);
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    public byte[] exportTransactionDetailsPdf(
+            LocalDate startDate, LocalDate endDate,
+            String status, String type, String channel,
+            BigDecimal minAmount, BigDecimal maxAmount) {
+        List<TransactionDetailReportDTO> rows = getTransactionDetails(
+                startDate, endDate, status, type, channel, minAmount, maxAmount);
+        Map<String, Object> params = new HashMap<>();
+        params.put("StartDate", startDate.toString());
+        params.put("EndDate", endDate.toString());
+        params.put("Status", status != null && !status.isBlank() ? status : "ALL");
+        params.put("Type", type != null && !type.isBlank() ? type : "ALL");
+        params.put("Channel", channel != null && !channel.isBlank() ? channel : "ALL");
+        return jasperReportService.exportToPdf("reports/transaction_detail_report.jrxml", rows, params);
     }
 }
