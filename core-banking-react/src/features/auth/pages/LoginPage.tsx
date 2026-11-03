@@ -1,5 +1,5 @@
 import { useState, type FormEvent, useEffect, useRef, type ClipboardEvent, type KeyboardEvent } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { loginThunk, verifyOtpThunk, resendOtpApi } from '../authSlice';
 import ekarajCrown from '../../../assets/ekaraj-crown-transparent.png';
@@ -34,7 +34,7 @@ export default function LoginPage() {
     );
   });
   const [capsLockActive, setCapsLockActive] = useState(false);
-  const [showForgotModal, setShowForgotModal] = useState(false);
+
   const [fieldErrors, setFieldErrors] = useState<{
     username?: string;
     password?: string;
@@ -500,7 +500,7 @@ export default function LoginPage() {
                 </div>
 
                 {/* Remember Me & Forgot Password */}
-                <div className="flex items-center justify-between pt-1">
+                <div className="flex items-center pt-1">
                   <label className="flex items-center gap-2 cursor-pointer select-none">
                     <input
                       type="checkbox"
@@ -513,14 +513,6 @@ export default function LoginPage() {
                       Remember ID
                     </span>
                   </label>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowForgotModal(true)}
-                    className="text-xs font-bold text-[#caa13b] hover:text-[#b08b2e] hover:underline transition-colors cursor-pointer"
-                  >
-                    Forgot password?
-                  </button>
                 </div>
 
                 {/* Sign In CTA Button */}
@@ -540,16 +532,7 @@ export default function LoginPage() {
                   </button>
                 </div>
 
-                {/* Don't have an account? Sign Up */}
-                <p className="pt-2.5 text-center text-xs text-slate-600">
-                  Don't have an account?{' '}
-                  <Link
-                    to="/signup"
-                    className="font-bold text-slate-900 hover:text-[#caa13b] hover:underline transition-colors ml-1"
-                  >
-                    Sign Up
-                  </Link>
-                </p>
+                
               </form>
             )}
 
@@ -676,52 +659,6 @@ export default function LoginPage() {
 
       </div>
 
-      {/* Forgot Password Modal Dialog */}
-      {showForgotModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2.5">
-                <img src={ekarajCrown} alt="" className="h-6 w-auto" />
-                <h3 className="text-sm font-bold text-slate-900">
-                  Account Credential Assistance
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowForgotModal(false)}
-                className="text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="py-4 text-xs text-slate-600 space-y-2.5 leading-relaxed">
-              <p>
-                In compliance with Ekaraj Bank security protocols, password resets require identity verification or an active activation token.
-              </p>
-              <p>
-                If you have an invitation or setup token, you can activate your credentials directly via the Setup Portal.
-              </p>
-            </div>
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setShowForgotModal(false)}
-                className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-900 focus:outline-none cursor-pointer"
-              >
-                Dismiss
-              </button>
-              <Link
-                to="/signup?tab=token"
-                onClick={() => setShowForgotModal(false)}
-                className="px-4 py-2 text-xs font-bold rounded-lg bg-gradient-to-r from-[#dfba61] to-[#caa13b] text-slate-950 hover:brightness-105 transition-all shadow-sm"
-              >
-                Go to Setup Portal →
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      </div>
   );
 }

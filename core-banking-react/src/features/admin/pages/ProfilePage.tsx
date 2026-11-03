@@ -6,12 +6,22 @@ import { staffApi } from '../../../services/apiClient';
 import type { StaffResponse } from '../../../types/api.types';
 import type { AxiosError } from 'axios';
 import { useAuth } from '../../auth/hooks/useAuth';
+import { STORAGE_KEYS } from '../../../config/api.config';
 import ekarajCrown from '../../../assets/ekaraj-crown-transparent.png';
 
 export default function ProfilePage() {
   const { user } = useAuth();
-  const [staff, setStaff] = useState<StaffResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [staff, setStaff] = useState<StaffResponse | null>(() => {
+    try {
+      const cached = sessionStorage.getItem(STORAGE_KEYS.STAFF_PROFILE);
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [isLoading, setIsLoading] = useState(() => {
+    return !sessionStorage.getItem(STORAGE_KEYS.STAFF_PROFILE);
+  });
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -21,10 +31,25 @@ export default function ProfilePage() {
 
   // Inline Quick Edit state
   const [isInlineEditing, setIsInlineEditing] = useState(false);
-  const [inlineForm, setInlineForm] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
+  const [inlineForm, setInlineForm] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem(STORAGE_KEYS.STAFF_PROFILE);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        return {
+          fullName: parsed.fullName || '',
+          email: parsed.email || '',
+          phone: parsed.phone || '',
+        };
+      }
+    } catch {
+      // ignore
+    }
+    return {
+      fullName: '',
+      email: '',
+      phone: '',
+    };
   });
   const [inlineErrors, setInlineErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,10 +59,15 @@ export default function ProfilePage() {
     setError(null);
     try {
       const res = await staffApi.getAll();
-      const currentUsername = user?.username?.trim().toLowerCase();
+      const targetUsername = (
+        user?.username ||
+        sessionStorage.getItem(STORAGE_KEYS.USERNAME) ||
+        ''
+      ).trim().toLowerCase();
+
       // Match current authenticated user
       let matched = res.data.find(
-        (s) => s.username?.trim().toLowerCase() === currentUsername,
+        (s) => s.username?.trim().toLowerCase() === targetUsername,
       );
 
       // Fallback: if username not matched directly, find by admin role
@@ -50,6 +80,8 @@ export default function ProfilePage() {
 
       if (matched) {
         setStaff(matched);
+        sessionStorage.setItem(STORAGE_KEYS.STAFF_PROFILE, JSON.stringify(matched));
+        window.dispatchEvent(new Event('staff_profile_updated'));
         setInlineForm({
           fullName: matched.fullName || '',
           email: matched.email || '',
@@ -72,7 +104,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     loadProfile();
-  }, []);
+  }, [user?.username]);
 
   const handleShowSuccess = (msg: string) => {
     setSuccessMessage(msg);
@@ -131,6 +163,8 @@ export default function ProfilePage() {
         phone: inlineForm.phone.trim(),
       });
       setStaff(res.data);
+      sessionStorage.setItem(STORAGE_KEYS.STAFF_PROFILE, JSON.stringify(res.data));
+      window.dispatchEvent(new Event('staff_profile_updated'));
       setIsInlineEditing(false);
       handleShowSuccess('Profile information updated successfully.');
     } catch (err) {
@@ -172,23 +206,6 @@ export default function ProfilePage() {
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
-            <button
-              onClick={loadProfile}
-              disabled={isLoading}
-              className="flex items-center gap-2 rounded-full border border-purple-950/15 bg-white/80 px-4 py-2 text-xs font-bold text-[#1E1B4B] hover:bg-white shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
-            >
-              <svg
-                className={['h-4 w-4', isLoading ? 'animate-spin' : ''].join(' ')}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <span>Refresh</span>
-            </button>
-
             <button
               type="button"
               disabled={!staff || isLoading}
@@ -284,7 +301,11 @@ export default function ProfilePage() {
               <div className="space-y-1">
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <h1 className="text-xl sm:text-2xl font-black text-[#1E1B4B] tracking-tight">
-                    {staff?.fullName || user?.username || 'System Administrator'}
+                    {isLoading && !staff ? (
+                      <span className="inline-block h-7 w-48 bg-slate-200 animate-pulse rounded-lg align-middle" />
+                    ) : (
+                      staff?.fullName || user?.username || 'System Administrator'
+                    )}
                   </h1>
                   <span className="status-pill-purple text-xs font-bold px-3 py-0.5">
                     {roleDisplayName}
@@ -300,7 +321,7 @@ export default function ProfilePage() {
                   </span>
                   <span className="text-zinc-300">•</span>
                   <span className="font-mono text-zinc-600 bg-zinc-100 px-2 py-0.5 rounded-md font-semibold text-xs">
-                    Staff No: {staff?.staffNo || 'ADM-0001'}
+                    Staff No: {isLoading && !staff ? '...' : (staff?.staffNo || '—')}
                   </span>
                   <span className="text-zinc-300">•</span>
                   <span className="text-zinc-500 font-medium">
@@ -333,65 +354,6 @@ export default function ProfilePage() {
                 </svg>
                 <span>Change Password</span>
               </button>
-            </div>
-          </div>
-        </div>
-
-        {/* ── 3 Summary KPI Cards ─────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          {/* Card 1: Account Identity */}
-          <div className="liquid-glass-card rounded-3xl p-6">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                System Identity
-              </span>
-              <span className="status-pill-purple text-[10px]">RBAC Level 1</span>
-            </div>
-            <div className="mt-3 space-y-1">
-              <p className="text-lg font-bold text-slate-900 font-mono">
-                {staff?.staffNo || 'ADM-0001'}
-              </p>
-              <p className="text-xs text-zinc-500 font-medium truncate">
-                User ID: {staff?.staffId ? `${staff.staffId.slice(0, 13)}...` : 'System Principal'}
-              </p>
-            </div>
-          </div>
-
-          {/* Card 2: Security & Token Status */}
-          <div className="liquid-glass-card rounded-3xl p-6">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Security Credential
-              </span>
-              <span className="status-pill-emerald text-[10px]">Encrypted</span>
-            </div>
-            <div className="mt-3 space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-lg font-bold text-slate-900 font-sans">
-                  {staff?.mustChangePassword ? 'Reset Pending' : 'Password Active'}
-                </span>
-              </div>
-              <p className="text-xs text-zinc-500 font-medium">
-                Last Active: {staff?.lastLoginAt ? new Date(staff.lastLoginAt).toLocaleString() : 'Active session'}
-              </p>
-            </div>
-          </div>
-
-          {/* Card 3: Permissions & Privilege */}
-          <div className="liquid-glass-card rounded-3xl p-6">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Authority Scope
-              </span>
-              <span className="status-pill-amber text-[10px]">Tier 1 Admin</span>
-            </div>
-            <div className="mt-3 space-y-1">
-              <p className="text-lg font-bold text-slate-900">
-                Full Oversight
-              </p>
-              <p className="text-xs text-zinc-500 font-medium">
-                Rules, Personnel, OTC, Analytics
-              </p>
             </div>
           </div>
         </div>
@@ -567,7 +529,11 @@ export default function ProfilePage() {
                       Full Legal Name
                     </span>
                     <p className="text-sm font-bold text-slate-900 mt-1">
-                      {staff?.fullName || '—'}
+                      {isLoading && !staff ? (
+                        <span className="inline-block h-4 w-32 bg-slate-200 animate-pulse rounded" />
+                      ) : (
+                        staff?.fullName || '—'
+                      )}
                     </p>
                   </div>
 
@@ -691,6 +657,23 @@ export default function ProfilePage() {
 
           {/* Right Column (1 Col): Security & Password Action Center */}
           <div className="space-y-6">
+            {/* Authority Scope Card */}
+            <div className="liquid-glass-card rounded-3xl p-6 border border-white/90">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Authority Scope
+                </span>
+                <span className="status-pill-amber text-[10px]">Tier 1 Admin</span>
+              </div>
+              <div className="mt-3 space-y-1">
+                <p className="text-lg font-bold text-slate-900">
+                  Full Oversight
+                </p>
+                <p className="text-xs text-zinc-500 font-medium">
+                  Rules, Personnel, OTC, Analytics
+                </p>
+              </div>
+            </div>
 
             {/* Actionable Password Management Card */}
             <div className="liquid-glass-card rounded-3xl p-6 sm:p-7 border border-white/90">
