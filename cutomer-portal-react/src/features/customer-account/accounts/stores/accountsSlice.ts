@@ -5,6 +5,11 @@ import axios from "axios";
 import { getMyAccounts } from "../api/customerAccountApi";
 import type { CustomerAccount } from "../types/accountTypes";
 import { submitP2PTransfer } from "../../../transfer/store/transferSlice";
+import {
+  getAuthenticationGeneration,
+  isAuthenticationGenerationCurrent,
+  hasTokens,
+} from "../../../../utils/tokenStorage";
 
 interface AccountsState {
   accounts: CustomerAccount[];
@@ -105,6 +110,18 @@ const accountsSlice = createSlice({
 
       // Immediate balance updates on P2P Transfer (Debit source, Credit destination if self-transfer)
       .addCase(submitP2PTransfer.fulfilled, (state, action) => {
+        const currentGen = getAuthenticationGeneration();
+        const payloadGen = (action.payload as any)?._sessionGeneration;
+
+        // Generation Ownership Check: Ignore balance mutations if session rotated or logged out
+        if (
+          !hasTokens() ||
+          !isAuthenticationGenerationCurrent(currentGen) ||
+          (typeof payloadGen === "number" && payloadGen !== currentGen)
+        ) {
+          return;
+        }
+
         const { sourceAccountNumber, destinationAccountNumber, amount, totalDebitedAmount } = action.payload;
 
         // 1. Debit Source Account (subtract totalDebitedAmount including fee)

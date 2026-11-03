@@ -16,8 +16,13 @@ import {
   maskAccountNumber,
   formatNotificationMessage,
 } from "../utils/notificationFormatters";
-import { SESSION_TIMEOUT_EVENT } from "../../../utils/sessionEvents";
-import { hasTokens, subscribeToAuthenticationChanges } from "../../../utils/tokenStorage";
+import { SESSION_TIMEOUT_EVENT, type SessionTimeoutDetail } from "../../../utils/sessionEvents";
+import {
+  hasTokens,
+  getAuthenticationGeneration,
+  isAuthenticationGenerationCurrent,
+  subscribeToAuthenticationChanges,
+} from "../../../utils/tokenStorage";
 
 export interface ToastData {
   id: string;
@@ -127,7 +132,17 @@ export const ToastContainer: React.FC = () => {
     };
 
     // 3. Clear active toasts on Session Timeout or Logout
-    const clearAllToasts = () => {
+    const clearAllToasts = (event?: Event) => {
+      if (event) {
+        const detail = (event as CustomEvent<SessionTimeoutDetail>).detail;
+        if (detail && Number.isSafeInteger(detail.sourceGeneration)) {
+          // Generation Ownership Check: Ignore stale timeout events belonging to a previous session
+          const currentGen = getAuthenticationGeneration();
+          if (currentGen > detail.sourceGeneration && hasTokens() && isAuthenticationGenerationCurrent(currentGen)) {
+            return;
+          }
+        }
+      }
       setToasts([]);
     };
 

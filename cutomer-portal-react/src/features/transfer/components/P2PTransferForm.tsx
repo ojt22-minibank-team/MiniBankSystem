@@ -10,7 +10,12 @@ import type { Beneficiary } from "../../beneficiaries/types/beneficiaryTypes";
 import type { P2PTransferRequest } from "../types/transferTypes";
 import { getAccountTransferLimits } from "../../customer-account/accounts/api/customerAccountApi";
 import type { TransferLimitInfo } from "../../customer-account/accounts/types/accountTypes";
-import { getCurrentCustomerSubject } from "../../../utils/tokenStorage";
+import {
+  getCurrentCustomerSubject,
+  getAuthenticationGeneration,
+  isAuthenticationGenerationCurrent,
+  hasTokens,
+} from "../../../utils/tokenStorage";
 import TransferReceiptView from "./TransferReceiptView";
 import TransferFailedSlip from "./TransferFailedSlip";
 import { mapP2PResponseToReceiptData } from "../types/transferReceiptTypes";
@@ -1716,6 +1721,9 @@ export const P2PTransferForm = () => {
 
   /* Real-world Automated API Transfer Submission Handler */
   const handleTransferSubmit = async (pin: string) => {
+    const submissionGen = getAuthenticationGeneration();
+    const submissionSubject = getCurrentCustomerSubject();
+
     const payload: P2PTransferRequest = {
       sourceAccountNumber: sourceAccount,
       destinationAccountNumber: destinationAccount,
@@ -1729,6 +1737,15 @@ export const P2PTransferForm = () => {
     try {
       // 1. Submit to Real Banking API
       const resultAction = await dispatch(submitP2PTransfer(payload));
+
+      // Guard: Discard side-effects if user logged out or session rotated during transfer
+      if (
+        !hasTokens() ||
+        !isAuthenticationGenerationCurrent(submissionGen) ||
+        (submissionSubject && getCurrentCustomerSubject() !== submissionSubject)
+      ) {
+        return;
+      }
 
       // 2. HTTP Status 200 / 201: Success Flow
       if (submitP2PTransfer.fulfilled.match(resultAction)) {
@@ -1798,6 +1815,14 @@ export const P2PTransferForm = () => {
       setStep("failed");
 
     } catch (err: any) {
+      // Guard: Discard error display if user logged out or session rotated during transfer
+      if (
+        !hasTokens() ||
+        !isAuthenticationGenerationCurrent(submissionGen) ||
+        (submissionSubject && getCurrentCustomerSubject() !== submissionSubject)
+      ) {
+        return;
+      }
       // Network Disconnection or unhandled exception
       setShowPinModal(false);
       setFailureData({
