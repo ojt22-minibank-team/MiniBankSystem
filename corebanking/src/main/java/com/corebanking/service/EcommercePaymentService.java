@@ -94,6 +94,36 @@ public class EcommercePaymentService {
             throw new TransactionException("Merchant settlement account is not ACTIVE. Current status: " + merchantAccount.getStatus());
         }
 
+        // Customer & Merchant Account Owner Lock Status Verifications
+        if (customerAccount.getCustomer() != null && customerAccount.getCustomer().getStatus() == CustomerStatus.LOCKED) {
+            throw new TransactionException("Customer account owner is currently LOCKED.");
+        }
+
+        if (merchantAccount.getCustomer() != null && merchantAccount.getCustomer().getStatus() == CustomerStatus.LOCKED) {
+            throw new TransactionException("Merchant settlement account owner is currently LOCKED.");
+        }
+
+        // Internal Ledger Accounts Prohibition
+        if (customerAccount.getAccountCategory() == AccountCategory.INTERNAL) {
+            throw new TransactionException("Customer account cannot be an INTERNAL bank ledger account.");
+        }
+
+        if (merchantAccount.getAccountCategory() == AccountCategory.INTERNAL) {
+            throw new TransactionException("Merchant settlement account cannot be an INTERNAL bank ledger account.");
+        }
+
+        // Merchant Corporate / Business Entity Verification
+        boolean isCorporateCategory = merchantAccount.getAccountCategory() == AccountCategory.CORPORATE;
+        boolean isCompanyCustomer = merchantAccount.getCustomer() != null && merchantAccount.getCustomer().getCustomerType() == CustomerType.COMPANY;
+        boolean hasCompanyInfo = merchantAccount.getCustomer() != null && merchantAccount.getCustomer().getCompanyInfo() != null;
+
+        if (!isCorporateCategory && !isCompanyCustomer && !hasCompanyInfo) {
+            throw new TransactionException(String.format(
+                    "Merchant settlement account must belong to a registered corporate or company entity (Current Category: %s).",
+                    merchantAccount.getAccountCategory()
+            ));
+        }
+
         if (!customerAccount.getCurrency().equalsIgnoreCase(request.getCurrency()) ||
             !merchantAccount.getCurrency().equalsIgnoreCase(request.getCurrency())) {
             throw new TransactionException("Currency mismatch across customer account, merchant account, and payment currency.");

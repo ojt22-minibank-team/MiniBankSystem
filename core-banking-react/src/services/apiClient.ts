@@ -281,6 +281,11 @@ export const otcApi = {
       params: { ref },
     }),
 
+  calculateFee: (type: 'OTC_DEPOSIT' | 'OTC_WITHDRAWAL', amount: number) =>
+    axiosInstance.get<{ fee: number }>(API_ENDPOINTS.OTC.CALCULATE_FEE, {
+      params: { type, amount },
+    }),
+
   getAccountLimits: (accountNumber: string) =>
     axiosInstance.get<OtcAccountLimitResponse>(API_ENDPOINTS.OTC.ACCOUNT_LIMITS, {
       params: { accountNumber },
