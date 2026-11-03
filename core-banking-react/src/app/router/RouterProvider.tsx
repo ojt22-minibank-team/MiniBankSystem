@@ -4,6 +4,7 @@ import SignupPage from '../../features/auth/pages/SignupPage';
 import StaffPasswordSetupPage from '../../features/auth/pages/StaffPasswordSetupPage';
 import AdminDashboardPage from '../../features/admin/pages/AdminDashboardPage';
 import StaffListPage from '../../features/admin/pages/StaffListPage';
+import ProfilePage from '../../features/admin/pages/ProfilePage';
 import SystemRulesPage from '../../features/admin/pages/SystemRulesPage';
 import AnnouncementsPage from '../../features/admin/pages/AnnouncementsPage';
 import CustomersPage from '../../features/admin/pages/CustomersPage';
@@ -46,6 +47,16 @@ export default function RouterProvider() {
           element={
             <ProtectedRoute requiredRole="ADMIN">
               <StaffListPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Profile (Admin / Staff Profile Management) */}
+        <Route
+          path="/admin/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
             </ProtectedRoute>
           }
         />
