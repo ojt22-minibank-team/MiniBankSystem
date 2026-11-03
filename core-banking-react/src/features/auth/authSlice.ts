@@ -1,14 +1,14 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import type { AuthState, AuthUser } from '../../types/common.types';
-import type { LoginRequest, LoginResponse, CoreApiResponse } from '../../types/api.types';
+import type { LoginRequest, LoginResponse, CoreApiResponse, OtpResendResponse } from '../../types/api.types';
 import { STORAGE_KEYS } from '../../config/api.config';
 import axiosInstance from '../../lib/axios';
 import { API_ENDPOINTS } from '../../config/api.config';
 import type { AxiosError } from 'axios';
 
 // ============================================================
-// Helpers — localStorage persistence & role normalization
+// Helpers — sessionStorage persistence & role normalization
 // ============================================================
 
 export function normalizeRoles(roles: string[] = []): string[] {
@@ -27,17 +27,17 @@ export function normalizeRoles(roles: string[] = []): string[] {
 
 function persistAuth(response: LoginResponse): void {
   const normalized = normalizeRoles(response.roles);
-  localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, response.accessToken);
-  localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, response.refreshToken);
-  localStorage.setItem(STORAGE_KEYS.USERNAME, response.username);
-  localStorage.setItem(STORAGE_KEYS.ROLES, JSON.stringify(normalized));
+  sessionStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, response.accessToken);
+  sessionStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, response.refreshToken);
+  sessionStorage.setItem(STORAGE_KEYS.USERNAME, response.username);
+  sessionStorage.setItem(STORAGE_KEYS.ROLES, JSON.stringify(normalized));
 }
 
 function clearPersistedAuth(): void {
-  localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-  localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-  localStorage.removeItem(STORAGE_KEYS.USERNAME);
-  localStorage.removeItem(STORAGE_KEYS.ROLES);
+  sessionStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+  sessionStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+  sessionStorage.removeItem(STORAGE_KEYS.USERNAME);
+  sessionStorage.removeItem(STORAGE_KEYS.ROLES);
 }
 
 function loadAuthFromStorage(): {
@@ -45,10 +45,10 @@ function loadAuthFromStorage(): {
   refreshToken: string | null;
   user: AuthUser | null;
 } {
-  const accessToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-  const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
-  const username = localStorage.getItem(STORAGE_KEYS.USERNAME);
-  const rolesRaw = localStorage.getItem(STORAGE_KEYS.ROLES);
+  const accessToken = sessionStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+  const refreshToken = sessionStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+  const username = sessionStorage.getItem(STORAGE_KEYS.USERNAME);
+  const rolesRaw = sessionStorage.getItem(STORAGE_KEYS.ROLES);
 
   if (!accessToken || !username) {
     return { accessToken: null, refreshToken: null, user: null };
@@ -84,15 +84,15 @@ export const loginThunk = createAsyncThunk<
     );
 
     // Backend Spring Boot wraps payload in CoreApiResponse<CoreLoginResponse>:
-    // { success: true, message: "Login successful", data: { accessToken, ... } }
+    // { success: true, message: "...", data: { otpRequired: true, challengeGroupId, ... } }
     const rawData = response.data as unknown as Record<string, unknown>;
     const payload = (
-      rawData?.data && typeof rawData.data === 'object' && 'accessToken' in (rawData.data as Record<string, unknown>)
+      rawData?.data && typeof rawData.data === 'object'
         ? rawData.data
         : rawData
     ) as LoginResponse;
 
-    if (!payload?.accessToken) {
+    if (!payload?.accessToken && !payload?.otpRequired) {
       return rejectWithValue('Invalid authentication response from server.');
     }
 
@@ -121,12 +121,63 @@ export const loginThunk = createAsyncThunk<
   }
 });
 
+export const verifyOtpThunk = createAsyncThunk<
+  LoginResponse,
+  { challengeGroupId: string; otp: string },
+  { rejectValue: string }
+>('auth/verifyOtp', async ({ challengeGroupId, otp }, { rejectWithValue }) => {
+  try {
+    const response = await axiosInstance.post<CoreApiResponse<LoginResponse> | LoginResponse>(
+      API_ENDPOINTS.AUTH.VERIFY_OTP,
+      { challengeGroupId, otp },
+    );
+
+    const rawData = response.data as unknown as Record<string, unknown>;
+    const payload = (
+      rawData?.data && typeof rawData.data === 'object'
+        ? rawData.data
+        : rawData
+    ) as LoginResponse;
+
+    if (!payload?.accessToken) {
+      return rejectWithValue('Invalid authentication response from server.');
+    }
+
+    return payload;
+  } catch (err) {
+    const error = err as AxiosError<{ message?: string; error?: string }>;
+    const responseData = error.response?.data as any;
+    const backendMessage =
+      (typeof responseData === 'string' && responseData) ||
+      responseData?.message ||
+      responseData?.error ||
+      responseData?.detail;
+
+    if (backendMessage) {
+      return rejectWithValue(backendMessage);
+    }
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      return rejectWithValue('Invalid OTP code.');
+    }
+    return rejectWithValue('OTP verification failed. Please try again.');
+  }
+});
+
+export const resendOtpApi = async (challengeGroupId: string): Promise<OtpResendResponse> => {
+  const response = await axiosInstance.post<CoreApiResponse<OtpResendResponse> | OtpResendResponse>(
+    API_ENDPOINTS.AUTH.RESEND_OTP,
+    { challengeGroupId },
+  );
+  const rawData = response.data as any;
+  return (rawData?.data || rawData) as OtpResendResponse;
+};
+
 export const logoutThunk = createAsyncThunk<
   void,
   void,
   { rejectValue: string }
 >('auth/logout', async (_, { rejectWithValue }) => {
-  const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+  const refreshToken = sessionStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
   try {
     await axiosInstance.post(API_ENDPOINTS.AUTH.LOGOUT, { refreshToken });
   } catch (err) {
@@ -138,7 +189,7 @@ export const logoutThunk = createAsyncThunk<
 });
 
 // ============================================================
-// Initial state — rehydrate from localStorage on page load
+// Initial state — rehydrate from sessionStorage on page load
 // ============================================================
 
 const stored = loadAuthFromStorage();
@@ -177,8 +228,8 @@ const authSlice = createSlice({
     ) {
       state.accessToken = action.payload.accessToken;
       state.refreshToken = action.payload.refreshToken;
-      localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, action.payload.accessToken);
-      localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, action.payload.refreshToken);
+      sessionStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, action.payload.accessToken);
+      sessionStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, action.payload.refreshToken);
     },
   },
   extraReducers: (builder) => {
@@ -189,8 +240,13 @@ const authSlice = createSlice({
     });
     builder.addCase(loginThunk.fulfilled, (state, action) => {
       const data = action.payload;
-      const normalizedRoles = normalizeRoles(data.roles);
       state.isLoading = false;
+      if (data.otpRequired) {
+        state.isAuthenticated = false;
+        state.error = null;
+        return;
+      }
+      const normalizedRoles = normalizeRoles(data.roles);
       state.isAuthenticated = true;
       state.accessToken = data.accessToken;
       state.refreshToken = data.refreshToken;
@@ -209,6 +265,35 @@ const authSlice = createSlice({
       state.accessToken = null;
       state.refreshToken = null;
       state.error = action.payload ?? 'Login failed.';
+    });
+
+    // ---- Verify OTP ----
+    builder.addCase(verifyOtpThunk.pending, (state) => {
+      state.isLoading = true;
+      state.error = null;
+    });
+    builder.addCase(verifyOtpThunk.fulfilled, (state, action) => {
+      const data = action.payload;
+      const normalizedRoles = normalizeRoles(data.roles);
+      state.isLoading = false;
+      state.isAuthenticated = true;
+      state.accessToken = data.accessToken;
+      state.refreshToken = data.refreshToken;
+      state.user = {
+        username: data.username,
+        roles: normalizedRoles,
+        permissions: data.permissions ?? [],
+      };
+      state.error = null;
+      persistAuth(data);
+    });
+    builder.addCase(verifyOtpThunk.rejected, (state, action) => {
+      state.isLoading = false;
+      state.isAuthenticated = false;
+      state.user = null;
+      state.accessToken = null;
+      state.refreshToken = null;
+      state.error = action.payload ?? 'OTP verification failed.';
     });
 
     // ---- Logout ----

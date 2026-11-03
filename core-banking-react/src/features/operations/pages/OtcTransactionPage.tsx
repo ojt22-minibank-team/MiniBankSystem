@@ -4,8 +4,9 @@ import Button from '../../../components/common/Button';
 import Input from '../../../components/common/Input';
 import Modal from '../../../components/common/Modal';
 import { otcApi, accountsApi } from '../../../services/apiClient';
-import type { OtcTransactionResponseDto, AccountResponse, OtcParametersResponse } from '../../../types/api.types';
+import type { OtcTransactionResponseDto, AccountResponse, OtcParametersResponse, OtcAccountLimitResponse } from '../../../types/api.types';
 import { formatCurrency } from '../../../utils/formatCurrency';
+import { formatDate } from '../../../utils/formatDate';
 import type { AxiosError } from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
 import ekarajCrown from '../../../assets/ekaraj-crown-transparent.png';
@@ -51,7 +52,7 @@ function formatAmountToWords(amount: number, currency: string = 'MMK'): string {
  */
 function formatTransactionDateTime(dateInput?: string | Date | null): string {
   const d = dateInput ? (typeof dateInput === 'string' ? new Date(dateInput) : dateInput) : new Date();
-  if (isNaN(d.getTime())) return '—';
+  if (isNaN(d.getTime())) return 'â€”';
   return (
     d.toLocaleDateString('en-GB') +
     ', ' +
@@ -63,7 +64,7 @@ function formatTransactionDateTime(dateInput?: string | Date | null): string {
  * Masks account number for customer-facing documents to ensure data privacy (e.g. 1001****0014).
  */
 function maskAccountNumber(accountNumber?: string | null): string {
-  if (!accountNumber) return '—';
+  if (!accountNumber) return 'â€”';
   const clean = accountNumber.trim();
   if (clean.length <= 4) return clean;
   if (clean.length <= 8) {
@@ -108,6 +109,7 @@ export default function OtcTransactionPage() {
 
   // Account verification state
   const [verifiedAccount, setVerifiedAccount] = useState<AccountResponse | null>(null);
+  const [accountLimits, setAccountLimits] = useState<OtcAccountLimitResponse | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [accountLookupError, setAccountLookupError] = useState<string | null>(null);
 
@@ -183,8 +185,18 @@ export default function OtcTransactionPage() {
       const res = await accountsApi.getByNumber(accountNumber.trim());
       setVerifiedAccount(res.data);
       setError(null);
+
+      // Fetch dynamic counter withdrawal limits and today's utilization
+      try {
+        const limitsRes = await otcApi.getAccountLimits(accountNumber.trim());
+        setAccountLimits(limitsRes.data);
+      } catch {
+        // Fallback: non-blocking if account limits endpoint encounters issue
+        setAccountLimits(null);
+      }
     } catch (err) {
       setVerifiedAccount(null);
+      setAccountLimits(null);
       const axErr = err as AxiosError<{ message?: string }>;
       setAccountLookupError(
         axErr.response?.data?.message || 'Account not found. Please verify the account number.',
@@ -247,6 +259,36 @@ export default function OtcTransactionPage() {
             `Withdrawal amount (${formatCurrency(numAmount, verifiedAccount.currency || 'MMK')}) exceeds available balance (${formatCurrency(availBal, verifiedAccount.currency || 'MMK')}).`
           );
         }
+        return;
+      }
+    }
+
+    // Dynamic DB One-Time Maximum Withdrawal Limit Validation (1st Click)
+    const oneTimeLimit = accountLimits?.maxOnetimeWithdrawal ?? otcParams?.maxOnetimeWithdrawal;
+    if (
+      operationType === 'WITHDRAW' &&
+      oneTimeLimit != null &&
+      oneTimeLimit > 0 &&
+      numAmount > oneTimeLimit
+    ) {
+      setError(
+        `Withdrawal amount (${formatCurrency(numAmount, verifiedAccount.currency || 'MMK')}) exceeds the one-time counter limit of ${formatCurrency(oneTimeLimit, verifiedAccount.currency || 'MMK')}.`
+      );
+      return;
+    }
+
+    // Dynamic DB Cumulative Daily Withdrawal Limit Validation (1st Click)
+    if (
+      operationType === 'WITHDRAW' &&
+      accountLimits != null &&
+      accountLimits.maxDailyWithdrawal > 0
+    ) {
+      const todayWithdrawn = accountLimits.todayWithdrawnAmount ?? 0;
+      const remainingDaily = accountLimits.remainingDailyLimit ?? (accountLimits.maxDailyWithdrawal - todayWithdrawn);
+      if (numAmount > remainingDaily) {
+        setError(
+          `Daily withdrawal limit exceeded. Total withdrawn today: ${formatCurrency(todayWithdrawn, verifiedAccount.currency || 'MMK')}. Maximum remaining available to withdraw today is ${formatCurrency(remainingDaily > 0 ? remainingDaily : 0, verifiedAccount.currency || 'MMK')}.`
+        );
         return;
       }
     }
@@ -316,6 +358,15 @@ export default function OtcTransactionPage() {
           availableBalance: res.data.balanceAfter,
         });
       }
+      if (operationType === 'WITHDRAW' && accountLimits) {
+        const newTodayWithdrawn = (accountLimits.todayWithdrawnAmount ?? 0) + numAmount;
+        const newRemaining = Math.max(0, (accountLimits.maxDailyWithdrawal ?? 20000000) - newTodayWithdrawn);
+        setAccountLimits({
+          ...accountLimits,
+          todayWithdrawnAmount: newTodayWithdrawn,
+          remainingDailyLimit: newRemaining,
+        });
+      }
       setShowConfirmModal(false);
     } catch (err) {
       const axErr = err as AxiosError<{ message?: string }>;
@@ -341,6 +392,7 @@ export default function OtcTransactionPage() {
     setManualAuditNote('');
     setAccountNumber('');
     setVerifiedAccount(null);
+    setAccountLimits(null);
     setAccountLookupError(null);
   };
 
@@ -413,7 +465,7 @@ export default function OtcTransactionPage() {
               <div>
                 <h3 className="font-bold text-gray-900 text-base">Transaction Completed Successfully</h3>
                 <p className="text-xs text-gray-600">
-                  Ref: <span className="font-mono font-semibold text-gray-900">{receipt.transactionRef}</span> • Official Bank Counter Voucher ready.
+                  Ref: <span className="font-mono font-semibold text-gray-900">{receipt.transactionRef}</span> â€¢ Official Bank Counter Voucher ready.
                 </p>
               </div>
             </div>
@@ -475,16 +527,16 @@ export default function OtcTransactionPage() {
                           EKARAJ BANK
                         </h1>
                         <span className="text-xs font-bold text-amber-700 font-sans tracking-wide">
-                          ( ဧကရာဇ် ဘဏ် )
+                          ( á€§á€€á€›á€¬á€‡á€º á€˜á€á€º )
                         </span>
                       </div>
                       <p className="mt-0.5 text-xs text-gray-600 font-medium">
-                        Ekaraj Commercial Bank PLC • Licensed Financial Institution
+                        Ekaraj Commercial Bank PLC â€¢ Licensed Financial Institution
                       </p>
                     </div>
                   </div>
                   <p className="text-xs text-gray-500 mt-2">
-                    <strong>Branch:</strong> Yangon Main Branch (Code: BR-001) • <strong>Station:</strong> Counter #02 (Teller Counter)
+                    <strong>Branch:</strong> Yangon Main Branch (Code: BR-001) â€¢ <strong>Station:</strong> Counter #02 (Teller Counter)
                   </p>
                 </div>
 
@@ -532,7 +584,7 @@ export default function OtcTransactionPage() {
               </div>
               <div className="sm:col-span-3 min-w-0">
                 <span className="text-gray-500 block text-[10px] uppercase font-bold tracking-wider">Counter Slip / Voucher No</span>
-                <span className="font-mono font-bold text-blue-800 text-xs sm:text-[13px] block break-all">{receipt.manualReferenceId || '—'}</span>
+                <span className="font-mono font-bold text-blue-800 text-xs sm:text-[13px] block break-all">{receipt.manualReferenceId || 'â€”'}</span>
               </div>
               <div className="sm:col-span-2 min-w-0">
                 <span className="text-gray-500 block text-[10px] uppercase font-bold tracking-wider">Channel</span>
@@ -566,9 +618,9 @@ export default function OtcTransactionPage() {
                 <div>
                   <span className="text-gray-500 block text-[11px]">Customer NRC / National ID</span>
                   <span className="font-semibold text-gray-800 font-mono block mt-0.5">
-                    {verifiedAccount?.nrc || '—'}
+                    {verifiedAccount?.nrc || 'â€”'}
                   </span>
-                  <span className="text-[11px] text-gray-500">Phone: {verifiedAccount?.phone || '—'}</span>
+                  <span className="text-[11px] text-gray-500">Phone: {verifiedAccount?.phone || 'â€”'}</span>
                 </div>
               </div>
             </div>
@@ -588,7 +640,7 @@ export default function OtcTransactionPage() {
                   Amount In Words:
                 </span>
                 <span className="font-serif italic font-bold text-gray-800 text-sm block mt-0.5">
-                  “ {formatAmountToWords(receipt.amount, receipt.currency)} ”
+                  â€œ {formatAmountToWords(receipt.amount, receipt.currency)} â€
                 </span>
               </div>
 
@@ -618,7 +670,7 @@ export default function OtcTransactionPage() {
             {/* Customer Statement Narration */}
             <div className="text-xs border border-gray-200 rounded-xl p-3.5 bg-white">
               <span className="text-gray-500 font-semibold block text-[11px] uppercase tracking-wider">Customer Statement Narration:</span>
-              <p className="font-medium text-gray-800 mt-0.5 text-xs sm:text-sm">{receipt.description || '—'}</p>
+              <p className="font-medium text-gray-800 mt-0.5 text-xs sm:text-sm">{receipt.description || 'â€”'}</p>
             </div>
 
             {/* Dual Signatures Section */}
@@ -639,7 +691,7 @@ export default function OtcTransactionPage() {
                   <div>
                     <span className="font-bold text-gray-900 block">Authorized Bank Teller & Official Stamp</span>
                     <span className="text-[11px] text-gray-500 block mt-0.5">
-                      Teller: {receipt.tellerUsername} • Date: {receipt.transactedAt ? new Date(receipt.transactedAt).toLocaleDateString() : '—'}
+                      Teller: {receipt.tellerUsername} â€¢ Date: {receipt.transactedAt ? formatDate(receipt.transactedAt) : 'â€”'}
                     </span>
                   </div>
                 </div>
@@ -808,7 +860,7 @@ export default function OtcTransactionPage() {
                         <svg className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
-                        <span>Account Identity Verified ✓</span>
+                        <span>Account Identity Verified âœ“</span>
                       </div>
                       <span
                         className={[
@@ -869,9 +921,9 @@ export default function OtcTransactionPage() {
                         <div className="min-w-0">
                           <span className="text-gray-500 block text-[11px] font-medium">NRC / National ID</span>
                           <span className="font-semibold text-gray-900 font-mono block text-xs mt-0.5">
-                            {verifiedAccount.nrc || '—'}
+                            {verifiedAccount.nrc || 'â€”'}
                           </span>
-                          <span className="text-[11px] text-gray-500 block mt-0.5">Phone: {verifiedAccount.phone || '—'}</span>
+                          <span className="text-[11px] text-gray-500 block mt-0.5">Phone: {verifiedAccount.phone || 'â€”'}</span>
                         </div>
 
                         <div className="min-w-0">
@@ -883,6 +935,46 @@ export default function OtcTransactionPage() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Counter Withdrawal Limits & Daily Utilization (Withdrawal Only) */}
+                    {operationType === 'WITHDRAW' && (
+                      <div className="mt-3 pt-3 border-t border-blue-100">
+                        <div className="flex items-center justify-between pb-1.5 font-semibold text-gray-700 text-xs">
+                          <span className="flex items-center gap-1.5 text-blue-900 font-bold">
+                            <svg className="w-3.5 h-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Counter Withdrawal Limits & Daily Utilization
+                          </span>
+                          <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-mono font-medium">
+                            {verifiedAccount.currency || 'MMK'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-2">
+                          <div className="bg-white/80 rounded-lg border border-blue-100 p-2 shadow-xs">
+                            <span className="text-gray-500 block text-[10px] uppercase tracking-wider font-semibold">One-Time Limit</span>
+                            <span className="font-bold text-gray-900 font-mono text-xs block mt-0.5">
+                              {formatCurrency(accountLimits?.maxOnetimeWithdrawal ?? otcParams?.maxOnetimeWithdrawal ?? 5000000, verifiedAccount.currency || 'MMK')}
+                            </span>
+                          </div>
+                          <div className="bg-white/80 rounded-lg border border-blue-100 p-2 shadow-xs">
+                            <span className="text-gray-500 block text-[10px] uppercase tracking-wider font-semibold">Today's Withdrawn</span>
+                            <span className="font-bold text-gray-900 font-mono text-xs block mt-0.5">
+                              {formatCurrency(accountLimits?.todayWithdrawnAmount ?? 0, verifiedAccount.currency || 'MMK')}
+                            </span>
+                          </div>
+                          <div className="bg-white/80 rounded-lg border border-emerald-200 bg-emerald-50/50 p-2 shadow-xs">
+                            <span className="text-emerald-700 block text-[10px] uppercase tracking-wider font-semibold">Available Remaining Today</span>
+                            <span className="font-bold text-emerald-800 font-mono text-xs block mt-0.5">
+                              {formatCurrency(
+                                accountLimits?.remainingDailyLimit ?? (accountLimits?.maxDailyWithdrawal ?? otcParams?.maxDailyWithdrawal ?? 20000000),
+                                verifiedAccount.currency || 'MMK'
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1056,7 +1148,7 @@ export default function OtcTransactionPage() {
                 </span>
               </div>
               <div className="text-gray-600 font-mono text-[11px] mt-0.5">
-                Acc: <strong className="text-gray-900">{verifiedAccount?.accountNumber}</strong> • NRC: {verifiedAccount?.nrc || '—'}
+                Acc: <strong className="text-gray-900">{verifiedAccount?.accountNumber}</strong> â€¢ NRC: {verifiedAccount?.nrc || 'â€”'}
               </div>
             </div>
           </div>

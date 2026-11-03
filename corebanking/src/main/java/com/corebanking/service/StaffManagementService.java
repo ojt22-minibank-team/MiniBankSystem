@@ -33,17 +33,21 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class StaffManagementService {
 
+    private static final String INITIAL_LOCKED_PASSWORD_HASH = "$2a$10$7EqJtq98hPqEX7fNZaFWoOhi5sP6.n1E2Gk0W9uU4t7U6YQZ6s2rS";
+
     private final StaffUsersRepository staffUsersRepository;
     private final StaffUserRolesRepository staffUserRolesRepository;
     private final RolesRepository rolesRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthSessionsRepository authSessionsRepository;
+    private final AuditTrailService auditTrailService;
 
 
     // =====================================================
     // 1. CREATE STAFF
     // =====================================================
 
+    @Transactional
     public StaffResponse createStaff(StaffCreateRequest request) {
 
         if (staffUsersRepository.existsByEmailIgnoreCase(
@@ -94,11 +98,7 @@ public class StaffManagementService {
         staff.setEmail(request.getEmail());
         staff.setPhone(request.getPhone());
 
-        staff.setPasswordHash(
-                passwordEncoder.encode(
-                    java.util.UUID.randomUUID().toString()
-                )
-            );
+        staff.setPasswordHash(INITIAL_LOCKED_PASSWORD_HASH);
 
         staff.setMustChangePassword(true);
         staff.setPasswordChangedAt(null);
@@ -145,6 +145,24 @@ public class StaffManagementService {
 
         staffUserRolesRepository.save(staffRole);
 
+        java.util.Map<String, Object> newStaffSnapshot = new java.util.LinkedHashMap<>();
+        newStaffSnapshot.put("staffId", savedStaff.getStaffId().toString());
+        newStaffSnapshot.put("staffNo", savedStaff.getStaffNo());
+        newStaffSnapshot.put("username", savedStaff.getUsername());
+        newStaffSnapshot.put("fullName", savedStaff.getFullName());
+        newStaffSnapshot.put("email", savedStaff.getEmail());
+        newStaffSnapshot.put("role", role.getRoleName());
+        newStaffSnapshot.put("status", savedStaff.getStatus().name());
+
+        if (auditTrailService != null) auditTrailService.logDataChange(
+                "SECURITY",
+                "CREATE_STAFF",
+                "STAFF_USER",
+                savedStaff.getStaffNo(),
+                null,
+                newStaffSnapshot,
+                "Created new staff user: " + savedStaff.getUsername() + " (" + role.getRoleName() + ")"
+        );
 
         // Return DTO with role information
         return toResponse(savedStaff, role);
@@ -210,6 +228,10 @@ public class StaffManagementService {
             }
         }
 
+        String oldFullName = staff.getFullName();
+        String oldEmail = staff.getEmail();
+        String oldPhone = staff.getPhone();
+
         staff.setFullName(
                 request.getFullName()
         );
@@ -230,6 +252,25 @@ public class StaffManagementService {
         StaffUsers updatedStaff =
                 staffUsersRepository.save(staff);
 
+        java.util.Map<String, Object> oldStaffSnapshot = new java.util.LinkedHashMap<>();
+        oldStaffSnapshot.put("fullName", oldFullName);
+        oldStaffSnapshot.put("email", oldEmail);
+        oldStaffSnapshot.put("phone", oldPhone);
+
+        java.util.Map<String, Object> newStaffSnapshot = new java.util.LinkedHashMap<>();
+        newStaffSnapshot.put("fullName", updatedStaff.getFullName());
+        newStaffSnapshot.put("email", updatedStaff.getEmail());
+        newStaffSnapshot.put("phone", updatedStaff.getPhone());
+
+        if (auditTrailService != null) auditTrailService.logDataChange(
+                "SECURITY",
+                "UPDATE_STAFF",
+                "STAFF_USER",
+                updatedStaff.getStaffNo(),
+                oldStaffSnapshot,
+                newStaffSnapshot,
+                "Updated staff profile: " + updatedStaff.getUsername()
+        );
 
         return toResponse(updatedStaff);
     }
@@ -310,16 +351,43 @@ public class StaffManagementService {
          staffUserRolesRepository.save(newStaffRole);
 
          // Dynamic ID Update: Automatically update Staff No. to reflect the new role
+         String oldStaffNo = staff.getStaffNo();
          String updatedStaffNo = updateStaffNoForRole(staff.getStaffNo(), targetRoleCode);
          staff.setStaffNo(updatedStaffNo);
 
          staff.setTokenVersion(staff.getTokenVersion() + 1);
          staff.setUpdatedAt(LocalDateTime.now());
-         staffUsersRepository.save(staff); // Staff Table ကို Update လုပ်ရန်
+         StaffUsers updatedStaff = staffUsersRepository.save(staff); // Staff Table
 
          authSessionsRepository.revokeAllActiveSessionsByStaffId(staffId);
 
-         return toResponse(staff, newRole);
+         java.util.Map<String, Object> oldValues = new java.util.LinkedHashMap<>();
+         oldValues.put("staffNo", oldStaffNo);
+         oldValues.put("username", updatedStaff.getUsername());
+         oldValues.put("role", currentRole != null ? currentRole.getRoleName() : "UNKNOWN");
+         oldValues.put("roleCode", currentRole != null ? currentRole.getRoleCode() : "UNKNOWN");
+
+         java.util.Map<String, Object> newValues = new java.util.LinkedHashMap<>();
+         newValues.put("staffNo", updatedStaffNo);
+         newValues.put("username", updatedStaff.getUsername());
+         newValues.put("role", newRole.getRoleName());
+         newValues.put("roleCode", newRole.getRoleCode());
+
+         if (auditTrailService != null) {
+             auditTrailService.logDataChange(
+                     "SECURITY",
+                     "STAFF_ROLE_CHANGE",
+                     "STAFF_USER",
+                     updatedStaffNo,
+                     oldValues,
+                     newValues,
+                     "Changed role for staff " + updatedStaff.getUsername() + " (" + updatedStaff.getFullName() + ") from "
+                             + (currentRole != null ? currentRole.getRoleName() : "None")
+                             + " to " + newRole.getRoleName()
+             );
+         }
+
+         return toResponse(updatedStaff, newRole);
      }
 
 
@@ -379,6 +447,15 @@ public class StaffManagementService {
         StaffUsers updatedStaff =
                 staffUsersRepository.save(staff);
 
+        if (auditTrailService != null) auditTrailService.logDataChange(
+                "SECURITY",
+                "DEACTIVATE_STAFF",
+                "STAFF_USER",
+                updatedStaff.getStaffNo(),
+                java.util.Map.of("status", StaffUserStatus.ACTIVE.name()),
+                java.util.Map.of("status", StaffUserStatus.DEACTIVATED.name()),
+                "Deactivated staff account: " + updatedStaff.getUsername()
+        );
 
         return toResponse(updatedStaff);
     }
@@ -443,7 +520,24 @@ public class StaffManagementService {
         );
 
 
-        staffUsersRepository.save(staff);
+        StaffUsers updatedStaff = staffUsersRepository.save(staff);
+
+        if (auditTrailService != null) {
+            java.util.Map<String, Object> details = new java.util.LinkedHashMap<>();
+            details.put("staffNo", updatedStaff.getStaffNo());
+            details.put("username", updatedStaff.getUsername());
+            details.put("fullName", updatedStaff.getFullName());
+
+            auditTrailService.logDataChange(
+                    "SECURITY",
+                    "RESET_STAFF_PASSWORD",
+                    "STAFF_USER",
+                    updatedStaff.getStaffNo(),
+                    null,
+                    details,
+                    "Admin reset password for staff: " + updatedStaff.getUsername()
+            );
+        }
     }
 
 
@@ -517,14 +611,14 @@ public class StaffManagementService {
         };
     }
 
-    public synchronized String generateUniqueStaffNo(String roleCode) {
+    public String generateUniqueStaffNo(String roleCode) {
         String prefix = getRolePrefix(roleCode);
-        List<StaffUsers> allStaff = staffUsersRepository.findAll();
+        List<String> staffNos = staffUsersRepository.findStaffNosByPrefix(prefix);
         int maxSeq = 0;
         Pattern pattern = Pattern.compile("^" + Pattern.quote(prefix) + "-(\\d+)$");
-        for (StaffUsers s : allStaff) {
-            if (s.getStaffNo() != null) {
-                Matcher m = pattern.matcher(s.getStaffNo().trim());
+        for (String staffNo : staffNos) {
+            if (staffNo != null) {
+                Matcher m = pattern.matcher(staffNo.trim());
                 if (m.matches()) {
                     try {
                         int val = Integer.parseInt(m.group(1));

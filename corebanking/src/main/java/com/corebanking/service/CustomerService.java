@@ -46,6 +46,7 @@ public class CustomerService {
     private final StaffUsersRepository staffUsersRepository;
     private final PasswordEncoder passwordEncoder;
     private final CusEmailService cusEmailService; // Email Service ကို ထည့်သွင်းခြင်း
+    private final AuditTrailService auditTrailService;
 
     /**
      * ၁။ Customer Profile (Personal/Company Info) နှင့် CustomerCredentials ကို တစ်ပြိုင်နက် ဖန်တီးသိမ်းဆည်းပြီး Email ပေးပို့ခြင်း
@@ -65,40 +66,67 @@ public class CustomerService {
             staff = staffUsersRepository.findByUsername("admin.nay")
                     .or(() -> staffUsersRepository.findByUsername("teller.zin"))
                     .or(() -> staffUsersRepository.findByUsername("admin"))
-                    .or(() -> staffUsersRepository.findAll().stream().findFirst())
+                    .or(() -> staffUsersRepository.findFirstByStatus(com.corebanking.entity.enums.StaffUserStatus.ACTIVE))
                     .orElseThrow(() -> new RuntimeException("Authenticated staff record not found"));
         }
 
         LocalDateTime now = LocalDateTime.now();
 
         // String မှ CustomerType Enum သို့ ပြောင်းလဲခြင်း
-        // Duplicate Checks (Email, Phone)
-        if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
-            if (customerRepository.existsByEmail(dto.getEmail().trim())) {
-                throw new IllegalArgumentException("Email address is already registered in the system: " + dto.getEmail().trim());
-            }
-        }
-        if (dto.getPhone() != null && !dto.getPhone().isBlank()) {
-            if (customerRepository.existsByPhone(dto.getPhone().trim())) {
-                throw new IllegalArgumentException("Phone number is already registered in the system: " + dto.getPhone().trim());
-            }
-        }
-
         CustomerType customerType = CustomerType.PERSONAL;
         if (dto.getCustomerType() != null && !dto.getCustomerType().isBlank()) {
-            try {
-                customerType = CustomerType.valueOf(dto.getCustomerType().trim().toUpperCase());
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Invalid customer type: " + dto.getCustomerType());
+            String rawType = dto.getCustomerType().trim().toUpperCase();
+            if ("INDIVIDUAL".equals(rawType)) {
+                customerType = CustomerType.PERSONAL;
+            } else if ("CORPORATE".equals(rawType)) {
+                customerType = CustomerType.COMPANY;
+            } else {
+                try {
+                    customerType = CustomerType.valueOf(rawType);
+                } catch (IllegalArgumentException e) {
+                    throw new IllegalArgumentException("Invalid customer type: " + dto.getCustomerType());
+                }
             }
         }
 
-        // Full Name သတ်မှတ်ခြင်း
+        // Phone Number format & uniqueness check
+        if (dto.getPhone() != null && !dto.getPhone().isBlank()) {
+            String phone = dto.getPhone().trim();
+            if (phone.length() != 11) {
+                throw new IllegalArgumentException("Phone number must be exactly 11 digits long: " + phone);
+            }
+            if (customerRepository.existsByPhone(phone)) {
+                throw new IllegalArgumentException("Phone number is already registered in the system: " + phone);
+            }
+        }
+
+        // Email Uniqueness: at most 1 PERSONAL customer, at most 1 COMPANY customer
+        if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
+            String email = dto.getEmail().trim();
+            boolean isPersonal = (customerType == CustomerType.PERSONAL || customerType == CustomerType.INDIVIDUAL);
+            if (isPersonal) {
+                boolean personalExists = customerRepository.existsByEmailAndCustomerType(email, CustomerType.PERSONAL)
+                        || customerRepository.existsByEmailAndCustomerType(email, CustomerType.INDIVIDUAL);
+                if (personalExists) {
+                    throw new IllegalArgumentException("Email is already associated with an existing Personal customer: " + email);
+                }
+            } else {
+                boolean companyExists = customerRepository.existsByEmailAndCustomerType(email, CustomerType.COMPANY);
+                if (companyExists) {
+                    throw new IllegalArgumentException("Email is already associated with an existing Company customer: " + email);
+                }
+            }
+        }
+
         // Duplicate Checks by Customer Type (NRC, Registration Number, Tax ID)
-        if (customerType == CustomerType.PERSONAL) {
+        if (customerType == CustomerType.PERSONAL || customerType == CustomerType.INDIVIDUAL) {
             if (dto.getNrc() != null && !dto.getNrc().isBlank()) {
-                if (personalInfoRepository.existsByNrc(dto.getNrc().trim())) {
-                    throw new IllegalArgumentException("NRC number is already registered: " + dto.getNrc().trim());
+                String nrc = dto.getNrc().trim();
+                if (!nrc.matches(".*\\d{6}$")) {
+                    throw new IllegalArgumentException("NRC format must end with exactly 6 trailing digits: " + nrc);
+                }
+                if (personalInfoRepository.existsByNrc(nrc)) {
+                    throw new IllegalArgumentException("NRC number is already registered: " + nrc);
                 }
             }
         } else {
@@ -114,6 +142,7 @@ public class CustomerService {
             }
         }
 
+        // Full Name သတ်မှတ်ခြင်း
         String resolvedFullName;
         if (customerType == CustomerType.COMPANY) {
             if (dto.getCompanyName() == null || dto.getCompanyName().isBlank()) {
@@ -129,8 +158,8 @@ public class CustomerService {
             }
         }
 
-        // Unique Customer Code ထုတ်ယူခြင်း
-        String customerCode = generateUniqueCustomerCode();
+        // Unique Customer Code ထုတ်ယူခြင်း (Personal: CUST-YYYYMMDD-XXXX, Company: COMP-YYYYMMDD-XXXX)
+        String customerCode = generateUniqueCustomerCode(customerType);
 
         // Customers Entity အသစ် တည်ဆောက်ခြင်း
         UUID generatedCustomerId = UUID.randomUUID();
@@ -204,6 +233,26 @@ public class CustomerService {
                 .build();
 
         customerCredentialsRepository.saveAndFlush(credentials);
+
+        // Record Audit Trail
+        java.util.Map<String, Object> newCustSnapshot = new java.util.LinkedHashMap<>();
+        newCustSnapshot.put("customerId", savedCustomer.getCustomerId().toString());
+        newCustSnapshot.put("customerCode", savedCustomer.getCustomerCode());
+        newCustSnapshot.put("customerType", savedCustomer.getCustomerType().name());
+        newCustSnapshot.put("fullName", savedCustomer.getFullName());
+        newCustSnapshot.put("email", savedCustomer.getEmail());
+        newCustSnapshot.put("phone", savedCustomer.getPhone());
+        newCustSnapshot.put("status", savedCustomer.getStatus().name());
+
+        if (auditTrailService != null) auditTrailService.logDataChange(
+                "CUSTOMER",
+                "CREATE_CUSTOMER",
+                "CUSTOMER",
+                savedCustomer.getCustomerCode(),
+                null,
+                newCustSnapshot,
+                "Created new " + customerType + " customer: " + savedCustomer.getCustomerCode() + " (" + savedCustomer.getFullName() + ")"
+        );
 
         // Customer Code နှင့် Temporary Password ကို Customer ၏ Email သို့ တိုက်ရိုက် ပေးပို့ခြင်း
         if (savedCustomer.getEmail() != null && !savedCustomer.getEmail().isBlank()) {
@@ -280,7 +329,22 @@ public class CustomerService {
             if (dto.getBusinessType() != null) companyInfo.setBusinessType(dto.getBusinessType());
         }
 
-        customerRepository.save(customer);
+        Customers updatedCustomer = customerRepository.save(customer);
+
+        java.util.Map<String, Object> newCustUpdateSnapshot = new java.util.LinkedHashMap<>();
+        newCustUpdateSnapshot.put("customerCode", updatedCustomer.getCustomerCode());
+        newCustUpdateSnapshot.put("email", updatedCustomer.getEmail());
+        newCustUpdateSnapshot.put("phone", updatedCustomer.getPhone());
+
+        if (auditTrailService != null) auditTrailService.logDataChange(
+                "CUSTOMER",
+                "UPDATE_CUSTOMER",
+                "CUSTOMER",
+                updatedCustomer.getCustomerCode(),
+                null,
+                newCustUpdateSnapshot,
+                "Updated customer details: " + updatedCustomer.getCustomerCode()
+        );
     }
 
     /**
@@ -326,15 +390,23 @@ public class CustomerService {
 
     /**
      * Unique Customer Code အလိုအလျောက် ထုတ်ပေးသော Method
+     * Personal Customer Code format: CUST-YYYYMMDD-XXXX
+     * Company Customer Code format: COMP-YYYYMMDD-XXXX
      */
-    private String generateUniqueCustomerCode() {
+    private String generateUniqueCustomerCode(CustomerType customerType) {
+        String prefix = (customerType == CustomerType.COMPANY) ? "COMP-" : "CUST-";
         String datePart = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        SecureRandom secureRandom = new SecureRandom();
         String code;
         do {
-            int randomDigits = ThreadLocalRandom.current().nextInt(1000, 9999);
-            code = "CUST-" + datePart + "-" + randomDigits;
+            int randomDigits = 1000 + secureRandom.nextInt(9000);
+            code = prefix + datePart + "-" + randomDigits;
         } while (customerRepository.existsByCustomerCode(code));
         return code;
+    }
+
+    private String generateUniqueCustomerCode() {
+        return generateUniqueCustomerCode(CustomerType.PERSONAL);
     }
 
     /**
@@ -377,16 +449,25 @@ public class CustomerService {
         Customers customer = customerRepository.findByCustomerCode(customerCode)
                 .orElseThrow(() -> new RuntimeException("Customer not found with code: " + customerCode));
 
+        CustomerStatus oldStatus = customer.getStatus();
+        CustomerStatus resolvedStatus;
         try {
-            CustomerStatus newStatus = CustomerStatus.valueOf(statusStr.toUpperCase());
-            customer.setStatus(newStatus);
-            customer.setUpdatedAt(LocalDateTime.now());
-            customerRepository.save(customer);
+            resolvedStatus = CustomerStatus.valueOf(statusStr.toUpperCase());
         } catch (IllegalArgumentException e) {
-            // အကယ်၍ Enum ထဲတွင် ACTIVE သာရှိပါက fallback အဖြစ် ACTIVE ထားပေးခြင်း
-            customer.setStatus(CustomerStatus.ACTIVE);
-            customer.setUpdatedAt(LocalDateTime.now());
-            customerRepository.save(customer);
+            resolvedStatus = CustomerStatus.ACTIVE;
         }
+        customer.setStatus(resolvedStatus);
+        customer.setUpdatedAt(LocalDateTime.now());
+        customerRepository.save(customer);
+
+        if (auditTrailService != null) auditTrailService.logDataChange(
+                "CUSTOMER",
+                "UPDATE_KYC_STATUS",
+                "CUSTOMER",
+                customer.getCustomerCode(),
+                java.util.Map.of("status", oldStatus != null ? oldStatus.name() : "UNKNOWN"),
+                java.util.Map.of("status", resolvedStatus.name()),
+                "Updated customer KYC status from " + oldStatus + " to " + resolvedStatus + " for " + customer.getCustomerCode()
+        );
     }
 }

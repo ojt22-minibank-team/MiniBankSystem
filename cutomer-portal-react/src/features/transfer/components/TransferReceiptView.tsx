@@ -42,7 +42,7 @@ interface StatusConfig {
   transferTypeLabel: string;
 }
 
-function resolveTypeLabel(typeUpper: string, descLower: string, direction?: "IN" | "OUT" | "NONE"): string {
+function resolveTypeLabel(typeUpper: string, descLower: string, _direction?: "IN" | "OUT" | "NONE"): string {
   if (typeUpper.includes("PAYMENT") || descLower.includes("payment") || descLower.includes("merchant")) {
     return "Merchant Payment";
   }
@@ -52,10 +52,7 @@ function resolveTypeLabel(typeUpper: string, descLower: string, direction?: "IN"
   if (typeUpper.includes("DEPOSIT") || descLower.includes("deposit")) {
     return "Cash Deposit";
   }
-  if (direction === "IN") {
-    return "Incoming Fund Transfer";
-  }
-  return "Internal Fund Transfer";
+  return "Internal Transfer";
 }
 
 function resolveStatusConfig(data: TransferReceiptData): StatusConfig {
@@ -221,6 +218,17 @@ export default function TransferReceiptView({
 
     return raw.startsWith('"') && raw.endsWith('"') ? raw : `"${raw}"`;
   }, [data.description, statusConfig.theme]);
+
+  // Direction Resolution: "Incoming" for received receipts, "Outgoing" for sender receipts
+  const directionLabel = useMemo(() => {
+    if (data.direction === "IN") return "Incoming";
+    if (data.direction === "OUT") return "Outgoing";
+    const badgeUpper = (data.badgeLabel || "").toUpperCase();
+    if (badgeUpper.includes("RECEIVED") || badgeUpper.includes("INCOMING")) {
+      return "Incoming";
+    }
+    return "Outgoing";
+  }, [data.direction, data.badgeLabel]);
 
   return (
     <>
@@ -439,6 +447,14 @@ export default function TransferReceiptView({
               <span className="text-slate-600 font-semibold shrink-0 print:text-[13px]">Transfer Type</span>
               <span className="font-bold text-slate-900 text-right truncate print:text-[13px]">
                 {statusConfig.transferTypeLabel}
+              </span>
+            </div>
+
+            {/* 4. Direction */}
+            <div className="flex items-center justify-between py-2 sm:py-2.5 print:py-2 gap-3">
+              <span className="text-slate-600 font-semibold shrink-0 print:text-[13px]">Direction</span>
+              <span className="font-bold text-slate-900 text-right truncate print:text-[13px]">
+                {directionLabel}
               </span>
             </div>
 

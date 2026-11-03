@@ -20,6 +20,10 @@ public interface AccountRepository extends JpaRepository<Accounts, UUID> {
     // 1. Regular lookup by account number
     Optional<Accounts> findByAccountNumber(String accountNumber);
 
+    // Eagerly fetch customer and company info for corporate account verification
+    @Query("SELECT a FROM Accounts a LEFT JOIN FETCH a.customer c LEFT JOIN FETCH c.companyInfo WHERE a.accountNumber = :accountNumber")
+    Optional<Accounts> findByAccountNumberWithCustomerAndCompany(@Param("accountNumber") String accountNumber);
+
     // 2. Check if an account number already exists (used during account creation)
     boolean existsByAccountNumber(String accountNumber);
 
@@ -36,7 +40,7 @@ public interface AccountRepository extends JpaRepository<Accounts, UUID> {
     // 5. Retrieve all accounts belonging to a specific customer
     List<Accounts> findByCustomerCustomerId(UUID customerId);
     
- // Customer Code ဖြင့် အကောင့်အားလုံးကို ရှာဖွေသည့် Method (အသစ်ထည့်သွင်းပါ)
+    // Customer Code ဖြင့် အကောင့်အားလုံးကို ရှာဖွေသည့် Method (အသစ်ထည့်သွင်းပါ)
     List<Accounts> findByCustomerCustomerCode(String customerCode);
     
     List<Accounts> findByCustomer(Customers customer);

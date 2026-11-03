@@ -4,6 +4,7 @@ import { auditApi } from '../../../services/auditService';
 import type { AuditLogItem, AuditSearchParams } from '../../../types/audit.types';
 import AuditLogDetailModal from '../components/AuditLogDetailModal';
 import AuditStatsCards from '../components/AuditStatsCards';
+import { formatDate } from '../../../utils/formatDate';
 
 type TimeRangePreset = 'ALL' | 'TODAY' | 'YESTERDAY' | 'LAST_7_DAYS' | 'LAST_30_DAYS' | 'CUSTOM';
 type ScopeTab = 'ALL' | 'STAFF' | 'CUSTOMER' | 'SYSTEM';
@@ -504,7 +505,7 @@ export default function AuditLogsPage() {
                       {/* Timestamp */}
                       <td className="py-3 px-4 whitespace-nowrap">
                         <div className="font-semibold text-slate-900">
-                          {log.createdAt ? new Date(log.createdAt).toLocaleDateString() : '-'}
+                          {log.createdAt ? formatDate(log.createdAt) : '-'}
                         </div>
                         <div className="text-[10px] text-slate-400 font-mono">
                           {log.createdAt ? new Date(log.createdAt).toLocaleTimeString() : ''}

@@ -1,4 +1,3 @@
-
 package com.corebanking.config;
 
 import com.corebanking.security.JwtAuthFilter;
@@ -70,10 +69,12 @@ public class SecurityConfig {
                     "/v3/api-docs/**"
                 ).permitAll()
 
-                // Public login endpoint
+                // Public login & OTP endpoints
                 .requestMatchers(
                     HttpMethod.POST,
-                    "/api/auth/login"
+                    "/api/auth/login",
+                    "/api/auth/verify-otp",
+                    "/api/auth/resend-otp"
                 ).permitAll()
 
                 // Public refresh endpoint
@@ -102,24 +103,18 @@ public class SecurityConfig {
                     "/**"
                 ).permitAll()
 
-                // Customer APIs
+                // Customer APIs & Account APIs (require authenticated staff)
                 .requestMatchers(
                     "/api/customers",
-                    "/api/customers/**"
-                ).permitAll()
-
-                // Account APIs
-                .requestMatchers(
+                    "/api/customers/**",
                     "/api/accounts",
-                    "/api/accounts/**",
+                    "/api/accounts/**"
+                ).authenticated()
+
+                // WebSocket endpoints
+                .requestMatchers(
                     "/ws/**"
                 ).permitAll()
-
-                // WebSocket endpoints (Handshake authentication handled by HandshakeInterceptor)
-              
-
-                // WebSocket endpoints (Handshake authentication handled by HandshakeInterceptor)
-                
 
                 // All other endpoints require authentication
                 .anyRequest().authenticated()

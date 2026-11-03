@@ -38,6 +38,7 @@ public class StaffPasswordSetupService {
     private final AuthSessionsRepository authSessionsRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final AuditTrailService auditTrailService;
 
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -103,6 +104,23 @@ public class StaffPasswordSetupService {
                 setupLink,
                 expirationMinutes
         );
+
+        if (auditTrailService != null) {
+            java.util.Map<String, Object> details = new java.util.LinkedHashMap<>();
+            details.put("staffNo", staff.getStaffNo());
+            details.put("username", staff.getUsername());
+            details.put("email", staff.getEmail());
+
+            auditTrailService.logDataChange(
+                    "SECURITY",
+                    "STAFF_PASSWORD_RESET_LINK",
+                    "STAFF_USER",
+                    staff.getStaffNo(),
+                    null,
+                    details,
+                    "Generated password setup link for staff: " + staff.getUsername()
+            );
+        }
     }
 
     /**

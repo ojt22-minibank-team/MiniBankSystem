@@ -1,4 +1,3 @@
-import { ReceiptImageZoomViewer } from "../../../../components/common/ReceiptImageZoomViewer";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toBlob } from "html-to-image";
@@ -12,7 +11,6 @@ import {
   Copy,
   Check,
   Printer,
-  ArrowLeft,
   Share2,
   Download,
   Home,
@@ -502,7 +500,7 @@ export default function TransactionDetailContent({
               className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in"
               onClick={() => setShowShareModal(false)}
             />
-            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-5 text-slate-800 animate-in zoom-in-95 border border-slate-100 max-h-[92vh] overflow-y-auto">
+            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-4 sm:p-5 text-slate-800 animate-in zoom-in-95 border border-slate-100 max-h-[92vh] overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               {/* Modal Header */}
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
                 <div className="flex items-center gap-2">
@@ -528,9 +526,15 @@ export default function TransactionDetailContent({
                 </button>
               </div>
 
-              {/* Receipt Preview Thumbnail with Interactive Zoom & Pan */}
+              {/* Receipt Preview Thumbnail */}
               {shareImageUrl && (
-                <ReceiptImageZoomViewer src={shareImageUrl} alt="EKARAJ BANK Official Slip" />
+                <div className="mb-3 p-1.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-center overflow-hidden">
+                  <img
+                    src={shareImageUrl}
+                    alt="Receipt Preview"
+                    className="max-h-32 sm:max-h-36 w-auto object-contain rounded-xl shadow-2xs"
+                  />
+                </div>
               )}
 
               {/* Status Banner */}
@@ -544,7 +548,7 @@ export default function TransactionDetailContent({
               )}
 
               {/* Quick Actions (Copy Slip Image + Save Image to Device) */}
-              <div className="mb-3 space-y-2">
+              <div className="mb-2.5 space-y-2">
                 <button
                   type="button"
                   onClick={async () => {
@@ -553,7 +557,7 @@ export default function TransactionDetailContent({
                       setImageCopied(ok);
                     }
                   }}
-                  className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl font-bold text-xs transition duration-200 shadow-sm cursor-pointer ${
+                  className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl font-bold text-xs transition duration-200 shadow-sm cursor-pointer ${
                     imageCopied
                       ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20"
                       : "bg-[#00A3C4] hover:bg-[#0891B2] text-white shadow-cyan-500/20"
@@ -596,7 +600,7 @@ export default function TransactionDetailContent({
               </div>
 
               {/* Social / Chat Share Apps */}
-              <div className="pt-3 border-t border-slate-100">
+              <div className="pt-2.5 border-t border-slate-100">
                 <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">
                   Open Chat App to Paste
                 </p>
@@ -984,28 +988,16 @@ export default function TransactionDetailContent({
         </div>
 
         {/* Footer / Actions */}
-        {(isCompleted || !isFailed) && (
+        {isCompleted && (
           <div className="no-print p-4 sm:p-5 bg-slate-50/80 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-3 shrink-0">
-            {isCompleted && (
-              <button
-                type="button"
-                onClick={handlePrint}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-[#0878E8]"
-              >
-                <Printer className="w-3.5 h-3.5 text-slate-500" />
-                <span>Print Receipt</span>
-              </button>
-            )}
-            {!isFailed && (
-              <button
-                type="button"
-                onClick={onBack}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-6 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-[#0878E8]"
-              >
-                <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
-                <span>Back to Transactions</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-[#0878E8]"
+            >
+              <Printer className="w-3.5 h-3.5 text-slate-500" />
+              <span>Print Receipt</span>
+            </button>
           </div>
         )}
       </div>

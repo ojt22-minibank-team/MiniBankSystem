@@ -11,11 +11,31 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
+  otpRequired?: boolean;
+  challengeGroupId?: string;
+  destinationMasked?: string;
   accessToken: string;
   refreshToken: string;
   username: string;
   roles: string[];
   permissions: string[];
+}
+
+export interface OtpVerifyRequest {
+  challengeGroupId: string;
+  otp: string;
+}
+
+export interface OtpResendRequest {
+  challengeGroupId: string;
+}
+
+export interface OtpResendResponse {
+  success: boolean;
+  message: string;
+  challengeGroupId: string;
+  resendNo?: number;
+  maxResendAttempts?: number;
 }
 
 export interface CoreApiResponse<T> {
@@ -117,6 +137,12 @@ export type TransactionType =
   | 'REFUND';
 
 export type FeeType = 'FLAT' | 'PERCENTAGE';
+
+export interface OtcParametersResponse {
+  minDepositAmount?: number;
+  minWithdrawalAmount?: number;
+  minimumBalance?: number;
+}
 
 export interface FeeScheduleResponse {
   feeScheduleId: number;
@@ -377,9 +403,3 @@ export interface DailyCashSummaryResponse {
   currency: string;
 }
 
-
-export interface OtcParametersResponse {
-  minDepositAmount: number;
-  minWithdrawalAmount: number;
-  minimumBalance: number;
-}

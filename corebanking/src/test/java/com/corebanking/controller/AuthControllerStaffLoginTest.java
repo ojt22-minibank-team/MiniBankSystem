@@ -2,6 +2,9 @@ package com.corebanking.controller;
 
 import com.corebanking.dto.CoreLoginRequest;
 import com.corebanking.dto.CoreLoginResponse;
+import com.corebanking.dto.CoreOtpResendRequest;
+import com.corebanking.dto.CoreOtpResendResponse;
+import com.corebanking.dto.CoreOtpVerifyRequest;
 import com.corebanking.exception.AuthException;
 import com.corebanking.exception.GlobalExceptionHandler;
 import com.corebanking.service.AuthService;
@@ -41,6 +44,8 @@ class AuthControllerStaffLoginTest {
     private MockMvc mockMvc;
 
     private static final String LOGIN_URL = "/api/auth/login";
+    private static final String VERIFY_OTP_URL = "/api/auth/verify-otp";
+    private static final String RESEND_OTP_URL = "/api/auth/resend-otp";
 
     @BeforeEach
     void setUp() {
@@ -55,16 +60,15 @@ class AuthControllerStaffLoginTest {
     class SuccessScenarios {
 
         @Test
-        @DisplayName("Should return 200 OK and CoreLoginResponse when request is valid")
+        @DisplayName("Should return 200 OK and OTP challenge response when credentials are valid")
         void login_Returns200_WhenValidRequest() throws Exception {
             // Arrange
-            CoreLoginResponse mockResponse = new CoreLoginResponse(
-                    "mock-access-token",
-                    "mock-refresh-token",
-                    "test_staff",
-                    List.of("ROLE_ADMIN", "ROLE_STAFF"),
-                    List.of("STAFF_READ", "STAFF_WRITE")
-            );
+            CoreLoginResponse mockResponse = CoreLoginResponse.builder()
+                    .otpRequired(true)
+                    .challengeGroupId("grp-12345")
+                    .destinationMasked("st****@minibank.com")
+                    .username("test_staff")
+                    .build();
 
             when(authService.login(any(CoreLoginRequest.class))).thenReturn(mockResponse);
 
@@ -81,16 +85,111 @@ class AuthControllerStaffLoginTest {
                             .content(requestBody))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success", is(true)))
-                    .andExpect(jsonPath("$.message", is("Login successful")))
-                    .andExpect(jsonPath("$.data.username", is("test_staff")))
-                    .andExpect(jsonPath("$.data.accessToken", is("mock-access-token")))
-                    .andExpect(jsonPath("$.data.refreshToken", is("mock-refresh-token")))
-                    .andExpect(jsonPath("$.data.roles[0]", is("ROLE_ADMIN")))
-                    .andExpect(jsonPath("$.data.roles[1]", is("ROLE_STAFF")))
-                    .andExpect(jsonPath("$.data.permissions[0]", is("STAFF_READ")))
-                    .andExpect(jsonPath("$.data.permissions[1]", is("STAFF_WRITE")));
+                    .andExpect(jsonPath("$.message", is("OTP sent to registered email")))
+                    .andExpect(jsonPath("$.data.otpRequired", is(true)))
+                    .andExpect(jsonPath("$.data.challengeGroupId", is("grp-12345")))
+                    .andExpect(jsonPath("$.data.destinationMasked", is("st****@minibank.com")))
+                    .andExpect(jsonPath("$.data.username", is("test_staff")));
 
             verify(authService).login(any(CoreLoginRequest.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/auth/verify-otp - OTP Verification Scenarios")
+    class VerifyOtpScenarios {
+
+        @Test
+        @DisplayName("Should return 200 OK and tokens when OTP verification succeeds")
+        void verifyOtp_Returns200_WhenOtpValid() throws Exception {
+            CoreLoginResponse mockResponse = CoreLoginResponse.builder()
+                    .otpRequired(false)
+                    .accessToken("mock-access-token")
+                    .refreshToken("mock-refresh-token")
+                    .username("test_staff")
+                    .roles(List.of("ROLE_ADMIN", "ROLE_STAFF"))
+                    .permissions(List.of("STAFF_READ", "STAFF_WRITE"))
+                    .build();
+
+            when(authService.verifyLoginOtp(any(CoreOtpVerifyRequest.class))).thenReturn(mockResponse);
+
+            String requestBody = """
+                    {
+                        "challengeGroupId": "grp-12345",
+                        "otp": "123456"
+                    }
+                    """;
+
+            mockMvc.perform(post(VERIFY_OTP_URL)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(requestBody))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success", is(true)))
+                    .andExpect(jsonPath("$.message", is("Login successful")))
+                    .andExpect(jsonPath("$.data.otpRequired", is(false)))
+                    .andExpect(jsonPath("$.data.accessToken", is("mock-access-token")))
+                    .andExpect(jsonPath("$.data.refreshToken", is("mock-refresh-token")))
+                    .andExpect(jsonPath("$.data.username", is("test_staff")))
+                    .andExpect(jsonPath("$.data.roles[0]", is("ROLE_ADMIN")))
+                    .andExpect(jsonPath("$.data.permissions[0]", is("STAFF_READ")));
+
+            verify(authService).verifyLoginOtp(any(CoreOtpVerifyRequest.class));
+        }
+
+        @Test
+        @DisplayName("Should return 401 when OTP is invalid")
+        void verifyOtp_Returns401_WhenOtpInvalid() throws Exception {
+            when(authService.verifyLoginOtp(any(CoreOtpVerifyRequest.class)))
+                    .thenThrow(new AuthException("Invalid OTP code. 4 attempts remaining."));
+
+            String requestBody = """
+                    {
+                        "challengeGroupId": "grp-12345",
+                        "otp": "999999"
+                    }
+                    """;
+
+            mockMvc.perform(post(VERIFY_OTP_URL)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(requestBody))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.code", is("AUTH_FAILED")))
+                    .andExpect(jsonPath("$.message", containsString("Invalid OTP code")));
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/auth/resend-otp - Resend Scenarios")
+    class ResendOtpScenarios {
+
+        @Test
+        @DisplayName("Should return 200 OK when resend request is valid")
+        void resendOtp_Returns200_WhenValid() throws Exception {
+            CoreOtpResendResponse mockResponse = CoreOtpResendResponse.builder()
+                    .success(true)
+                    .message("A new OTP code has been sent to your email.")
+                    .challengeGroupId("grp-12345")
+                    .resendNo(1)
+                    .maxResendAttempts(5)
+                    .build();
+
+            when(authService.resendLoginOtp(any(CoreOtpResendRequest.class))).thenReturn(mockResponse);
+
+            String requestBody = """
+                    {
+                        "challengeGroupId": "grp-12345"
+                    }
+                    """;
+
+            mockMvc.perform(post(RESEND_OTP_URL)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(requestBody))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success", is(true)))
+                    .andExpect(jsonPath("$.message", containsString("new OTP code has been sent")))
+                    .andExpect(jsonPath("$.data.resendNo", is(1)));
+
+            verify(authService).resendLoginOtp(any(CoreOtpResendRequest.class));
         }
     }
 

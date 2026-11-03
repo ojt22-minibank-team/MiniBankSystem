@@ -35,6 +35,7 @@ import com.corebanking.entity.enums.CustomerType;
 import com.corebanking.entity.enums.MfaMethod;
 import com.corebanking.entity.enums.SignatoryRole;
 import com.corebanking.entity.enums.SignatoryStatus;
+import com.corebanking.entity.enums.StaffUserStatus;
 import com.corebanking.entity.enums.UpdatedByType;
 import com.corebanking.repository.AccountRepository;
 import com.corebanking.repository.AccountSignatoriesRepository;
@@ -45,9 +46,11 @@ import com.corebanking.repository.CorporateUserRepository;
 import com.corebanking.repository.CustomerCredentialsRepository;
 import com.corebanking.repository.CustomerRepository;
 import com.corebanking.repository.StaffUsersRepository;
+import com.corebanking.security.JwtService;
 import com.corebanking.util.PasswordGeneratorUtil;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -60,6 +63,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Service
@@ -73,21 +78,34 @@ public class AccountService {
     private final AccountSignatoriesRepository accountSignatoriesRepository;
     private final CustomerCredentialsRepository customerCredentialsRepository;
     private final PasswordEncoder passwordEncoder;
-    private final AsyncNotificationService asyncNotificationService;
+    @Autowired(required = false)
+    private AsyncNotificationService asyncNotificationService;
     private final CompanyInfoRepository companyInfoRepository;
     private final CorporateUserRepository corporateUserRepository;
     private final CorporateCredentialRepository corporateCredentialRepository;
     private final CorporateAccountAccessRepository corporateAccountAccessRepository;
     private final BankTransactionRepository bankTransactionRepository;
+    private final AuditTrailService auditTrailService;
 
-    /**
-     * ၁။ Retail Account (Savings / Current) အသစ်ဖွင့်လှစ်ခြင်း
-     */
+    @Autowired(required = false)
+    private JwtService jwtService;
+
+    
     @Transactional
     public AccountResponseDTO createAccount(AccountCreateDTO dto) {
         // Customer ရှိမရှိ စစ်ဆေးခြင်း
         Customers customer = customerRepository.findByCustomerCode(dto.getCustomerCode())
                 .orElseThrow(() -> new RuntimeException("Customer not found with code: " + dto.getCustomerCode()));
+
+        // Customer already holds an active account of this type check
+        List<Accounts> existingAccounts = accountRepository.findByCustomerCustomerCode(customer.getCustomerCode());
+        if (existingAccounts != null) {
+            boolean hasDuplicate = existingAccounts.stream()
+                    .anyMatch(a -> a.getAccountType() == dto.getAccountType() && a.getStatus() == AccountStatus.ACTIVE);
+            if (hasDuplicate) {
+                throw new IllegalStateException("Customer already holds an active " + dto.getAccountType() + " account");
+            }
+        }
 
         StaffUsers staff = getCurrentAuthenticatedStaff();
         String accountNumber = generateUniqueAccountNumber(dto.getAccountType());
@@ -114,29 +132,45 @@ public class AccountService {
 
         Accounts savedAccount = accountRepository.save(account);
 
-        // Record Initial Deposit Transaction in ledger/bank_transactions if deposit > 0
+        
         recordInitialDepositTransaction(savedAccount, initialDeposit, staff, customer);
 
-        // Temporary Password ကို Auto-generate ထုတ်ယူပြီး Credential Table တွင် သိမ်းဆည်းခြင်း
-        String rawPassword = PasswordGeneratorUtil.generateTemporaryPassword(8);
-        String hashedPassword = passwordEncoder.encode(rawPassword);
+        
+        Optional<CustomerCredentials> existingCredOpt = customerCredentialsRepository.findByCustomerId(customer.getId());
+        String rawPassword;
+        if (existingCredOpt.isPresent()) {
+            rawPassword = "(Existing Password Retained)";
+        } else {
+            rawPassword = PasswordGeneratorUtil.generateTemporaryPassword(8);
+            String hashedPassword = passwordEncoder.encode(rawPassword);
 
-        CustomerCredentials credentials = customerCredentialsRepository.findByCustomerId(customer.getId())
-                .orElseGet(() -> {
-                    CustomerCredentials newCred = new CustomerCredentials();
-                    newCred.setCustomerId(customer.getId());
-                    return newCred;
-                });
+            CustomerCredentials credentials = CustomerCredentials.builder()
+                    .customerId(customer.getId())
+                    .customer(customer)
+                    .passwordHash(hashedPassword)
+                    .transactionPinHash(null)
+                    .mfaEnabled(true)
+                    .mfaMethod(MfaMethod.EMAIL)
+                    .mustChangePassword(true)
+                    .failedLoginCount(0)
+                    .failedPinAttemptCount(0)
+                    .tokenVersion(1L)
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .updatedByType(UpdatedByType.STAFF)
+                    .updatedById(staff.getStaffId())
+                    .isNew(true)
+                    .build();
 
-        credentials.setPasswordHash(hashedPassword);
-        credentials.setUpdatedAt(LocalDateTime.now());
-        customerCredentialsRepository.save(credentials);
+            customerCredentialsRepository.save(credentials);
+        }
 
-        // Customer Gmail သို့ Account Number နှင့် Login Temporary Password အား ပို့ဆောင်ပေးခြင်း
+        
         if (customer.getEmail() != null && !customer.getEmail().isBlank()) {
             cusEmailService.sendAccountOpeningConfirmation(
                     customer.getEmail(),
                     customer.getFullName(),
+                    customer.getCustomerCode(),
                     savedAccount.getAccountNumber(),
                     savedAccount.getAccountType().name(),
                     rawPassword
@@ -146,10 +180,7 @@ public class AccountService {
         return mapToResponseDTO(savedAccount);
     }
 
-    /**
-     * ၂။ Company Account အား CEO (can_view=1, can_approve=1) နှင့် MAKER (can_view=1, can_initiate=1) တို့ဖြင့် ဖွင့်လှစ်ခြင်း
-     * corporate_users, corporate_credentials, accounts, corporate_account_access ဇယားများ၌ သီးခြားစီ ခွဲခြားသိမ်းဆည်းသည်
-     */
+   
     @Transactional
     public String createCorporateAccountWithExistingRoles(CorporateAccountCreateDTO dto) {
         Customers company = customerRepository.findByCustomerCode(dto.getCompanyCustomerCode())
@@ -157,6 +188,16 @@ public class AccountService {
 
         if (company.getCustomerType() != CustomerType.COMPANY) {
             throw new IllegalArgumentException("Customer must be of type COMPANY");
+        }
+
+        
+        List<Accounts> existingAccounts = accountRepository.findByCustomerCustomerCode(company.getCustomerCode());
+        if (existingAccounts != null) {
+            boolean hasCorporate = existingAccounts.stream()
+                    .anyMatch(a -> a.getAccountCategory() == AccountCategory.CORPORATE && a.getStatus() == AccountStatus.ACTIVE);
+            if (hasCorporate) {
+                throw new IllegalStateException("Customer already holds an active CORPORATE account");
+            }
         }
 
         CompanyInfo companyInfo = company.getCompanyInfo();
@@ -168,7 +209,7 @@ public class AccountService {
         StaffUsers staff = getCurrentAuthenticatedStaff();
         LocalDateTime now = LocalDateTime.now();
 
-        // 1. CEO User အချက်အလက် ရှာဖွေခြင်း သို့မဟုတ် တည်ဆောက်ခြင်း
+        
         Customers ceoCustomer = null;
         String ceoFullName = dto.getCeoFullName();
         String ceoEmail = dto.getCeoEmail();
@@ -215,7 +256,7 @@ public class AccountService {
                     return corporateUserRepository.save(newUser);
                 });
 
-        // 2. Maker User အချက်အလက် ရှာဖွေခြင်း သို့မဟုတ် တည်ဆောက်ခြင်း
+        
         Customers makerCustomer = null;
         String resolvedMakerCode = dto.getResolvedMakerCustomerCode();
         String makerFullName = dto.getMakerFullName();
@@ -262,11 +303,15 @@ public class AccountService {
                     return corporateUserRepository.save(newUser);
                 });
 
-        // 3. Corporate Credentials (CEO & Maker) သိမ်းဆည်းခြင်း
-        String rawCeoPassword = (dto.getAccountPassword() != null && !dto.getAccountPassword().isBlank())
-                ? dto.getAccountPassword()
-                : PasswordGeneratorUtil.generateTemporaryPassword(8);
+        
+        String rawCeoPassword = PasswordGeneratorUtil.generateTemporaryPassword(8);
+        String rawMakerPassword = PasswordGeneratorUtil.generateTemporaryPassword(8);
+        while (rawMakerPassword.equals(rawCeoPassword)) {
+            rawMakerPassword = PasswordGeneratorUtil.generateTemporaryPassword(8);
+        }
+
         String hashedCeoPassword = passwordEncoder.encode(rawCeoPassword);
+        String hashedMakerPassword = passwordEncoder.encode(rawMakerPassword);
 
         CorporateCredential ceoCred = corporateCredentialRepository.findByCorporateUserId(ceoUser.getCorporateUserId())
                 .orElseGet(() -> CorporateCredential.builder()
@@ -287,9 +332,6 @@ public class AccountService {
         ceoCred.setUpdatedById(staff.getStaffId());
         corporateCredentialRepository.save(ceoCred);
 
-        String rawMakerPassword = PasswordGeneratorUtil.generateTemporaryPassword(8);
-        String hashedMakerPassword = passwordEncoder.encode(rawMakerPassword);
-
         CorporateCredential makerCred = corporateCredentialRepository.findByCorporateUserId(makerUser.getCorporateUserId())
                 .orElseGet(() -> CorporateCredential.builder()
                         .corporateUserId(makerUser.getCorporateUserId())
@@ -309,7 +351,7 @@ public class AccountService {
         makerCred.setUpdatedById(staff.getStaffId());
         corporateCredentialRepository.save(makerCred);
 
-        // 4. accounts Table တွင် Corporate Account အား သိမ်းဆည်းခြင်း
+        
         AccountType accountType = (dto.getAccountType() != null && dto.getAccountType().equalsIgnoreCase("CURRENT"))
                 ? AccountType.CURRENT : AccountType.SAVINGS;
         String accountNumber = generateUniqueAccountNumber(accountType);
@@ -335,11 +377,10 @@ public class AccountService {
 
         Accounts savedAccount = accountRepository.save(account);
 
-        // Record Initial Deposit Transaction in ledger/bank_transactions if deposit > 0
+       
         recordInitialDepositTransaction(savedAccount, initialDeposit, staff, company);
 
-        // 5. corporate_account_access Table တွင် CEO နှင့် Maker အတွက် Access ပေးခြင်း
-        // CEO: can_view = 1, can_approve = 1, can_initiate = 0
+       
         CorporateAccountAccess ceoAccess = CorporateAccountAccess.builder()
                 .corporateUser(ceoUser)
                 .account(savedAccount)
@@ -355,7 +396,7 @@ public class AccountService {
                 .build();
         corporateAccountAccessRepository.save(ceoAccess);
 
-        // MAKER: can_view = 1, can_initiate = 1, can_approve = 0
+        
         CorporateAccountAccess makerAccess = CorporateAccountAccess.builder()
                 .corporateUser(makerUser)
                 .account(savedAccount)
@@ -371,11 +412,13 @@ public class AccountService {
                 .build();
         corporateAccountAccessRepository.save(makerAccess);
 
-        // Backward compatibility: account_signatories တွင်လည်း မှတ်တမ်းတင်ပေးခြင်း
+        
         if (ceoCustomer != null) {
             AccountSignatories ceoSignatory = AccountSignatories.builder()
                     .account(savedAccount)
+                    .accountNumber(savedAccount.getAccountNumber()) 
                     .customer(ceoCustomer)
+                    .customerCode(ceoCustomer.getCustomerCode())
                     .signatoryRole(SignatoryRole.PRIMARY_HOLDER)
                     .canInitiate(false)
                     .canApprove(true)
@@ -386,7 +429,9 @@ public class AccountService {
         if (makerCustomer != null) {
             AccountSignatories accountantSignatory = AccountSignatories.builder()
                     .account(savedAccount)
+                    .accountNumber(savedAccount.getAccountNumber()) 
                     .customer(makerCustomer)
+                    .customerCode(makerCustomer.getCustomerCode())
                     .signatoryRole(SignatoryRole.JOINT_HOLDER)
                     .canInitiate(true)
                     .canApprove(false)
@@ -395,17 +440,38 @@ public class AccountService {
             accountSignatoriesRepository.save(accountantSignatory);
         }
 
-        // 6. CEO ၏ Email သို့ အကောင့်နံပါတ်နှင့် Temporary Password ပို့ပေးခြင်း
+        
         String targetEmail = (finalCeoEmail != null && !finalCeoEmail.isBlank())
                 ? finalCeoEmail : company.getEmail();
 
         if (targetEmail != null && !targetEmail.isBlank()) {
-            cusEmailService.sendAccountOpeningConfirmation(
+            cusEmailService.sendCorporateAccountCredentials(
                     targetEmail,
-                    company.getFullName() + " (Attn: " + finalCeoFullName + " [CEO])",
+                    finalCeoFullName,
+                    company.getFullName(),
+                    company.getCustomerCode(),
+                    ceoUser.getCorporateUserCode(),
+                    "CEO / Authorizer",
                     savedAccount.getAccountNumber(),
                     savedAccount.getAccountType().name(),
                     rawCeoPassword
+            );
+        }
+
+        String targetMakerEmail = (finalMakerEmail != null && !finalMakerEmail.isBlank())
+                ? finalMakerEmail : company.getEmail();
+
+        if (targetMakerEmail != null && !targetMakerEmail.isBlank()) {
+            cusEmailService.sendCorporateAccountCredentials(
+                    targetMakerEmail,
+                    finalMakerFullName,
+                    company.getFullName(),
+                    company.getCustomerCode(),
+                    makerUser.getCorporateUserCode(),
+                    "Maker / Accountant",
+                    savedAccount.getAccountNumber(),
+                    savedAccount.getAccountType().name(),
+                    rawMakerPassword
             );
         }
 
@@ -444,10 +510,45 @@ public class AccountService {
             account.setClosedAt(LocalDateTime.now());
         }
 
+        StaffUsers staff = getCurrentAuthenticatedStaff();
+        AccountStatus oldStatus = account.getStatus();
         account.setStatus(dto.getStatus());
         account.setUpdatedAt(LocalDateTime.now());
+        if (staff != null) {
+            account.setUpdatedByType(UpdatedByType.STAFF);
+            account.setUpdatedById(staff.getStaffId());
+        }
 
         Accounts updatedAccount = accountRepository.save(account);
+
+        String staffIdentifier = (staff != null) ? staff.getUsername() : "STAFF";
+
+        java.util.Map<String, Object> oldSnapshot = new java.util.LinkedHashMap<>();
+        oldSnapshot.put("accountNumber", updatedAccount.getAccountNumber());
+        oldSnapshot.put("status", oldStatus != null ? oldStatus.name() : "UNKNOWN");
+
+        java.util.Map<String, Object> newSnapshot = new java.util.LinkedHashMap<>();
+        newSnapshot.put("accountNumber", updatedAccount.getAccountNumber());
+        newSnapshot.put("status", updatedAccount.getStatus().name());
+        newSnapshot.put("updatedByStaff", staffIdentifier);
+        if (dto.getReason() != null && !dto.getReason().isBlank()) {
+            newSnapshot.put("reason", dto.getReason().trim());
+        }
+
+        String actionDesc = "Updated account status from " + oldStatus + " to " + updatedAccount.getStatus()
+                + " for account " + updatedAccount.getAccountNumber() + " by staff " + staffIdentifier
+                + (dto.getReason() != null && !dto.getReason().isBlank() ? " (Reason: " + dto.getReason().trim() + ")" : "");
+
+        if (auditTrailService != null) auditTrailService.logDataChange(
+                "ACCOUNT",
+                dto.getStatus() == AccountStatus.CLOSED ? "CLOSE_ACCOUNT" : "UPDATE_ACCOUNT_STATUS",
+                "ACCOUNT",
+                updatedAccount.getAccountNumber(),
+                oldSnapshot,
+                newSnapshot,
+                actionDesc
+        );
+
         return mapToResponseDTO(updatedAccount);
     }
 
@@ -478,16 +579,25 @@ public class AccountService {
         account.setUpdatedAt(LocalDateTime.now());
 
         Accounts updatedAccount = accountRepository.save(account);
+
+        if (auditTrailService != null) auditTrailService.logDataChange(
+                "ACCOUNT",
+                "ADD_JOINT_HOLDER",
+                "ACCOUNT",
+                updatedAccount.getAccountNumber(),
+                java.util.Map.of("isJointAccount", false),
+                java.util.Map.of("isJointAccount", true, "jointCustomerCode", dto.getJointCustomerCode()),
+                "Added joint holder " + dto.getJointCustomerCode() + " to account " + updatedAccount.getAccountNumber()
+        );
+
         return mapToResponseDTO(updatedAccount);
     }
 
-    /**
-     * Dashboard နှင့် Staff Portal အတွက် စနစ်အတွင်းရှိ အကောင့်အားလုံးကို ဆွဲယူခြင်း (Fix: mapToResponseDTO သို့ ပြင်ဆင်ပြီး)
-     */
+   
     @Transactional(readOnly = true)
     public List<AccountResponseDTO> getAllAccounts() {
         return accountRepository.findAll().stream()
-                .map(this::mapToResponseDTO) // mapToAccountResponseDTO အစား mapToResponseDTO အမှန်ကို အသုံးပြုထားပါသည်
+                .map(this::mapToResponseDTO)
                 .toList();
     }
 
@@ -501,13 +611,51 @@ public class AccountService {
             if (staffOpt.isPresent()) {
                 return staffOpt.get();
             }
+            try {
+                UUID uuid = UUID.fromString(currentStaffUsername);
+                var staffById = staffUsersRepository.findById(uuid);
+                if (staffById.isPresent()) {
+                    return staffById.get();
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // Fallback: check HTTP request Authorization header if SecurityContext was not populated
+        if (jwtService != null) {
+            var requestOpt = com.corebanking.util.AuditContextUtil.getCurrentHttpRequest();
+            if (requestOpt.isPresent()) {
+                String authHeader = requestOpt.get().getHeader("Authorization");
+                if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                    String token = authHeader.substring(7).trim();
+                    if (!token.isBlank() && jwtService.isTokenValid(token)) {
+                        var claims = jwtService.extractAllClaims(token);
+                        String staffIdStr = claims.get("staff_id", String.class);
+                        if (staffIdStr != null && !staffIdStr.isBlank()) {
+                            try {
+                                UUID staffId = UUID.fromString(staffIdStr);
+                                var staffById = staffUsersRepository.findById(staffId);
+                                if (staffById.isPresent()) {
+                                    return staffById.get();
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                        String sub = claims.getSubject();
+                        if (sub != null && !sub.isBlank()) {
+                            var staffBySub = staffUsersRepository.findByUsername(sub);
+                            if (staffBySub.isPresent()) {
+                                return staffBySub.get();
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         return staffUsersRepository.findByUsername("admin.nay")
                 .or(() -> staffUsersRepository.findByUsername("teller.zin"))
                 .or(() -> staffUsersRepository.findByUsername("admin"))
-                .or(() -> staffUsersRepository.findAll().stream().findFirst())
-                .orElseThrow(() -> new RuntimeException("No active staff record found in the system"));
+                .or(() -> staffUsersRepository.findFirstByStatus(StaffUserStatus.ACTIVE))
+                .orElse(null);
     }
 
     private String generateUniqueAccountNumber(AccountType type) {
@@ -525,7 +673,6 @@ public class AccountService {
         } while (corporateUserRepository.existsByCorporateUserCode(code));
         return code;
     }
-
 
     private void recordInitialDepositTransaction(Accounts account, BigDecimal amount, StaffUsers staff, Customers customer) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
@@ -588,26 +735,24 @@ public class AccountService {
                 .openedAt(account.getOpenedAt())
                 .build();
     }
-    /**
-     * Teller/Staff မှ ငွေသားသွင်းပေးခြင်း (Cash Deposit)
-     * Account Number ဖြင့်ဖြစ်စေ၊ Customer Code ဖြင့်ဖြစ်စေ ငွေသွင်းနိုင်သည်
-     */
+
+   
     @Transactional
     public AccountResponseDTO depositFunds(DepositRequestDTO dto) {
         Accounts account;
 
-        // ၁။ Account Number ဖြင့် ရှာဖွေခြင်း (Account Number ပေးထားပါက)
+        
         if (dto.getAccountNumber() != null && !dto.getAccountNumber().isBlank()) {
             account = accountRepository.findByAccountNumber(dto.getAccountNumber().trim())
                     .orElseThrow(() -> new RuntimeException("Account not found with number: " + dto.getAccountNumber()));
         } 
-        // ၂။ Customer Code သာ ပေးထားပါက ထို Customer ၏ ပထမဆုံး Active ဖြစ်သော Account ကို ရှာဖွေခြင်း
+       
         else if (dto.getCustomerCode() != null && !dto.getCustomerCode().isBlank()) {
             List<Accounts> customerAccounts = accountRepository.findByCustomerCustomerCode(dto.getCustomerCode().trim());
             if (customerAccounts.isEmpty()) {
                 throw new RuntimeException("No bank accounts found for customer code: " + dto.getCustomerCode());
             }
-            // Active ဖြစ်နေသော အကောင့်ကို ဦးစားပေး ရွေးချယ်ခြင်း
+            
             account = customerAccounts.stream()
                     .filter(acc -> acc.getStatus() == AccountStatus.ACTIVE)
                     .findFirst()
@@ -616,12 +761,12 @@ public class AccountService {
             throw new IllegalArgumentException("Either accountNumber or customerCode must be provided for deposit.");
         }
 
-        // ၃။ အကောင့် အခြေအနေ စစ်ဆေးခြင်း
+        
         if (account.getStatus() != AccountStatus.ACTIVE) {
             throw new IllegalStateException("Cannot deposit funds to an account that is " + account.getStatus());
         }
 
-        // ၄။ Balance ပေါင်းထည့်ခြင်း
+       
         BigDecimal currentBalance = (account.getCurrentBalance() != null) ? account.getCurrentBalance() : BigDecimal.ZERO;
         BigDecimal availableBalance = (account.getAvailableBalance() != null) ? account.getAvailableBalance() : BigDecimal.ZERO;
 
@@ -638,12 +783,8 @@ public class AccountService {
 
         return mapToResponseDTO(savedAccount);
     }
+
     
-    /**
-     * Group 2 Logic:
-     * Customer တစ်ဦးတည်း၏ Login ဖြင့် Personal Account ရော Company Account ပါ
-     * တစ်ခါတည်း ကြည့်ရှုခွင့်ပြုသော Method
-     */
     @Transactional(readOnly = true)
     public List<AccessibleAccountDTO> getAccessibleAccountsForCustomer(String customerCode) {
         Customers customer = customerRepository.findByCustomerCode(customerCode)
@@ -651,7 +792,7 @@ public class AccountService {
 
         List<AccessibleAccountDTO> accountList = new ArrayList<>();
 
-        // ၁။ မိမိ၏ ကိုယ်ပိုင် Personal Accounts များကို ထည့်သွင်းခြင်း
+        
         List<Accounts> personalAccounts = accountRepository.findByCustomer(customer);
         for (Accounts acc : personalAccounts) {
             String accType = (acc.getAccountType() != null) ? acc.getAccountType().name() : "SAVINGS";
@@ -671,7 +812,7 @@ public class AccountService {
                     .build());
         }
 
-        // ၂။ မိမိအား Signatory (CEO/Accountant) အဖြစ် ချိတ်ဆက်ထားသော Company Accounts များကို ထည့်သွင်းခြင်း
+        
         List<AccountSignatories> corporateSignatories = 
                 accountSignatoriesRepository.findByCustomerAndStatus(customer, SignatoryStatus.ACTIVE);
 
