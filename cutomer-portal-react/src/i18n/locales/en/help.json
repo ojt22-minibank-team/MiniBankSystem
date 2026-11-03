@@ -6,6 +6,7 @@
   "searchPlaceholder": "Search"
 },
   "faq": {
+    "noResults": "No Result",
     "topics": {
       "accountProfile": "Account & Profile",
       "loginSecurity": "Login & Security",
