@@ -100,4 +100,5 @@ export const STORAGE_KEYS = {
   REFRESH_TOKEN: "cb_refresh_token",
   USERNAME: "cb_username",
   ROLES: "cb_roles",
+  STAFF_PROFILE: "cb_staff_profile",
 } as const;

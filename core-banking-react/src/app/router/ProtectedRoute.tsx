@@ -1,5 +1,8 @@
 import { type ReactNode, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { forceLogout } from '../../features/auth/authSlice';
+import type { AppDispatch } from '../../lib/redux';
 import { useAuth } from '../../features/auth/hooks/useAuth';
 
 interface ProtectedRouteProps {
@@ -7,7 +10,6 @@ interface ProtectedRouteProps {
   requiredRole?: string | string[];
 }
 
-// Token ဖျက်ပြီးမှ Login ကို ညွှန်းပေးမယ့် Helper Component
 function RoleRedirect({ logout }: { logout: () => void }) {
   useEffect(() => {
     if (logout) {
@@ -20,6 +22,35 @@ function RoleRedirect({ logout }: { logout: () => void }) {
 
 export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
   const { isAuthenticated, user, logout } = useAuth();
+  const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleLogoutSync = () => {
+      dispatch(forceLogout());
+      navigate('/login', { replace: true });
+    };
+
+    const channel = new BroadcastChannel('staff_auth_sync');
+    channel.onmessage = (event: MessageEvent) => {
+      if (event.data === 'LOGOUT') {
+        handleLogoutSync();
+      }
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'staff_auth_logout_trigger') {
+        handleLogoutSync();
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      channel.close();
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [dispatch, navigate]);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -40,7 +71,6 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
     });
 
     if (!hasRole) {
-      // Permission မရှိရင် Token ဖျက်ပြီး Login ပြန်ဝင်ခိုင်းမယ်
       return <RoleRedirect logout={logout} />;
     }
   }
