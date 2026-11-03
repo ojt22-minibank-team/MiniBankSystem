@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -43,6 +44,7 @@ public class OtcTransactionService {
     private final ManualTransactionsRepository manualTransactionsRepository;
     private final AuditTrailService auditTrailService;
     private final AsyncNotificationService asyncNotificationService;
+    private final FeeScheduleRepository feeScheduleRepository;
 
     @Autowired(required = false)
     private JwtService jwtService;
@@ -81,10 +83,40 @@ public class OtcTransactionService {
     }
 
     /**
+     * Calculates fee for OTC transactions solely from active FeeSchedules in the database.
+     * Returns BigDecimal.ZERO if no active schedule exists.
+     */
+    public BigDecimal calculateOtcFee(BigDecimal amount, TransactionType type) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
+        }
+        return feeScheduleRepository.findFirstByTransactionTypeAndIsActiveTrueOrderByCreatedAtDesc(type)
+                .map(schedule -> {
+                    BigDecimal fee = BigDecimal.ZERO;
+                    if (schedule.getFeeType() == FeeType.FLAT) {
+                        fee = schedule.getFeeValue();
+                    } else if (schedule.getFeeType() == FeeType.PERCENTAGE) {
+                        fee = amount.multiply(schedule.getFeeValue())
+                                .divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
+                    }
+                    if (schedule.getMinimumFee() != null && fee.compareTo(schedule.getMinimumFee()) < 0) {
+                        fee = schedule.getMinimumFee();
+                    }
+                    if (schedule.getMaximumFee() != null && fee.compareTo(schedule.getMaximumFee()) > 0) {
+                        fee = schedule.getMaximumFee();
+                    }
+                    return fee.setScale(4, RoundingMode.HALF_UP);
+                })
+                .orElse(BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP));
+    }
+
+    /**
      * Over-the-Counter Cash Deposit:
      * - Customer deposits cash at bank counter via Teller.
-     * - Increases Account balance (available + current).
-     * - Debits Vault Cash Ledger (GL-VAULT-CASH) and Credits Customer Deposit Ledger.
+     * - Calculates service fee from active OTC_DEPOSIT FeeSchedule.
+     * - Credited amount = depositAmount - serviceFee.
+     * - Debits Vault Cash Ledger (GL-VAULT-CASH), Credits Customer Deposit Ledger,
+     *   and Credits Fee Revenue Ledger (GL-FEE-REVENUE) if fee > 0.
      */
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public OtcTransactionResponseDto processDeposit(OtcTransactionRequestDto request, String idempotencyKey) {
@@ -94,7 +126,7 @@ public class OtcTransactionService {
             Optional<BankTransactions> existing = bankTransactionRepository.findByIdempotencyKey(idempotencyKey);
             if (existing.isPresent()) {
                 log.info("Duplicate OTC Deposit detected with key: {}. Returning existing record.", idempotencyKey);
-                return mapToResponseDto(existing.get(), null, null, null);
+                return mapToResponseDto(existing.get(), null, null, null, null);
             }
         }
 
@@ -117,6 +149,17 @@ public class OtcTransactionService {
             throw new TransactionException("Deposit amount must be at least " + minDeposit.toPlainString() + " MMK.");
         }
 
+        BigDecimal depositAmount = request.getAmount();
+        BigDecimal serviceFee = calculateOtcFee(depositAmount, TransactionType.OTC_DEPOSIT);
+
+        if (depositAmount.compareTo(serviceFee) <= 0) {
+            throw new TransactionException(String.format(
+                    "Deposit amount (%s MMK) must be strictly greater than the service fee (%s MMK).",
+                    depositAmount.toPlainString(), serviceFee.toPlainString()));
+        }
+
+        BigDecimal netDeposit = depositAmount.subtract(serviceFee);
+
         // Lock account row for update
         Accounts account = accountRepository.findByAccountNumberForUpdate(request.getAccountNumber().trim())
                 .orElseThrow(() -> new AccountNotFoundException("Account not found: " + request.getAccountNumber()));
@@ -131,11 +174,10 @@ public class OtcTransactionService {
         StaffUsers staff = getCurrentAuthenticatedStaff();
 
         BigDecimal balanceBefore = account.getCurrentBalance();
-        BigDecimal depositAmount = request.getAmount();
 
-        // Update Account Balances
-        account.setAvailableBalance(account.getAvailableBalance().add(depositAmount));
-        account.setCurrentBalance(account.getCurrentBalance().add(depositAmount));
+        // Update Account Balances with net deposited funds
+        account.setAvailableBalance(account.getAvailableBalance().add(netDeposit));
+        account.setCurrentBalance(account.getCurrentBalance().add(netDeposit));
         account.setUpdatedAt(LocalDateTime.now());
         accountRepository.save(account);
 
@@ -155,14 +197,15 @@ public class OtcTransactionService {
                 .sourceAccount(null) // Counter deposit has no source bank account (cash)
                 .destinationAccount(account)
                 .amount(depositAmount)
-                .serviceFee(BigDecimal.ZERO)
+                .serviceFee(serviceFee)
                 .currency(currency)
                 .initiatedByType(InitiatedByType.STAFF)
                 .initiatedByStaff(staff)
                 .channel(TransactionChannel.STAFF_PORTAL)
                 .idempotencyKey(idempotencyKey)
                 .description(desc)
-                .auditNote("OTC cash deposit processed by staff: " + staff.getUsername())
+                .auditNote(String.format("OTC cash deposit processed by staff: %s (Amount: %s, Fee: %s, Net Credited: %s)",
+                        staff.getUsername(), depositAmount.toPlainString(), serviceFee.toPlainString(), netDeposit.toPlainString()))
                 .authorizedAt(now)
                 .completedAt(now)
                 .build();
@@ -170,7 +213,7 @@ public class OtcTransactionService {
         bankTransactionRepository.save(txn);
 
         // Double-entry General Ledger
-        recordDepositLedgerEntries(txn, account, depositAmount, balanceBefore);
+        recordDepositLedgerEntries(txn, account, depositAmount, serviceFee, netDeposit, balanceBefore);
         recordManualTransaction(txn, account, staff, ManualOperationType.CASH_DEPOSIT, depositAmount, customRefId, request.getManualAuditNote().trim());
 
         if (auditTrailService != null) {
@@ -183,6 +226,8 @@ public class OtcTransactionService {
             newSnapshot.put("accountNumber", account.getAccountNumber());
             newSnapshot.put("accountHolder", customerName);
             newSnapshot.put("amount", depositAmount);
+            newSnapshot.put("serviceFee", serviceFee);
+            newSnapshot.put("netDeposit", netDeposit);
             newSnapshot.put("currency", currency);
             newSnapshot.put("newBalance", account.getCurrentBalance());
             newSnapshot.put("transactionRef", txnRef);
@@ -199,8 +244,9 @@ public class OtcTransactionService {
                     account.getAccountNumber(),
                     oldSnapshot,
                     newSnapshot,
-                    String.format("OTC Cash Deposit of %s %s to account %s (%s) processed by Teller %s [Slip Ref: %s]",
-                            depositAmount.toPlainString(), currency, account.getAccountNumber(), customerName, staff.getUsername(), customRefId)
+                    String.format("OTC Cash Deposit of %s %s (Service Fee: %s, Net: %s) to account %s (%s) processed by Teller %s [Slip Ref: %s]",
+                            depositAmount.toPlainString(), currency, serviceFee.toPlainString(), netDeposit.toPlainString(),
+                            account.getAccountNumber(), customerName, staff.getUsername(), customRefId)
             );
         }
 
@@ -209,17 +255,21 @@ public class OtcTransactionService {
             asyncNotificationService.sendDepositNotificationAsync(account.getCustomer(), account, txn);
         }
 
-        log.info("OTC Deposit successful. Ref: {}, Account: {}, New Balance: {}", txnRef, account.getAccountNumber(), account.getCurrentBalance());
+        log.info("OTC Deposit successful. Ref: {}, Account: {}, Gross: {}, Fee: {}, New Balance: {}",
+                txnRef, account.getAccountNumber(), depositAmount, serviceFee, account.getCurrentBalance());
 
-        return mapToResponseDto(txn, customerName, customRefId, request.getManualAuditNote().trim());
+        return mapToResponseDto(txn, customerName, customRefId, request.getManualAuditNote().trim(), balanceBefore);
     }
 
     /**
      * Over-the-Counter Cash Withdrawal:
      * - Customer withdraws cash at bank counter via Teller.
-     * - Validates available funds and minimum balance requirement.
+     * - Calculates service fee from active OTC_WITHDRAWAL FeeSchedule.
+     * - Total debited from customer account = withdrawAmount + serviceFee.
+     * - Validates available funds (balance - minBalance >= withdrawAmount + serviceFee).
      * - Decreases Account balance (available + current).
-     * - Debits Customer Deposit Ledger and Credits Vault Cash Ledger (GL-VAULT-CASH).
+     * - Debits Customer Deposit Ledger, Credits Vault Cash Ledger (GL-VAULT-CASH),
+     *   and Credits Fee Revenue Ledger (GL-FEE-REVENUE) if fee > 0.
      */
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public OtcTransactionResponseDto processWithdrawal(OtcTransactionRequestDto request, String idempotencyKey) {
@@ -229,7 +279,7 @@ public class OtcTransactionService {
             Optional<BankTransactions> existing = bankTransactionRepository.findByIdempotencyKey(idempotencyKey);
             if (existing.isPresent()) {
                 log.info("Duplicate OTC Withdrawal detected with key: {}. Returning existing record.", idempotencyKey);
-                return mapToResponseDto(existing.get(), null, null, null);
+                return mapToResponseDto(existing.get(), null, null, null, null);
             }
         }
 
@@ -268,8 +318,10 @@ public class OtcTransactionService {
         }
 
         BigDecimal withdrawAmount = request.getAmount();
+        BigDecimal serviceFee = calculateOtcFee(withdrawAmount, TransactionType.OTC_WITHDRAWAL);
+        BigDecimal totalDeduction = withdrawAmount.add(serviceFee);
 
-        // Check Cumulative Daily OTC Withdrawal Limit
+        // Check Cumulative Daily OTC Withdrawal Limit (based on physical cash disbursed)
         BigDecimal maxDailyWithdrawal = getRequiredSystemParameter("OTC_DAILY_WITHDRAWAL_LIMIT");
         if (maxDailyWithdrawal != null && maxDailyWithdrawal.compareTo(BigDecimal.ZERO) > 0) {
             LocalDate today = LocalDate.now();
@@ -292,17 +344,18 @@ public class OtcTransactionService {
             }
         }
 
-        // Check Minimum Balance Enforcement
+        // Check Minimum Balance Enforcement with service fee accounted for
         BigDecimal systemMinBalance = getRequiredSystemParameter("MINIMUM_BALANCE");
         BigDecimal minBalance = (account.getMinimumBalance() != null && account.getMinimumBalance().compareTo(BigDecimal.ZERO) > 0)
                 ? account.getMinimumBalance()
                 : systemMinBalance;
 
         BigDecimal netAvailable = account.getAvailableBalance().subtract(minBalance);
-        if (netAvailable.compareTo(withdrawAmount) < 0) {
+        if (netAvailable.compareTo(totalDeduction) < 0) {
             throw new InsufficientFundsException(String.format(
-                    "Insufficient available funds. You must maintain a minimum balance of %s MMK. Net available for withdrawal: %s MMK, Requested: %s MMK.",
-                    minBalance.toPlainString(), netAvailable.toPlainString(), withdrawAmount.toPlainString()));
+                    "Insufficient available funds. Required: %s MMK (Withdrawal: %s + Service Fee: %s) while maintaining a minimum balance of %s MMK. Net available: %s MMK.",
+                    totalDeduction.toPlainString(), withdrawAmount.toPlainString(), serviceFee.toPlainString(),
+                    minBalance.toPlainString(), netAvailable.toPlainString()));
         }
 
         String currency = request.getCurrency() != null && !request.getCurrency().isBlank()
@@ -312,9 +365,9 @@ public class OtcTransactionService {
 
         BigDecimal balanceBefore = account.getCurrentBalance();
 
-        // Update Account Balances
-        account.setAvailableBalance(account.getAvailableBalance().subtract(withdrawAmount));
-        account.setCurrentBalance(account.getCurrentBalance().subtract(withdrawAmount));
+        // Update Account Balances (deducting cash withdrawal and service fee)
+        account.setAvailableBalance(account.getAvailableBalance().subtract(totalDeduction));
+        account.setCurrentBalance(account.getCurrentBalance().subtract(totalDeduction));
         account.setUpdatedAt(LocalDateTime.now());
         accountRepository.save(account);
 
@@ -334,14 +387,15 @@ public class OtcTransactionService {
                 .sourceAccount(account)
                 .destinationAccount(null) // Counter withdrawal has no destination bank account (cash given to customer)
                 .amount(withdrawAmount)
-                .serviceFee(BigDecimal.ZERO)
+                .serviceFee(serviceFee)
                 .currency(currency)
                 .initiatedByType(InitiatedByType.STAFF)
                 .initiatedByStaff(staff)
                 .channel(TransactionChannel.STAFF_PORTAL)
                 .idempotencyKey(idempotencyKey)
                 .description(desc)
-                .auditNote("OTC cash withdrawal processed by staff: " + staff.getUsername())
+                .auditNote(String.format("OTC cash withdrawal processed by staff: %s (Cash: %s, Fee: %s, Total Debited: %s)",
+                        staff.getUsername(), withdrawAmount.toPlainString(), serviceFee.toPlainString(), totalDeduction.toPlainString()))
                 .authorizedAt(now)
                 .completedAt(now)
                 .build();
@@ -349,7 +403,7 @@ public class OtcTransactionService {
         bankTransactionRepository.save(txn);
 
         // Double-entry General Ledger
-        recordWithdrawalLedgerEntries(txn, account, withdrawAmount, balanceBefore);
+        recordWithdrawalLedgerEntries(txn, account, withdrawAmount, serviceFee, totalDeduction, balanceBefore);
         recordManualTransaction(txn, account, staff, ManualOperationType.CASH_WITHDRAWAL, withdrawAmount, customRefId, request.getManualAuditNote().trim());
 
         if (auditTrailService != null) {
@@ -362,6 +416,8 @@ public class OtcTransactionService {
             newSnapshot.put("accountNumber", account.getAccountNumber());
             newSnapshot.put("accountHolder", customerName);
             newSnapshot.put("amount", withdrawAmount);
+            newSnapshot.put("serviceFee", serviceFee);
+            newSnapshot.put("totalDebited", totalDeduction);
             newSnapshot.put("currency", currency);
             newSnapshot.put("newBalance", account.getCurrentBalance());
             newSnapshot.put("transactionRef", txnRef);
@@ -378,8 +434,9 @@ public class OtcTransactionService {
                     account.getAccountNumber(),
                     oldSnapshot,
                     newSnapshot,
-                    String.format("OTC Cash Withdrawal of %s %s from account %s (%s) processed by Teller %s [Slip Ref: %s]",
-                            withdrawAmount.toPlainString(), currency, account.getAccountNumber(), customerName, staff.getUsername(), customRefId)
+                    String.format("OTC Cash Withdrawal of %s %s (Service Fee: %s, Total Debited: %s) from account %s (%s) processed by Teller %s [Slip Ref: %s]",
+                            withdrawAmount.toPlainString(), currency, serviceFee.toPlainString(), totalDeduction.toPlainString(),
+                            account.getAccountNumber(), customerName, staff.getUsername(), customRefId)
             );
         }
 
@@ -388,12 +445,14 @@ public class OtcTransactionService {
             asyncNotificationService.sendWithdrawalNotificationAsync(account.getCustomer(), account, txn);
         }
 
-        log.info("OTC Withdrawal successful. Ref: {}, Account: {}, New Balance: {}", txnRef, account.getAccountNumber(), account.getCurrentBalance());
+        log.info("OTC Withdrawal successful. Ref: {}, Account: {}, Cash: {}, Fee: {}, New Balance: {}",
+                txnRef, account.getAccountNumber(), withdrawAmount, serviceFee, account.getCurrentBalance());
 
-        return mapToResponseDto(txn, customerName, customRefId, request.getManualAuditNote().trim());
+        return mapToResponseDto(txn, customerName, customRefId, request.getManualAuditNote().trim(), balanceBefore);
     }
 
-    private void recordDepositLedgerEntries(BankTransactions txn, Accounts account, BigDecimal amount, BigDecimal balBefore) {
+    private void recordDepositLedgerEntries(BankTransactions txn, Accounts account, BigDecimal totalDeposit,
+                                            BigDecimal serviceFee, BigDecimal netDeposit, BigDecimal balBefore) {
         // Line 1: Debit Vault Cash GL Account (Cash physically received into bank vault)
         LedgerAccounts vaultCashLedger = ledgerAccountRepository.findByLedgerCode("GL-VAULT-CASH")
                 .or(() -> ledgerAccountRepository.findByLedgerCode("GL-CASH-ON-HAND"))
@@ -405,15 +464,15 @@ public class OtcTransactionService {
                 .lineNo(1)
                 .ledgerAccount(vaultCashLedger)
                 .entryType(EntryType.DEBIT)
-                .amount(amount)
+                .amount(totalDeposit)
                 .currency(txn.getCurrency())
                 .balanceBefore(BigDecimal.ZERO)
-                .balanceAfter(amount)
+                .balanceAfter(totalDeposit)
                 .narration("Cash received over the counter for deposit into Acc: " + account.getAccountNumber())
                 .build();
         ledgerEntryRepository.save(vaultEntry);
 
-        // Line 2: Credit Customer Deposit Ledger (Bank liability to customer increases)
+        // Line 2: Credit Customer Deposit Ledger (Bank liability to customer increases by net deposit)
         LedgerAccounts customerLedger = ledgerAccountRepository.findByCustomerAccount(account)
                 .orElseGet(() -> ledgerAccountRepository.findByLedgerCode("GL-CUSTOMER-DEPOSITS")
                         .orElse(vaultCashLedger));
@@ -423,17 +482,38 @@ public class OtcTransactionService {
                 .lineNo(2)
                 .ledgerAccount(customerLedger)
                 .entryType(EntryType.CREDIT)
-                .amount(amount)
+                .amount(netDeposit)
                 .currency(txn.getCurrency())
                 .balanceBefore(balBefore)
-                .balanceAfter(balBefore.add(amount))
+                .balanceAfter(balBefore.add(netDeposit))
                 .narration("Deposit credited to Acc: " + account.getAccountNumber())
                 .build();
         ledgerEntryRepository.save(customerEntry);
+
+        // Line 3: Credit Fee Revenue Ledger (If service fee > 0)
+        if (serviceFee != null && serviceFee.compareTo(BigDecimal.ZERO) > 0) {
+            LedgerAccounts feeLedger = ledgerAccountRepository.findByLedgerCode("GL-FEE-REVENUE")
+                    .or(() -> ledgerAccountRepository.findByLedgerCode("GL-FEE-INCOME"))
+                    .orElse(vaultCashLedger);
+
+            LedgerEntries feeEntry = LedgerEntries.builder()
+                    .transaction(txn)
+                    .lineNo(3)
+                    .ledgerAccount(feeLedger)
+                    .entryType(EntryType.CREDIT)
+                    .amount(serviceFee)
+                    .currency(txn.getCurrency())
+                    .balanceBefore(BigDecimal.ZERO)
+                    .balanceAfter(serviceFee)
+                    .narration("OTC Deposit service fee collected for Ref: " + txn.getTransactionRef())
+                    .build();
+            ledgerEntryRepository.save(feeEntry);
+        }
     }
 
-    private void recordWithdrawalLedgerEntries(BankTransactions txn, Accounts account, BigDecimal amount, BigDecimal balBefore) {
-        // Line 1: Debit Customer Deposit Ledger (Bank liability decreases)
+    private void recordWithdrawalLedgerEntries(BankTransactions txn, Accounts account, BigDecimal withdrawAmount,
+                                               BigDecimal serviceFee, BigDecimal totalDeduction, BigDecimal balBefore) {
+        // Line 1: Debit Customer Deposit Ledger (Bank liability decreases by total debited)
         LedgerAccounts customerLedger = ledgerAccountRepository.findByCustomerAccount(account)
                 .orElseGet(() -> ledgerAccountRepository.findByLedgerCode("GL-CUSTOMER-DEPOSITS")
                         .or(() -> ledgerAccountRepository.findByLedgerCode("GL-VAULT-CASH"))
@@ -445,15 +525,15 @@ public class OtcTransactionService {
                 .lineNo(1)
                 .ledgerAccount(customerLedger)
                 .entryType(EntryType.DEBIT)
-                .amount(amount)
+                .amount(totalDeduction)
                 .currency(txn.getCurrency())
                 .balanceBefore(balBefore)
-                .balanceAfter(balBefore.subtract(amount))
-                .narration("Withdrawal debited from Acc: " + account.getAccountNumber())
+                .balanceAfter(balBefore.subtract(totalDeduction))
+                .narration("Withdrawal & service fee debited from Acc: " + account.getAccountNumber())
                 .build();
         ledgerEntryRepository.save(customerEntry);
 
-        // Line 2: Credit Vault Cash Ledger (Cash leaves bank vault)
+        // Line 2: Credit Vault Cash Ledger (Cash leaves bank vault to customer)
         LedgerAccounts vaultCashLedger = ledgerAccountRepository.findByLedgerCode("GL-VAULT-CASH")
                 .or(() -> ledgerAccountRepository.findByLedgerCode("GL-CASH-ON-HAND"))
                 .orElse(customerLedger);
@@ -463,13 +543,33 @@ public class OtcTransactionService {
                 .lineNo(2)
                 .ledgerAccount(vaultCashLedger)
                 .entryType(EntryType.CREDIT)
-                .amount(amount)
+                .amount(withdrawAmount)
                 .currency(txn.getCurrency())
-                .balanceBefore(amount)
+                .balanceBefore(withdrawAmount)
                 .balanceAfter(BigDecimal.ZERO)
                 .narration("Cash disbursed over the counter from Acc: " + account.getAccountNumber())
                 .build();
         ledgerEntryRepository.save(vaultEntry);
+
+        // Line 3: Credit Fee Revenue Ledger (If service fee > 0)
+        if (serviceFee != null && serviceFee.compareTo(BigDecimal.ZERO) > 0) {
+            LedgerAccounts feeLedger = ledgerAccountRepository.findByLedgerCode("GL-FEE-REVENUE")
+                    .or(() -> ledgerAccountRepository.findByLedgerCode("GL-FEE-INCOME"))
+                    .orElse(vaultCashLedger);
+
+            LedgerEntries feeEntry = LedgerEntries.builder()
+                    .transaction(txn)
+                    .lineNo(3)
+                    .ledgerAccount(feeLedger)
+                    .entryType(EntryType.CREDIT)
+                    .amount(serviceFee)
+                    .currency(txn.getCurrency())
+                    .balanceBefore(BigDecimal.ZERO)
+                    .balanceAfter(serviceFee)
+                    .narration("OTC Withdrawal service fee collected for Ref: " + txn.getTransactionRef())
+                    .build();
+            ledgerEntryRepository.save(feeEntry);
+        }
     }
 
     private void recordManualTransaction(BankTransactions txn, Accounts account, StaffUsers staff,
@@ -481,11 +581,12 @@ public class OtcTransactionService {
 
         String audit = (customAuditNote != null && !customAuditNote.isBlank())
                 ? customAuditNote.trim()
-                : String.format("OTC %s | Acc: %s | Amount: %s %s | Teller: %s",
+                : String.format("OTC %s | Acc: %s | Amount: %s %s (Fee: %s) | Teller: %s",
                         opType == ManualOperationType.CASH_DEPOSIT ? "DEPOSIT" : "WITHDRAWAL",
                         account.getAccountNumber(),
                         amount.toPlainString(),
                         txn.getCurrency(),
+                        txn.getServiceFee() != null ? txn.getServiceFee().toPlainString() : "0",
                         staff.getUsername());
 
         ManualTransactions manualTxn = ManualTransactions.builder()
@@ -561,20 +662,27 @@ public class OtcTransactionService {
     }
 
     private OtcTransactionResponseDto mapToResponseDto(BankTransactions txn, String personName,
-                                                      String manualRefId, String manualAuditNote) {
+                                                      String manualRefId, String manualAuditNote,
+                                                      BigDecimal explicitBalBefore) {
         Accounts targetAccount = txn.getTransactionType() == TransactionType.OTC_DEPOSIT
                 ? txn.getDestinationAccount() : txn.getSourceAccount();
 
-        BigDecimal balBefore = BigDecimal.ZERO;
-        BigDecimal balAfter = BigDecimal.ZERO;
+        BigDecimal balAfter = targetAccount != null ? targetAccount.getCurrentBalance() : BigDecimal.ZERO;
+        BigDecimal fee = txn.getServiceFee() != null ? txn.getServiceFee() : BigDecimal.ZERO;
+        BigDecimal balBefore;
 
-        if (targetAccount != null) {
-            balAfter = targetAccount.getCurrentBalance();
+        if (explicitBalBefore != null) {
+            balBefore = explicitBalBefore;
+        } else if (targetAccount != null) {
             if (txn.getTransactionType() == TransactionType.OTC_DEPOSIT) {
-                balBefore = balAfter.subtract(txn.getAmount());
+                // balAfter = balBefore + (amount - fee) => balBefore = balAfter - (amount - fee)
+                balBefore = balAfter.subtract(txn.getAmount().subtract(fee));
             } else {
-                balBefore = balAfter.add(txn.getAmount());
+                // balAfter = balBefore - (amount + fee) => balBefore = balAfter + (amount + fee)
+                balBefore = balAfter.add(txn.getAmount().add(fee));
             }
+        } else {
+            balBefore = BigDecimal.ZERO;
         }
 
         Customers customer = targetAccount != null ? targetAccount.getCustomer() : null;
@@ -590,7 +698,7 @@ public class OtcTransactionService {
                 .customerCode(customer != null ? customer.getCustomerCode() : "—")
                 .customerName(customer != null ? customer.getFullName() : "—")
                 .amount(txn.getAmount())
-                .serviceFee(txn.getServiceFee() != null ? txn.getServiceFee() : BigDecimal.ZERO)
+                .serviceFee(fee)
                 .balanceBefore(balBefore)
                 .balanceAfter(balAfter)
                 .currency(txn.getCurrency())
@@ -649,15 +757,29 @@ public class OtcTransactionService {
     }
 
     /**
-     * Reads configured OTC system parameters (limits & minimum balances) directly from database.
+     * Reads configured OTC system parameters (limits, minimum balances & fee schedules) directly from database.
      */
+    @Transactional(readOnly = true)
     public OtcParametersDto getOtcParameters() {
+        Optional<FeeSchedules> depFee = feeScheduleRepository
+                .findFirstByTransactionTypeAndIsActiveTrueOrderByCreatedAtDesc(TransactionType.OTC_DEPOSIT);
+        Optional<FeeSchedules> wdFee = feeScheduleRepository
+                .findFirstByTransactionTypeAndIsActiveTrueOrderByCreatedAtDesc(TransactionType.OTC_WITHDRAWAL);
+
         return OtcParametersDto.builder()
                 .minDepositAmount(getRequiredSystemParameter("OTC_MINIMUM_DEPOSIT_AMOUNT"))
                 .minWithdrawalAmount(getRequiredSystemParameter("OTC_MINIMUM_WITHDRAWAL_AMOUNT"))
                 .minimumBalance(getRequiredSystemParameter("MINIMUM_BALANCE"))
                 .maxOnetimeWithdrawal(getRequiredSystemParameter("OTC_ONETIME_WITHDRAWAL_LIMIT"))
                 .maxDailyWithdrawal(getRequiredSystemParameter("OTC_DAILY_WITHDRAWAL_LIMIT"))
+                .depositFeeType(depFee.map(f -> f.getFeeType().name()).orElse("FLAT"))
+                .depositFeeValue(depFee.map(FeeSchedules::getFeeValue).orElse(BigDecimal.ZERO))
+                .depositMinFee(depFee.map(FeeSchedules::getMinimumFee).orElse(null))
+                .depositMaxFee(depFee.map(FeeSchedules::getMaximumFee).orElse(null))
+                .withdrawalFeeType(wdFee.map(f -> f.getFeeType().name()).orElse("PERCENTAGE"))
+                .withdrawalFeeValue(wdFee.map(FeeSchedules::getFeeValue).orElse(BigDecimal.ZERO))
+                .withdrawalMinFee(wdFee.map(FeeSchedules::getMinimumFee).orElse(null))
+                .withdrawalMaxFee(wdFee.map(FeeSchedules::getMaximumFee).orElse(null))
                 .build();
     }
 
