@@ -2,14 +2,17 @@
 import { useState, type MouseEvent } from "react";
 import { Link } from "react-router-dom";
 import { Check, Copy, Eye, EyeOff } from "lucide-react";
+
 import type { DashboardAccount } from "../types/dashboardTypes";
 import type { AccountStatus as AccountStatusType } from "../../accounts/types/accountTypes";
 import AccountStatus from "../../accounts/components/AccountStatus";
+
 import {
   EkarajCrown,
   EbMonogram,
   CardGeometricLines,
 } from "../../../../components/common/EkarajLogo";
+
 import { useAppSelector, type RootState } from "../../../../lib/redux";
 
 interface BankCardProps {
@@ -533,7 +536,7 @@ export default function BankCard({
   }
 
   // FULL CARD
-  const cardClasses = `group relative flex h-[225px] sm:h-[235px] w-full min-w-[320px] max-w-[400px] shrink-0 flex-col justify-between overflow-hidden rounded-[26px] p-5 sm:p-6 select-none transition-all duration-300 ${
+  const cardClasses = `group relative flex h-[225px] sm:h-[235px] w-full min-w-[320px] max-w-none flex-col justify-between overflow-hidden rounded-[26px] p-5 sm:p-6 select-none transition-all duration-300 ${
     isLink
       ? "hover:-translate-y-1.5 hover:shadow-2xl cursor-pointer"
       : ""

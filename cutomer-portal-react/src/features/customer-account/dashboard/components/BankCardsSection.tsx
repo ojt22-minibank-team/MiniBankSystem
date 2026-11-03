@@ -1,13 +1,13 @@
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
-  ArrowRight,
   Plus,
   WalletCards,
 } from "lucide-react";
+
 import BankCard from "./BankCard";
 import type { DashboardAccount } from "../types/dashboardTypes";
 
@@ -27,37 +27,47 @@ export default function BankCardsSection({
   showStatus = false,
 }: BankCardsSectionProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
-  const checkScroll = () => {
+  const hasMultipleCards = accounts.length > 2;
+  const hasExactlyTwoCards = accounts.length === 2;
+
+  const checkScroll = useCallback(() => {
     const el = scrollContainerRef.current;
+
     if (!el) return;
 
     const { scrollLeft, scrollWidth, clientWidth } = el;
 
     setCanScrollLeft(scrollLeft > 10);
     setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 10);
-  };
+  }, []);
 
   useEffect(() => {
+    const el = scrollContainerRef.current;
+
+    if (!el) return;
+
     checkScroll();
 
-    window.addEventListener("resize", checkScroll);
+    const resizeObserver = new ResizeObserver(checkScroll);
+
+    resizeObserver.observe(el);
 
     return () => {
-      window.removeEventListener("resize", checkScroll);
+      resizeObserver.disconnect();
     };
-  }, [accounts]);
+  }, [accounts, checkScroll]);
 
   const handleScroll = (direction: "left" | "right") => {
     const el = scrollContainerRef.current;
+
     if (!el) return;
 
-    const scrollAmount = 390;
-
     el.scrollBy({
-      left: direction === "left" ? -scrollAmount : scrollAmount,
+      left: direction === "left" ? -390 : 390,
       behavior: "smooth",
     });
   };
@@ -89,8 +99,8 @@ export default function BankCardsSection({
   }
 
   return (
-    <section aria-label="Customer Cards" className="space-y-4">
-      {/* Header: Section Title and Actions */}
+    <section aria-label="Customer Cards" className="w-full min-w-0 space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <h2 className="text-xl sm:text-2xl font-black tracking-tight text-[#0A192F] dark:text-white">
@@ -102,58 +112,49 @@ export default function BankCardsSection({
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Navigation Arrows */}
-          {(canScrollLeft || canScrollRight || accounts.length > 2) && (
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => handleScroll("left")}
-                disabled={!canScrollLeft}
-                aria-label="Previous card"
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-xs transition hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[#0A192F] dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-600 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-              >
-                <ChevronLeft size={16} />
-              </button>
+        {hasMultipleCards && (
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => handleScroll("left")}
+              disabled={!canScrollLeft}
+              aria-label="Previous card"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-xs transition hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[#0A192F] dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-600 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <ChevronLeft size={16} />
+            </button>
 
-              <button
-                type="button"
-                onClick={() => handleScroll("right")}
-                disabled={!canScrollRight}
-                aria-label="Next card"
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-xs transition hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[#0A192F] dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-600 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
-          )}
-
-          {/* View All Accounts */}
-          <Link
-            to="/accounts"
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-[#0f2445] text-[#00A3C4] hover:bg-cyan-50 dark:hover:bg-cyan-950/40 hover:border-cyan-300 dark:hover:border-cyan-500/50 shadow-xs transition-all hover:scale-105 group cursor-pointer"
-            title="View accounts"
-            aria-label="View accounts"
-          >
-            <ArrowRight
-              size={16}
-              className="transition-transform group-hover:translate-x-0.5"
-            />
-          </Link>
-        </div>
+            <button
+              type="button"
+              onClick={() => handleScroll("right")}
+              disabled={!canScrollRight}
+              aria-label="Next card"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-xs transition hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[#0A192F] dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-600 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Cards Slider */}
       <div
         ref={scrollContainerRef}
         onScroll={checkScroll}
-        className="flex items-center justify-start gap-5 sm:gap-6 overflow-x-auto pb-4 pt-1 scroll-smooth scrollbar-none w-full"
-        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        className="flex w-full min-w-0 items-center justify-start gap-5 sm:gap-6 overflow-x-auto pb-4 pt-1 scroll-smooth scrollbar-none"
+        style={{
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
+        }}
       >
         {accounts.map((account, index) => (
           <div
             key={account.accountNumber}
-            className="shrink-0 w-[330px] sm:w-[370px]"
+            className={
+              hasExactlyTwoCards
+                ? "min-w-[320px] flex-1 basis-0"
+                : "w-[330px] shrink-0 sm:w-[370px]"
+            }
           >
             <BankCard
               account={account}
