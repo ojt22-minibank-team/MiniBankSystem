@@ -4,6 +4,7 @@ import SignupPage from '../../features/auth/pages/SignupPage';
 import StaffPasswordSetupPage from '../../features/auth/pages/StaffPasswordSetupPage';
 import AdminDashboardPage from '../../features/admin/pages/AdminDashboardPage';
 import StaffListPage from '../../features/admin/pages/StaffListPage';
+import ProfilePage from '../../features/admin/pages/ProfilePage';
 import SystemRulesPage from '../../features/admin/pages/SystemRulesPage';
 import AnnouncementsPage from '../../features/admin/pages/AnnouncementsPage';
 import CustomersPage from '../../features/admin/pages/CustomersPage';
@@ -12,6 +13,7 @@ import TransfersPage from '../../features/operations/pages/TransfersPage';
 import OtcTransactionPage from '../../features/operations/pages/OtcTransactionPage';
 import ReportingPage from '../../features/reporting/pages/ReportingPage';
 import AuditLogsPage from '../../features/audit-logs/pages/AuditLogsPage';
+import TransactionDetailsPage from '../../features/transactions/pages/TransactionDetailsPage';
 import UnauthorizedPage from '../../components/common/UnauthorizedPage';
 import ProtectedRoute from './ProtectedRoute';
 
@@ -45,6 +47,16 @@ export default function RouterProvider() {
           element={
             <ProtectedRoute requiredRole="ADMIN">
               <StaffListPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Profile (Admin / Staff Profile Management) */}
+        <Route
+          path="/admin/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
             </ProtectedRoute>
           }
         />
@@ -89,11 +101,11 @@ export default function RouterProvider() {
           }
         />
 
-        {/* OTC Banking (Deposit & Withdrawal) */}
+        {/* OTC Banking (Deposit & Withdrawal - Teller only) */}
         <Route
           path="/admin/otc"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredRole="TELLER">
               <OtcTransactionPage />
             </ProtectedRoute>
           }
@@ -105,6 +117,24 @@ export default function RouterProvider() {
           element={
             <ProtectedRoute>
               <TransfersPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Transaction Explorer & Details (All Authenticated Staff) */}
+        <Route
+          path="/admin/transactions"
+          element={
+            <ProtectedRoute>
+              <TransactionDetailsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/transactions/:refOrId"
+          element={
+            <ProtectedRoute>
+              <TransactionDetailsPage />
             </ProtectedRoute>
           }
         />

@@ -1,5 +1,6 @@
 package com.corebanking.controller;
 
+import com.corebanking.dto.OtcAccountLimitDto;
 import com.corebanking.dto.OtcParametersDto;
 import com.corebanking.dto.OtcTransactionRequestDto;
 import com.corebanking.dto.OtcTransactionResponseDto;
@@ -7,6 +8,7 @@ import com.corebanking.service.OtcTransactionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -14,6 +16,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/transactions/otc")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('TELLER')")
 public class OtcTransactionController {
 
     private final OtcTransactionService otcTransactionService;
@@ -61,5 +64,14 @@ public class OtcTransactionController {
     public ResponseEntity<Map<String, Boolean>> checkReference(@RequestParam("ref") String ref) {
         boolean exists = otcTransactionService.isReferenceIdDuplicate(ref);
         return ResponseEntity.ok(Map.of("exists", exists));
+    }
+
+    /**
+     * Checks account withdrawal limits and today's cumulative withdrawn amount.
+     * GET /api/transactions/otc/account-limits?accountNumber=...
+     */
+    @GetMapping("/account-limits")
+    public ResponseEntity<OtcAccountLimitDto> getAccountLimitStatus(@RequestParam("accountNumber") String accountNumber) {
+        return ResponseEntity.ok(otcTransactionService.getAccountLimitStatus(accountNumber));
     }
 }

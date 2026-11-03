@@ -58,6 +58,10 @@ export const NotificationDropdown: React.FC = () => {
   const stopPollingRef = useRef<() => void>(() => {});
   const startPollingRef = useRef<() => void>(() => {});
 
+  // Track seen notifications to bridge WebSocket and polling for 100% reliable real-time toast delivery
+  const seenNotificationIdsRef = useRef<Set<number>>(new Set());
+  const isInitialLoadRef = useRef<boolean>(true);
+
   const isCurrent = useCallback((scope: NotificationRequestScope | null) =>
     scope !== null && requestScopeRef.current === scope && hasTokens() &&
     isAuthenticationGenerationCurrent(scope.generation), []);
@@ -65,6 +69,10 @@ export const NotificationDropdown: React.FC = () => {
   // Real-time WebSocket hook integration
   const handleRealtimeNotification = useCallback((newNoti: NotificationItem) => {
     if (!isCurrent(requestScopeRef.current)) return;
+    // Mark as seen so polling fallback won't duplicate the toast
+    if (newNoti.notificationId) {
+      seenNotificationIdsRef.current.add(newNoti.notificationId);
+    }
     // Increment unread count in real-time
     setUnreadCount((prev) => prev + 1);
 
@@ -180,15 +188,61 @@ export const NotificationDropdown: React.FC = () => {
     };
     stopPollingRef.current = stopPolling;
 
+    // Background active notification sync: ensures incoming received funds pop up Toast even if WebSocket was interrupted
+    const syncActiveNotifications = async (targetScope = requestScopeRef.current) => {
+      if (!isCurrent(targetScope)) return;
+      const requestToken = getAccessToken();
+      if (!requestToken) return;
+
+      try {
+        const data = await getMyNotifications();
+        if (!isCurrent(targetScope) || requestToken !== getAccessToken()) return;
+
+        if (Array.isArray(data)) {
+          setNotifications(data);
+
+          if (isInitialLoadRef.current) {
+            // Initial seed on mount: register existing IDs without triggering toasts for historical data
+            data.forEach((item) => {
+              if (item.notificationId) seenNotificationIdsRef.current.add(item.notificationId);
+            });
+            isInitialLoadRef.current = false;
+          } else {
+            // Find incoming unread items that haven't been shown yet
+            const incomingUnseen = data.filter(
+              (item) => item.notificationId && !seenNotificationIdsRef.current.has(item.notificationId)
+            );
+
+            incomingUnseen.forEach((item) => {
+              seenNotificationIdsRef.current.add(item.notificationId);
+              if (!item.isRead) {
+                // Dual-channel dispatch: ensures receiver sees Toast immediately!
+                window.dispatchEvent(new CustomEvent("ws-notification-received", { detail: item }));
+              }
+            });
+          }
+        }
+      } catch (err: unknown) {
+        if (!isCurrent(targetScope) || requestToken !== getAccessToken()) return;
+        if (isAxiosError(err) && (err.response?.status === 401 || err.response?.status === 403)) {
+          stopPollingRef.current();
+        }
+      }
+    };
+
     const startPolling = (targetScope = requestScopeRef.current) => {
       if (!isCurrent(targetScope)) return;
       if (intervalId !== undefined) return; // Prevent duplicate intervals
 
+      // Seed initial unread notifications
+      void syncActiveNotifications(targetScope);
+
+      // Fast, responsive polling interval (7 seconds) for instant fallback receipt of incoming funds
       intervalId = window.setInterval(() => {
         if (!isCurrent(targetScope)) return;
         void fetchUnreadCount();
-        if (isOpenRef.current) void fetchNotifications();
-      }, 20000);
+        void syncActiveNotifications(targetScope);
+      }, 7000);
     };
     startPollingRef.current = () => startPolling();
 
@@ -205,6 +259,8 @@ export const NotificationDropdown: React.FC = () => {
       setLoading(false);
       setMarkingAll(false);
       setError(null);
+      seenNotificationIdsRef.current.clear();
+      isInitialLoadRef.current = true;
       if (!authenticated) return;
 
       const scope = { generation };
@@ -217,6 +273,8 @@ export const NotificationDropdown: React.FC = () => {
       requestScopeRef.current = null;
       stopPolling();
       setIsOpen(false);
+      seenNotificationIdsRef.current.clear();
+      isInitialLoadRef.current = true;
     };
 
     // Listen to custom notification trigger (e.g. from P2P transfer)

@@ -4,7 +4,7 @@ import Button from '../../../components/common/Button';
 import Input from '../../../components/common/Input';
 import Modal from '../../../components/common/Modal';
 import { otcApi, accountsApi } from '../../../services/apiClient';
-import type { OtcTransactionResponseDto, AccountResponse, OtcParametersResponse } from '../../../types/api.types';
+import type { OtcTransactionResponseDto, AccountResponse, OtcParametersResponse, OtcAccountLimitResponse } from '../../../types/api.types';
 import { formatCurrency } from '../../../utils/formatCurrency';
 import type { AxiosError } from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
@@ -108,6 +108,7 @@ export default function OtcTransactionPage() {
 
   // Account verification state
   const [verifiedAccount, setVerifiedAccount] = useState<AccountResponse | null>(null);
+  const [accountLimits, setAccountLimits] = useState<OtcAccountLimitResponse | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [accountLookupError, setAccountLookupError] = useState<string | null>(null);
 
@@ -183,8 +184,18 @@ export default function OtcTransactionPage() {
       const res = await accountsApi.getByNumber(accountNumber.trim());
       setVerifiedAccount(res.data);
       setError(null);
+
+      // Fetch dynamic counter withdrawal limits and today's utilization
+      try {
+        const limitsRes = await otcApi.getAccountLimits(accountNumber.trim());
+        setAccountLimits(limitsRes.data);
+      } catch {
+        // Fallback: non-blocking if account limits endpoint encounters issue
+        setAccountLimits(null);
+      }
     } catch (err) {
       setVerifiedAccount(null);
+      setAccountLimits(null);
       const axErr = err as AxiosError<{ message?: string }>;
       setAccountLookupError(
         axErr.response?.data?.message || 'Account not found. Please verify the account number.',
@@ -247,6 +258,36 @@ export default function OtcTransactionPage() {
             `Withdrawal amount (${formatCurrency(numAmount, verifiedAccount.currency || 'MMK')}) exceeds available balance (${formatCurrency(availBal, verifiedAccount.currency || 'MMK')}).`
           );
         }
+        return;
+      }
+    }
+
+    // Dynamic DB One-Time Maximum Withdrawal Limit Validation (1st Click)
+    const oneTimeLimit = accountLimits?.maxOnetimeWithdrawal ?? otcParams?.maxOnetimeWithdrawal;
+    if (
+      operationType === 'WITHDRAW' &&
+      oneTimeLimit != null &&
+      oneTimeLimit > 0 &&
+      numAmount > oneTimeLimit
+    ) {
+      setError(
+        `Withdrawal amount (${formatCurrency(numAmount, verifiedAccount.currency || 'MMK')}) exceeds the one-time counter limit of ${formatCurrency(oneTimeLimit, verifiedAccount.currency || 'MMK')}.`
+      );
+      return;
+    }
+
+    // Dynamic DB Cumulative Daily Withdrawal Limit Validation (1st Click)
+    if (
+      operationType === 'WITHDRAW' &&
+      accountLimits != null &&
+      accountLimits.maxDailyWithdrawal > 0
+    ) {
+      const todayWithdrawn = accountLimits.todayWithdrawnAmount ?? 0;
+      const remainingDaily = accountLimits.remainingDailyLimit ?? (accountLimits.maxDailyWithdrawal - todayWithdrawn);
+      if (numAmount > remainingDaily) {
+        setError(
+          `Daily withdrawal limit exceeded. Total withdrawn today: ${formatCurrency(todayWithdrawn, verifiedAccount.currency || 'MMK')}. Maximum remaining available to withdraw today is ${formatCurrency(remainingDaily > 0 ? remainingDaily : 0, verifiedAccount.currency || 'MMK')}.`
+        );
         return;
       }
     }
@@ -316,6 +357,15 @@ export default function OtcTransactionPage() {
           availableBalance: res.data.balanceAfter,
         });
       }
+      if (operationType === 'WITHDRAW' && accountLimits) {
+        const newTodayWithdrawn = (accountLimits.todayWithdrawnAmount ?? 0) + numAmount;
+        const newRemaining = Math.max(0, (accountLimits.maxDailyWithdrawal ?? 20000000) - newTodayWithdrawn);
+        setAccountLimits({
+          ...accountLimits,
+          todayWithdrawnAmount: newTodayWithdrawn,
+          remainingDailyLimit: newRemaining,
+        });
+      }
       setShowConfirmModal(false);
     } catch (err) {
       const axErr = err as AxiosError<{ message?: string }>;
@@ -341,6 +391,7 @@ export default function OtcTransactionPage() {
     setManualAuditNote('');
     setAccountNumber('');
     setVerifiedAccount(null);
+    setAccountLimits(null);
     setAccountLookupError(null);
   };
 
@@ -883,6 +934,46 @@ export default function OtcTransactionPage() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Counter Withdrawal Limits & Daily Utilization (Withdrawal Only) */}
+                    {operationType === 'WITHDRAW' && (
+                      <div className="mt-3 pt-3 border-t border-blue-100">
+                        <div className="flex items-center justify-between pb-1.5 font-semibold text-gray-700 text-xs">
+                          <span className="flex items-center gap-1.5 text-blue-900 font-bold">
+                            <svg className="w-3.5 h-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Counter Withdrawal Limits & Daily Utilization
+                          </span>
+                          <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-mono font-medium">
+                            {verifiedAccount.currency || 'MMK'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-2">
+                          <div className="bg-white/80 rounded-lg border border-blue-100 p-2 shadow-xs">
+                            <span className="text-gray-500 block text-[10px] uppercase tracking-wider font-semibold">One-Time Limit</span>
+                            <span className="font-bold text-gray-900 font-mono text-xs block mt-0.5">
+                              {formatCurrency(accountLimits?.maxOnetimeWithdrawal ?? otcParams?.maxOnetimeWithdrawal ?? 5000000, verifiedAccount.currency || 'MMK')}
+                            </span>
+                          </div>
+                          <div className="bg-white/80 rounded-lg border border-blue-100 p-2 shadow-xs">
+                            <span className="text-gray-500 block text-[10px] uppercase tracking-wider font-semibold">Today's Withdrawn</span>
+                            <span className="font-bold text-gray-900 font-mono text-xs block mt-0.5">
+                              {formatCurrency(accountLimits?.todayWithdrawnAmount ?? 0, verifiedAccount.currency || 'MMK')}
+                            </span>
+                          </div>
+                          <div className="bg-white/80 rounded-lg border border-emerald-200 bg-emerald-50/50 p-2 shadow-xs">
+                            <span className="text-emerald-700 block text-[10px] uppercase tracking-wider font-semibold">Available Remaining Today</span>
+                            <span className="font-bold text-emerald-800 font-mono text-xs block mt-0.5">
+                              {formatCurrency(
+                                accountLimits?.remainingDailyLimit ?? (accountLimits?.maxDailyWithdrawal ?? otcParams?.maxDailyWithdrawal ?? 20000000),
+                                verifiedAccount.currency || 'MMK'
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

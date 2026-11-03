@@ -1,6 +1,7 @@
 package com.corebanking.service;
 
 import com.corebanking.dto.DailyCashSummaryDto;
+import com.corebanking.dto.OtcAccountLimitDto;
 import com.corebanking.dto.OtcParametersDto;
 import com.corebanking.dto.OtcTransactionRequestDto;
 import com.corebanking.dto.OtcTransactionResponseDto;
@@ -10,8 +11,10 @@ import com.corebanking.exception.AccountNotFoundException;
 import com.corebanking.exception.InsufficientFundsException;
 import com.corebanking.exception.TransactionException;
 import com.corebanking.repository.*;
+import com.corebanking.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -23,6 +26,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
@@ -37,6 +41,11 @@ public class OtcTransactionService {
     private final LedgerEntryRepository ledgerEntryRepository;
     private final SystemParametersRepository systemParametersRepository;
     private final ManualTransactionsRepository manualTransactionsRepository;
+    private final AuditTrailService auditTrailService;
+    private final AsyncNotificationService asyncNotificationService;
+
+    @Autowired(required = false)
+    private JwtService jwtService;
 
     /**
      * Reads a mandatory system parameter from database.
@@ -49,10 +58,26 @@ public class OtcTransactionService {
                         String cleanVal = param.getParameterValue().trim().replace(",", "");
                         return new BigDecimal(cleanVal);
                     } catch (Exception e) {
-                        throw new TransactionException("Invalid numeric format for system parameter: " + key);
+                        return getDefaultSystemParameter(key);
                     }
                 })
-                .orElseThrow(() -> new TransactionException("System parameter '" + key + "' is not configured in database."));
+                .orElseGet(() -> getDefaultSystemParameter(key));
+    }
+
+    private BigDecimal getDefaultSystemParameter(String key) {
+        if ("OTC_MINIMUM_DEPOSIT_AMOUNT".equalsIgnoreCase(key) || "OTC_MINIMUM_WITHDRAWAL_AMOUNT".equalsIgnoreCase(key)) {
+            return new BigDecimal("10000");
+        }
+        if ("MINIMUM_BALANCE".equalsIgnoreCase(key)) {
+            return new BigDecimal("10000");
+        }
+        if ("OTC_ONETIME_WITHDRAWAL_LIMIT".equalsIgnoreCase(key)) {
+            return new BigDecimal("5000000");
+        }
+        if ("OTC_DAILY_WITHDRAWAL_LIMIT".equalsIgnoreCase(key)) {
+            return new BigDecimal("20000000");
+        }
+        return BigDecimal.ZERO;
     }
 
     /**
@@ -148,6 +173,42 @@ public class OtcTransactionService {
         recordDepositLedgerEntries(txn, account, depositAmount, balanceBefore);
         recordManualTransaction(txn, account, staff, ManualOperationType.CASH_DEPOSIT, depositAmount, customRefId, request.getManualAuditNote().trim());
 
+        if (auditTrailService != null) {
+            java.util.Map<String, Object> oldSnapshot = new java.util.LinkedHashMap<>();
+            oldSnapshot.put("accountNumber", account.getAccountNumber());
+            oldSnapshot.put("balance", balanceBefore);
+            oldSnapshot.put("currency", currency);
+
+            java.util.Map<String, Object> newSnapshot = new java.util.LinkedHashMap<>();
+            newSnapshot.put("accountNumber", account.getAccountNumber());
+            newSnapshot.put("accountHolder", customerName);
+            newSnapshot.put("amount", depositAmount);
+            newSnapshot.put("currency", currency);
+            newSnapshot.put("newBalance", account.getCurrentBalance());
+            newSnapshot.put("transactionRef", txnRef);
+            newSnapshot.put("voucherReferenceId", customRefId);
+            newSnapshot.put("processedByStaff", staff.getUsername());
+            newSnapshot.put("tellerStaffNo", staff.getStaffNo());
+            newSnapshot.put("auditNote", request.getManualAuditNote().trim());
+            newSnapshot.put("narration", request.getRemark().trim());
+
+            auditTrailService.logDataChange(
+                    "TRANSACTION",
+                    "OTC_CASH_DEPOSIT",
+                    "ACCOUNT",
+                    account.getAccountNumber(),
+                    oldSnapshot,
+                    newSnapshot,
+                    String.format("OTC Cash Deposit of %s %s to account %s (%s) processed by Teller %s [Slip Ref: %s]",
+                            depositAmount.toPlainString(), currency, account.getAccountNumber(), customerName, staff.getUsername(), customRefId)
+            );
+        }
+
+        // Asynchronously dispatch real-time WebSocket notification to customer
+        if (account.getCustomer() != null && asyncNotificationService != null) {
+            asyncNotificationService.sendDepositNotificationAsync(account.getCustomer(), account, txn);
+        }
+
         log.info("OTC Deposit successful. Ref: {}, Account: {}, New Balance: {}", txnRef, account.getAccountNumber(), account.getCurrentBalance());
 
         return mapToResponseDto(txn, customerName, customRefId, request.getManualAuditNote().trim());
@@ -191,6 +252,13 @@ public class OtcTransactionService {
             throw new TransactionException("Withdrawal amount must be at least " + minWithdrawal.toPlainString() + " MMK.");
         }
 
+        BigDecimal maxOnetimeWithdrawal = getRequiredSystemParameter("OTC_ONETIME_WITHDRAWAL_LIMIT");
+        if (maxOnetimeWithdrawal != null && maxOnetimeWithdrawal.compareTo(BigDecimal.ZERO) > 0 && request.getAmount().compareTo(maxOnetimeWithdrawal) > 0) {
+            throw new TransactionException(String.format(
+                    "Withdrawal amount (%s MMK) exceeds the one-time counter limit of %s MMK.",
+                    request.getAmount().toPlainString(), maxOnetimeWithdrawal.toPlainString()));
+        }
+
         // Lock account row for update
         Accounts account = accountRepository.findByAccountNumberForUpdate(request.getAccountNumber().trim())
                 .orElseThrow(() -> new AccountNotFoundException("Account not found: " + request.getAccountNumber()));
@@ -200,6 +268,29 @@ public class OtcTransactionService {
         }
 
         BigDecimal withdrawAmount = request.getAmount();
+
+        // Check Cumulative Daily OTC Withdrawal Limit
+        BigDecimal maxDailyWithdrawal = getRequiredSystemParameter("OTC_DAILY_WITHDRAWAL_LIMIT");
+        if (maxDailyWithdrawal != null && maxDailyWithdrawal.compareTo(BigDecimal.ZERO) > 0) {
+            LocalDate today = LocalDate.now();
+            LocalDateTime startOfDay = today.atStartOfDay();
+            LocalDateTime endOfDay = today.atTime(23, 59, 59, 999999999);
+            BigDecimal todayWithdrawn = bankTransactionRepository.findTodayTotalOtcWithdrawnAmount(
+                    account.getAccountId(), startOfDay, endOfDay);
+            if (todayWithdrawn == null) {
+                todayWithdrawn = BigDecimal.ZERO;
+            }
+            BigDecimal projectedTotal = todayWithdrawn.add(withdrawAmount);
+            if (projectedTotal.compareTo(maxDailyWithdrawal) > 0) {
+                BigDecimal remainingLimit = maxDailyWithdrawal.subtract(todayWithdrawn);
+                if (remainingLimit.compareTo(BigDecimal.ZERO) < 0) {
+                    remainingLimit = BigDecimal.ZERO;
+                }
+                throw new TransactionException(String.format(
+                        "Daily withdrawal limit exceeded. Total withdrawn today: %s MMK. Maximum remaining available to withdraw today is %s MMK.",
+                        todayWithdrawn.toPlainString(), remainingLimit.toPlainString()));
+            }
+        }
 
         // Check Minimum Balance Enforcement
         BigDecimal systemMinBalance = getRequiredSystemParameter("MINIMUM_BALANCE");
@@ -260,6 +351,42 @@ public class OtcTransactionService {
         // Double-entry General Ledger
         recordWithdrawalLedgerEntries(txn, account, withdrawAmount, balanceBefore);
         recordManualTransaction(txn, account, staff, ManualOperationType.CASH_WITHDRAWAL, withdrawAmount, customRefId, request.getManualAuditNote().trim());
+
+        if (auditTrailService != null) {
+            java.util.Map<String, Object> oldSnapshot = new java.util.LinkedHashMap<>();
+            oldSnapshot.put("accountNumber", account.getAccountNumber());
+            oldSnapshot.put("balance", balanceBefore);
+            oldSnapshot.put("currency", currency);
+
+            java.util.Map<String, Object> newSnapshot = new java.util.LinkedHashMap<>();
+            newSnapshot.put("accountNumber", account.getAccountNumber());
+            newSnapshot.put("accountHolder", customerName);
+            newSnapshot.put("amount", withdrawAmount);
+            newSnapshot.put("currency", currency);
+            newSnapshot.put("newBalance", account.getCurrentBalance());
+            newSnapshot.put("transactionRef", txnRef);
+            newSnapshot.put("voucherReferenceId", customRefId);
+            newSnapshot.put("processedByStaff", staff.getUsername());
+            newSnapshot.put("tellerStaffNo", staff.getStaffNo());
+            newSnapshot.put("auditNote", request.getManualAuditNote().trim());
+            newSnapshot.put("narration", request.getRemark().trim());
+
+            auditTrailService.logDataChange(
+                    "TRANSACTION",
+                    "OTC_CASH_WITHDRAWAL",
+                    "ACCOUNT",
+                    account.getAccountNumber(),
+                    oldSnapshot,
+                    newSnapshot,
+                    String.format("OTC Cash Withdrawal of %s %s from account %s (%s) processed by Teller %s [Slip Ref: %s]",
+                            withdrawAmount.toPlainString(), currency, account.getAccountNumber(), customerName, staff.getUsername(), customRefId)
+            );
+        }
+
+        // Asynchronously dispatch real-time WebSocket notification to customer
+        if (account.getCustomer() != null && asyncNotificationService != null) {
+            asyncNotificationService.sendWithdrawalNotificationAsync(account.getCustomer(), account, txn);
+        }
 
         log.info("OTC Withdrawal successful. Ref: {}, Account: {}, New Balance: {}", txnRef, account.getAccountNumber(), account.getCurrentBalance());
 
@@ -376,14 +503,55 @@ public class OtcTransactionService {
 
     private StaffUsers getCurrentAuthenticatedStaff() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String username = (auth != null && auth.getName() != null && !auth.getName().isBlank() && !auth.getName().equals("anonymousUser"))
-                ? auth.getName() : "teller.zin";
+        String username = (auth != null && auth.getName() != null && !auth.getName().isBlank() && !auth.getName().equalsIgnoreCase("anonymousUser"))
+                ? auth.getName() : null;
 
-        return staffUsersRepository.findByUsername(username)
-                .or(() -> staffUsersRepository.findByUsername("teller.zin"))
-                .or(() -> staffUsersRepository.findByUsername("admin.nay"))
-                .or(() -> staffUsersRepository.findAll().stream().findFirst())
-                .orElseThrow(() -> new RuntimeException("No active staff record found in the system"));
+        if (username != null) {
+            var staffOpt = staffUsersRepository.findByUsername(username);
+            if (staffOpt.isPresent()) {
+                return staffOpt.get();
+            }
+            try {
+                UUID uuid = UUID.fromString(username);
+                var staffById = staffUsersRepository.findById(uuid);
+                if (staffById.isPresent()) {
+                    return staffById.get();
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // Fallback: Check HTTP request Authorization header if SecurityContextHolder is empty
+        if (jwtService != null) {
+            var requestOpt = com.corebanking.util.AuditContextUtil.getCurrentHttpRequest();
+            if (requestOpt.isPresent()) {
+                String authHeader = requestOpt.get().getHeader("Authorization");
+                if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                    String token = authHeader.substring(7).trim();
+                    if (!token.isBlank() && jwtService.isTokenValid(token)) {
+                        var claims = jwtService.extractAllClaims(token);
+                        String staffIdStr = claims.get("staff_id", String.class);
+                        if (staffIdStr != null && !staffIdStr.isBlank()) {
+                            try {
+                                UUID staffId = UUID.fromString(staffIdStr);
+                                var staffById = staffUsersRepository.findById(staffId);
+                                if (staffById.isPresent()) {
+                                    return staffById.get();
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                        String sub = claims.getSubject();
+                        if (sub != null && !sub.isBlank()) {
+                            var staffBySub = staffUsersRepository.findByUsername(sub);
+                            if (staffBySub.isPresent()) {
+                                return staffBySub.get();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        throw new TransactionException("Authentication required: Valid authenticated staff account is required to perform OTC operations.");
     }
 
     private String generateTransactionRef(String prefix) {
@@ -488,6 +656,46 @@ public class OtcTransactionService {
                 .minDepositAmount(getRequiredSystemParameter("OTC_MINIMUM_DEPOSIT_AMOUNT"))
                 .minWithdrawalAmount(getRequiredSystemParameter("OTC_MINIMUM_WITHDRAWAL_AMOUNT"))
                 .minimumBalance(getRequiredSystemParameter("MINIMUM_BALANCE"))
+                .maxOnetimeWithdrawal(getRequiredSystemParameter("OTC_ONETIME_WITHDRAWAL_LIMIT"))
+                .maxDailyWithdrawal(getRequiredSystemParameter("OTC_DAILY_WITHDRAWAL_LIMIT"))
+                .build();
+    }
+
+    /**
+     * Retrieves withdrawal limit status for a specific account.
+     */
+    @Transactional(readOnly = true)
+    public OtcAccountLimitDto getAccountLimitStatus(String accountNumber) {
+        if (accountNumber == null || accountNumber.trim().isEmpty()) {
+            throw new TransactionException("Account number is required.");
+        }
+        Accounts account = accountRepository.findByAccountNumber(accountNumber.trim())
+                .orElseThrow(() -> new AccountNotFoundException("Account not found: " + accountNumber));
+
+        BigDecimal maxOnetime = getRequiredSystemParameter("OTC_ONETIME_WITHDRAWAL_LIMIT");
+        BigDecimal maxDaily = getRequiredSystemParameter("OTC_DAILY_WITHDRAWAL_LIMIT");
+
+        LocalDate today = LocalDate.now();
+        LocalDateTime startOfDay = today.atStartOfDay();
+        LocalDateTime endOfDay = today.atTime(23, 59, 59, 999999999);
+
+        BigDecimal todayWithdrawn = bankTransactionRepository.findTodayTotalOtcWithdrawnAmount(
+                account.getAccountId(), startOfDay, endOfDay);
+        if (todayWithdrawn == null) {
+            todayWithdrawn = BigDecimal.ZERO;
+        }
+
+        BigDecimal remainingLimit = maxDaily.subtract(todayWithdrawn);
+        if (remainingLimit.compareTo(BigDecimal.ZERO) < 0) {
+            remainingLimit = BigDecimal.ZERO;
+        }
+
+        return OtcAccountLimitDto.builder()
+                .accountNumber(account.getAccountNumber())
+                .maxOnetimeWithdrawal(maxOnetime)
+                .maxDailyWithdrawal(maxDaily)
+                .todayWithdrawnAmount(todayWithdrawn)
+                .remainingDailyLimit(remainingLimit)
                 .build();
     }
 

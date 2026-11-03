@@ -11,11 +11,31 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
+  otpRequired?: boolean;
+  challengeGroupId?: string;
+  destinationMasked?: string;
   accessToken: string;
   refreshToken: string;
   username: string;
   roles: string[];
   permissions: string[];
+}
+
+export interface OtpVerifyRequest {
+  challengeGroupId: string;
+  otp: string;
+}
+
+export interface OtpResendRequest {
+  challengeGroupId: string;
+}
+
+export interface OtpResendResponse {
+  success: boolean;
+  message: string;
+  challengeGroupId: string;
+  resendNo?: number;
+  maxResendAttempts?: number;
 }
 
 export interface CoreApiResponse<T> {
@@ -382,4 +402,14 @@ export interface OtcParametersResponse {
   minDepositAmount: number;
   minWithdrawalAmount: number;
   minimumBalance: number;
+  maxOnetimeWithdrawal?: number;
+  maxDailyWithdrawal?: number;
+}
+
+export interface OtcAccountLimitResponse {
+  accountNumber: string;
+  maxOnetimeWithdrawal: number;
+  maxDailyWithdrawal: number;
+  todayWithdrawnAmount: number;
+  remainingDailyLimit: number;
 }

@@ -23,6 +23,7 @@ const flush = async () => { for (let i = 0; i < 100; i++) await Promise.resolve(
 function setup(handler) {
   const data = new Map([['accessToken', 'old-access'], ['refreshToken', 'old-refresh'], ['corporateToken', 'preserve']]);
   const requests = [], events = [], navigations = [], cache = new Map(), location = {};
+  const dispatch = action => action;
   const ok = (config, value = 'ok') => ({ config, status: 200, statusText: 'OK', headers: {}, data: value });
   const unauthorized = (config, code) => {
     throw new axios.AxiosError('unauthorized', 'ERR_BAD_REQUEST', config, null, { config, status: 401, headers: {}, data: code ? { code } : {} });
@@ -42,6 +43,10 @@ function setup(handler) {
     file = path.resolve(root, file);
     if (cache.has(file)) return cache.get(file).exports;
     const module = { exports: {} }; cache.set(file, module);
+    if (file.endsWith('/lib/redux.ts')) {
+      module.exports = { useAppDispatch: () => dispatch, resetCustomerState: () => ({ type: 'customer/resetState' }) };
+      return module.exports;
+    }
     const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText;
     vm.runInNewContext(code, {
       exports: module.exports, module,
@@ -212,10 +217,15 @@ function harness() {
     'react/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: 'fragment' },
   };
   const cache = new Map();
+  const dispatch = action => action;
   function load(relative) {
     const file = path.resolve(root, relative);
     if (cache.has(file)) return cache.get(file).exports;
     const module = { exports: {} }; cache.set(file, module);
+    if (file.endsWith('/lib/redux.ts')) {
+      module.exports = { useAppDispatch: () => dispatch, resetCustomerState: () => ({ type: 'customer/resetState' }) };
+      return module.exports;
+    }
     if (file.endsWith('/services/authService.ts')) {
       module.exports = {
         keepSessionAlive: () => { keepAliveCalls++; return keepAlive(); },

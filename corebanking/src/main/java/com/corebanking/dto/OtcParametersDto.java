@@ -17,4 +17,6 @@ public class OtcParametersDto {
     private BigDecimal minDepositAmount;
     private BigDecimal minWithdrawalAmount;
     private BigDecimal minimumBalance;
+    private BigDecimal maxOnetimeWithdrawal;
+    private BigDecimal maxDailyWithdrawal;
 }

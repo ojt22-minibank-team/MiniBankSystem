@@ -32,6 +32,7 @@ import type {
   OtcTransactionResponseDto,
   DailyCashSummaryResponse,
   OtcParametersResponse,
+  OtcAccountLimitResponse,
 } from '../types/api.types';
 
 // ============================================================
@@ -278,6 +279,11 @@ export const otcApi = {
   checkReference: (ref: string) =>
     axiosInstance.get<{ exists: boolean }>(API_ENDPOINTS.OTC.CHECK_REFERENCE, {
       params: { ref },
+    }),
+
+  getAccountLimits: (accountNumber: string) =>
+    axiosInstance.get<OtcAccountLimitResponse>(API_ENDPOINTS.OTC.ACCOUNT_LIMITS, {
+      params: { accountNumber },
     }),
 };
 
