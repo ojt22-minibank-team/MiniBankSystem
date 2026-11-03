@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
-  ArrowLeft,
   CalendarDays,
   Check,
   Copy,
@@ -277,14 +276,7 @@ export default function AccountDetailPage({
   if (error || !account) {
     return (
       <main className="mx-auto max-w-4xl p-4 md:p-8">
-        <button
-          type="button"
-          onClick={handleBack}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 transition-colors hover:text-[#00A3C4]"
-        >
-          <ArrowLeft size={16} />
-          <span>{locationState?.returnTo === "/transfer" ? "Back to Transfer" : "Back to My Accounts"}</span>
-        </button>
+        
 
         <section
           className="mt-6 rounded-3xl border border-red-200 bg-white p-8 text-center shadow-sm"
@@ -318,56 +310,51 @@ export default function AccountDetailPage({
 
   return (
     <main className="mx-auto max-w-6xl space-y-3.5 px-4 py-2.5 sm:px-6 sm:py-3.5 md:px-8">
-      {/* Top Header: Step-Back Arrow, Account Switcher & Status Badge */}
-      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between pb-0.5">
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            type="button"
-            onClick={handleBack}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-2xs transition-all hover:border-[#00A3C4] hover:bg-cyan-50/50 hover:text-[#00A3C4]"
-            title={locationState?.returnTo === "/transfer" ? "Back to Transfer" : "Go back"}
-            aria-label={locationState?.returnTo === "/transfer" ? "Back to Transfer" : "Go back"}
-          >
-            <ArrowLeft size={16} />
-          </button>
-
-          {/* Account Switcher Tabs (when customer has 2 or more accounts) */}
-          {allAccounts && allAccounts.length > 1 && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-none">
-              {allAccounts.map((acc) => {
-                const isSelected = acc.accountNumber === targetAccountNumber;
-                const typeShort = acc.accountType.toUpperCase().includes("SAVING")
-                  ? "Savings"
-                  : "Current";
-                return (
-                  <button
-                    key={acc.accountNumber}
-                    type="button"
-                    onClick={() => onSelectAccount?.(acc.accountNumber)}
-                    className={`shrink-0 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all duration-200 ${
-                      isSelected
-                        ? "bg-[#00A3C4] text-white shadow-xs shadow-cyan-500/25"
-                        : "border border-slate-200 bg-white text-slate-600 hover:border-[#00A3C4] hover:text-[#00A3C4] hover:bg-cyan-50/40"
-                    }`}
-                  >
-                    <span>
-                      {typeShort} (•••{acc.accountNumber.slice(-3)})
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Status Badge */}
-        <div
-          className={`self-start sm:self-auto inline-flex items-center gap-1.5 rounded-full border px-3 py-0.5 text-xs font-bold ${statusStyle}`}
+      <nav aria-label="Breadcrumb" className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold">
+        <Link
+          to="/dashboard"
+          className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
         >
-          <span className="h-2 w-2 rounded-full bg-current opacity-80" />
-          <span>{statusLabel}</span>
+          Dashboard
+        </Link>
+        <span className="text-slate-300" aria-hidden="true">/</span>
+        <button
+          type="button"
+          onClick={handleBack}
+          className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
+        >
+          My Accounts
+        </button>
+        <span className="text-slate-300" aria-hidden="true">/</span>
+        <span className="text-[#00A3C4]" aria-current="page">Account Details</span>
+      </nav>
+      {/* Account Switcher Tabs (when customer has 2 or more accounts) */}
+      {allAccounts && allAccounts.length > 1 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {allAccounts.map((acc) => {
+            const isSelected = acc.accountNumber === targetAccountNumber;
+            const typeShort = acc.accountType.toUpperCase().includes("SAVING")
+              ? "Savings"
+              : "Current";
+            return (
+              <button
+                key={acc.accountNumber}
+                type="button"
+                onClick={() => onSelectAccount?.(acc.accountNumber)}
+                className={`shrink-0 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all duration-200 cursor-pointer ${
+                  isSelected
+                    ? "bg-[#00A3C4] text-white shadow-xs shadow-cyan-500/25"
+                    : "border border-slate-200 bg-white text-slate-600 hover:border-[#00A3C4] hover:text-[#00A3C4] hover:bg-cyan-50/40"
+                }`}
+              >
+                <span>
+                  {typeShort} (•••{acc.accountNumber.slice(-3)})
+                </span>
+              </button>
+            );
+          })}
         </div>
-      </div>
+      )}
 
       {/* Hero Section: Bank Card on Left, Balance & Quick Actions on Right */}
       <section className="overflow-hidden rounded-3xl border border-slate-100 bg-white p-4 sm:p-5 shadow-sm">
@@ -407,38 +394,56 @@ export default function AccountDetailPage({
 
           {/* Account Balances & Quick Actions Panel */}
           <div className="flex-1 space-y-4 min-w-0">
-            {/* Account Number Copy Row */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Account Number:
-              </span>
-              <span className="font-mono text-sm font-bold text-[#0A192F]">
-                {showAccountNumber
-                  ? account.accountNumber
-                  : maskAccountNumber(account.accountNumber)}
-              </span>
+            {/* Account Number Copy Row & Status Badge at the Top Right of Info Container */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  Account Number:
+                </span>
+                <span className="font-mono text-sm font-bold text-[#0A192F]">
+                  {showAccountNumber
+                    ? account.accountNumber
+                    : maskAccountNumber(account.accountNumber)}
+                </span>
 
-              <button
-                type="button"
-                onClick={() => setShowAccountNumber((prev) => !prev)}
-                className="p-1 text-slate-400 hover:text-slate-600"
-                title={showAccountNumber ? "Hide number" : "Show number"}
-              >
-                {showAccountNumber ? <EyeOff size={15} /> : <Eye size={15} />}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAccountNumber((prev) => !prev)}
+                  className="p-1 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                  title={showAccountNumber ? "Hide number" : "Show number"}
+                >
+                  {showAccountNumber ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
 
-              <button
-                type="button"
-                onClick={handleCopyAccountNumber}
-                className="p-1 text-slate-400 hover:text-[#00A3C4]"
-                title="Copy account number"
+                <button
+                  type="button"
+                  onClick={handleCopyAccountNumber}
+                  className="p-1 text-slate-400 hover:text-[#00A3C4] transition-colors cursor-pointer"
+                  title="Copy account number"
+                >
+                  {copied ? (
+                    <Check size={15} className="text-emerald-600 font-bold" />
+                  ) : (
+                    <Copy size={15} />
+                  )}
+                </button>
+              </div>
+
+              {/* Status Badge in Top-Right Corner of White Box */}
+              <div
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold shadow-2xs ${statusStyle}`}
               >
-                {copied ? (
-                  <Check size={15} className="text-emerald-600" />
-                ) : (
-                  <Copy size={15} />
-                )}
-              </button>
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    account.status === "ACTIVE"
+                      ? "bg-emerald-500"
+                      : account.status === "CLOSED"
+                      ? "bg-red-500"
+                      : "bg-amber-500"
+                  }`}
+                />
+                <span>{statusLabel}</span>
+              </div>
             </div>
 
             {/* Balances Grid: Current Balance (Total Ledger) & Minimum Reserve (Locked Reserve) */}

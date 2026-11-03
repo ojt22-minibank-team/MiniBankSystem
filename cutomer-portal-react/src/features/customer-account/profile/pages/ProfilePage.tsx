@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 
 import {
   Camera,
@@ -579,6 +580,17 @@ export default function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
+      {/* Breadcrumb Navigation */}
+      <nav aria-label="Breadcrumb" className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold">
+        <Link
+          to="/dashboard"
+          className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
+        >
+          Dashboard
+        </Link>
+        <span className="text-slate-300" aria-hidden="true">/</span>
+        <span className="text-[#00A3C4]" aria-current="page">Profile</span>
+      </nav>
         {/* ပြင်ဆင်ချက်: Error / success message များသည် ဘာသာပြန်ပြီးသား string ကို ပြသသည်။ */}
         {error && (
           <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">

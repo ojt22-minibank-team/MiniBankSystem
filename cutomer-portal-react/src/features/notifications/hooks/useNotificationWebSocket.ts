@@ -80,8 +80,10 @@ export const useNotificationWebSocket = ({
 
     const retry = (expected: Authentication) => {
       if (!stillCurrent(expected) || blockedToken === expected.token || reconnectTimer !== undefined) return;
-      if (attempts >= maximumAttempts) { blockedToken = expected.token; return; }
-      const delay = Math.min(2000 * Math.pow(2, Math.max(0, attempts - 1)), 30000);
+      // Resilient reconnection: after initial attempts, back off gracefully (25s) rather than terminating
+      const delay = attempts >= maximumAttempts
+        ? 25000
+        : Math.min(2000 * Math.pow(2, Math.max(0, attempts - 1)), 25000);
       reconnectTimer = window.setTimeout(() => {
         reconnectTimer = undefined;
         if (stillCurrent(expected)) connect(expected);

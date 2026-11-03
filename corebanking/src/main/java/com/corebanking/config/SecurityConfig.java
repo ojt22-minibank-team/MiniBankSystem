@@ -103,16 +103,16 @@ public class SecurityConfig {
                     "/**"
                 ).permitAll()
 
-                // Customer APIs
+                // Customer APIs & Account APIs (require authenticated staff)
                 .requestMatchers(
                     "/api/customers",
-                    "/api/customers/**"
-                ).permitAll()
-
-                // Account APIs
-                .requestMatchers(
+                    "/api/customers/**",
                     "/api/accounts",
-                    "/api/accounts/**",
+                    "/api/accounts/**"
+                ).authenticated()
+
+                // WebSocket endpoints
+                .requestMatchers(
                     "/ws/**"
                 ).permitAll()
 

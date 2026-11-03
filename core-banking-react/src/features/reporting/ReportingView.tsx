@@ -5,6 +5,7 @@ import AccountStatusPanel from './components/AccountStatusPanel';
 import AuditTrailPanel from './components/AuditTrailPanel';
 import FeeRevenuePanel from './components/FeeRevenuePanel';
 import LargeTransactionPanel from './components/LargeTransactionPanel';
+import TransactionDetailPanel from './components/TransactionDetailPanel';
 
 const today = new Date().toISOString().slice(0, 10);
 const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
@@ -68,6 +69,7 @@ const ReportingView: React.FC = () => {
     audit: false,
     fee: false,
     aml: false,
+    transactionDetail: false,
   });
 
   const [searchKeys, setSearchKeys] = useState<Record<ReportTab, number>>({
@@ -76,6 +78,7 @@ const ReportingView: React.FC = () => {
     audit: 0,
     fee: 0,
     aml: 0,
+    transactionDetail: 0,
   });
 
   const [isSearching, setIsSearching] = useState(false);
@@ -143,6 +146,17 @@ const ReportingView: React.FC = () => {
       setAppliedEndDate(today);
       setAppliedAmlThreshold(10000000);
       setAppliedAmlTransactionType('');
+    } else if (activeTab === 'transactionDetail') {
+      setStartDate(monthAgo);
+      setEndDate(today);
+      setLedgerStatus('');
+      setLedgerTransactionType('');
+      setFeeChannel('');
+      setAppliedStartDate(monthAgo);
+      setAppliedEndDate(today);
+      setAppliedLedgerStatus('');
+      setAppliedLedgerTransactionType('');
+      setAppliedFeeChannel('');
     }
 
     setHasSearched((prev) => ({ ...prev, [activeTab]: false }));
@@ -175,6 +189,11 @@ const ReportingView: React.FC = () => {
       title: 'Ready to Generate Large Transaction & AML Report',
       description:
         'Define the threshold amount and transaction filters above, then click the "Search" button to flag high-value AML compliance records.',
+    },
+    transactionDetail: {
+      title: 'Ready to Generate Transaction Detail Report',
+      description:
+        'Select your date range, status, type, and channel filters above, then click the "Search" button to inspect individual transaction ledger records.',
     },
   };
 
@@ -229,6 +248,12 @@ const ReportingView: React.FC = () => {
           onClick={() => setActiveTab('aml')}
         >
           Large Transactions (AML)
+        </button>
+        <button
+          style={tabStyle(activeTab === 'transactionDetail')}
+          onClick={() => setActiveTab('transactionDetail')}
+        >
+          Transaction Detail
         </button>
       </div>
 
@@ -334,6 +359,22 @@ const ReportingView: React.FC = () => {
             searchKey={searchKeys.aml}
             onLoadingChange={(l) => {
               if (activeTab === 'aml') setIsSearching(l);
+            }}
+          />
+        </div>
+      )}
+
+      {hasSearched.transactionDetail && (
+        <div style={{ display: activeTab === 'transactionDetail' ? 'block' : 'none' }}>
+          <TransactionDetailPanel
+            startDate={appliedStartDate}
+            endDate={appliedEndDate}
+            status={appliedLedgerStatus}
+            transactionType={appliedLedgerTransactionType}
+            channel={appliedFeeChannel}
+            searchKey={searchKeys.transactionDetail}
+            onLoadingChange={(l) => {
+              if (activeTab === 'transactionDetail') setIsSearching(l);
             }}
           />
         </div>

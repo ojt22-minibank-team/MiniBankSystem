@@ -1,13 +1,20 @@
+import { Link } from "react-router-dom";
 
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   CheckCheck,
-  Megaphone,
   RefreshCw,
 } from "lucide-react";
 
 import { useAppDispatch, useAppSelector } from "../../../../lib/redux";
+
+import {
+  getAuthenticationGeneration,
+  hasTokens,
+  isAuthenticationGenerationCurrent,
+  subscribeToAuthenticationChanges,
+} from "../../../../utils/tokenStorage";
 
 import {
   clearAnnouncementErrors,
@@ -19,6 +26,10 @@ import {
 import AnnouncementList from "../components/AnnouncementList";
 
 import type { AnnouncementFilter } from "../types/announcementTypes";
+
+// Tracks the initial auto-fetch attempt for each authentication session.
+// Persists across component unmounts and remounts within this application runtime.
+let lastAutoFetchGeneration: number | null = null;
 
 const filters: {
   value: AnnouncementFilter;
@@ -42,6 +53,9 @@ export default function AnnouncementsPage() {
     actionError,
   } = useAppSelector((state) => state.announcements);
 
+  const [authenticationGeneration, setAuthenticationGeneration] =
+    useState(getAuthenticationGeneration);
+
   const pendingIds = useMemo(
     () => Object.keys(pendingRequests || {}).map(Number),
     [pendingRequests]
@@ -50,11 +64,46 @@ export default function AnnouncementsPage() {
 
   const [filter, setFilter] = useState<AnnouncementFilter>("ALL");
 
+  // Subscribe to login, logout and authentication changes.
   useEffect(() => {
-    if (!hasLoaded && !loading) {
-      void dispatch(fetchAnnouncements());
+    const unsubscribe = subscribeToAuthenticationChanges(() => {
+      setAuthenticationGeneration(getAuthenticationGeneration());
+    });
+
+    // Synchronize in case authentication changed before subscription.
+    setAuthenticationGeneration(getAuthenticationGeneration());
+
+    return unsubscribe;
+  }, []);
+
+  // Automatically fetch announcements once per valid authentication session.
+  useEffect(() => {
+    const generation = authenticationGeneration;
+
+    const isSessionValid =
+      hasTokens() &&
+      isAuthenticationGenerationCurrent(generation);
+
+    if (
+      !isSessionValid ||
+      lastAutoFetchGeneration === generation ||
+      hasLoaded ||
+      loading
+    ) {
+      return;
     }
-  }, [dispatch, hasLoaded, loading]);
+
+    // Mark the attempt before dispatch to prevent duplicate requests
+    // from React Strict Mode or component remounts.
+    lastAutoFetchGeneration = generation;
+
+    void dispatch(fetchAnnouncements());
+  }, [
+    dispatch,
+    authenticationGeneration,
+    hasLoaded,
+    loading,
+  ]);
 
   const unreadCount = useMemo(
     () => announcements.filter((item) => !item.isRead).length,
@@ -99,8 +148,19 @@ export default function AnnouncementsPage() {
     void dispatch(markAllAnnouncementsRead());
   };
 
+  // Manual refresh is intentionally independent of the auto-fetch attempt.
+  // It can retry after a failed initial request within the same session.
   const handleRefresh = () => {
     if (loading) return;
+
+    const generation = getAuthenticationGeneration();
+
+    const isSessionValid =
+      hasTokens() &&
+      isAuthenticationGenerationCurrent(generation);
+
+    if (!isSessionValid) return;
+
     void dispatch(fetchAnnouncements());
   };
 
@@ -109,10 +169,17 @@ export default function AnnouncementsPage() {
       <header className="mb-6">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-[#00A3C4]">
-              <Megaphone size={15} aria-hidden="true" />
-              Bank updates
-            </div>
+            {/* Breadcrumb Navigation */}
+            <nav aria-label="Breadcrumb" className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold">
+              <Link
+                to="/dashboard"
+                className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
+              >
+                Dashboard
+              </Link>
+              <span className="text-slate-300" aria-hidden="true">/</span>
+              <span className="text-[#00A3C4]" aria-current="page">Announcements</span>
+            </nav>
 
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               Announcements

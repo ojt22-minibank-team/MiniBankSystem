@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toBlob } from "html-to-image";
 import {
-  Building2,
   CheckCircle2,
   AlertCircle,
   XCircle,
@@ -28,6 +27,7 @@ import {
 } from "../types/transactionHistoryTypes";
 import TransactionStatusBadge from "./TransactionStatusBadge";
 import TransferReceiptView from "../../../transfer/components/TransferReceiptView";
+import { EkarajCrown } from "../../../../components/common/EkarajLogo";
 import { mapHistoryItemToTransferReceiptData } from "../utils/transactionReceiptAdapter";
 
 interface TransactionDetailContentProps {
@@ -146,6 +146,7 @@ export default function TransactionDetailContent({
   const [shareImageBlob, setShareImageBlob] = useState<Blob | null>(null);
   const [shareImageUrl, setShareImageUrl] = useState<string | null>(null);
   const [imageCopied, setImageCopied] = useState<boolean>(false);
+  const [imageSaved, setImageSaved] = useState<boolean>(false);
 
   // Clean up print isolation class if unmounted while printing
   useEffect(() => {
@@ -165,6 +166,10 @@ export default function TransactionDetailContent({
 
   const viewMode = getViewMode(transaction.status);
   const isCompleted = viewMode === "SUCCESS_RECEIPT";
+  const isFailed = Boolean(
+    transaction &&
+    ["FAILED", "REJECTED", "CANCELLED", "DECLINED"].includes((transaction.status || "").toUpperCase())
+  );
   const isInternalTransfer = transaction.transactionType === "INTERNAL_TRANSFER";
   const isExternalPayment = transaction.transactionType === "EXTERNAL_PAYMENT";
   const isRefund = transaction.transactionType === "REFUND";
@@ -210,6 +215,21 @@ export default function TransactionDetailContent({
     });
     if (!blob) throw new Error("Failed to generate image blob");
     return blob;
+  };
+
+    const handleDownloadImage = () => {
+    if (!shareImageUrl && !shareImageBlob) return;
+    const url = shareImageUrl || (shareImageBlob ? URL.createObjectURL(shareImageBlob) : null);
+    if (!url) return;
+    const link = document.createElement("a");
+    link.href = url;
+    const refCode = transaction?.transactionRef || Date.now();
+    link.download = `ekaraj-receipt-${String(refCode).replace(/[^a-zA-Z0-9_-]/g, "_")}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setImageSaved(true);
+    setTimeout(() => setImageSaved(false), 3000);
   };
 
   const handleShare = async () => {
@@ -481,7 +501,7 @@ export default function TransactionDetailContent({
               className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in"
               onClick={() => setShowShareModal(false)}
             />
-            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-5 text-slate-800 animate-in zoom-in-95 border border-slate-100 max-h-[92vh] overflow-y-auto">
+            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-4 sm:p-5 text-slate-800 animate-in zoom-in-95 border border-slate-100 max-h-[92vh] overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               {/* Modal Header */}
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
                 <div className="flex items-center gap-2">
@@ -513,7 +533,7 @@ export default function TransactionDetailContent({
                   <img
                     src={shareImageUrl}
                     alt="Receipt Preview"
-                    className="max-h-40 w-auto object-contain rounded-xl shadow-2xs"
+                    className="max-h-32 sm:max-h-36 w-auto object-contain rounded-xl shadow-2xs"
                   />
                 </div>
               )}
@@ -528,8 +548,8 @@ export default function TransactionDetailContent({
                 </div>
               )}
 
-              {/* Quick Copy Image Button */}
-              <div className="mb-3">
+              {/* Quick Actions (Copy Slip Image + Save Image to Device) */}
+              <div className="mb-2.5 space-y-2">
                 <button
                   type="button"
                   onClick={async () => {
@@ -538,7 +558,7 @@ export default function TransactionDetailContent({
                       setImageCopied(ok);
                     }
                   }}
-                  className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl font-bold text-xs transition duration-200 shadow-sm cursor-pointer ${
+                  className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl font-bold text-xs transition duration-200 shadow-sm cursor-pointer ${
                     imageCopied
                       ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20"
                       : "bg-[#00A3C4] hover:bg-[#0891B2] text-white shadow-cyan-500/20"
@@ -556,10 +576,32 @@ export default function TransactionDetailContent({
                     </>
                   )}
                 </button>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadImage}
+                  className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl font-bold text-xs transition duration-200 cursor-pointer border ${
+                    imageSaved
+                      ? "bg-emerald-50 border-emerald-300 text-emerald-700"
+                      : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700"
+                  }`}
+                >
+                  {imageSaved ? (
+                    <>
+                      <Check className="w-4 h-4 shrink-0 text-emerald-600" />
+                      <span>Saved to Device (Downloads)!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4 shrink-0 text-slate-500" />
+                      <span>Save Image to Device (Download PNG)</span>
+                    </>
+                  )}
+                </button>
               </div>
 
               {/* Social / Chat Share Apps */}
-              <div className="pt-3 border-t border-slate-100">
+              <div className="pt-2.5 border-t border-slate-100">
                 <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">
                   Open Chat App to Paste
                 </p>
@@ -629,21 +671,30 @@ export default function TransactionDetailContent({
     <div className="w-full max-w-xl mx-auto">
       <div className="transaction-history-receipt-print relative w-full overflow-hidden rounded-3xl bg-white shadow-xl border border-slate-200 flex flex-col print-receipt-container">
         {/* Bank Header */}
-        <div className="bg-gradient-to-r from-[#00A3C4] to-[#0284C7] px-6 py-4 text-white flex items-center justify-between border-b border-cyan-600/30 shrink-0 shadow-xs">
+        <div className="bg-[#EFF6FF] dark:bg-[#071328] px-6 py-4 text-[#001D77] dark:text-white flex items-center justify-between border-b border-blue-100 dark:border-slate-800 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/20 text-blue-300 border border-blue-400/30">
-              <Building2 className="w-4 h-4" />
-            </div>
+            <EkarajCrown size={32} className="shrink-0" />
             <div>
-              <h2 className="text-xs font-black tracking-wider uppercase text-white">Mini Bank</h2>
-              <p className="text-[10px] text-cyan-100 font-medium">Transaction Activity Detail</p>
+              <h2 className="text-xs font-black tracking-wider uppercase text-[#001D77] dark:text-blue-300">EKARAJ BANK</h2>
+              <p className="text-[10px] text-[#4B5869] dark:text-slate-400 font-medium">Transaction Activity Detail</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-blue-800/60 text-blue-200 border border-blue-700/50">
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+            <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
               {formatTypeLabel(transaction.transactionType)}
             </span>
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                className="no-print p-1.5 -mr-1.5 sm:-mr-2 rounded-lg text-slate-400 hover:text-[#001D77] hover:bg-blue-100/60 dark:hover:bg-slate-800 dark:hover:text-blue-300 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-slate-700 cursor-pointer"
+                aria-label="Close"
+                title="Close"
+              >
+                <X className="w-5 h-5 stroke-[2.2]" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -938,26 +989,30 @@ export default function TransactionDetailContent({
         </div>
 
         {/* Footer / Actions */}
-        <div className="no-print p-4 sm:p-5 bg-slate-50/80 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-3 shrink-0">
-          {isCompleted && (
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-[#0878E8]"
-            >
-              <Printer className="w-3.5 h-3.5 text-slate-500" />
-              <span>Print Receipt</span>
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onBack}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-6 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-[#0878E8]"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
-            <span>Back to Transactions</span>
-          </button>
-        </div>
+        {(isCompleted || !isFailed) && (
+          <div className="no-print p-4 sm:p-5 bg-slate-50/80 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-3 shrink-0">
+            {isCompleted && (
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-[#0878E8]"
+              >
+                <Printer className="w-3.5 h-3.5 text-slate-500" />
+                <span>Print Receipt</span>
+              </button>
+            )}
+            {!isFailed && (
+              <button
+                type="button"
+                onClick={onBack}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-6 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-[#0878E8]"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
+                <span>Back to Transactions</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

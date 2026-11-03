@@ -438,10 +438,10 @@ export default function StaffListPage() {
           </div>
         </div>
 
-        {/* 3 Summary KPI Cards */}
+        {/* 3 Summary KPI Cards (Liquid Glass) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)]">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <div className="liquid-glass-card rounded-3xl p-6">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Total Personnel
             </span>
             <div className="flex items-baseline justify-between mt-3">
@@ -454,12 +454,12 @@ export default function StaffListPage() {
             </div>
           </div>
 
-          <div className="glass-panel p-6">
-            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+          <div className="liquid-glass-card rounded-3xl p-6">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Tellers & Cashiers
             </span>
             <div className="flex items-baseline justify-between mt-3">
-              <span className="text-2xl sm:text-[28px] font-black text-[#1E1B4B] font-mono tabular-nums">
+              <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
                 {tellerCount}
               </span>
               <span className="status-pill-amber text-[11px]">
@@ -468,12 +468,12 @@ export default function StaffListPage() {
             </div>
           </div>
 
-          <div className="glass-panel p-6">
-            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+          <div className="liquid-glass-card rounded-3xl p-6">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Admins & Auditors
             </span>
             <div className="flex items-baseline justify-between mt-3">
-              <span className="text-2xl sm:text-[28px] font-black text-[#1E1B4B] font-mono tabular-nums">
+              <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
                 {adminAuditorCount}
               </span>
               <span className="status-pill-purple text-[11px]">
