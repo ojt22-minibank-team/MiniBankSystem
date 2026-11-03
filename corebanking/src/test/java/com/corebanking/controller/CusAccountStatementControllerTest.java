@@ -6,6 +6,7 @@ import com.corebanking.exception.AccountNotFoundException;
 import com.corebanking.exception.CusAuthenticationException;
 import com.corebanking.exception.CusValidationException;
 import com.corebanking.exception.GlobalExceptionHandler;
+import com.corebanking.service.AuditTrailService;
 import com.corebanking.service.CusAccountStatementCsvService;
 import com.corebanking.service.CusAccountStatementPdfService;
 import com.corebanking.service.CusAccountStatementService;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -27,8 +29,10 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
@@ -54,6 +58,9 @@ class CusAccountStatementControllerTest {
 
     @Mock
     private CusAccountStatementCsvService csvService;
+
+    @Mock
+    private AuditTrailService auditTrailService;
 
     @InjectMocks
     private CusAccountStatementController controller;
@@ -129,6 +136,15 @@ class CusAccountStatementControllerTest {
 
         verify(statementService).getAccountStatement(ACCOUNT_NUMBER, FROM_DATE, TO_DATE);
         verify(pdfService).generateAccountStatementPdf(statement);
+        verify(auditTrailService, times(1)).logDataChange(
+                eq("REPORTING"),
+                eq("ACCOUNT_STATEMENT_PDF_DOWNLOAD"),
+                eq("ACCOUNT"),
+                eq("******3817"),
+                isNull(),
+                any(),
+                any()
+        );
         verifyNoInteractions(csvService);
     }
 
@@ -162,6 +178,15 @@ class CusAccountStatementControllerTest {
 
         verify(statementService).getAccountStatement(ACCOUNT_NUMBER, FROM_DATE, TO_DATE);
         verify(csvService).generateAccountStatementCsv(statement);
+        verify(auditTrailService, times(1)).logDataChange(
+                eq("REPORTING"),
+                eq("ACCOUNT_STATEMENT_CSV_DOWNLOAD"),
+                eq("ACCOUNT"),
+                eq("******3817"),
+                isNull(),
+                any(),
+                any()
+        );
         verifyNoInteractions(pdfService);
     }
 
@@ -360,6 +385,113 @@ class CusAccountStatementControllerTest {
                 .andReturn();
 
         assertInstanceOf(MethodArgumentTypeMismatchException.class, result.getResolvedException());
-        verifyNoInteractions(statementService, csvService, pdfService);
+        verifyNoInteractions(statementService, csvService, pdfService, auditTrailService);
+    }
+
+    // -------------------------------------------------------------------------
+    // 8. Audit Logging Verification Tests
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Failed PDF generation does NOT produce ACCOUNT_STATEMENT_PDF_DOWNLOAD audit event")
+    void downloadPdf_failedGeneration_doesNotProduceAuditEvent() throws Exception {
+        CusAccountStatementDTO statement = createSampleStatement(ACCOUNT_NUMBER, FROM_DATE, TO_DATE);
+
+        when(statementService.getAccountStatement(ACCOUNT_NUMBER, FROM_DATE, TO_DATE))
+                .thenReturn(statement);
+        when(pdfService.generateAccountStatementPdf(statement))
+                .thenThrow(new RuntimeException("JasperReports compilation error"));
+
+        try {
+            mockMvc.perform(get(BASE_URL + "/pdf")
+                    .param("accountNumber", ACCOUNT_NUMBER)
+                    .param("fromDate", "2026-10-19")
+                    .param("toDate", "2026-10-31"));
+        } catch (Exception ignored) {
+        }
+
+        verify(auditTrailService, never()).logDataChange(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Failed CSV generation does NOT produce ACCOUNT_STATEMENT_CSV_DOWNLOAD audit event")
+    void downloadCsv_failedGeneration_doesNotProduceAuditEvent() throws Exception {
+        CusAccountStatementDTO statement = createSampleStatement(ACCOUNT_NUMBER, FROM_DATE, TO_DATE);
+
+        when(statementService.getAccountStatement(ACCOUNT_NUMBER, FROM_DATE, TO_DATE))
+                .thenReturn(statement);
+        when(csvService.generateAccountStatementCsv(statement))
+                .thenThrow(new RuntimeException("CSV stream error"));
+
+        try {
+            mockMvc.perform(get(BASE_URL + "/csv")
+                    .param("accountNumber", ACCOUNT_NUMBER)
+                    .param("fromDate", "2026-10-19")
+                    .param("toDate", "2026-10-31"));
+        } catch (Exception ignored) {
+        }
+
+        verify(auditTrailService, never()).logDataChange(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Failed account retrieval (ownership denied) does NOT produce PDF download audit event")
+    void downloadPdf_ownershipFailure_doesNotProduceDownloadAuditEvent() throws Exception {
+        when(statementService.getAccountStatement(ACCOUNT_NUMBER, FROM_DATE, TO_DATE))
+                .thenThrow(new AccountNotFoundException("Account not found or access denied for this customer"));
+
+        mockMvc.perform(get(BASE_URL + "/pdf")
+                        .param("accountNumber", ACCOUNT_NUMBER)
+                        .param("fromDate", "2026-10-19")
+                        .param("toDate", "2026-10-31"))
+                .andExpect(status().isNotFound());
+
+        verify(auditTrailService, never()).logDataChange(any(), any(), any(), any(), any(), any(), any());
+        verifyNoInteractions(pdfService);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    @DisplayName("Successful PDF download passes masked account number and correct metadata to audit service")
+    void downloadPdf_auditMetadata_containsMaskedAccountAndResult() throws Exception {
+        CusAccountStatementDTO statement = createSampleStatement(ACCOUNT_NUMBER, FROM_DATE, TO_DATE);
+
+        when(statementService.getAccountStatement(ACCOUNT_NUMBER, FROM_DATE, TO_DATE))
+                .thenReturn(statement);
+        when(pdfService.generateAccountStatementPdf(statement))
+                .thenReturn(PDF_BYTES);
+
+        mockMvc.perform(get(BASE_URL + "/pdf")
+                        .param("accountNumber", ACCOUNT_NUMBER)
+                        .param("fromDate", "2026-10-19")
+                        .param("toDate", "2026-10-31"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<String> catCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> typeCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> entityTypeCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> entityIdCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object> newEntityCaptor = ArgumentCaptor.forClass(Object.class);
+
+        verify(auditTrailService, times(1)).logDataChange(
+                catCaptor.capture(),
+                typeCaptor.capture(),
+                entityTypeCaptor.capture(),
+                entityIdCaptor.capture(),
+                isNull(),
+                newEntityCaptor.capture(),
+                any()
+        );
+
+        assertEquals("REPORTING", catCaptor.getValue());
+        assertEquals("ACCOUNT_STATEMENT_PDF_DOWNLOAD", typeCaptor.getValue());
+        assertEquals("ACCOUNT", entityTypeCaptor.getValue());
+        assertEquals("******3817", entityIdCaptor.getValue());
+
+        assertInstanceOf(Map.class, newEntityCaptor.getValue());
+        Map<String, Object> meta = (Map<String, Object>) newEntityCaptor.getValue();
+        assertEquals("2026-10-19", meta.get("fromDate"));
+        assertEquals("2026-10-31", meta.get("toDate"));
+        assertEquals("SUCCESS", meta.get("result"));
     }
 }
