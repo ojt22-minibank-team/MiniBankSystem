@@ -93,15 +93,15 @@ function formatDate(value: string | null): string {
 }
 
 function maskAccountNumber(accountNumber: string): string {
-  if (!accountNumber) return "**** *** ***";
+  if (!accountNumber) return "**** **** ****";
   const cleaned = accountNumber.replace(/\D/g, "");
 
   if (cleaned.length === 10) {
-    return `**** *** ${cleaned.slice(7, 10)}`;
+    return `**** **** ${cleaned.slice(6, 10)}`;
   }
 
   const last3 = cleaned.length >= 3 ? cleaned.slice(-3) : cleaned;
-  return `**** *** ${last3}`;
+  return `**** **** ${last3}`;
 }
 
 function InfoItem({

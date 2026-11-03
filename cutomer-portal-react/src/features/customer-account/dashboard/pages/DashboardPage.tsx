@@ -154,6 +154,7 @@ export default function DashboardPage() {
               customerName={dashboard.fullName}
               showBalance={showBalance}
               onToggleBalance={handleToggleBalance}
+              showStatus
             />
 
             {/* Recent Transactions */}

@@ -1,8 +1,10 @@
 
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { Link } from "react-router-dom";
 import { Check, Copy, Eye, EyeOff } from "lucide-react";
 import type { DashboardAccount } from "../types/dashboardTypes";
+import type { AccountStatus as AccountStatusType } from "../../accounts/types/accountTypes";
+import AccountStatus from "../../accounts/components/AccountStatus";
 import {
   EkarajCrown,
   EbMonogram,
@@ -16,6 +18,7 @@ interface BankCardProps {
   index?: number;
   showBalance?: boolean;
   onToggleBalance?: () => void;
+  showStatus?: boolean;
   className?: string;
   isLink?: boolean;
   onClick?: () => void;
@@ -134,7 +137,7 @@ export function formatBalance(amount: number): string {
 
 /**
  * Returns a masked account number for card display.
- * DB 10-digit format: **** *** 568
+ * DB 10-digit format: **** **** 568
  */
 export function formatHashedCardNumber(accountNumber: string): string {
   if (!accountNumber) return "••••  •••  •••";
@@ -142,7 +145,7 @@ export function formatHashedCardNumber(accountNumber: string): string {
   const cleaned = accountNumber.replace(/\D/g, "");
 
   if (cleaned.length === 10) {
-    return `****  ***  ${cleaned.slice(7, 10)}`;
+    return `****  ****  ${cleaned.slice(6, 10)}`;
   }
 
   if (cleaned.length === 16) {
@@ -154,49 +157,20 @@ export function formatHashedCardNumber(accountNumber: string): string {
   return `**** ${last4}`;
 }
 
-type AccountStatusStyle = {
-  label: string;
-  className: string;
-};
+function normalizeAccountStatus(
+  status: unknown,
+): AccountStatusType | null {
+  if (typeof status !== "string") return null;
 
-function getAccountStatusStyle(
-  status: string | null | undefined,
-): AccountStatusStyle {
-  switch (status?.toUpperCase()) {
+  switch (status.toUpperCase()) {
     case "ACTIVE":
-      return {
-        label: "Active",
-        className:
-          "bg-emerald-500/15 text-emerald-300 border-emerald-400/30",
-      };
-
     case "DORMANT":
-      return {
-        label: "Dormant",
-        className:
-          "bg-amber-500/15 text-amber-300 border-amber-400/30",
-      };
-
     case "FROZEN":
-      return {
-        label: "Frozen",
-        className:
-          "bg-blue-500/15 text-blue-300 border-blue-400/30",
-      };
-
     case "CLOSED":
-      return {
-        label: "Closed",
-        className:
-          "bg-slate-500/15 text-slate-300 border-slate-400/30",
-      };
+      return status.toUpperCase() as AccountStatusType;
 
     default:
-      return {
-        label: "Unknown",
-        className:
-          "bg-slate-500/15 text-slate-300 border-slate-400/30",
-      };
+      return null;
   }
 }
 
@@ -206,6 +180,7 @@ export default function BankCard({
   index = 0,
   showBalance,
   onToggleBalance,
+  showStatus = false,
   className = "",
   isLink = true,
   onClick,
@@ -259,7 +234,7 @@ export default function BankCard({
       ? "SAVINGS ACCOUNT"
       : "CURRENT ACCOUNT";
 
-  const accountStatus = getAccountStatusStyle(account.status);
+  const accountStatus = normalizeAccountStatus(account.status);
 
   const hashedCardNumber = formatHashedCardNumber(
     account.accountNumber,
@@ -287,7 +262,7 @@ export default function BankCard({
     return account.availableBalance ?? 0;
   })();
 
-  const handleToggleEye = (e: React.MouseEvent) => {
+  const handleToggleEye = (e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -299,7 +274,7 @@ export default function BankCard({
     setInternalVisibility((currentVisibility) => !currentVisibility);
   };
 
-  const handleCopy = (e: React.MouseEvent) => {
+  const handleCopy = (e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -312,20 +287,18 @@ export default function BankCard({
     }, 1500);
   };
 
-  const statusBadge = (
-    <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${accountStatus.className}`}
-    >
-      {accountStatus.label}
-    </span>
-  );
+  // Reuse the same AccountStatus component and exact design.
+  const statusBadge =
+    showStatus && accountStatus ? (
+      <AccountStatus status={accountStatus} />
+    ) : null;
 
   const cardInner = (
     <>
       {/* Card Geometric Lines */}
       <CardGeometricLines />
 
-      {/* TOP ROW: EB Monogram + Bank Title + Status + Crown */}
+      {/* TOP ROW: EB Monogram + Bank Title + Optional Status + Crown */}
       <div className="relative z-10 flex items-start justify-between">
         <div className="flex items-center gap-2.5">
           <EbMonogram size={34} />
@@ -465,7 +438,7 @@ export default function BankCard({
         {/* Card Geometric Lines */}
         <CardGeometricLines />
 
-        {/* TOP ROW: EB Monogram + Bank Title + Status + Crown */}
+        {/* TOP ROW: EB Monogram + Bank Title + Optional Status + Crown */}
         <div className="relative z-10 flex items-center justify-between gap-1">
           <div className="flex items-center gap-1.5 min-w-0">
             <EbMonogram size={18} />
@@ -478,11 +451,7 @@ export default function BankCard({
           </div>
 
           <div className="flex items-center gap-1 shrink-0">
-            <span
-              className={`rounded-full border px-1.5 py-0.5 text-[7px] font-bold uppercase tracking-wide ${accountStatus.className}`}
-            >
-              {accountStatus.label}
-            </span>
+            {statusBadge}
             <EkarajCrown size={20} />
           </div>
         </div>

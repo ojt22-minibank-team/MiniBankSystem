@@ -16,6 +16,7 @@ interface BankCardsSectionProps {
   customerName?: string;
   showBalance?: boolean;
   onToggleBalance?: () => void;
+  showStatus?: boolean;
 }
 
 export default function BankCardsSection({
@@ -23,6 +24,7 @@ export default function BankCardsSection({
   customerName,
   showBalance = true,
   onToggleBalance,
+  showStatus = false,
 }: BankCardsSectionProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -159,6 +161,7 @@ export default function BankCardsSection({
               index={index}
               showBalance={showBalance}
               onToggleBalance={onToggleBalance}
+              showStatus={showStatus}
             />
           </div>
         ))}
