@@ -15,6 +15,10 @@ import com.corebanking.repository.LargeTransactionRepository;
 import com.corebanking.repository.ReportRepository;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
+import org.apache.poi.xssf.streaming.SXSSFSheet;
+import com.corebanking.util.CsvExportUtil;
+import com.corebanking.util.DataMaskingUtil;
 import org.springframework.stereotype.Service;
 //import com.corebanking.service.JasperReportService;
 import java.io.ByteArrayOutputStream;
@@ -154,8 +158,8 @@ public class ReportService {
     public byte[] exportDailyLedgerExcel(
             LocalDate startDate, LocalDate endDate, String status) throws IOException {
         List<DailyLedgerSummaryDTO> rows = getDailyLedgerSummary(startDate, endDate, status);
-        try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            Sheet sheet = wb.createSheet("Daily Ledger Summary");
+        try (SXSSFWorkbook wb = new SXSSFWorkbook(100); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = createTrackedSheet(wb, "Daily Ledger Summary");
             CellStyle headerStyle = buildHeaderStyle(wb);
 
             String[] headers = {"No","Transaction Type","Report Date","Count","Total Amount","Total Fee","Currency"};
@@ -182,10 +186,10 @@ public class ReportService {
     public byte[] exportAccountStatusExcel(
             LocalDate startDate, LocalDate endDate, String accountStatus) throws IOException {
         AccountStatusReportDTO report = getAccountStatusSummary(startDate, endDate, accountStatus);
-        try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+        try (SXSSFWorkbook wb = new SXSSFWorkbook(100); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             CellStyle headerStyle = buildHeaderStyle(wb);
 
-            Sheet s1 = wb.createSheet("Status Summary");
+            Sheet s1 = createTrackedSheet(wb, "Status Summary");
             createHeaderRow(s1, new String[]{"Status","Account Count","New In Range","Avg Balance","Min Balance","Max Balance"}, headerStyle);
             int ri = 1;
             for (AccountStatusSummaryDTO r : report.getStatusSummaries()) {
@@ -199,7 +203,7 @@ public class ReportService {
             }
             autoSizeColumns(s1, 6);
 
-            Sheet s2 = wb.createSheet("Balance Brackets");
+            Sheet s2 = createTrackedSheet(wb, "Balance Brackets");
             createHeaderRow(s2, new String[]{"Bracket","Status","Count","Total Balance"}, headerStyle);
             ri = 1;
             for (BalanceBracketDTO b : report.getBracketDistribution()) {
@@ -221,8 +225,8 @@ public class ReportService {
             LocalDateTime startDate, LocalDateTime endDate,
             String accountNo, int page, int pageSize) throws IOException {
         AuditTrailPageDTO pageData = getAuditTrailLog(staffId, actionType, startDate, endDate, accountNo, page, pageSize);
-        try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            Sheet sheet = wb.createSheet("Audit Trail");
+        try (SXSSFWorkbook wb = new SXSSFWorkbook(100); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = createTrackedSheet(wb, "Audit Trail");
             CellStyle headerStyle = buildHeaderStyle(wb);
             String[] headers = {"Log ID","Actor Type","Category","Staff ID","Username","Full Name","Action","Entity Type","Entity ID","IP Address","Description","Created At"};
             createHeaderRow(sheet, headers, headerStyle);
@@ -301,7 +305,18 @@ public class ReportService {
         }
     }
 
+    private Sheet createTrackedSheet(Workbook wb, String sheetName) {
+        Sheet sheet = wb.createSheet(sheetName);
+        if (sheet instanceof SXSSFSheet sxSheet) {
+            sxSheet.trackAllColumnsForAutoSizing();
+        }
+        return sheet;
+    }
+
     private void autoSizeColumns(Sheet sheet, int count) {
+        if (sheet instanceof SXSSFSheet sxSheet) {
+            sxSheet.trackAllColumnsForAutoSizing();
+        }
         for (int i = 0; i < count; i++) {
             sheet.autoSizeColumn(i);
         }
@@ -398,9 +413,9 @@ public class ReportService {
             LocalDate startDate, LocalDate endDate, BigDecimal threshold, String txType) throws IOException {
         
         LargeTransactionReportDTO report = getLargeTransactionSummary(startDate, endDate, threshold, txType);
-        try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
+        try (SXSSFWorkbook workbook = new SXSSFWorkbook(100);
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("Large Transactions AML");
+            org.apache.poi.ss.usermodel.Sheet sheet = createTrackedSheet(workbook, "Large Transactions AML");
             org.apache.poi.ss.usermodel.Row header = sheet.createRow(0);
             String[] cols = {"Tx Ref", "Timestamp", "Type", "Channel", "Amount", "Source Acc", "Source Customer", "Dest Acc", "Dest Customer", "Risk Level"};
             for (int i = 0; i < cols.length; i++) header.createCell(i).setCellValue(cols[i]);
@@ -413,9 +428,9 @@ public class ReportService {
                 row.createCell(2).setCellValue(item.getTransactionType());
                 row.createCell(3).setCellValue(item.getChannel());
                 row.createCell(4).setCellValue(item.getAmount().doubleValue());
-                row.createCell(5).setCellValue(item.getSourceAccountNo());
+                row.createCell(5).setCellValue(DataMaskingUtil.maskAccountNumber(item.getSourceAccountNo()));
                 row.createCell(6).setCellValue(item.getSourceCustomerName());
-                row.createCell(7).setCellValue(item.getDestAccountNo());
+                row.createCell(7).setCellValue(DataMaskingUtil.maskAccountNumber(item.getDestAccountNo()));
                 row.createCell(8).setCellValue(item.getDestCustomerName());
                 row.createCell(9).setCellValue(item.getRiskLevel());
             }
@@ -482,9 +497,9 @@ public class ReportService {
 
     public byte[] exportFeeRevenueExcel(LocalDate startDate, LocalDate endDate, String channel) throws IOException {
         FeeRevenueReportDTO report = getFeeRevenueSummary(startDate, endDate, channel);
-        try (org.apache.poi.xssf.usermodel.XSSFWorkbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
+        try (SXSSFWorkbook workbook = new SXSSFWorkbook(100);
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("Fee Revenue");
+            org.apache.poi.ss.usermodel.Sheet sheet = createTrackedSheet(workbook, "Fee Revenue");
             org.apache.poi.ss.usermodel.Row header = sheet.createRow(0);
             String[] cols = {"Transaction Type", "Channel", "Tx Count", "Total Volume", "Total Fee Revenue", "Avg Fee Per Tx"};
             for (int i = 0; i < cols.length; i++) header.createCell(i).setCellValue(cols[i]);

@@ -83,6 +83,13 @@ export const API_ENDPOINTS = {
     BASE: "/api/v1/staff/audit-logs",
     BY_ID: (id: number | string) => `/api/v1/staff/audit-logs/${id}`,
   },
+
+  // Staff Transaction Management & Details
+  STAFF_TRANSACTIONS: {
+    BASE: "/api/v1/staff/transactions",
+    BY_IDENTIFIER: (id: string) => `/api/v1/staff/transactions/detail/${encodeURIComponent(id)}`,
+    STATS: "/api/v1/staff/transactions/stats",
+  },
 } as const;
 
 // localStorage keys
@@ -92,4 +99,3 @@ export const STORAGE_KEYS = {
   USERNAME: "cb_username",
   ROLES: "cb_roles",
 } as const;
-
