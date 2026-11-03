@@ -250,11 +250,11 @@ export default function CustomersPage() {
           </div>
         </div>
 
-        {/* 3 Summary KPI Cards (Clear High-Contrast Dark Numbers on Crisp White Cards) */}
+        {/* 3 Summary KPI Cards (Liquid Glass) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           {/* Card 1: Total Customers */}
-          <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)]">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <div className="liquid-glass-card rounded-3xl p-6">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Total Customers
             </span>
             <div className="flex items-baseline justify-between mt-3">
@@ -268,8 +268,8 @@ export default function CustomersPage() {
           </div>
 
           {/* Card 2: Active Clients */}
-          <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)]">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <div className="liquid-glass-card rounded-3xl p-6">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Active Clients
             </span>
             <div className="flex items-baseline justify-between mt-3">
@@ -283,8 +283,8 @@ export default function CustomersPage() {
           </div>
 
           {/* Card 3: Corporate Entities */}
-          <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)]">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <div className="liquid-glass-card rounded-3xl p-6">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Corporate Entities
             </span>
             <div className="flex items-baseline justify-between mt-3">
@@ -299,12 +299,12 @@ export default function CustomersPage() {
         </div>
 
         {error ? (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 px-5 py-4 text-xs font-semibold text-rose-700">
+          <div className="rounded-2xl border border-rose-200 bg-rose-50/80 backdrop-blur-md px-5 py-4 text-xs font-semibold text-rose-700">
             <p className="font-bold">Error</p>
             <p className="mt-1">{error}</p>
           </div>
         ) : (
-          <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] space-y-5">
+          <div className="liquid-glass rounded-3xl p-6 space-y-5">
             {/* ── Toolbar: search · filter · sort ─────────────────── */}
             <div className="flex flex-wrap items-center gap-3 pb-4 border-b border-slate-100">
               {/* Search */}

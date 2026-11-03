@@ -263,8 +263,8 @@ export default function AnnouncementsPage() {
 
         {/* 3 Summary KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)]">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <div className="liquid-glass-card rounded-3xl p-6">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Total Bulletins
             </span>
             <div className="flex items-baseline justify-between mt-3">
@@ -277,12 +277,12 @@ export default function AnnouncementsPage() {
             </div>
           </div>
 
-          <div className="glass-panel p-6">
-            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+          <div className="liquid-glass-card rounded-3xl p-6">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Active Broadcasts
             </span>
             <div className="flex items-baseline justify-between mt-3">
-              <span className="text-2xl sm:text-[28px] font-black text-[#1E1B4B] font-mono tabular-nums">
+              <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
                 {activeCount}
               </span>
               <span className="status-pill-emerald text-[11px]">
@@ -291,12 +291,12 @@ export default function AnnouncementsPage() {
             </div>
           </div>
 
-          <div className="glass-panel p-6">
-            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+          <div className="liquid-glass-card rounded-3xl p-6">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Expired Broadcasts
             </span>
             <div className="flex items-baseline justify-between mt-3">
-              <span className="text-2xl sm:text-[28px] font-black text-[#1E1B4B] font-mono tabular-nums">
+              <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
                 {expiredCount}
               </span>
               <span className="status-pill-amber text-[11px]">

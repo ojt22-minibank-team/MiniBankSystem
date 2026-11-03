@@ -46,6 +46,14 @@ const api = axios.create({
   baseURL: BASE_URL,
 });
 
+// Axios merges defaults at request creation, before asynchronous interceptors.
+// Capture the origin there so a queued A request cannot be relabelled as B.
+// An explicit originating generation (including retries) takes precedence.
+Object.defineProperty(api.defaults, "_authGeneration", {
+  enumerable: true,
+  get: getAuthenticationGeneration,
+});
+
 
 // ======================================================
 // REFRESH RESPONSE TYPE
@@ -175,8 +183,8 @@ api.interceptors.request.use(
     if (!isPublicEndpoint(config.url) && config.url !== "/auth/logout") {
       const request = config as RetryableRequestConfig;
       request._authGeneration ??= getAuthenticationGeneration();
-      if (request._retry && !isAuthenticationGenerationCurrent(request._authGeneration)) {
-        return Promise.reject(new Error("Authentication changed before retrying the request."));
+      if (!isAuthenticationGenerationCurrent(request._authGeneration)) {
+        return Promise.reject(new axios.CanceledError("Authentication changed before sending the request.", config));
       }
     }
 
@@ -430,6 +438,12 @@ api.interceptors.response.use(
 
   (response) => {
 
+    const request = response.config as RetryableRequestConfig;
+    if (!isPublicEndpoint(request.url) && request.url !== "/auth/logout" &&
+        (request._authGeneration === undefined || !isAuthenticationGenerationCurrent(request._authGeneration))) {
+      return Promise.reject(new axios.CanceledError("Authentication changed before accepting the response.", request));
+    }
+
     return response;
 
   },
@@ -558,13 +572,15 @@ api.interceptors.response.use(
       "SESSION_EXPIRED"
     ) {
 
-      invalidateAuthenticationGeneration();
+      const invalidatedGeneration = invalidateAuthenticationGeneration();
 
       dispatchSessionTimeout(
 
         responseData.message ||
 
-        "Your session has expired."
+        "Your session has expired.",
+        generation,
+        invalidatedGeneration
 
       );
 

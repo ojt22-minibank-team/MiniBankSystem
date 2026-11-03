@@ -37,7 +37,7 @@ const axiosInstance = axios.create({
 
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+    const token = sessionStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
     if (token && config.headers) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -76,7 +76,7 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+        const refreshToken = sessionStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
 
         if (!refreshToken) {
           throw new Error('No refresh token available');
@@ -97,33 +97,33 @@ axiosInstance.interceptors.response.use(
             })
           );
         } else {
-          localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
+          sessionStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
           if (newRefreshToken) {
-            localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
+            sessionStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
           }
         }
 
-        // စောင့်နေတဲ့ Queue တွေအားလုံးကို Token အသစ်ပေးပြီး ဆက်အလုပ်လုပ်ခိုင်းမယ်
+        
         processQueue(null, accessToken);
 
         originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
         return axiosInstance(originalRequest);
       } catch (refreshError) {
-        // Refresh ပါ Fail သွားရင် Queue ထဲက ကောင်တွေပါ အကုန် Reject လုပ်ပြီး Logout လုပ်မယ်
+        
         processQueue(refreshError, null);
         
         if (store) {
           store.dispatch(forceLogout());
         } else {
-          localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-          localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-          localStorage.removeItem(STORAGE_KEYS.USERNAME);
-          localStorage.removeItem(STORAGE_KEYS.ROLES);
+          sessionStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+          sessionStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+          sessionStorage.removeItem(STORAGE_KEYS.USERNAME);
+          sessionStorage.removeItem(STORAGE_KEYS.ROLES);
         }
         window.location.href = '/login';
         return Promise.reject(refreshError);
       } finally {
-        isRefreshing = false; // အားလုံးပြီးသွားရင် ဖွင့်ပေးလိုက်မယ်
+        isRefreshing = false; 
       }
     }
 
