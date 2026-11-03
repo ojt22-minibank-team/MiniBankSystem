@@ -153,7 +153,7 @@ class CusRefreshTokenErrorRegressionTest {
         corporateSessions = new CusCorporateSessionService(validator, jwt, otp, corporateCredentials,
                 sessions, attempts, audit, revoked, dependency(CusCorporateSessionActivityRepository.class));
         individual = new CusAuthService(dependency(CusCustomerRepository.class),
-                dependency(CusAccountsRepository.class), credentials,
+                dependency(AccountRepository.class), credentials,
                 dependency(CusCustomerLoginAttemptService.class), otp, dependency(PasswordEncoder.class),
                 sessions, jwt, validator, revoked, dependency(CusEmailService.class), audit,
                 dependency(CusCustomerPasswordResetService.class), dependency(CusCustomerPinResetService.class),

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -24,6 +25,7 @@ import type {
 } from "../types/accountTypes";
 import BankCard from "../../dashboard/components/BankCard";
 import { TransferLimitCard } from "../components/TransferLimitCard";
+import { useAppSelector } from "../../../../lib/redux";
 
 function formatLabel(value: string): string {
   return value
@@ -91,15 +93,15 @@ function formatDate(value: string | null): string {
 }
 
 function maskAccountNumber(accountNumber: string): string {
-  if (!accountNumber) return "**** *** ***";
+  if (!accountNumber) return "**** **** ****";
   const cleaned = accountNumber.replace(/\D/g, "");
 
   if (cleaned.length === 10) {
-    return `**** *** ${cleaned.slice(7, 10)}`;
+    return `**** **** ${cleaned.slice(6, 10)}`;
   }
 
   const last3 = cleaned.length >= 3 ? cleaned.slice(-3) : cleaned;
-  return `**** *** ${last3}`;
+  return `**** **** ${last3}`;
 }
 
 function InfoItem({
@@ -174,6 +176,14 @@ export default function AccountDetailPage({
     propAccountNumber ||
     locationState?.accountNumber ||
     params.accountNumber;
+
+  // Get the latest account status from Redux.
+  // WebSocket updates Redux, so this component re-renders automatically.
+  const reduxAccountStatus = useAppSelector((state) =>
+    state.accounts.accounts.find(
+      (item) => item.accountNumber === targetAccountNumber,
+    )?.status,
+  );
 
   const [account, setAccount] = useState<CustomerAccount | null>(null);
   const [transferLimits, setTransferLimits] =
@@ -302,10 +312,13 @@ export default function AccountDetailPage({
     );
   }
 
+  // Prefer Redux status because it receives real-time WebSocket updates.
+  const displayedStatus = reduxAccountStatus ?? account.status;
+
   const accountTypeLabel = getAccountTypeLabel(account.accountType, t);
-  const statusLabel = getStatusLabel(account.status, t);
+  const statusLabel = getStatusLabel(displayedStatus, t);
   const statusStyle =
-    statusStyles[account.status] ??
+    statusStyles[displayedStatus] ??
     "bg-slate-100 text-slate-700 border-slate-200";
 
   return (
@@ -356,7 +369,7 @@ export default function AccountDetailPage({
         </div>
       )}
 
-      {/* Hero Section: Bank Card on Left, Balance & Quick Actions on Right */}
+      {/* Hero Section */}
       <section className="overflow-hidden rounded-3xl border border-slate-100 bg-white p-4 sm:p-5 shadow-sm">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           {/* Bank Card Component */}
@@ -373,7 +386,7 @@ export default function AccountDetailPage({
                   account.currentBalance - (account.minimumBalance || 10000),
                 ),
                 minimumBalance: account.minimumBalance,
-                status: account.status,
+                status: displayedStatus,
                 jointAccount: account.jointAccount,
                 openedAt: account.openedAt,
               }}
@@ -446,7 +459,7 @@ export default function AccountDetailPage({
               </div>
             </div>
 
-            {/* Balances Grid: Current Balance (Total Ledger) & Minimum Reserve (Locked Reserve) */}
+            {/* Balances Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="rounded-2xl bg-slate-50/80 p-4 border border-slate-100">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
@@ -455,7 +468,9 @@ export default function AccountDetailPage({
                 <p className="mt-1.5 text-xl font-extrabold text-[#0A192F] tracking-tight">
                   {formatMoney(account.currentBalance, account.currency)}
                 </p>
-                <p className="mt-1 text-[11px] text-slate-400">Total ledger balance</p>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  Total ledger balance
+                </p>
               </div>
 
               <div className="rounded-2xl bg-slate-50/80 p-4 border border-slate-100">
@@ -465,11 +480,13 @@ export default function AccountDetailPage({
                 <p className="mt-1.5 text-xl font-extrabold text-slate-700 tracking-tight">
                   {formatMoney(account.minimumBalance, account.currency)}
                 </p>
-                <p className="mt-1 text-[11px] text-slate-400">Locked reserve amount</p>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  Locked reserve amount
+                </p>
               </div>
             </div>
 
-            {/* Action Buttons: Unified styling, changing to Ekaraj Cyan/Blue on hover */}
+            {/* Action Buttons */}
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <Link
                 to="/transfer"
@@ -491,9 +508,9 @@ export default function AccountDetailPage({
         </div>
       </section>
 
-      {/* Account Specifications & Transfer Limits (Stacked Vertically) */}
+      {/* Account Specifications & Transfer Limits */}
       <div className="space-y-4">
-        {/* 1. Account Information Card */}
+        {/* Account Information Card */}
         <section className="rounded-3xl border border-slate-100 bg-white p-5 sm:p-6 shadow-sm">
           <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50 text-[#00A3C4]">
@@ -540,6 +557,7 @@ export default function AccountDetailPage({
               label="Required Approvals"
               value={String(account.requiredApprovals)}
             />
+
             {transferLimits && (
               <>
                 <InfoItem
@@ -563,7 +581,7 @@ export default function AccountDetailPage({
           </div>
         </section>
 
-        {/* 2. Transfer Limits & Safety Management Card */}
+        {/* Transfer Limits & Safety Management Card */}
         <section id="transfer-limit-section">
           <TransferLimitCard
             accountNumber={account.accountNumber}

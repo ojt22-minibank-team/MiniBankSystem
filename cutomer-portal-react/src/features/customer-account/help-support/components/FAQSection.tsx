@@ -49,10 +49,6 @@ const FAQSection = ({ search }: FAQSectionProps) => {
             <p className="font-semibold text-gray-700">
               {t("faq.noResults")}
             </p>
-
-            <p className="mt-2 text-sm text-gray-500">
-              {t("faq.tryAnother")}
-            </p>
           </div>
         )}
       </div>

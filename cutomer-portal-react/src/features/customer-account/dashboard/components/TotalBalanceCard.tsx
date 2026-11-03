@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 import {
   Eye,
@@ -17,7 +18,6 @@ interface TotalBalanceCardProps {
   loading?: boolean;
   onToggleBalance: () => void;
   customerName?: string;
-  primaryAccountNumber?: string;
 }
 
 function formatBalance(amount: number): string {
@@ -34,6 +34,7 @@ function getTimeGreetingDetails(): {
   bgGlow: string;
 } {
   const hour = new Date().getHours();
+
   if (hour >= 5 && hour < 12) {
     return {
       greeting: "Good Morning",
@@ -42,6 +43,7 @@ function getTimeGreetingDetails(): {
       bgGlow: "bg-amber-400/20 ring-amber-400/30",
     };
   }
+
   if (hour >= 12 && hour < 17) {
     return {
       greeting: "Good Afternoon",
@@ -50,6 +52,7 @@ function getTimeGreetingDetails(): {
       bgGlow: "bg-amber-400/20 ring-amber-400/30",
     };
   }
+
   return {
     greeting: "Good Evening",
     Icon: Moon,
@@ -74,15 +77,17 @@ export default function TotalBalanceCard({
       aria-label="Total Available Balance"
       className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0A192F] via-[#102A54] to-[#153564] p-5 sm:p-6 text-white shadow-lg border border-cyan-500/20"
     >
-      {/* 1. Subtle Ambient Lighting & Watermark */}
+      {/* Subtle Ambient Lighting & Watermark */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -right-16 -top-16 h-60 w-60 rounded-full bg-cyan-400/15 blur-3xl"
       />
+
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -bottom-20 -left-10 h-52 w-52 rounded-full bg-blue-600/15 blur-3xl"
       />
+
       <div
         aria-hidden="true"
         className="pointer-events-none absolute right-3 bottom-1 opacity-10 select-none"
@@ -91,36 +96,44 @@ export default function TotalBalanceCard({
       </div>
 
       <div className="relative z-10 space-y-4">
-        {/* ROW 1: Sleek Greeting with Dynamic Time Icon (☀️ / 🌙) */}
+        {/* Greeting */}
         <div className="flex items-center gap-2.5">
-          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${bgGlow} ring-1 shadow-xs`}>
+          <div
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${bgGlow} ring-1 shadow-xs`}
+          >
             <Icon size={17} className={iconClass} />
           </div>
+
           <h2 className="text-base sm:text-lg font-bold tracking-tight text-white">
-            {greeting}, <span className="font-extrabold text-cyan-200">{displayName}</span>
+            {greeting},{" "}
+            <span className="font-extrabold text-cyan-200">
+              {displayName}
+            </span>
           </h2>
         </div>
 
-        {/* ROW 2: Total Available Balance (Compact & User-Friendly) */}
+        {/* Total Available Balance */}
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">
               Total Available Balance
             </span>
+
             <button
               type="button"
               onClick={onToggleBalance}
-              disabled={loading}
-              className="inline-flex items-center justify-center rounded-lg p-1 text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-300/30"
+              className="inline-flex items-center justify-center rounded-lg p-1 text-slate-300 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/50"
               title={showBalance ? "Hide Balance" : "Show Balance"}
               aria-label={showBalance ? "Hide Balance" : "Show Balance"}
+              aria-pressed={showBalance}
             >
               {showBalance ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
 
             {accountCount > 0 && (
               <span className="hidden sm:inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-semibold text-slate-300 border border-white/10">
-                Across {accountCount} {accountCount === 1 ? "Account" : "Accounts"}
+                Across {accountCount}{" "}
+                {accountCount === 1 ? "Account" : "Accounts"}
               </span>
             )}
           </div>
@@ -129,6 +142,7 @@ export default function TotalBalanceCard({
             <span className="font-mono text-base sm:text-lg font-bold text-cyan-200">
               MMK
             </span>
+
             <div className="font-mono text-2xl sm:text-3xl font-extrabold tracking-tight text-white drop-shadow-xs">
               {loading ? (
                 <span className="inline-block h-8 w-40 animate-pulse rounded-lg bg-white/15 align-middle" />
@@ -143,7 +157,7 @@ export default function TotalBalanceCard({
           </div>
         </div>
 
-        {/* ROW 3: Quick Action Buttons (Transfer & Pay only, hover-activated color) */}
+        {/* Quick Actions */}
         <div className="flex flex-wrap items-center gap-2.5 pt-1">
           {/* Transfer */}
           <Link

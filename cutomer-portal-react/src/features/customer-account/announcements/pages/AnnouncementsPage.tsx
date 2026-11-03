@@ -1,6 +1,6 @@
-import { Link } from "react-router-dom";
 
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   AlertCircle,
   CheckCheck,
@@ -56,13 +56,14 @@ export default function AnnouncementsPage() {
   const [authenticationGeneration, setAuthenticationGeneration] =
     useState(getAuthenticationGeneration);
 
+  const [filter, setFilter] = useState<AnnouncementFilter>("ALL");
+
   const pendingIds = useMemo(
     () => Object.keys(pendingRequests || {}).map(Number),
     [pendingRequests]
   );
-  const isMarkingAllRead = Boolean(markAllRequestId);
 
-  const [filter, setFilter] = useState<AnnouncementFilter>("ALL");
+  const isMarkingAllRead = Boolean(markAllRequestId);
 
   // Subscribe to login, logout and authentication changes.
   useEffect(() => {
@@ -107,7 +108,7 @@ export default function AnnouncementsPage() {
 
   const unreadCount = useMemo(
     () => announcements.filter((item) => !item.isRead).length,
-    [announcements],
+    [announcements]
   );
 
   const readCount = announcements.length - unreadCount;
@@ -122,8 +123,10 @@ export default function AnnouncementsPage() {
     switch (filter) {
       case "UNREAD":
         return announcements.filter((item) => !item.isRead);
+
       case "READ":
         return announcements.filter((item) => item.isRead);
+
       default:
         return announcements;
     }
@@ -170,15 +173,24 @@ export default function AnnouncementsPage() {
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             {/* Breadcrumb Navigation */}
-            <nav aria-label="Breadcrumb" className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold">
+            <nav
+              aria-label="Breadcrumb"
+              className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold"
+            >
               <Link
                 to="/dashboard"
                 className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
               >
                 Dashboard
               </Link>
-              <span className="text-slate-300" aria-hidden="true">/</span>
-              <span className="text-[#00A3C4]" aria-current="page">Announcements</span>
+
+              <span className="text-slate-300" aria-hidden="true">
+                /
+              </span>
+
+              <span className="text-[#00A3C4]" aria-current="page">
+                Announcements
+              </span>
             </nav>
 
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
@@ -240,7 +252,9 @@ export default function AnnouncementsPage() {
                   {item.value !== "ALL" && (
                     <span
                       className={`text-xs tabular-nums ${
-                        selected ? "text-[#00A3C4]" : "text-slate-400"
+                        selected
+                          ? "text-[#00A3C4]"
+                          : "text-slate-400"
                       }`}
                     >
                       {counts[item.value]}
@@ -303,7 +317,9 @@ export default function AnnouncementsPage() {
                 Unable to load announcements
               </h2>
 
-              <p className="mt-1 text-sm text-slate-500">{error}</p>
+              <p className="mt-1 text-sm text-slate-500">
+                {error}
+              </p>
 
               <button
                 type="button"
@@ -329,7 +345,8 @@ export default function AnnouncementsPage() {
 
       {!loading && !error && announcements.length > 0 && (
         <p className="mt-4 text-center text-xs text-slate-400">
-          Showing {filteredAnnouncements.length} of {announcements.length} announcements
+          Showing {filteredAnnouncements.length} of{" "}
+          {announcements.length} announcements
         </p>
       )}
     </main>
