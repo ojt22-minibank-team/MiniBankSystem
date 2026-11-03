@@ -18,6 +18,7 @@ export interface NotificationItem {
   transferDirection?: "SENT" | "RECEIVED" | null;
   sourceAccountNumber?: string | null;
   destinationAccountNumber?: string | null;
+  description?: string | null;
 }
 
 export interface UnreadCountResponse {

@@ -41,6 +41,7 @@ public class OtcTransactionService {
     private final SystemParametersRepository systemParametersRepository;
     private final ManualTransactionsRepository manualTransactionsRepository;
     private final AuditTrailService auditTrailService;
+    private final AsyncNotificationService asyncNotificationService;
 
     @Autowired(required = false)
     private JwtService jwtService;
@@ -196,6 +197,11 @@ public class OtcTransactionService {
             );
         }
 
+        // Asynchronously dispatch real-time WebSocket notification to customer
+        if (account.getCustomer() != null && asyncNotificationService != null) {
+            asyncNotificationService.sendDepositNotificationAsync(account.getCustomer(), account, txn);
+        }
+
         log.info("OTC Deposit successful. Ref: {}, Account: {}, New Balance: {}", txnRef, account.getAccountNumber(), account.getCurrentBalance());
 
         return mapToResponseDto(txn, customerName, customRefId, request.getManualAuditNote().trim());
@@ -338,6 +344,11 @@ public class OtcTransactionService {
                     String.format("OTC Cash Withdrawal of %s %s from account %s (%s) processed by Teller %s [Slip Ref: %s]",
                             withdrawAmount.toPlainString(), currency, account.getAccountNumber(), customerName, staff.getUsername(), customRefId)
             );
+        }
+
+        // Asynchronously dispatch real-time WebSocket notification to customer
+        if (account.getCustomer() != null && asyncNotificationService != null) {
+            asyncNotificationService.sendWithdrawalNotificationAsync(account.getCustomer(), account, txn);
         }
 
         log.info("OTC Withdrawal successful. Ref: {}, Account: {}, New Balance: {}", txnRef, account.getAccountNumber(), account.getCurrentBalance());

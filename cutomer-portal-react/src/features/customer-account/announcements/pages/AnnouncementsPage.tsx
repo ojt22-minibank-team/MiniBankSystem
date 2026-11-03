@@ -1,9 +1,9 @@
+import { Link } from "react-router-dom";
 
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   CheckCheck,
-  Megaphone,
   RefreshCw,
 } from "lucide-react";
 
@@ -169,10 +169,17 @@ export default function AnnouncementsPage() {
       <header className="mb-6">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-[#00A3C4]">
-              <Megaphone size={15} aria-hidden="true" />
-              Bank updates
-            </div>
+            {/* Breadcrumb Navigation */}
+            <nav aria-label="Breadcrumb" className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold">
+              <Link
+                to="/dashboard"
+                className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
+              >
+                Dashboard
+              </Link>
+              <span className="text-slate-300" aria-hidden="true">/</span>
+              <span className="text-[#00A3C4]" aria-current="page">Announcements</span>
+            </nav>
 
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               Announcements

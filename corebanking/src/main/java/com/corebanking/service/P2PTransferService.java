@@ -126,6 +126,9 @@ public class P2PTransferService {
         if (destAccount.getStatus() != AccountStatus.ACTIVE) {
             throw new TransactionException("Destination account is not active. Status: " + destAccount.getStatus());
         }
+        if (destAccount.getCustomer() != null && destAccount.getCustomer().getStatus() == CustomerStatus.LOCKED) {
+            throw new TransactionException("Destination account is locked.");
+        }
 
         // Currency Consistency Check
         String reqCurrency = request.getCurrency() != null ? request.getCurrency() : "MMK";
@@ -181,7 +184,7 @@ public class P2PTransferService {
                 .initiatedByCustomer(sourceAccount.getCustomer())
                 .channel(TransactionChannel.CUSTOMER_PORTAL)
                 .idempotencyKey(idempotencyKey)
-                .description((request.getDescription() != null && !request.getDescription().trim().isEmpty()) ? request.getDescription().trim() : "P2P Fund Transfer")
+                .description((request.getDescription() != null && !request.getDescription().trim().isEmpty()) ? request.getDescription().trim() : "Internal Transfer")
                 .auditNote("P2P transfer ")
                 .authorizedAt(now)
                 .completedAt(now)
@@ -363,11 +366,20 @@ public class P2PTransferService {
                 ? account.getCustomer().getFullName()
                 : "N/A";
 
+        String status = "ACTIVE";
+        if (account.getStatus() == AccountStatus.FROZEN) {
+            status = "FROZEN";
+        } else if (account.getCustomer() != null && account.getCustomer().getStatus() == CustomerStatus.LOCKED) {
+            status = "LOCKED";
+        } else if (account.getStatus() != null) {
+            status = account.getStatus().name();
+        }
+
         return AccountLookupResponseDto.builder()
                 .accountNumber(account.getAccountNumber())
                 .accountName(accountName)
                 .accountType(account.getAccountType() != null ? account.getAccountType().name() : null)
-                .status(account.getStatus() != null ? account.getStatus().name() : null)
+                .status(status)
                 .build();
     }
 
@@ -428,6 +440,9 @@ public class P2PTransferService {
         if (destAccount.getStatus() != AccountStatus.ACTIVE) {
             throw new TransactionException("Destination account is not active. Status: " + destAccount.getStatus());
         }
+        if (destAccount.getCustomer() != null && destAccount.getCustomer().getStatus() == CustomerStatus.LOCKED) {
+            throw new TransactionException("Destination account is locked.");
+        }
 
         String reqCurrency = request.getCurrency() != null ? request.getCurrency() : "MMK";
         if (!sourceAccount.getCurrency().equalsIgnoreCase(destAccount.getCurrency()) || 
@@ -465,7 +480,7 @@ public class P2PTransferService {
                 .initiatedByCustomer(sourceAccount.getCustomer())
                 .channel(TransactionChannel.CUSTOMER_PORTAL)
                 .idempotencyKey(effectiveKey)
-                .description((request.getDescription() != null && !request.getDescription().trim().isEmpty()) ? request.getDescription().trim() : "P2P Fund Transfer (Queued)")
+                .description((request.getDescription() != null && !request.getDescription().trim().isEmpty()) ? request.getDescription().trim() : "Internal Transfer")
                 .auditNote("Enqueued for asynchronous message queue processing")
                 .authorizedAt(now)
                 .completedAt(null)
@@ -559,6 +574,9 @@ public class P2PTransferService {
         }
         if (destAccount.getStatus() != AccountStatus.ACTIVE) {
             throw new TransactionException("Destination account is not active. Status: " + destAccount.getStatus());
+        }
+        if (destAccount.getCustomer() != null && destAccount.getCustomer().getStatus() == CustomerStatus.LOCKED) {
+            throw new TransactionException("Destination account is locked.");
         }
 
         String reqCurrency = request.getCurrency() != null ? request.getCurrency() : "MMK";

@@ -68,6 +68,11 @@ export default function TransactionDetailPage() {
     (transaction.transactionType || "").toUpperCase() === "INTERNAL_TRANSFER"
   );
 
+  const isFailed = Boolean(
+    transaction &&
+    ["FAILED", "REJECTED", "CANCELLED", "DECLINED"].includes((transaction.status || "").toUpperCase())
+  );
+
   useEffect(() => {
     // If validation failed or we already have the initial transaction on first mount, skip network fetch
     if (validationError || (initialTransaction && retryCount === 0)) {
@@ -166,7 +171,7 @@ export default function TransactionDetailPage() {
     <div className="min-h-screen bg-slate-50/60 p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-xl">
         {/* Navigation Breadcrumb */}
-        {!loading && !isCompletedInternalTransfer && (
+        {!loading && !isCompletedInternalTransfer && !isFailed && (
           <div className="mb-6 flex items-center justify-between no-print">
             <button
               type="button"
