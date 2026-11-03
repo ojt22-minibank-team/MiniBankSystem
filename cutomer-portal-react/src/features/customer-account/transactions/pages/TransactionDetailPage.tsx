@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useSearchParams, useLocation, useNavigate, Link } from "react-router-dom";
 import axios from "axios";
-import { ArrowLeft, AlertCircle, RefreshCw, Loader2 } from "lucide-react";
+import { AlertCircle, RefreshCw, Loader2 } from "lucide-react";
 import type { CusTransactionHistoryItemDTO } from "../types/transactionHistoryTypes";
 import { getTransactionDetail } from "../services/transactionHistoryService";
 import TransactionDetailContent from "../components/TransactionDetailContent";
@@ -62,17 +62,6 @@ export default function TransactionDetailPage() {
     setRetryCount((prev) => prev + 1);
   };
 
-  const isCompletedInternalTransfer = Boolean(
-    transaction &&
-    (transaction.status || "").toUpperCase() === "COMPLETED" &&
-    (transaction.transactionType || "").toUpperCase() === "INTERNAL_TRANSFER"
-  );
-
-  const isFailed = Boolean(
-    transaction &&
-    ["FAILED", "REJECTED", "CANCELLED", "DECLINED"].includes((transaction.status || "").toUpperCase())
-  );
-
   useEffect(() => {
     // If validation failed or we already have the initial transaction on first mount, skip network fetch
     if (validationError || (initialTransaction && retryCount === 0)) {
@@ -132,16 +121,6 @@ export default function TransactionDetailPage() {
     return (
       <div className="min-h-screen bg-slate-50/60 p-4 sm:p-6 lg:p-8">
         <div className="mx-auto max-w-xl">
-          <div className="mb-6">
-            <Link
-              to="/transaction"
-              className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-600 hover:text-[#0878E8] transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to Transactions</span>
-            </Link>
-          </div>
-
           <div
             role="alert"
             className="rounded-3xl border border-amber-200 bg-amber-50/80 p-6 sm:p-8 text-center space-y-4 shadow-xs"
@@ -170,20 +149,6 @@ export default function TransactionDetailPage() {
   return (
     <div className="min-h-screen bg-slate-50/60 p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-xl">
-        {/* Navigation Breadcrumb */}
-        {!loading && !isCompletedInternalTransfer && !isFailed && (
-          <div className="mb-6 flex items-center justify-between no-print">
-            <button
-              type="button"
-              onClick={handleBack}
-              className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-600 hover:text-[#0878E8] transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to Transactions</span>
-            </button>
-          </div>
-        )}
-
         {/* Loading State / Skeleton */}
         {loading && (
           <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xs animate-pulse space-y-6">
@@ -234,7 +199,7 @@ export default function TransactionDetailPage() {
                 to="/transaction"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
               >
-                <span>Back to Transactions</span>
+                <span>Return to Transaction History</span>
               </Link>
             </div>
           </div>
