@@ -13,7 +13,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isOpen = true }: SidebarProps) {
-  const { logout, user, isAdmin, isAuditor } = useAuth();
+  const { logout, user, isAdmin, isAuditor, isTeller } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -69,16 +69,10 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
         </svg>
       ),
     },
-    {
-      to: '/admin/transfers',
-      label: 'Transfers',
-      icon: (
-        <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
-        </svg>
-      ),
-    },
-    {
+  ];
+
+  if (isTeller) {
+    navItems.push({
       to: '/admin/otc',
       label: 'VIP Overdrafts & OTC',
       icon: (
@@ -86,8 +80,8 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
-    },
-  ];
+    });
+  }
 
   if (isAdmin || isAuditor) {
     navItems.push({
@@ -163,7 +157,7 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
         isOpen ? 'w-64' : 'w-0 -translate-x-full lg:w-64 lg:translate-x-0',
       ].join(' ')}
     >
-      {/* ── EKARAJ BANK Brand Header with Real Crown Logo ────────── */}
+      {/* â”€â”€ EKARAJ BANK Brand Header with Real Crown Logo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="px-5 py-4.5 border-b border-white/70 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           {/* Animated 3D Floating Crown Logo with Soft Liquid Glow */}
@@ -180,13 +174,13 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
               EKARAJ BANK
             </span>
             <span className="text-[10px] font-bold text-sky-600 block tracking-wider uppercase mt-0.5">
-              Core Banking Portal · Enterprise
+              Core Banking Portal Â· Enterprise
             </span>
           </div>
         </div>
       </div>
 
-      {/* ── Admin Profile Card (Liquid Glass Badge) ───────────────── */}
+      {/* â”€â”€ Admin Profile Card (Liquid Glass Badge) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="px-4 py-3 shrink-0">
         <NavLink
           to="/admin/profile"
@@ -214,7 +208,7 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
         </NavLink>
       </div>
 
-      {/* ── Navigation Links (Flex-1 & Scrollable) ────────────── */}
+      {/* â”€â”€ Navigation Links (Flex-1 & Scrollable) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
         <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
           Navigation
@@ -238,7 +232,7 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
         ))}
       </nav>
 
-      {/* ── Permanently Pinned Logout Button at the Bottom ────── */}
+      {/* â”€â”€ Permanently Pinned Logout Button at the Bottom â”€â”€â”€â”€â”€â”€ */}
       <div className="mt-auto border-t border-white/70 p-3 shrink-0">
         <button
           onClick={handleLogout}

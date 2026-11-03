@@ -8,10 +8,11 @@ import type {
   StaffTransactionSearchParams,
   StaffTransactionStats,
 } from '../../../types/transactions.types';
-import TransactionFilterBar from '../components/TransactionFilterBar';
+import TransactionFilterBar, { getTodayDateRange } from '../components/TransactionFilterBar';
 import TransactionStatsCards from '../components/TransactionStatsCards';
 import TransactionDetailModal from '../components/TransactionDetailModal';
 import { formatCurrency } from '../../../utils/formatCurrency';
+import { formatDateTime } from '../../../utils/formatDate';
 import {
   Eye,
   ChevronLeft,
@@ -21,7 +22,6 @@ import {
   ArrowUpDown,
   RefreshCw,
   CheckCircle2,
-  AlertTriangle,
   XCircle,
   Clock,
 } from 'lucide-react';
@@ -45,8 +45,8 @@ export default function TransactionDetailsPage() {
   const [isStatsLoading, setIsStatsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters
-  const [appliedFilters, setAppliedFilters] = useState<StaffTransactionSearchParams>({});
+  // Filters (Defaults to Today's date range)
+  const [appliedFilters, setAppliedFilters] = useState<StaffTransactionSearchParams>(() => getTodayDateRange());
 
   // Inspector Modal
   const [selectedTransaction, setSelectedTransaction] = useState<StaffTransactionDetail | null>(null);
@@ -167,22 +167,6 @@ export default function TransactionDetailsPage() {
     setPage(0);
   };
 
-  const formatDateTime = (dateStr?: string | null) => {
-    if (!dateStr) return '—';
-    try {
-      const d = new Date(dateStr);
-      return d.toLocaleString('en-US', {
-        month: 'short',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      });
-    } catch {
-      return dateStr;
-    }
-  };
-
   const renderStatusBadge = (st: string) => {
     switch (st) {
       case 'COMPLETED':
@@ -190,13 +174,6 @@ export default function TransactionDetailsPage() {
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
             <CheckCircle2 className="w-3 h-3 text-emerald-600" />
             COMPLETED
-          </span>
-        );
-      case 'HELD':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">
-            <AlertTriangle className="w-3 h-3 text-amber-600" />
-            HELD
           </span>
         );
       case 'PENDING_AUTHORIZATION':

@@ -47,7 +47,7 @@ export default React.memo(function TransactionStatsCards({ stats, isLoading }: P
       badgeBg: 'bg-emerald-50 text-emerald-600 border border-emerald-200/60',
     },
     {
-      label: 'Held / Under Review',
+      label: 'Pending Auth',
       value: stats.heldOrPendingCount.toLocaleString(),
       icon: AlertTriangle,
       textColor: 'text-amber-700',

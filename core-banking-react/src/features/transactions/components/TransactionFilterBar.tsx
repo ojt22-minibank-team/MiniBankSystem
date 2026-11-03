@@ -7,7 +7,17 @@ import {
 } from 'lucide-react';
 import type { StaffTransactionSearchParams } from '../../../types/transactions.types';
 
-export type TimeRangePreset = 'ALL' | 'TODAY' | 'YESTERDAY' | 'LAST_7_DAYS' | 'LAST_30_DAYS' | 'CUSTOM';
+export type TimeRangePreset = 'TODAY' | 'YESTERDAY' | 'LAST_7_DAYS' | 'LAST_30_DAYS' | 'CUSTOM';
+
+export const getTodayDateRange = () => {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  const now = new Date();
+  const s = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+  const e = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+  return { startDate: fmt(s), endDate: fmt(e) };
+};
 
 interface Props {
   onFilterChange: (params: StaffTransactionSearchParams) => void;
@@ -17,7 +27,6 @@ interface Props {
 const STATUS_OPTIONS = [
   { value: 'ALL', label: 'All Statuses' },
   { value: 'COMPLETED', label: 'Completed' },
-  { value: 'HELD', label: 'Held (AML/Review)' },
   { value: 'PENDING_AUTHORIZATION', label: 'Pending Auth' },
   { value: 'FAILED', label: 'Failed' },
   { value: 'REJECTED', label: 'Rejected' },
@@ -53,7 +62,7 @@ export default React.memo(function TransactionFilterBar({
   const [status, setStatus] = useState('ALL');
   const [type, setType] = useState('ALL');
   const [channel, setChannel] = useState('ALL');
-  const [timePreset, setTimePreset] = useState<TimeRangePreset>('ALL');
+  const [timePreset, setTimePreset] = useState<TimeRangePreset>('TODAY');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   const [minAmount, setMinAmount] = useState('');
@@ -96,9 +105,8 @@ export default React.memo(function TransactionFilterBar({
           endDate: end ? `${end}T23:59:59` : undefined,
         };
       }
-      case 'ALL':
       default:
-        return { startDate: undefined, endDate: undefined };
+        return getTodayDateRange();
     }
   };
 
@@ -156,14 +164,18 @@ export default React.memo(function TransactionFilterBar({
     setStatus('ALL');
     setType('ALL');
     setChannel('ALL');
-    setTimePreset('ALL');
+    setTimePreset('TODAY');
     setCustomStart('');
     setCustomEnd('');
     setMinAmount('');
     setMaxAmount('');
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
 
-    onFilterChange({});
+    const { startDate, endDate } = getTodayDateRange();
+    onFilterChange({
+      startDate,
+      endDate,
+    });
   };
 
   const hasActiveFilters =
@@ -171,7 +183,7 @@ export default React.memo(function TransactionFilterBar({
     status !== 'ALL' ||
     type !== 'ALL' ||
     channel !== 'ALL' ||
-    timePreset !== 'ALL' ||
+    timePreset !== 'TODAY' ||
     customStart !== '' ||
     customEnd !== '' ||
     minAmount !== '' ||
@@ -199,7 +211,7 @@ export default React.memo(function TransactionFilterBar({
               }}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs px-1 cursor-pointer"
             >
-              ✕
+              âœ•
             </button>
           )}
         </div>
@@ -263,7 +275,6 @@ export default React.memo(function TransactionFilterBar({
               }}
               className="w-full appearance-none pl-3 pr-8 py-2 text-xs rounded-xl border border-slate-200 bg-white/90 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-700 font-medium cursor-pointer transition-all"
             >
-              <option value="ALL">All Time</option>
               <option value="TODAY">Today</option>
               <option value="YESTERDAY">Yesterday</option>
               <option value="LAST_7_DAYS">Last 7 Days</option>

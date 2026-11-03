@@ -6,11 +6,12 @@ import Modal from '../../../components/common/Modal';
 import { accountsApi } from '../../../services/apiClient';
 import type { AccountResponse } from '../../../types/api.types';
 import { formatCurrency } from '../../../utils/formatCurrency';
+import { formatDate } from '../../../utils/formatDate';
 import type { AxiosError } from 'axios';
 import AccountCreateModal from '../components/AccountCreateModal';
 import AccountDetailModal from '../components/AccountDetailModal';
 
-// ── Constants ────────────────────────────────────────────────────────
+// â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const PAGE_SIZE = 10;
 
 type CategoryFilter = 'ALL' | 'RETAIL' | 'CORPORATE';
@@ -19,19 +20,19 @@ type SortField = 'openedAt' | 'accountNumber' | 'availableBalance';
 type SortDir = 'asc' | 'desc';
 
 export default function AccountsPage() {
-  // ── Data state ───────────────────────────────────────────────────
+  // â”€â”€ Data state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [accounts, setAccounts] = useState<AccountResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isCreateAccountModalOpen, setIsCreateAccountModalOpen] = useState(false);
 
-  // ── Detail modal state ───────────────────────────────────────────
+  // â”€â”€ Detail modal state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [detailAccount, setDetailAccount] = useState<AccountResponse | null>(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  // ── Search / filter / sort / page state ──────────────────────────
+  // â”€â”€ Search / filter / sort / page state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('ALL');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
@@ -39,7 +40,7 @@ export default function AccountsPage() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [currentPage, setCurrentPage] = useState(1);
 
-  // ── Status modal state ───────────────────────────────────────────
+  // â”€â”€ Status modal state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [selectedAccount, setSelectedAccount] = useState<AccountResponse | null>(null);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [newStatus, setNewStatus] = useState('ACTIVE');
@@ -47,7 +48,7 @@ export default function AccountsPage() {
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
 
-  // ── Fetch all accounts ───────────────────────────────────────────
+  // â”€â”€ Fetch all accounts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const loadAccounts = () => {
     setIsLoading(true);
     setError(null);
@@ -81,7 +82,7 @@ export default function AccountsPage() {
     loadAccounts();
   }, []);
 
-  // ── Derived data pipeline: search → filter → sort ────────────────
+  // â”€â”€ Derived data pipeline: search â†’ filter â†’ sort â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const processed = useMemo(() => {
     let list = [...accounts];
 
@@ -136,7 +137,7 @@ export default function AccountsPage() {
     return accounts.filter((a) => a.status === 'FROZEN').length;
   }, [accounts]);
 
-  // ── Pagination helpers ───────────────────────────────────────────
+  // â”€â”€ Pagination helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const totalPages = Math.max(1, Math.ceil(processed.length / PAGE_SIZE));
 
   useEffect(() => {
@@ -148,7 +149,7 @@ export default function AccountsPage() {
     [processed, currentPage],
   );
 
-  // ── Handlers ─────────────────────────────────────────────────────
+  // â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleUpdateStatus = async () => {
     if (!selectedAccount) return;
     setStatusLoading(true);
@@ -183,7 +184,7 @@ export default function AccountsPage() {
     setSuccessMessage(`Account ${newAccNum} opened successfully!`);
   };
 
-  // ── Column definitions ──────────────────────────────────────────
+  // â”€â”€ Column definitions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const columns = [
     {
       key: 'accountNumber',
@@ -204,8 +205,8 @@ export default function AccountsPage() {
       header: 'Customer',
       render: (row: AccountResponse) => (
         <div>
-          <p className="font-bold text-slate-900 leading-snug">{row.customerName || '—'}</p>
-          <p className="text-[11px] text-slate-400 font-mono">{row.customerCode || '—'}</p>
+          <p className="font-bold text-slate-900 leading-snug">{row.customerName || 'â€”'}</p>
+          <p className="text-[11px] text-slate-400 font-mono">{row.customerCode || 'â€”'}</p>
         </div>
       ),
     },
@@ -291,7 +292,7 @@ export default function AccountsPage() {
       key: 'openedAt',
       header: 'Opened Date',
       render: (row: AccountResponse) =>
-        row.openedAt ? new Date(row.openedAt).toLocaleDateString() : '—',
+        row.openedAt ? formatDate(row.openedAt) : 'â€”',
     },
     {
       key: 'actions',
@@ -324,7 +325,7 @@ export default function AccountsPage() {
     },
   ];
 
-  // ── Render ──────────────────────────────────────────────────────
+  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <AdminLayout pageTitle="Customer Accounts">
       <div className="max-w-[1440px] mx-auto space-y-6">
@@ -371,7 +372,7 @@ export default function AccountsPage() {
             </span>
             <div className="flex items-baseline justify-between mt-3">
               <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
-                {isLoading ? 'Loading…' : formatCurrency(totalBalance, 'MMK')}
+                {isLoading ? 'Loadingâ€¦' : formatCurrency(totalBalance, 'MMK')}
               </span>
               <span className="status-pill-emerald text-[11px]">
                 {accounts.length} Accounts
@@ -417,7 +418,7 @@ export default function AccountsPage() {
               onClick={() => setSuccessMessage(null)}
               className="text-emerald-700 hover:text-emerald-950 font-bold cursor-pointer"
             >
-              ×
+              Ã—
             </button>
           </div>
         )}
@@ -429,7 +430,7 @@ export default function AccountsPage() {
           </div>
         ) : (
           <div className="liquid-glass rounded-3xl p-6 space-y-5">
-            {/* ── Toolbar: search · filter · sort ─────────────────── */}
+            {/* â”€â”€ Toolbar: search Â· filter Â· sort â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <div className="flex flex-wrap items-center gap-3 pb-4 border-b border-slate-100">
               {/* Search */}
               <div className="relative flex-1 min-w-[240px]">
@@ -441,7 +442,7 @@ export default function AccountsPage() {
                 </svg>
                 <input
                   type="text"
-                  placeholder="Search by account number, name, customer code…"
+                  placeholder="Search by account number, name, customer codeâ€¦"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-10 pr-4 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-sky-100 focus:border-sky-500 transition-all shadow-xs"
@@ -486,7 +487,7 @@ export default function AccountsPage() {
               {/* Sort direction toggle */}
               <button
                 onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
-                title={sortDir === 'desc' ? 'Sorted descending – click to toggle' : 'Sorted ascending – click to toggle'}
+                title={sortDir === 'desc' ? 'Sorted descending â€“ click to toggle' : 'Sorted ascending â€“ click to toggle'}
                 className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs transition-colors cursor-pointer"
               >
                 {sortDir === 'desc' ? (
@@ -507,7 +508,7 @@ export default function AccountsPage() {
               </button>
             </div>
 
-            {/* ── Table ───────────────────────────────────────────── */}
+            {/* â”€â”€ Table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             <div>
               <DataTable
                 columns={columns}
@@ -517,7 +518,7 @@ export default function AccountsPage() {
                 keyExtractor={(row: AccountResponse) => row.accountNumber}
               />
 
-              {/* ── Pagination ──────────────────────────────────────── */}
+              {/* â”€â”€ Pagination â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
               {!isLoading && totalPages > 1 && (
                 <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-100">
                   <span className="text-xs font-medium text-slate-500">
@@ -530,7 +531,7 @@ export default function AccountsPage() {
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
-                      ← Prev
+                      â† Prev
                     </button>
 
                     {Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -548,7 +549,7 @@ export default function AccountsPage() {
                       .map((item, idx) =>
                         item === 'ellipsis' ? (
                           <span key={`e-${idx}`} className="px-2 text-slate-400">
-                            …
+                            â€¦
                           </span>
                         ) : (
                           <button
@@ -571,7 +572,7 @@ export default function AccountsPage() {
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
-                      Next →
+                      Next â†’
                     </button>
                   </div>
                 </div>
