@@ -2,29 +2,37 @@ package com.corebanking.service;
 
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CusEmailService {
 
     private final JavaMailSender mailSender;
 
+    @Async("mailTaskExecutor")
     public void sendCorporateLoginOtp(String email, String otp) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(email);
-        message.setSubject("Corporate Banking Login OTP");
-        message.setText(
-                "Your Corporate Banking login OTP code is: "
-                        + otp
-                        + "\n\nThis OTP will expire in 5 minutes."
-                        + "\n\nDo not share this OTP with anyone."
-                        + "\n\nIf you did not request this login, please ignore this email."
-        );
-        mailSender.send(message);
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(email);
+            message.setSubject("Corporate Banking Login OTP");
+            message.setText(
+                    "Your Corporate Banking login OTP code is: "
+                            + otp
+                            + "\n\nThis OTP will expire in 5 minutes."
+                            + "\n\nDo not share this OTP with anyone."
+                            + "\n\nIf you did not request this login, please ignore this email."
+            );
+            mailSender.send(message);
+        } catch (Exception ex) {
+            log.error("Failed to send corporate login OTP to {}", email, ex);
+        }
     }
 
 
@@ -33,6 +41,7 @@ public class CusEmailService {
     // =========================================================
 
     
+    @Async("mailTaskExecutor")
     public void sendLoginOtp(
             String toEmail,
             String otp) {
@@ -70,27 +79,31 @@ public class CusEmailService {
         // SEND OTP EMAIL
         // ==========================================
 
-        SimpleMailMessage message =
-                new SimpleMailMessage();
+        try {
+            SimpleMailMessage message =
+                    new SimpleMailMessage();
 
-        message.setTo(
-                toEmail
-        );
+            message.setTo(
+                    toEmail
+            );
 
-        message.setSubject(
-                "Online Banking Login OTP"
-        );
+            message.setSubject(
+                    "Online Banking Login OTP"
+            );
 
-        message.setText(
-                "Your OTP code is: "
-                        + otp
-                        + "\n\nThis OTP will expire in 5 minutes."
-                        + "\n\nDo not share this OTP with anyone."
-        );
+            message.setText(
+                    "Your OTP code is: "
+                            + otp
+                            + "\n\nThis OTP will expire in 5 minutes."
+                            + "\n\nDo not share this OTP with anyone."
+            );
 
-        mailSender.send(
-                message
-        );
+            mailSender.send(
+                    message
+            );
+        } catch (Exception ex) {
+            log.error("Failed to send login OTP to {}", toEmail, ex);
+        }
     }
 
 
@@ -98,61 +111,67 @@ public class CusEmailService {
     // PASSWORD RESET OTP EMAIL
     // =========================================================
 
+    @Async("mailTaskExecutor")
     public void sendPasswordResetOtp(
             String toEmail,
             String otp) {
 
-        SimpleMailMessage message =
-                new SimpleMailMessage();
+        try {
+            SimpleMailMessage message =
+                    new SimpleMailMessage();
 
+            message.setTo(
+                    toEmail
+            );
 
-        message.setTo(
-                toEmail
-        );
+            message.setSubject(
+                    "Online Banking Password Reset OTP"
+            );
 
+            message.setText(
+                    "Your password reset OTP code is: "
+                            + otp
+                            + "\n\nThis OTP will expire in 5 minutes."
+                            + "\n\nDo not share this OTP with anyone."
+                            + "\n\nIf you did not request a password reset, "
+                            + "please ignore this email."
+            );
 
-        message.setSubject(
-                "Online Banking Password Reset OTP"
-        );
-
-
-        message.setText(
-                "Your password reset OTP code is: "
-                        + otp
-                        + "\n\nThis OTP will expire in 5 minutes."
-                        + "\n\nDo not share this OTP with anyone."
-                        + "\n\nIf you did not request a password reset, "
-                        + "please ignore this email."
-        );
-
-
-        mailSender.send(
-                message
-        );
+            mailSender.send(
+                    message
+            );
+        } catch (Exception ex) {
+            log.error("Failed to send password reset OTP to {}", toEmail, ex);
+        }
     }
     
+    @Async("mailTaskExecutor")
     public void sendPinResetOtp(
             String toEmail,
             String otp) {
 
-        SimpleMailMessage message =
-                new SimpleMailMessage();
+        try {
+            SimpleMailMessage message =
+                    new SimpleMailMessage();
 
-        message.setTo(
-                toEmail
-        );
+            message.setTo(
+                    toEmail
+            );
 
-        message.setSubject(
-                "Online Banking Transaction PIN Reset OTP"
-        );
+            message.setSubject(
+                    "Online Banking Transaction PIN Reset OTP"
+            );
 
-        message.setText(
-                "Your Transaction PIN reset OTP code is: "
-                        + otp
-                        + "\n\nThis OTP will expire in 5 minutes."
-                        + "\n\nDo not share this OTP with anyone."
-        );
-        mailSender.send(message);
+            message.setText(
+                    "Your Transaction PIN reset OTP code is: "
+                            + otp
+                            + "\n\nThis OTP will expire in 5 minutes."
+                            + "\n\nDo not share this OTP with anyone."
+            );
+            mailSender.send(message);
+        } catch (Exception ex) {
+            log.error("Failed to send PIN reset OTP to {}", toEmail, ex);
+        }
     }
 
     

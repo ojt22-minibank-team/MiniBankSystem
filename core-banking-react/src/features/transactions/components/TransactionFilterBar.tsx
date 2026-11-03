@@ -27,7 +27,6 @@ interface Props {
 const STATUS_OPTIONS = [
   { value: 'ALL', label: 'All Statuses' },
   { value: 'COMPLETED', label: 'Completed' },
-  { value: 'HELD', label: 'Held (AML/Review)' },
   { value: 'PENDING_AUTHORIZATION', label: 'Pending Auth' },
   { value: 'FAILED', label: 'Failed' },
   { value: 'REJECTED', label: 'Rejected' },
@@ -212,7 +211,7 @@ export default React.memo(function TransactionFilterBar({
               }}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs px-1 cursor-pointer"
             >
-              ✕
+              âœ•
             </button>
           )}
         </div>

@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -19,6 +20,7 @@ public class EmailService {
     @Value("${spring.mail.username:yoyobeautycare29@gmail.com}")
     private String fromEmail;
 
+    @Async("mailTaskExecutor")
     public void sendPasswordSetupEmail(
             String recipientEmail,
             String setupLink,
@@ -46,11 +48,11 @@ public class EmailService {
         try {
             mailSender.send(message);
         } catch (MailException ex) {
-            ex.printStackTrace(); 
-            throw new IllegalStateException("Unable to send password setup email", ex);
+            log.error("Failed to send password setup email to {}", recipientEmail, ex);
         }
     }
 
+    @Async("mailTaskExecutor")
     public void sendStaffLoginOtpEmail(
             String recipientEmail,
             String otpCode,
@@ -85,7 +87,6 @@ public class EmailService {
             mailSender.send(message);
         } catch (MailException ex) {
             log.error("Failed to send staff login OTP email to {}", recipientEmail, ex);
-            throw new IllegalStateException("Unable to send staff login OTP email", ex);
         }
     }
 }

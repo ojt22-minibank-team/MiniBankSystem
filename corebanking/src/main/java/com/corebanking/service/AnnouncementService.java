@@ -11,7 +11,7 @@ import com.corebanking.repository.AnnouncementsRepository;
 import com.corebanking.repository.StaffUsersRepository;
 
 import lombok.RequiredArgsConstructor;
-
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -76,9 +76,9 @@ public class AnnouncementService {
         return toResponse(savedAnnouncement);
     }
 
-    // 2. GET ALL ANNOUNCEMENTS
+    // 2. GET ALL ANNOUNCEMENTS (Sorted chronologically by newest first)
     public List<AnnouncementResponse> getAllAnnouncements() {
-        return announcementsRepository.findAll()
+        return announcementsRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"))
                 .stream()
                 .map(this::toResponse)
                 .toList();

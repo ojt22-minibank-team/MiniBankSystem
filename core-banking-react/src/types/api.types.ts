@@ -138,6 +138,12 @@ export type TransactionType =
 
 export type FeeType = 'FLAT' | 'PERCENTAGE';
 
+export interface OtcParametersResponse {
+  minDepositAmount?: number;
+  minWithdrawalAmount?: number;
+  minimumBalance?: number;
+}
+
 export interface FeeScheduleResponse {
   feeScheduleId: number;
   feeCode: string;

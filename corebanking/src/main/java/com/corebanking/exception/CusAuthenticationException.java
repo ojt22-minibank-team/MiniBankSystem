@@ -1,9 +1,7 @@
 package com.corebanking.exception;
 
-import org.springframework.security.authentication.BadCredentialsException;
-
 public class CusAuthenticationException
-        extends BadCredentialsException {
+        extends RuntimeException {
 
     public CusAuthenticationException(
             String message) {
