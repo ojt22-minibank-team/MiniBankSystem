@@ -1,6 +1,7 @@
 package com.corebanking.service;
 
 import com.corebanking.dto.DailyCashSummaryDto;
+import com.corebanking.dto.OtcAccountLimitDto;
 import com.corebanking.dto.OtcParametersDto;
 import com.corebanking.dto.OtcTransactionRequestDto;
 import com.corebanking.dto.OtcTransactionResponseDto;
@@ -69,6 +70,12 @@ public class OtcTransactionService {
         }
         if ("MINIMUM_BALANCE".equalsIgnoreCase(key)) {
             return new BigDecimal("10000");
+        }
+        if ("OTC_ONETIME_WITHDRAWAL_LIMIT".equalsIgnoreCase(key)) {
+            return new BigDecimal("5000000");
+        }
+        if ("OTC_DAILY_WITHDRAWAL_LIMIT".equalsIgnoreCase(key)) {
+            return new BigDecimal("20000000");
         }
         return BigDecimal.ZERO;
     }
@@ -245,6 +252,13 @@ public class OtcTransactionService {
             throw new TransactionException("Withdrawal amount must be at least " + minWithdrawal.toPlainString() + " MMK.");
         }
 
+        BigDecimal maxOnetimeWithdrawal = getRequiredSystemParameter("OTC_ONETIME_WITHDRAWAL_LIMIT");
+        if (maxOnetimeWithdrawal != null && maxOnetimeWithdrawal.compareTo(BigDecimal.ZERO) > 0 && request.getAmount().compareTo(maxOnetimeWithdrawal) > 0) {
+            throw new TransactionException(String.format(
+                    "Withdrawal amount (%s MMK) exceeds the one-time counter limit of %s MMK.",
+                    request.getAmount().toPlainString(), maxOnetimeWithdrawal.toPlainString()));
+        }
+
         // Lock account row for update
         Accounts account = accountRepository.findByAccountNumberForUpdate(request.getAccountNumber().trim())
                 .orElseThrow(() -> new AccountNotFoundException("Account not found: " + request.getAccountNumber()));
@@ -254,6 +268,29 @@ public class OtcTransactionService {
         }
 
         BigDecimal withdrawAmount = request.getAmount();
+
+        // Check Cumulative Daily OTC Withdrawal Limit
+        BigDecimal maxDailyWithdrawal = getRequiredSystemParameter("OTC_DAILY_WITHDRAWAL_LIMIT");
+        if (maxDailyWithdrawal != null && maxDailyWithdrawal.compareTo(BigDecimal.ZERO) > 0) {
+            LocalDate today = LocalDate.now();
+            LocalDateTime startOfDay = today.atStartOfDay();
+            LocalDateTime endOfDay = today.atTime(23, 59, 59, 999999999);
+            BigDecimal todayWithdrawn = bankTransactionRepository.findTodayTotalOtcWithdrawnAmount(
+                    account.getAccountId(), startOfDay, endOfDay);
+            if (todayWithdrawn == null) {
+                todayWithdrawn = BigDecimal.ZERO;
+            }
+            BigDecimal projectedTotal = todayWithdrawn.add(withdrawAmount);
+            if (projectedTotal.compareTo(maxDailyWithdrawal) > 0) {
+                BigDecimal remainingLimit = maxDailyWithdrawal.subtract(todayWithdrawn);
+                if (remainingLimit.compareTo(BigDecimal.ZERO) < 0) {
+                    remainingLimit = BigDecimal.ZERO;
+                }
+                throw new TransactionException(String.format(
+                        "Daily withdrawal limit exceeded. Total withdrawn today: %s MMK. Maximum remaining available to withdraw today is %s MMK.",
+                        todayWithdrawn.toPlainString(), remainingLimit.toPlainString()));
+            }
+        }
 
         // Check Minimum Balance Enforcement
         BigDecimal systemMinBalance = getRequiredSystemParameter("MINIMUM_BALANCE");
@@ -514,11 +551,7 @@ public class OtcTransactionService {
             }
         }
 
-        return staffUsersRepository.findByUsername("teller.zin")
-                .or(() -> staffUsersRepository.findByUsername("admin.nay"))
-                .or(() -> staffUsersRepository.findByUsername("admin"))
-                .or(() -> staffUsersRepository.findAll().stream().filter(s -> s.getStatus() == StaffUserStatus.ACTIVE).findFirst())
-                .orElseThrow(() -> new RuntimeException("No active staff record found in the system"));
+        throw new TransactionException("Authentication required: Valid authenticated staff account is required to perform OTC operations.");
     }
 
     private String generateTransactionRef(String prefix) {
@@ -623,6 +656,46 @@ public class OtcTransactionService {
                 .minDepositAmount(getRequiredSystemParameter("OTC_MINIMUM_DEPOSIT_AMOUNT"))
                 .minWithdrawalAmount(getRequiredSystemParameter("OTC_MINIMUM_WITHDRAWAL_AMOUNT"))
                 .minimumBalance(getRequiredSystemParameter("MINIMUM_BALANCE"))
+                .maxOnetimeWithdrawal(getRequiredSystemParameter("OTC_ONETIME_WITHDRAWAL_LIMIT"))
+                .maxDailyWithdrawal(getRequiredSystemParameter("OTC_DAILY_WITHDRAWAL_LIMIT"))
+                .build();
+    }
+
+    /**
+     * Retrieves withdrawal limit status for a specific account.
+     */
+    @Transactional(readOnly = true)
+    public OtcAccountLimitDto getAccountLimitStatus(String accountNumber) {
+        if (accountNumber == null || accountNumber.trim().isEmpty()) {
+            throw new TransactionException("Account number is required.");
+        }
+        Accounts account = accountRepository.findByAccountNumber(accountNumber.trim())
+                .orElseThrow(() -> new AccountNotFoundException("Account not found: " + accountNumber));
+
+        BigDecimal maxOnetime = getRequiredSystemParameter("OTC_ONETIME_WITHDRAWAL_LIMIT");
+        BigDecimal maxDaily = getRequiredSystemParameter("OTC_DAILY_WITHDRAWAL_LIMIT");
+
+        LocalDate today = LocalDate.now();
+        LocalDateTime startOfDay = today.atStartOfDay();
+        LocalDateTime endOfDay = today.atTime(23, 59, 59, 999999999);
+
+        BigDecimal todayWithdrawn = bankTransactionRepository.findTodayTotalOtcWithdrawnAmount(
+                account.getAccountId(), startOfDay, endOfDay);
+        if (todayWithdrawn == null) {
+            todayWithdrawn = BigDecimal.ZERO;
+        }
+
+        BigDecimal remainingLimit = maxDaily.subtract(todayWithdrawn);
+        if (remainingLimit.compareTo(BigDecimal.ZERO) < 0) {
+            remainingLimit = BigDecimal.ZERO;
+        }
+
+        return OtcAccountLimitDto.builder()
+                .accountNumber(account.getAccountNumber())
+                .maxOnetimeWithdrawal(maxOnetime)
+                .maxDailyWithdrawal(maxDaily)
+                .todayWithdrawnAmount(todayWithdrawn)
+                .remainingDailyLimit(remainingLimit)
                 .build();
     }
 
