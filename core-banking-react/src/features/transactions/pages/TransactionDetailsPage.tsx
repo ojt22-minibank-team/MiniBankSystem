@@ -8,7 +8,7 @@ import type {
   StaffTransactionSearchParams,
   StaffTransactionStats,
 } from '../../../types/transactions.types';
-import TransactionFilterBar from '../components/TransactionFilterBar';
+import TransactionFilterBar, { getTodayDateRange } from '../components/TransactionFilterBar';
 import TransactionStatsCards from '../components/TransactionStatsCards';
 import TransactionDetailModal from '../components/TransactionDetailModal';
 import { formatCurrency } from '../../../utils/formatCurrency';
@@ -45,8 +45,8 @@ export default function TransactionDetailsPage() {
   const [isStatsLoading, setIsStatsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters
-  const [appliedFilters, setAppliedFilters] = useState<StaffTransactionSearchParams>({});
+  // Filters (Defaults to Today's date range)
+  const [appliedFilters, setAppliedFilters] = useState<StaffTransactionSearchParams>(() => getTodayDateRange());
 
   // Inspector Modal
   const [selectedTransaction, setSelectedTransaction] = useState<StaffTransactionDetail | null>(null);
