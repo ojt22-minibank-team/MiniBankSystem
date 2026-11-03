@@ -402,4 +402,14 @@ export interface OtcParametersResponse {
   minDepositAmount: number;
   minWithdrawalAmount: number;
   minimumBalance: number;
+  maxOnetimeWithdrawal?: number;
+  maxDailyWithdrawal?: number;
+}
+
+export interface OtcAccountLimitResponse {
+  accountNumber: string;
+  maxOnetimeWithdrawal: number;
+  maxDailyWithdrawal: number;
+  todayWithdrawnAmount: number;
+  remainingDailyLimit: number;
 }

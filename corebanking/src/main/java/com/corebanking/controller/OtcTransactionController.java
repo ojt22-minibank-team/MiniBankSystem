@@ -1,5 +1,6 @@
 package com.corebanking.controller;
 
+import com.corebanking.dto.OtcAccountLimitDto;
 import com.corebanking.dto.OtcParametersDto;
 import com.corebanking.dto.OtcTransactionRequestDto;
 import com.corebanking.dto.OtcTransactionResponseDto;
@@ -63,5 +64,14 @@ public class OtcTransactionController {
     public ResponseEntity<Map<String, Boolean>> checkReference(@RequestParam("ref") String ref) {
         boolean exists = otcTransactionService.isReferenceIdDuplicate(ref);
         return ResponseEntity.ok(Map.of("exists", exists));
+    }
+
+    /**
+     * Checks account withdrawal limits and today's cumulative withdrawn amount.
+     * GET /api/transactions/otc/account-limits?accountNumber=...
+     */
+    @GetMapping("/account-limits")
+    public ResponseEntity<OtcAccountLimitDto> getAccountLimitStatus(@RequestParam("accountNumber") String accountNumber) {
+        return ResponseEntity.ok(otcTransactionService.getAccountLimitStatus(accountNumber));
     }
 }
