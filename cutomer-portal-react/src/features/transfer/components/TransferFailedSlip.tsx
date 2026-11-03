@@ -151,12 +151,12 @@ export default function TransferFailedSlip({
       </div>
 
       {/* Official Bank Header: EKARAJ BANK with Failure Notice */}
-      <div className="bg-gradient-to-r from-[#00A3C4] to-[#0284C7] px-5 sm:px-6 py-4 text-white flex items-center justify-between border-b border-cyan-600/30 relative z-10 shadow-xs">
+      <div className="bg-[#EFF6FF] dark:bg-[#071328] px-5 sm:px-6 py-4 text-[#001D77] dark:text-white flex items-center justify-between border-b border-blue-100 dark:border-slate-800 relative z-10">
         <div>
-          <h2 className="text-base sm:text-lg font-black tracking-wide uppercase text-white leading-tight">
+          <h2 className="text-base sm:text-lg font-black tracking-wide uppercase text-[#001D77] dark:text-blue-300 leading-tight">
             EKARAJ BANK
           </h2>
-          <p className="text-[10px] text-rose-300 font-semibold tracking-wider uppercase mt-0.5">
+          <p className="text-[10px] text-rose-600 dark:text-rose-400 font-semibold tracking-wider uppercase mt-0.5">
             Transaction Failure Advisory
           </p>
         </div>
@@ -167,7 +167,7 @@ export default function TransferFailedSlip({
             <button
               type="button"
               onClick={onClose}
-              className="no-print p-1.5 -mr-1.5 sm:-mr-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 active:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-white/40 cursor-pointer"
+              className="no-print p-1.5 -mr-1.5 sm:-mr-2 rounded-lg text-slate-400 hover:text-[#001D77] hover:bg-blue-100/60 dark:hover:bg-slate-800 dark:hover:text-blue-300 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-slate-700 cursor-pointer"
               aria-label="Close"
               title="Close"
             >

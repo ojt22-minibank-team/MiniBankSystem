@@ -1,6 +1,8 @@
 // Actual React/MemoryRouter, logout hook, token storage, service, Axios interceptors
 // and WebSocket hook. Deferred HTTP and WebSocket transports are synthetic; these
 // tests do not prove server-side revocation or real browser/network behavior.
+// Most tests observe dispatches through a Redux mock; realStore tests additionally
+// execute the actual root reducer and customer slices, without mounting MainLayout.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -15,6 +17,7 @@ const React = require(project + '/node_modules/react');
 const { act } = React;
 const { createRoot } = require(project + '/node_modules/react-dom/client');
 const router = require(project + '/node_modules/react-router-dom');
+const reactI18next = require(project + '/node_modules/react-i18next');
 const jsx = require(project + '/node_modules/react/jsx-runtime');
 const ts = require(project + '/node_modules/typescript');
 const axios = require(project + '/node_modules/axios/dist/node/axios.cjs');
@@ -25,13 +28,19 @@ const SID_A = '22222222-2222-4222-8222-222222222222', SID_B = '44444444-4444-444
 const temporaryKeys = ['challengeGroupId', 'maskedEmail', 'passwordResetChallengeGroupId', 'passwordResetMaskedEmail',
   'verifiedPasswordResetChallengeGroupId', 'pinResetChallengeGroupId', 'pinResetMaskedEmail', 'verifiedPinResetChallengeGroupId'];
 
-async function setup(t, { sidebar = false } = {}) {
+async function setup(t, { sidebar = false, realStore = false } = {}) {
   sessionStorage.clear();
   sessionStorage.setItem('corporateAccessToken', 'synthetic-corporate-access');
   sessionStorage.setItem('corporateRefreshToken', 'synthetic-corporate-refresh');
   sessionStorage.setItem('unrelated', 'preserve');
+  const i18n = sidebar ? require(project + '/node_modules/i18next').createInstance() : null;
+  if (i18n) await i18n.init({
+    lng: 'en', fallbackLng: 'en', defaultNS: 'common',
+    resources: { en: { common: require(project + '/src/i18n/locales/en/common.json') } },
+    interpolation: { escapeValue: false },
+  });
   const originalAdapter = axios.defaults.adapter;
-  const cache = new Map(), calls = [], logouts = [], refreshes = [], sockets = [], delivered = [];
+  const cache = new Map(), calls = [], logouts = [], refreshes = [], sockets = [], delivered = [], resets = [];
   const revoked = new Set();
   let logout, otherLogout, location, sequence = 0;
   const token = (sub = A, sid = SID_A) => [Buffer.from('{"alg":"HS256"}').toString('base64url'),
@@ -44,7 +53,7 @@ async function setup(t, { sidebar = false } = {}) {
     calls.push({ url: config.url, auth: config.headers.Authorization, retry: config._retry });
     if (config.url === '/auth/logout') {
       const pending = deferred();
-      logouts.push({ config, resolve: () => { revoked.add(config.headers.Authorization); pending.resolve(ok(config)); },
+      logouts.push({ config, resetsAtRequest: resets.length, resolve: () => { revoked.add(config.headers.Authorization); pending.resolve(ok(config)); },
         fail: () => pending.reject(new Error('Synthetic offline backend')), unauthorized: () => {
           try { unauthorized(config); } catch (error) { pending.reject(error); }
         } });
@@ -68,16 +77,23 @@ async function setup(t, { sidebar = false } = {}) {
     close(code = 1000) { this.closes.push(code); this.readyState = 3; this.onclose?.({ code }); }
     send() { assert.equal(this.readyState, 1); }
   }
-  const dispatch = () => {};
+  const dispatch = action => {
+    if (action.type === 'customer/resetState') {
+      resets.push({ generation: tokens.getAuthenticationGeneration(), requests: logouts.length });
+    }
+    if (realStore) return cache.get(path.resolve(project, 'src/lib/redux.ts')).exports.store.dispatch(action);
+    return action;
+  };
   function load(relative) {
     const file = path.resolve(project, relative);
     if (cache.has(file)) return cache.get(file).exports;
     const module = { exports: {} }; cache.set(file, module);
-    if (file.endsWith('/lib/redux.ts')) {
-      module.exports = { useAppDispatch: () => dispatch, useAppSelector: fn => fn({ announcements: { announcements: [] } }) };
+    if (file.endsWith('/lib/redux.ts') && !realStore) {
+      module.exports = { resetCustomerState: () => ({ type: 'customer/resetState' }),
+        useAppDispatch: () => dispatch, useAppSelector: fn => fn({ announcements: { announcements: [] } }) };
       return module.exports;
     }
-    if (file.endsWith('/announcements/store/announcementSlice.ts')) {
+    if (file.endsWith('/announcements/store/announcementSlice.ts') && !realStore) {
       module.exports = { fetchAnnouncements: () => ({ type: 'synthetic-announcements' }) };
       return module.exports;
     }
@@ -88,11 +104,18 @@ async function setup(t, { sidebar = false } = {}) {
       if (name === 'react') return React;
       if (name === 'react/jsx-runtime') return jsx;
       if (name === 'react-router-dom') return router;
+      if (name === 'react-i18next') return reactI18next;
       if (name === 'axios') return axios;
       if (name === 'lucide-react') return require(project + '/node_modules/lucide-react');
+      if (name === '@reduxjs/toolkit' || name === 'react-redux') return require(project + '/node_modules/' + name);
       const base = path.resolve(path.dirname(file), name);
       return load(fs.existsSync(base + '.ts') ? base + '.ts' : base + '.tsx');
-    }, window, sessionStorage, Date, atob, CustomEvent: window.CustomEvent, WebSocket: FakeWebSocket, console }, { filename: file });
+    }, window, sessionStorage, localStorage: window.localStorage, Date, atob, CustomEvent: window.CustomEvent, WebSocket: FakeWebSocket, console }, { filename: file });
+    if (file.endsWith('/lib/redux.ts') && realStore) {
+      // Keep the hook fixture provider-free while dispatching into the real store.
+      module.exports.useAppDispatch = () => dispatch;
+      module.exports.useAppSelector = fn => fn(module.exports.store.getState());
+    }
     return module.exports;
   }
   const tokens = load('src/utils/tokenStorage.ts');
@@ -115,7 +138,8 @@ async function setup(t, { sidebar = false } = {}) {
     axios.defaults.adapter = originalAdapter;
   });
   const perform = async fn => { await act(async () => { fn(); await flush(); }); };
-  await perform(() => root.render(React.createElement(router.MemoryRouter, { initialEntries: ['/dashboard'] }, React.createElement(Probe))));
+  await perform(() => root.render(React.createElement(router.MemoryRouter, { initialEntries: ['/dashboard'] },
+    i18n ? React.createElement(reactI18next.I18nextProvider, { i18n }, React.createElement(Probe)) : React.createElement(Probe))));
   const seedTemporary = value => temporaryKeys.forEach(key => sessionStorage.setItem(key, value));
   const assertTemporary = value => temporaryKeys.forEach(key => assert.equal(sessionStorage.getItem(key), value));
   const assertIsolated = () => {
@@ -123,8 +147,10 @@ async function setup(t, { sidebar = false } = {}) {
     assert.equal(sessionStorage.getItem('corporateRefreshToken'), 'synthetic-corporate-refresh');
     assert.equal(sessionStorage.getItem('unrelated'), 'preserve');
   };
-  return { tokens, api, service, hook, calls, logouts, refreshes, sockets, delivered, revoked, accessA, token,
+  return { tokens, api, service, hook, calls, logouts, refreshes, sockets, delivered, revoked, accessA, token, resets, load,
+    redux: realStore ? load('src/lib/redux.ts') : null,
     perform, container, seedTemporary, assertTemporary, assertIsolated, location: () => location,
+    invokeLogout: () => logout(),
     begin: async (other = false) => { let promise; await perform(() => { promise = (other ? otherLogout : logout)(); }); return { promise }; },
     loginB: async () => { const accessB = token(B, SID_B); await perform(() => tokens.saveTokens(accessB, 'synthetic-refresh-B')); return accessB; },
   };
@@ -133,18 +159,22 @@ async function setup(t, { sidebar = false } = {}) {
 test('same-session logout clicks across consumers share one request and invalidation', async t => {
   const h = await setup(t); h.seedTemporary('A');
   const a = await h.begin(); const generation = h.tokens.getAuthenticationGeneration(); const duplicate = await h.begin(true);
+  assert.equal(h.resets.length, 1); assert.equal(h.resets[0].generation, generation);
+  assert.equal(h.resets[0].requests, 0); assert.equal(h.logouts[0].resetsAtRequest, 1);
   assert.equal(h.logouts.length, 1); assert.equal(h.tokens.getAuthenticationGeneration(), generation);
   assert.equal(h.hook.isIndividualLogoutInProgress(), true);
   assert.equal(h.logouts[0].config.headers.Authorization, 'Bearer ' + h.accessA);
   await h.perform(() => h.logouts[0].resolve()); await Promise.all([a.promise, duplicate.promise]);
   assert.equal(h.tokens.hasTokens(), false); h.assertTemporary(null); h.assertIsolated();
   assert.equal(h.location(), '/login'); assert.equal(h.hook.isIndividualLogoutInProgress(), false);
+  assert.equal(h.resets.length, 1, 'completion and joined callers must not reset again');
 });
 
 test('Session B logs out independently while A is pending, with its own captured token', async t => {
   const h = await setup(t); const a = await h.begin(); const accessB = await h.loginB();
   assert.equal(h.hook.isIndividualLogoutInProgress(), false);
   const b = await h.begin(); assert.equal(h.logouts.length, 2);
+  assert.equal(h.resets.length, 2, 'one reset for each distinct logout generation');
   assert.deepEqual(h.logouts.map(x => x.config.headers.Authorization), ['Bearer ' + h.accessA, 'Bearer ' + accessB]);
   await h.perform(() => h.logouts[1].resolve()); await b.promise;
   assert.equal(h.revoked.has('Bearer ' + accessB), true); assert.equal(h.tokens.hasTokens(), false);
@@ -175,6 +205,7 @@ for (const failure of [false, true]) {
     assert.equal(h.tokens.getAccessToken(), accessB); assert.equal(h.tokens.getRefreshToken(), 'synthetic-refresh-B');
     h.assertTemporary('B'); h.assertIsolated(); assert.equal(h.location(), '/dashboard');
     assert.equal(socketB.readyState, 1); assert.equal(socketB.closes.length, 0);
+    assert.equal(h.resets.length, 1, 'late A completion must not dispatch a reset for B');
   });
   test(`older A ${failure ? 'failure' : 'success'} cannot release B's pending logout coordination`, async t => {
     const h = await setup(t); const a = await h.begin(); await h.loginB(); const b = await h.begin();
@@ -218,9 +249,11 @@ test('service default captures the token before asynchronous Axios dispatch; nul
 for (const response of ['network failure', '401']) {
   test(`logout ${response} clears this session locally without refresh/retry or Corporate cleanup`, async t => {
     const h = await setup(t); h.seedTemporary('A'); const a = await h.begin();
+    assert.equal(h.resets.length, 1, 'reset already happened while backend request is pending');
     await h.perform(() => response === '401' ? h.logouts[0].unauthorized() : h.logouts[0].fail()); await a.promise;
     assert.equal(h.tokens.hasTokens(), false); h.assertTemporary(null); h.assertIsolated();
     assert.equal(h.location(), '/login'); assert.equal(h.refreshes.length, 0); assert.equal(h.logouts.length, 1);
+    assert.equal(h.resets.length, 1);
   });
 }
 
@@ -254,6 +287,7 @@ test('normal concurrent 401s still share refresh, rotate tokens and retry', asyn
   await Promise.all([first, second]);
   assert.equal(h.tokens.getAccessToken(), rotated); assert.equal(h.tokens.getRefreshToken(), 'rotated-refresh');
   assert.equal(h.calls.filter(x => x.url === '/protected' && x.retry).length, 2);
+  assert.equal(h.resets.length, 0, 'ordinary refresh rotation must not reset Redux');
 });
 
 test('logout immediately closes its socket and stale A frames cannot reach the new B session', async t => {
@@ -268,10 +302,11 @@ test('logout immediately closes its socket and stale A frames cannot reach the n
 
 test('Sidebar logout and another hook consumer use the same safe session operation', async t => {
   const h = await setup(t, { sidebar: true });
-  const button = [...h.container.querySelectorAll('button')].find(x => x.textContent.trim() === 'Logout');
+  const button = [...h.container.querySelectorAll('button')].find(x => x.querySelector('p')?.textContent?.trim() === 'Logout');
   assert.ok(button);
   await h.perform(() => button.dispatchEvent(new MouseEvent('click', { bubbles: true })));
   const duplicate = await h.begin(); assert.equal(h.logouts.length, 1);
+  assert.equal(h.resets.length, 1, 'Sidebar and the other consumer must share one Redux reset');
   assert.equal(button.disabled, true);
   await h.loginB(); h.seedTemporary('B');
   assert.equal(button.disabled, false, 'Session A must not disable the new session logout button');
@@ -280,7 +315,9 @@ test('Sidebar logout and another hook consumer use the same safe session operati
   await h.perform(() => h.logouts[0].resolve()); await duplicate.promise;
   assert.equal(h.location(), '/dashboard'); assert.equal(h.tokens.hasTokens(), true); h.assertTemporary('B');
   assert.equal(button.disabled, true, 'A completion must not release B button coordination');
+  assert.equal(h.resets.length, 2, 'late A completion must not reset B again');
   await h.perform(() => h.logouts[1].resolve()); assert.equal(h.location(), '/login');
+  h.assertIsolated();
 });
 
 test('without an access token, logout clears local Individual data without sending another session token', async t => {
@@ -288,4 +325,67 @@ test('without an access token, logout clears local Individual data without sendi
   const a = await h.begin(); await a.promise;
   assert.equal(h.logouts.length, 0); assert.equal(h.tokens.hasTokens(), false); h.assertTemporary(null); h.assertIsolated();
   assert.equal(h.location(), '/login');
+  assert.equal(h.resets.length, 1);
 });
+
+test('logout synchronously resets actual customer slices while preserving Settings and captured credentials', async t => {
+  const h = await setup(t, { realStore: true });
+  const store = h.redux.store;
+  const initial = store.getState();
+  const profile = h.load('src/features/customer-account/profile/store/ProfileSlice.ts');
+  const settings = h.load('src/features/customer-account/settings/store/SettingsSlice.ts');
+  const accounts = h.load('src/features/customer-account/accounts/stores/accountsSlice.ts');
+  const dashboard = h.load('src/features/customer-account/dashboard/store/dashboardSlice.ts');
+  const announcements = h.load('src/features/customer-account/announcements/store/announcementSlice.ts');
+  const transfer = h.load('src/features/transfer/store/transferSlice.ts');
+  store.dispatch(profile.setProfile({ customerCode: 'synthetic-A' }));
+  store.dispatch(settings.setTheme('dark'));
+  store.dispatch(settings.setLanguage('my'));
+  store.dispatch(settings.setNotificationsEnabled(false));
+  store.dispatch(accounts.fetchMyAccounts.pending('accounts-A'));
+  store.dispatch(accounts.fetchMyAccounts.fulfilled([{ accountNumber: 'synthetic-A', availableBalance: 25 }], 'accounts-A'));
+  store.dispatch(dashboard.setDashboard({ marker: 'synthetic-A' }));
+  store.dispatch(announcements.fetchAnnouncements.pending('announcements-A'));
+  store.dispatch(announcements.fetchAnnouncements.fulfilled([{ announcementId: 1, title: 'synthetic-A' }], 'announcements-A'));
+  store.dispatch(transfer.submitP2PTransfer.fulfilled({ transactionId: 'synthetic-A' }, 'transfer-A'));
+  const preservedSettings = store.getState().settings;
+  for (const key of ['profile', 'accounts', 'dashboard', 'announcements', 'transfer']) {
+    assert.notDeepEqual(store.getState()[key], initial[key], key + ' must contain pre-logout data');
+  }
+  let pending;
+  await h.perform(() => {
+    const previousGeneration = h.tokens.getAuthenticationGeneration();
+    assert.equal(h.resets.length, 0);
+    assert.equal(h.tokens.isAuthenticationGenerationCurrent(previousGeneration), true);
+    pending = h.invokeLogout();
+    assert.equal(h.resets.length, 1, 'dispatch must happen synchronously in the logout call');
+    assert.equal(h.resets[0].generation, previousGeneration + 1);
+    for (const key of ['profile', 'accounts', 'dashboard', 'announcements', 'transfer']) {
+      assert.deepEqual(store.getState()[key], initial[key], key);
+    }
+    assert.strictEqual(store.getState().settings, preservedSettings);
+  });
+  assert.equal(h.resets.length, 1);
+  assert.equal(h.tokens.isAuthenticationGenerationCurrent(h.resets[0].generation), false);
+  assert.equal(h.tokens.getAccessToken(), h.accessA, 'retain captured credentials until existing revocation completes');
+  assert.equal(h.location(), '/dashboard', 'navigation timing must remain unchanged');
+  for (const key of ['profile', 'accounts', 'dashboard', 'announcements', 'transfer']) {
+    assert.deepEqual(store.getState()[key], initial[key], key);
+  }
+  assert.strictEqual(store.getState().settings, preservedSettings);
+  assert.equal(h.logouts[0].resetsAtRequest, 1);
+  await h.perform(() => h.logouts[0].resolve()); await pending;
+  assert.equal(h.resets.length, 1); h.assertIsolated();
+});
+
+for (const failure of [false, true]) {
+  test(`late A logout ${failure ? 'failure' : 'success'} preserves B's actual Redux state`, async t => {
+    const h = await setup(t, { realStore: true });
+    const a = await h.begin(); await h.loginB();
+    h.redux.store.dispatch(h.load('src/features/customer-account/profile/store/ProfileSlice.ts').setProfile({ customerCode: 'synthetic-B' }));
+    const stateB = h.redux.store.getState();
+    await h.perform(() => failure ? h.logouts[0].fail() : h.logouts[0].resolve()); await a.promise;
+    assert.strictEqual(h.redux.store.getState(), stateB);
+    assert.equal(h.resets.length, 1); assert.equal(h.location(), '/dashboard'); h.assertIsolated();
+  });
+}

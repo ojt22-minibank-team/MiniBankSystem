@@ -32,4 +32,5 @@ public class NotificationResponseDto {
     private String transferDirection;
     private String sourceAccountNumber;
     private String destinationAccountNumber;
+    private String description;
 }
