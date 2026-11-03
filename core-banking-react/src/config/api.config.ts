@@ -5,6 +5,8 @@ export const API_ENDPOINTS = {
   // Auth
   AUTH: {
     LOGIN: "/api/auth/login",
+    VERIFY_OTP: "/api/auth/verify-otp",
+    RESEND_OTP: "/api/auth/resend-otp",
     LOGOUT: "/api/auth/logout",
     REFRESH: "/api/auth/refresh",
     STAFF_PASSWORD_SETUP_COMPLETE: "/api/auth/staff-password-setup/complete",
@@ -80,6 +82,13 @@ export const API_ENDPOINTS = {
   AUDIT_LOGS: {
     BASE: "/api/v1/staff/audit-logs",
     BY_ID: (id: number | string) => `/api/v1/staff/audit-logs/${id}`,
+  },
+
+  // Staff Transaction Management & Details
+  STAFF_TRANSACTIONS: {
+    BASE: "/api/v1/staff/transactions",
+    BY_IDENTIFIER: (id: string) => `/api/v1/staff/transactions/detail/${encodeURIComponent(id)}`,
+    STATS: "/api/v1/staff/transactions/stats",
   },
 } as const;
 

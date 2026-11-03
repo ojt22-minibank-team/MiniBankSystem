@@ -46,6 +46,7 @@ public class CustomerService {
     private final StaffUsersRepository staffUsersRepository;
     private final PasswordEncoder passwordEncoder;
     private final CusEmailService cusEmailService; // Email Service ကို ထည့်သွင်းခြင်း
+    private final AuditTrailService auditTrailService;
 
     /**
      * ၁။ Customer Profile (Personal/Company Info) နှင့် CustomerCredentials ကို တစ်ပြိုင်နက် ဖန်တီးသိမ်းဆည်းပြီး Email ပေးပို့ခြင်း
@@ -205,6 +206,26 @@ public class CustomerService {
 
         customerCredentialsRepository.saveAndFlush(credentials);
 
+        // Record Audit Trail
+        java.util.Map<String, Object> newCustSnapshot = new java.util.LinkedHashMap<>();
+        newCustSnapshot.put("customerId", savedCustomer.getCustomerId().toString());
+        newCustSnapshot.put("customerCode", savedCustomer.getCustomerCode());
+        newCustSnapshot.put("customerType", savedCustomer.getCustomerType().name());
+        newCustSnapshot.put("fullName", savedCustomer.getFullName());
+        newCustSnapshot.put("email", savedCustomer.getEmail());
+        newCustSnapshot.put("phone", savedCustomer.getPhone());
+        newCustSnapshot.put("status", savedCustomer.getStatus().name());
+
+        if (auditTrailService != null) auditTrailService.logDataChange(
+                "CUSTOMER",
+                "CREATE_CUSTOMER",
+                "CUSTOMER",
+                savedCustomer.getCustomerCode(),
+                null,
+                newCustSnapshot,
+                "Created new " + customerType + " customer: " + savedCustomer.getCustomerCode() + " (" + savedCustomer.getFullName() + ")"
+        );
+
         // Customer Code နှင့် Temporary Password ကို Customer ၏ Email သို့ တိုက်ရိုက် ပေးပို့ခြင်း
         if (savedCustomer.getEmail() != null && !savedCustomer.getEmail().isBlank()) {
             cusEmailService.sendCustomerRegistrationCredentials(
@@ -280,7 +301,22 @@ public class CustomerService {
             if (dto.getBusinessType() != null) companyInfo.setBusinessType(dto.getBusinessType());
         }
 
-        customerRepository.save(customer);
+        Customers updatedCustomer = customerRepository.save(customer);
+
+        java.util.Map<String, Object> newCustUpdateSnapshot = new java.util.LinkedHashMap<>();
+        newCustUpdateSnapshot.put("customerCode", updatedCustomer.getCustomerCode());
+        newCustUpdateSnapshot.put("email", updatedCustomer.getEmail());
+        newCustUpdateSnapshot.put("phone", updatedCustomer.getPhone());
+
+        if (auditTrailService != null) auditTrailService.logDataChange(
+                "CUSTOMER",
+                "UPDATE_CUSTOMER",
+                "CUSTOMER",
+                updatedCustomer.getCustomerCode(),
+                null,
+                newCustUpdateSnapshot,
+                "Updated customer details: " + updatedCustomer.getCustomerCode()
+        );
     }
 
     /**
@@ -377,16 +413,25 @@ public class CustomerService {
         Customers customer = customerRepository.findByCustomerCode(customerCode)
                 .orElseThrow(() -> new RuntimeException("Customer not found with code: " + customerCode));
 
+        CustomerStatus oldStatus = customer.getStatus();
+        CustomerStatus resolvedStatus;
         try {
-            CustomerStatus newStatus = CustomerStatus.valueOf(statusStr.toUpperCase());
-            customer.setStatus(newStatus);
-            customer.setUpdatedAt(LocalDateTime.now());
-            customerRepository.save(customer);
+            resolvedStatus = CustomerStatus.valueOf(statusStr.toUpperCase());
         } catch (IllegalArgumentException e) {
-            // အကယ်၍ Enum ထဲတွင် ACTIVE သာရှိပါက fallback အဖြစ် ACTIVE ထားပေးခြင်း
-            customer.setStatus(CustomerStatus.ACTIVE);
-            customer.setUpdatedAt(LocalDateTime.now());
-            customerRepository.save(customer);
+            resolvedStatus = CustomerStatus.ACTIVE;
         }
+        customer.setStatus(resolvedStatus);
+        customer.setUpdatedAt(LocalDateTime.now());
+        customerRepository.save(customer);
+
+        if (auditTrailService != null) auditTrailService.logDataChange(
+                "CUSTOMER",
+                "UPDATE_KYC_STATUS",
+                "CUSTOMER",
+                customer.getCustomerCode(),
+                java.util.Map.of("status", oldStatus != null ? oldStatus.name() : "UNKNOWN"),
+                java.util.Map.of("status", resolvedStatus.name()),
+                "Updated customer KYC status from " + oldStatus + " to " + resolvedStatus + " for " + customer.getCustomerCode()
+        );
     }
 }

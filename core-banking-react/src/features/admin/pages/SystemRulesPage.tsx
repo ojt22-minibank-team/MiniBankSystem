@@ -402,10 +402,10 @@ export default function SystemRulesPage() {
           </div>
         </div>
 
-        {/* 3 Summary KPI Cards */}
+        {/* 3 Summary KPI Cards (Liquid Glass) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)]">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <div className="liquid-glass-card rounded-3xl p-6">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               System Parameters
             </span>
             <div className="flex items-baseline justify-between mt-3">
@@ -418,12 +418,12 @@ export default function SystemRulesPage() {
             </div>
           </div>
 
-          <div className="glass-panel p-6">
-            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+          <div className="liquid-glass-card rounded-3xl p-6">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Active Fee Schedules
             </span>
             <div className="flex items-baseline justify-between mt-3">
-              <span className="text-2xl sm:text-[28px] font-black text-[#1E1B4B] font-mono tabular-nums">
+              <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
                 {activeFeesCount}
               </span>
               <span className="status-pill-amber text-[11px]">
@@ -432,12 +432,12 @@ export default function SystemRulesPage() {
             </div>
           </div>
 
-          <div className="glass-panel p-6">
-            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+          <div className="liquid-glass-card rounded-3xl p-6">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Security Protocol
             </span>
             <div className="flex items-baseline justify-between mt-3">
-              <span className="text-xl sm:text-2xl font-black text-[#1E1B4B]">
+              <span className="text-xl sm:text-2xl font-bold text-slate-900">
                 Pessimistic Locks
               </span>
               <span className="status-pill-purple text-[11px]">

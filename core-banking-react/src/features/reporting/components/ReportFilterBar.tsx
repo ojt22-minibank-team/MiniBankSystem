@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type ReportTab = 'ledger' | 'account' | 'audit' | 'fee' | 'aml';
+export type ReportTab = 'ledger' | 'account' | 'audit' | 'fee' | 'aml' | 'transactionDetail';
 
 interface ReportFilterBarProps {
   activeTab: ReportTab;
@@ -268,6 +268,53 @@ const ReportFilterBar: React.FC<ReportFilterBarProps> = (props) => {
                 {LEDGER_TRANSACTION_TYPES.map((t) => (
                   <option key={t} value={t}>
                     {t || 'All Types'}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'transactionDetail' && (
+          <>
+            <div style={fieldWrap}>
+              <label style={labelStyle}>Transaction Type</label>
+              <select
+                value={ledgerTransactionType}
+                onChange={(e) => onLedgerTransactionTypeChange?.(e.target.value)}
+                style={inputStyle}
+              >
+                {LEDGER_TRANSACTION_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t || 'All Types'}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={fieldWrap}>
+              <label style={labelStyle}>Transaction Status</label>
+              <select
+                value={ledgerStatus}
+                onChange={(e) => onLedgerStatusChange(e.target.value)}
+                style={inputStyle}
+              >
+                {LEDGER_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s || 'All Statuses'}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={fieldWrap}>
+              <label style={labelStyle}>Channel</label>
+              <select
+                value={feeChannel}
+                onChange={(e) => onFeeChannelChange?.(e.target.value)}
+                style={inputStyle}
+              >
+                {CHANNELS.map((c) => (
+                  <option key={c} value={c}>
+                    {c || 'All Channels'}
                   </option>
                 ))}
               </select>
