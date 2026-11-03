@@ -256,6 +256,13 @@ export default function StaffListPage() {
 
         const roleCode = (row.roleCode || (row.staffNo?.includes('TLR') ? 'TELLER' : row.staffNo?.includes('AUD') ? 'AUDITOR' : row.staffNo?.includes('ADM') ? 'ADMIN' : '')).toUpperCase();
         const isRowAdmin = roleCode === 'ADMIN';
+
+        // Hide 'Action' option for Admin users
+        if (isRowAdmin) {
+          return (
+            <span className="text-xs text-zinc-400 font-medium select-none pr-3">—</span>
+          );
+        }
         const isOtherAdmin = isRowAdmin && !isSelf;
 
         const isDeactivated = row.status === 'DEACTIVATED';
