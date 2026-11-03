@@ -90,6 +90,19 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
             @Param("endOfDay") LocalDateTime endOfDay);
 
     /**
+     * Calculates total OTC withdrawn cash amount by account for the current day.
+     */
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM BankTransactions t " +
+           "WHERE t.sourceAccount.accountId = :accountId " +
+           "AND t.transactionType = com.corebanking.entity.enums.TransactionType.OTC_WITHDRAWAL " +
+           "AND t.status = com.corebanking.entity.enums.TransactionStatus.COMPLETED " +
+           "AND t.completedAt >= :startOfDay AND t.completedAt <= :endOfDay")
+    BigDecimal findTodayTotalOtcWithdrawnAmount(
+            @Param("accountId") UUID accountId,
+            @Param("startOfDay") LocalDateTime startOfDay,
+            @Param("endOfDay") LocalDateTime endOfDay);
+
+    /**
      * Finds OTC transactions processed by a specific staff member within a time range.
      */
     @Query("SELECT t FROM BankTransactions t " +

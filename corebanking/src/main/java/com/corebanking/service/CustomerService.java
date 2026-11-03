@@ -66,40 +66,67 @@ public class CustomerService {
             staff = staffUsersRepository.findByUsername("admin.nay")
                     .or(() -> staffUsersRepository.findByUsername("teller.zin"))
                     .or(() -> staffUsersRepository.findByUsername("admin"))
-                    .or(() -> staffUsersRepository.findAll().stream().findFirst())
+                    .or(() -> staffUsersRepository.findFirstByStatus(com.corebanking.entity.enums.StaffUserStatus.ACTIVE))
                     .orElseThrow(() -> new RuntimeException("Authenticated staff record not found"));
         }
 
         LocalDateTime now = LocalDateTime.now();
 
         // String မှ CustomerType Enum သို့ ပြောင်းလဲခြင်း
-        // Duplicate Checks (Email, Phone)
-        if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
-            if (customerRepository.existsByEmail(dto.getEmail().trim())) {
-                throw new IllegalArgumentException("Email address is already registered in the system: " + dto.getEmail().trim());
-            }
-        }
-        if (dto.getPhone() != null && !dto.getPhone().isBlank()) {
-            if (customerRepository.existsByPhone(dto.getPhone().trim())) {
-                throw new IllegalArgumentException("Phone number is already registered in the system: " + dto.getPhone().trim());
-            }
-        }
-
         CustomerType customerType = CustomerType.PERSONAL;
         if (dto.getCustomerType() != null && !dto.getCustomerType().isBlank()) {
-            try {
-                customerType = CustomerType.valueOf(dto.getCustomerType().trim().toUpperCase());
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Invalid customer type: " + dto.getCustomerType());
+            String rawType = dto.getCustomerType().trim().toUpperCase();
+            if ("INDIVIDUAL".equals(rawType)) {
+                customerType = CustomerType.PERSONAL;
+            } else if ("CORPORATE".equals(rawType)) {
+                customerType = CustomerType.COMPANY;
+            } else {
+                try {
+                    customerType = CustomerType.valueOf(rawType);
+                } catch (IllegalArgumentException e) {
+                    throw new IllegalArgumentException("Invalid customer type: " + dto.getCustomerType());
+                }
             }
         }
 
-        // Full Name သတ်မှတ်ခြင်း
+        // Phone Number format & uniqueness check
+        if (dto.getPhone() != null && !dto.getPhone().isBlank()) {
+            String phone = dto.getPhone().trim();
+            if (phone.length() != 11) {
+                throw new IllegalArgumentException("Phone number must be exactly 11 digits long: " + phone);
+            }
+            if (customerRepository.existsByPhone(phone)) {
+                throw new IllegalArgumentException("Phone number is already registered in the system: " + phone);
+            }
+        }
+
+        // Email Uniqueness: at most 1 PERSONAL customer, at most 1 COMPANY customer
+        if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
+            String email = dto.getEmail().trim();
+            boolean isPersonal = (customerType == CustomerType.PERSONAL || customerType == CustomerType.INDIVIDUAL);
+            if (isPersonal) {
+                boolean personalExists = customerRepository.existsByEmailAndCustomerType(email, CustomerType.PERSONAL)
+                        || customerRepository.existsByEmailAndCustomerType(email, CustomerType.INDIVIDUAL);
+                if (personalExists) {
+                    throw new IllegalArgumentException("Email is already associated with an existing Personal customer: " + email);
+                }
+            } else {
+                boolean companyExists = customerRepository.existsByEmailAndCustomerType(email, CustomerType.COMPANY);
+                if (companyExists) {
+                    throw new IllegalArgumentException("Email is already associated with an existing Company customer: " + email);
+                }
+            }
+        }
+
         // Duplicate Checks by Customer Type (NRC, Registration Number, Tax ID)
-        if (customerType == CustomerType.PERSONAL) {
+        if (customerType == CustomerType.PERSONAL || customerType == CustomerType.INDIVIDUAL) {
             if (dto.getNrc() != null && !dto.getNrc().isBlank()) {
-                if (personalInfoRepository.existsByNrc(dto.getNrc().trim())) {
-                    throw new IllegalArgumentException("NRC number is already registered: " + dto.getNrc().trim());
+                String nrc = dto.getNrc().trim();
+                if (!nrc.matches(".*\\d{6}$")) {
+                    throw new IllegalArgumentException("NRC format must end with exactly 6 trailing digits: " + nrc);
+                }
+                if (personalInfoRepository.existsByNrc(nrc)) {
+                    throw new IllegalArgumentException("NRC number is already registered: " + nrc);
                 }
             }
         } else {
@@ -115,6 +142,7 @@ public class CustomerService {
             }
         }
 
+        // Full Name သတ်မှတ်ခြင်း
         String resolvedFullName;
         if (customerType == CustomerType.COMPANY) {
             if (dto.getCompanyName() == null || dto.getCompanyName().isBlank()) {
@@ -130,8 +158,8 @@ public class CustomerService {
             }
         }
 
-        // Unique Customer Code ထုတ်ယူခြင်း
-        String customerCode = generateUniqueCustomerCode();
+        // Unique Customer Code ထုတ်ယူခြင်း (Personal: CUST-YYYYMMDD-XXXX, Company: COMP-YYYYMMDD-XXXX)
+        String customerCode = generateUniqueCustomerCode(customerType);
 
         // Customers Entity အသစ် တည်ဆောက်ခြင်း
         UUID generatedCustomerId = UUID.randomUUID();
@@ -362,15 +390,23 @@ public class CustomerService {
 
     /**
      * Unique Customer Code အလိုအလျောက် ထုတ်ပေးသော Method
+     * Personal Customer Code format: CUST-YYYYMMDD-XXXX
+     * Company Customer Code format: COMP-YYYYMMDD-XXXX
      */
-    private String generateUniqueCustomerCode() {
+    private String generateUniqueCustomerCode(CustomerType customerType) {
+        String prefix = (customerType == CustomerType.COMPANY) ? "COMP-" : "CUST-";
         String datePart = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        SecureRandom secureRandom = new SecureRandom();
         String code;
         do {
-            int randomDigits = ThreadLocalRandom.current().nextInt(1000, 9999);
-            code = "CUST-" + datePart + "-" + randomDigits;
+            int randomDigits = 1000 + secureRandom.nextInt(9000);
+            code = prefix + datePart + "-" + randomDigits;
         } while (customerRepository.existsByCustomerCode(code));
         return code;
+    }
+
+    private String generateUniqueCustomerCode() {
+        return generateUniqueCustomerCode(CustomerType.PERSONAL);
     }
 
     /**

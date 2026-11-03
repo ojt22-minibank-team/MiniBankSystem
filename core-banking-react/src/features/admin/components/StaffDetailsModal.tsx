@@ -35,9 +35,11 @@ export default function StaffDetailsModal({
   // RBAC permissions according to requirements:
   // Admin to Other Admin: An Admin can ONLY view details of another Admin. All other actions hidden.
   // Admin to Themselves: An Admin modifying their own profile can ONLY do "View Details", "Edit Information", and "Reset Password".
-  const canEdit = !isOtherAdmin && staff.status !== 'DEACTIVATED';
+  // RBAC permissions according to requirements:
+  // Admin users' actionable items (edit, reset password) are managed in their dedicated Profile section.
+  const canEdit = !isTargetAdmin && !isOtherAdmin && staff.status !== 'DEACTIVATED';
   const canChangeRole = !isTargetAdmin && !isSelf && staff.status !== 'DEACTIVATED';
-  const canResetPassword = !isOtherAdmin && staff.status !== 'DEACTIVATED';
+  const canResetPassword = !isTargetAdmin && !isOtherAdmin && staff.status !== 'DEACTIVATED';
 
   return (
     <Modal
