@@ -89,14 +89,24 @@ public class CustomerService {
             }
         }
 
-        // Phone Number format & uniqueness check
+        // Phone Number format & uniqueness check (Allowed at most ONCE for PERSONAL, ONCE for COMPANY)
         if (dto.getPhone() != null && !dto.getPhone().isBlank()) {
             String phone = dto.getPhone().trim();
             if (phone.length() != 11) {
                 throw new IllegalArgumentException("Phone number must be exactly 11 digits long: " + phone);
             }
-            if (customerRepository.existsByPhone(phone)) {
-                throw new IllegalArgumentException("Phone number is already registered in the system: " + phone);
+            boolean isPersonal = (customerType == CustomerType.PERSONAL || customerType == CustomerType.INDIVIDUAL);
+            if (isPersonal) {
+                boolean personalExists = customerRepository.existsByPhoneAndCustomerType(phone, CustomerType.PERSONAL)
+                        || customerRepository.existsByPhoneAndCustomerType(phone, CustomerType.INDIVIDUAL);
+                if (personalExists) {
+                    throw new IllegalArgumentException("A Personal customer with this phone number already exists: " + phone);
+                }
+            } else {
+                boolean companyExists = customerRepository.existsByPhoneAndCustomerType(phone, CustomerType.COMPANY);
+                if (companyExists) {
+                    throw new IllegalArgumentException("A Company customer with this phone number already exists: " + phone);
+                }
             }
         }
 
@@ -108,12 +118,12 @@ public class CustomerService {
                 boolean personalExists = customerRepository.existsByEmailAndCustomerType(email, CustomerType.PERSONAL)
                         || customerRepository.existsByEmailAndCustomerType(email, CustomerType.INDIVIDUAL);
                 if (personalExists) {
-                    throw new IllegalArgumentException("Email is already associated with an existing Personal customer: " + email);
+                    throw new IllegalArgumentException("A Personal customer with this email already exists: " + email);
                 }
             } else {
                 boolean companyExists = customerRepository.existsByEmailAndCustomerType(email, CustomerType.COMPANY);
                 if (companyExists) {
-                    throw new IllegalArgumentException("Email is already associated with an existing Company customer: " + email);
+                    throw new IllegalArgumentException("A Company customer with this email already exists: " + email);
                 }
             }
         }
@@ -126,18 +136,20 @@ public class CustomerService {
                     throw new IllegalArgumentException("NRC format must end with exactly 6 trailing digits: " + nrc);
                 }
                 if (personalInfoRepository.existsByNrc(nrc)) {
-                    throw new IllegalArgumentException("NRC number is already registered: " + nrc);
+                    throw new IllegalArgumentException("A Personal customer with this NRC already exists: " + nrc);
                 }
             }
         } else {
             if (dto.getRegistrationNumber() != null && !dto.getRegistrationNumber().isBlank()) {
-                if (companyInfoRepository.existsByRegistrationNumber(dto.getRegistrationNumber().trim())) {
-                    throw new IllegalArgumentException("Company registration number is already registered: " + dto.getRegistrationNumber().trim());
+                String regNo = dto.getRegistrationNumber().trim();
+                if (companyInfoRepository.existsByRegistrationNumber(regNo)) {
+                    throw new IllegalArgumentException("A Company customer with this registration number already exists: " + regNo);
                 }
             }
             if (dto.getTaxId() != null && !dto.getTaxId().isBlank()) {
-                if (companyInfoRepository.existsByTaxId(dto.getTaxId().trim())) {
-                    throw new IllegalArgumentException("Tax ID is already registered: " + dto.getTaxId().trim());
+                String taxId = dto.getTaxId().trim();
+                if (companyInfoRepository.existsByTaxId(taxId)) {
+                    throw new IllegalArgumentException("A Company customer with this tax ID already exists: " + taxId);
                 }
             }
         }

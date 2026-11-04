@@ -121,9 +121,9 @@ export default function AccountCreateModal({
         retailInitialDeposit === undefined ||
         Number.isNaN(Number(retailInitialDeposit))
       ) {
-        errs.retailInitialDeposit = 'Initial deposit amount is required';
-      } else if (Number(retailInitialDeposit) < 0) {
-        errs.retailInitialDeposit = 'Initial deposit cannot be negative';
+        errs.retailInitialDeposit = 'Initial deposit amount is required (Minimum: 10,000 MMK)';
+      } else if (Number(retailInitialDeposit) < 10000) {
+        errs.retailInitialDeposit = 'Initial deposit for Personal account must be at least 10,000 MMK';
       }
     } else {
       if (!companyCustomerCode.trim()) {
@@ -144,9 +144,9 @@ export default function AccountCreateModal({
         corporateInitialDeposit === undefined ||
         Number.isNaN(Number(corporateInitialDeposit))
       ) {
-        errs.corporateInitialDeposit = 'Initial deposit amount is required';
-      } else if (Number(corporateInitialDeposit) < 0) {
-        errs.corporateInitialDeposit = 'Initial deposit cannot be negative';
+        errs.corporateInitialDeposit = 'Initial deposit amount is required (Minimum: 50,000 MMK)';
+      } else if (Number(corporateInitialDeposit) < 50000) {
+        errs.corporateInitialDeposit = 'Initial deposit for Corporate account must be at least 50,000 MMK';
       }
 
       if (!ceoCustomerCode.trim()) {
@@ -401,25 +401,14 @@ export default function AccountCreateModal({
                     Currency <span className="text-red-500">*</span>
                   </label>
                   <select
-                    value={retailCurrency}
-                    onChange={(e) => {
-                      setRetailCurrency(e.target.value);
-                      clearError('retailCurrency');
-                    }}
-                    className={`w-full rounded-xl border px-3 py-2.5 text-xs sm:text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all cursor-pointer ${
-                      errors.retailCurrency
-                        ? 'border-red-500 focus:border-red-500 bg-red-50/20'
-                        : 'border-slate-200 hover:border-slate-300 focus:border-sky-500'
-                    }`}
+                    value="MMK"
+                    disabled
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs sm:text-sm text-slate-700 bg-gray-100 cursor-not-allowed font-medium"
+                    title="Currency is locked to Myanmar Kyat (MMK)"
                   >
                     <option value="MMK">MMK (Myanmar Kyat)</option>
-                    <option value="USD">USD (US Dollar)</option>
                   </select>
-                  {errors.retailCurrency && (
-                    <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
-                      {errors.retailCurrency}
-                    </p>
-                  )}
+                  <p className="mt-1 text-[11px] text-gray-500">Only MMK currency is supported</p>
                 </div>
 
                 <div>
@@ -431,9 +420,9 @@ export default function AccountCreateModal({
                   </div>
                   <Input
                     type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
+                    min="10000"
+                    step="1000"
+                    placeholder="e.g. 10000"
                     value={retailInitialDeposit}
                     onChange={(e) => {
                       setRetailInitialDeposit(e.target.value === '' ? '' : Number(e.target.value));
@@ -441,9 +430,13 @@ export default function AccountCreateModal({
                     }}
                     className={errors.retailInitialDeposit ? '!border-red-500 !bg-red-50/20 focus:!border-red-500' : ''}
                   />
-                  {errors.retailInitialDeposit && (
+                  {errors.retailInitialDeposit ? (
                     <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
                       {errors.retailInitialDeposit}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-[11px] text-gray-500 font-medium">
+                      Minimum initial deposit is 10,000 MMK
                     </p>
                   )}
                   <div className="flex gap-1.5 mt-1.5">
@@ -521,25 +514,14 @@ export default function AccountCreateModal({
                     Currency <span className="text-red-500">*</span>
                   </label>
                   <select
-                    value={corporateCurrency}
-                    onChange={(e) => {
-                      setCorporateCurrency(e.target.value);
-                      clearError('corporateCurrency');
-                    }}
-                    className={`w-full rounded-xl border px-3 py-2.5 text-xs sm:text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all cursor-pointer ${
-                      errors.corporateCurrency
-                        ? 'border-red-500 focus:border-red-500 bg-red-50/20'
-                        : 'border-slate-200 hover:border-slate-300 focus:border-sky-500'
-                    }`}
+                    value="MMK"
+                    disabled
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs sm:text-sm text-slate-700 bg-gray-100 cursor-not-allowed font-medium"
+                    title="Currency is locked to Myanmar Kyat (MMK)"
                   >
                     <option value="MMK">MMK (Myanmar Kyat)</option>
-                    <option value="USD">USD (US Dollar)</option>
                   </select>
-                  {errors.corporateCurrency && (
-                    <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
-                      {errors.corporateCurrency}
-                    </p>
-                  )}
+                  <p className="mt-1 text-[11px] text-gray-500">Only MMK currency is supported</p>
                 </div>
 
                 <div>
@@ -551,9 +533,9 @@ export default function AccountCreateModal({
                   </div>
                   <Input
                     type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
+                    min="50000"
+                    step="5000"
+                    placeholder="e.g. 50000"
                     value={corporateInitialDeposit}
                     onChange={(e) => {
                       setCorporateInitialDeposit(e.target.value === '' ? '' : Number(e.target.value));
@@ -561,9 +543,13 @@ export default function AccountCreateModal({
                     }}
                     className={errors.corporateInitialDeposit ? '!border-red-500 !bg-red-50/20 focus:!border-red-500' : ''}
                   />
-                  {errors.corporateInitialDeposit && (
+                  {errors.corporateInitialDeposit ? (
                     <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
                       {errors.corporateInitialDeposit}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-[11px] text-gray-500 font-medium">
+                      Minimum initial deposit is 50,000 MMK
                     </p>
                   )}
                   <div className="flex gap-1.5 mt-1.5">

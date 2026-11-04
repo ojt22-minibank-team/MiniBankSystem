@@ -38,6 +38,16 @@ public class MerchantAuthorizationEngine {
         return gatewayOutboundPort.fetchPaymentDetails(paymentToken);
     }
 
+    public void cancelPayment(String token, String accountId) {
+        String effectiveAccountId = (accountId != null && !accountId.trim().isEmpty()) ? accountId : "UNKNOWN";
+        log.info("Cancelling payment for token {} (Account: {})", token, effectiveAccountId);
+
+        safeAuditLog("TRANSACTION", "MERCHANT_PAYMENT_CANCELLED", token,
+                "Customer manually cancelled checkout for payment token " + token);
+
+        notifyGatewayFailure(token, effectiveAccountId, "USER_CANCELLED", "Customer manually cancelled the checkout.");
+    }
+
     public PaymentReceiptResponse processPaymentAuthorization(MerchantPaymentRequest request) {
         String token = request.getPaymentToken();
 

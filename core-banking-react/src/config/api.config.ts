@@ -1,5 +1,4 @@
-// Backend base URL
-export const API_BASE_URL = "http://localhost:8080";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 export const API_ENDPOINTS = {
   // Auth
@@ -100,4 +99,5 @@ export const STORAGE_KEYS = {
   REFRESH_TOKEN: "cb_refresh_token",
   USERNAME: "cb_username",
   ROLES: "cb_roles",
+  STAFF_PROFILE: "cb_staff_profile",
 } as const;

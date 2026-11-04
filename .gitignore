@@ -2,3 +2,4 @@
 ecommerce-main/
 
 corebanking/src/main/resources/application.properties
+corebanking/.env
