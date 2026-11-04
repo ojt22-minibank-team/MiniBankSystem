@@ -17,6 +17,7 @@ import type {
   AccountResponse,
 } from '../../../types/api.types';
 import type { AxiosError } from 'axios';
+import { formatDate } from '../../../utils/formatDate';
 import ekarajCrown from '../../../assets/ekaraj-crown-transparent.png';
 
 // ============================================================
@@ -217,20 +218,15 @@ export default function AdminDashboardPage() {
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-white/15 backdrop-blur-md border border-white/20 text-white shadow-xs">
                   <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  System Operational · Node 01
+                  System Operational Â· Node 01
                 </span>
                 <span className="text-xs text-sky-200/90 font-medium">
-                  {new Date().toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
+                  {formatDate(new Date())}
                 </span>
               </div>
 
               <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-tight">
-                Welcome back, {user?.username ?? 'Administrator'}! 👋
+                Welcome back, {user?.username ?? 'Administrator'}! ðŸ‘‹
               </h2>
 
               <p className="text-xs sm:text-sm text-sky-100/90 font-medium leading-relaxed">
@@ -335,8 +331,8 @@ export default function AdminDashboardPage() {
           {/* Card 1: Staff Workforce */}
           <LiquidStatCard
             title="Staff Workforce"
-            value={staffLoading ? '—' : staff.length}
-            subtitle={staffLoading ? 'Syncing staff…' : `${activeStaff} Active Officers`}
+            value={staffLoading ? 'â€”' : staff.length}
+            subtitle={staffLoading ? 'Syncing staffâ€¦' : `${activeStaff} Active Officers`}
             badge="Team"
             badgeColor="sky"
             gradient="bg-sky-400"
@@ -352,8 +348,8 @@ export default function AdminDashboardPage() {
           {/* Card 2: Customers & Portfolios */}
           <LiquidStatCard
             title="Total Customers"
-            value={customersLoading ? '—' : customers.length}
-            subtitle={customersLoading ? 'Loading records…' : 'Active Client Accounts'}
+            value={customersLoading ? 'â€”' : customers.length}
+            subtitle={customersLoading ? 'Loading recordsâ€¦' : 'Active Client Accounts'}
             badge="Verified"
             badgeColor="emerald"
             gradient="bg-emerald-400"
@@ -369,8 +365,8 @@ export default function AdminDashboardPage() {
           {/* Card 3: Bank Accounts */}
           <LiquidStatCard
             title="Bank Accounts"
-            value={accountsLoading ? '—' : accounts.length}
-            subtitle={accountsLoading ? 'Syncing ledger…' : `${activeAccounts} Normal Standing`}
+            value={accountsLoading ? 'â€”' : accounts.length}
+            subtitle={accountsLoading ? 'Syncing ledgerâ€¦' : `${activeAccounts} Normal Standing`}
             badge="Accounts"
             badgeColor="purple"
             gradient="bg-indigo-400"
@@ -386,8 +382,8 @@ export default function AdminDashboardPage() {
           {/* Card 4: System Parameters */}
           <LiquidStatCard
             title="System Parameters"
-            value={rulesLoading ? '—' : parameters.length}
-            subtitle={rulesLoading ? 'Loading rules…' : 'Dynamic Business Rules'}
+            value={rulesLoading ? 'â€”' : parameters.length}
+            subtitle={rulesLoading ? 'Loading rulesâ€¦' : 'Dynamic Business Rules'}
             badge="Rules"
             badgeColor="amber"
             gradient="bg-amber-400"
@@ -446,7 +442,7 @@ export default function AdminDashboardPage() {
                     className="text-xs font-bold text-sky-600 hover:text-sky-700 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <span>Manage Staff</span>
-                    <span>→</span>
+                    <span>â†’</span>
                   </button>
                 )}
               </div>
@@ -471,7 +467,7 @@ export default function AdminDashboardPage() {
                           <p className="truncate text-xs font-bold text-slate-900">{s.fullName || s.username}</p>
                           <span className="text-[10px] font-mono text-slate-400">({s.staffNo})</span>
                         </div>
-                        <p className="truncate text-[11px] text-slate-400 font-medium">{s.email ?? '—'}</p>
+                        <p className="truncate text-[11px] text-slate-400 font-medium">{s.email ?? 'â€”'}</p>
                       </div>
                       <span
                         className={
@@ -515,7 +511,7 @@ export default function AdminDashboardPage() {
                     className="text-xs font-bold text-purple-600 hover:text-purple-700 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <span>Manage</span>
-                    <span>→</span>
+                    <span>â†’</span>
                   </button>
                 )}
               </div>
@@ -530,7 +526,10 @@ export default function AdminDashboardPage() {
                 ) : announcements.length === 0 ? (
                   <div className="py-8 text-center text-xs font-medium text-slate-400">No active notices broadcasted.</div>
                 ) : (
-                  announcements.slice(0, 4).map((a) => (
+                  [...announcements]
+                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                    .slice(0, 4)
+                    .map((a) => (
                     <div key={a.announcementId} className="py-3 px-1 hover:bg-white/60 rounded-xl transition-colors">
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-xs font-bold text-slate-900 leading-snug">{a.title}</p>
@@ -549,8 +548,8 @@ export default function AdminDashboardPage() {
                         <span className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 font-bold">
                           {a.audience}
                         </span>
-                        <span>·</span>
-                        <span>{new Date(a.createdAt).toLocaleDateString()}</span>
+                        <span>Â·</span>
+                        <span>{formatDate(a.createdAt)}</span>
                       </div>
                     </div>
                   ))
@@ -579,7 +578,7 @@ export default function AdminDashboardPage() {
               <div>
                 <h4 className="text-xs font-bold text-slate-900 tracking-tight">Security & System Sentinel</h4>
                 <p className="text-[11px] text-slate-400 font-medium">
-                  Audit Logging Active · MySQL 8.0 Primary Replica Connected · Zero Detected Anomalies
+                  Audit Logging Active Â· MySQL 8.0 Primary Replica Connected Â· Zero Detected Anomalies
                 </p>
               </div>
             </div>
@@ -591,7 +590,7 @@ export default function AdminDashboardPage() {
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
               >
                 <span>Audit Logs</span>
-                <span>→</span>
+                <span>â†’</span>
               </button>
             </div>
           </div>

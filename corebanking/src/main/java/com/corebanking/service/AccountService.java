@@ -654,7 +654,7 @@ public class AccountService {
         return staffUsersRepository.findByUsername("admin.nay")
                 .or(() -> staffUsersRepository.findByUsername("teller.zin"))
                 .or(() -> staffUsersRepository.findByUsername("admin"))
-                .or(() -> staffUsersRepository.findAll().stream().filter(s -> s.getStatus() == StaffUserStatus.ACTIVE).findFirst())
+                .or(() -> staffUsersRepository.findFirstByStatus(StaffUserStatus.ACTIVE))
                 .orElse(null);
     }
 

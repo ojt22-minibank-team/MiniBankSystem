@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type { StaffTransactionDetail } from '../../../types/transactions.types';
 import { formatCurrency } from '../../../utils/formatCurrency';
+import { formatDateTime } from '../../../utils/formatDate';
 
 interface Props {
   transaction: StaffTransactionDetail | null;
@@ -53,24 +54,6 @@ export default function TransactionDetailModal({
     }
   };
 
-  const formatDateTime = (dateStr?: string | null) => {
-    if (!dateStr) return '—';
-    try {
-      const d = new Date(dateStr);
-      return d.toLocaleString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true,
-      });
-    } catch {
-      return dateStr;
-    }
-  };
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'COMPLETED':
@@ -78,13 +61,6 @@ export default function TransactionDetailModal({
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
             COMPLETED
-          </span>
-        );
-      case 'HELD':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-            HELD (REVIEW)
           </span>
         );
       case 'PENDING_AUTHORIZATION':
@@ -370,7 +346,7 @@ export default function TransactionDetailModal({
                         <span>{rev.reason || rev.resolutionNote || 'Administrative Action'}</span>
                       </div>
                       <div className="text-[11px] text-slate-500">
-                        {rev.performedByStaff} • {formatDateTime(rev.performedAt)}
+                        {rev.performedByStaff} â€¢ {formatDateTime(rev.performedAt)}
                       </div>
                     </div>
                   ))}

@@ -66,7 +66,7 @@ public class CustomerService {
             staff = staffUsersRepository.findByUsername("admin.nay")
                     .or(() -> staffUsersRepository.findByUsername("teller.zin"))
                     .or(() -> staffUsersRepository.findByUsername("admin"))
-                    .or(() -> staffUsersRepository.findAll().stream().findFirst())
+                    .or(() -> staffUsersRepository.findFirstByStatus(com.corebanking.entity.enums.StaffUserStatus.ACTIVE))
                     .orElseThrow(() -> new RuntimeException("Authenticated staff record not found"));
         }
 

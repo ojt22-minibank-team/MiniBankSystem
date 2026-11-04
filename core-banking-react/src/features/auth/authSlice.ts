@@ -8,7 +8,7 @@ import { API_ENDPOINTS } from '../../config/api.config';
 import type { AxiosError } from 'axios';
 
 // ============================================================
-// Helpers — localStorage persistence & role normalization
+// Helpers — sessionStorage persistence & role normalization
 // ============================================================
 
 export function normalizeRoles(roles: string[] = []): string[] {
@@ -33,15 +33,27 @@ function persistAuth(response: LoginResponse): void {
   sessionStorage.setItem(STORAGE_KEYS.ROLES, JSON.stringify(normalized));
 }
 
+export function broadcastLogout(): void {
+  try {
+    const channel = new BroadcastChannel('staff_auth_sync');
+    channel.postMessage('LOGOUT');
+    channel.close();
+  } catch {
+    // ignore
+  }
+  try {
+    localStorage.setItem('staff_auth_logout_trigger', Date.now().toString());
+  } catch {
+    // ignore
+  }
+}
+
 function clearPersistedAuth(): void {
   sessionStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
   sessionStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
   sessionStorage.removeItem(STORAGE_KEYS.USERNAME);
   sessionStorage.removeItem(STORAGE_KEYS.ROLES);
-  localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-  localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-  localStorage.removeItem(STORAGE_KEYS.USERNAME);
-  localStorage.removeItem(STORAGE_KEYS.ROLES);
+  sessionStorage.removeItem(STORAGE_KEYS.STAFF_PROFILE);
 }
 
 function loadAuthFromStorage(): {
@@ -193,7 +205,7 @@ export const logoutThunk = createAsyncThunk<
 });
 
 // ============================================================
-// Initial state — rehydrate from localStorage on page load
+// Initial state — rehydrate from sessionStorage on page load
 // ============================================================
 
 const stored = loadAuthFromStorage();

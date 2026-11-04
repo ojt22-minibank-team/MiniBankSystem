@@ -4,6 +4,7 @@ import { fetchTransactionDetails, exportTransactionDetails } from '../../../serv
 import MetricCard from './MetricCard';
 import DataTable, { type Column } from './DataTable';
 import ExportButtons from './ExportButtons';
+import { formatDateTime } from '../../../utils/formatDate';
 
 interface Props {
   startDate: string;
@@ -39,7 +40,7 @@ const TransactionDetailPanel: React.FC<Props> = ({
   const [loading, setLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [loadDuration, setLoadDuration] = useState<number | null>(null);
+  const [, setLoadDuration] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 30;
 
@@ -112,19 +113,23 @@ const TransactionDetailPanel: React.FC<Props> = ({
       render: (_r, index) => (page - 1) * PAGE_SIZE + index + 1,
     },
     { key: 'ref', label: 'Reference' },
-    { key: 'date', label: 'Date & Time' },
+    {
+      key: 'date',
+      label: 'Date & Time',
+      render: (r) => formatDateTime(r.date),
+    },
     {
       key: 'amount',
-      label: 'Amount',
+      label: 'Amount (MMK)',
       render: (r) => (
-        <span style={{ fontWeight: 600 }}>
+        <span className="font-semibold text-slate-800">
           {r.amount != null ? Number(r.amount).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}
         </span>
       ),
     },
     {
       key: 'fee',
-      label: 'Fee',
+      label: 'Fee (MMK)',
       render: (r) => (
         <span>
           {r.fee != null ? Number(r.fee).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}
@@ -138,12 +143,9 @@ const TransactionDetailPanel: React.FC<Props> = ({
       label: 'Status',
       render: (r) => (
         <span
+          className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold"
           style={{
-            padding: '2px 8px',
-            borderRadius: '10px',
-            fontSize: '11px',
-            fontWeight: 600,
-            backgroundColor: (statusColors[r.status] ?? '#64748b') + '22',
+            backgroundColor: (statusColors[r.status] ?? '#64748b') + '18',
             color: statusColors[r.status] ?? '#64748b',
           }}
         >
@@ -156,24 +158,25 @@ const TransactionDetailPanel: React.FC<Props> = ({
   ];
 
   return (
-    <div>
-      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '20px' }}>
+    <div className="w-full">
+      {/* Metric Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 mb-5">
         <MetricCard
-          icon="Transactions"
+          icon="💳"
           label="Total Transactions"
           value={totalCount.toLocaleString()}
           sub="Filtered records"
           color="#2563EB"
         />
         <MetricCard
-          icon="Volume"
+          icon="📊"
           label="Total Volume"
           value={totalVolume.toLocaleString('en-US', { minimumFractionDigits: 2 })}
           sub="Settled amount sum"
           color="#1E40AF"
         />
         <MetricCard
-          icon="Fees"
+          icon="💰"
           label="Total Fee Revenue"
           value={totalFees.toLocaleString('en-US', { minimumFractionDigits: 2 })}
           sub="Collected fees"
@@ -181,40 +184,11 @@ const TransactionDetailPanel: React.FC<Props> = ({
         />
       </div>
 
-      <div
-        style={{
-          backgroundColor: '#fff',
-          borderRadius: '10px',
-          border: '1px solid #e2e8f0',
-          overflow: 'hidden',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '16px 20px',
-            borderBottom: '1px solid #f1f5f9',
-          }}
-        >
-          <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+      {/* Main Table Card */}
+      <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 border-b border-slate-100">
+          <span className="text-xs sm:text-sm font-bold text-slate-900 truncate">
             Transaction Details ({data.length} records{totalPages > 1 ? ` — Page ${page} of ${totalPages}` : ''})
-            {loadDuration !== null && (
-              <span
-                style={{
-                  marginLeft: '10px',
-                  fontSize: '11px',
-                  fontWeight: 500,
-                  color: '#64748b',
-                  backgroundColor: '#f1f5f9',
-                  padding: '2px 8px',
-                  borderRadius: '12px',
-                }}
-              >
-                ⏱️ {loadDuration.toFixed(2)}s
-              </span>
-            )}
           </span>
           <ExportButtons
             onExportCsv={() => handleExport('csv')}
@@ -225,19 +199,22 @@ const TransactionDetailPanel: React.FC<Props> = ({
         </div>
 
         {error && (
-          <div style={{ padding: '12px 20px', color: '#dc2626', backgroundColor: '#fef2f2', fontSize: '13px' }}>
+          <div className="p-3 sm:p-4 text-xs sm:text-sm text-red-600 bg-red-50 border-b border-red-100">
             {error}
           </div>
         )}
 
-        <DataTable
-          columns={columns}
-          data={paginatedData}
-          loading={loading}
-          page={page}
-          totalPages={totalPages}
-          onPageChange={setPage}
-        />
+        <div className="p-4 sm:p-5">
+          <DataTable
+            columns={columns}
+            data={paginatedData}
+            loading={loading}
+            emptyMessage="No transaction detail records found for the selected period."
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
+        </div>
       </div>
     </div>
   );

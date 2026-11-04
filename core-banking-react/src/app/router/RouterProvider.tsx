@@ -9,7 +9,6 @@ import SystemRulesPage from '../../features/admin/pages/SystemRulesPage';
 import AnnouncementsPage from '../../features/admin/pages/AnnouncementsPage';
 import CustomersPage from '../../features/admin/pages/CustomersPage';
 import AccountsPage from '../../features/operations/pages/AccountsPage';
-import TransfersPage from '../../features/operations/pages/TransfersPage';
 import OtcTransactionPage from '../../features/operations/pages/OtcTransactionPage';
 import ReportingPage from '../../features/reporting/pages/ReportingPage';
 import AuditLogsPage from '../../features/audit-logs/pages/AuditLogsPage';
@@ -111,14 +110,10 @@ export default function RouterProvider() {
           }
         />
 
-        {/* Transfers (Teller or Admin) */}
+        {/* Transfers (Disabled in Admin Panel) */}
         <Route
           path="/admin/transfers"
-          element={
-            <ProtectedRoute>
-              <TransfersPage />
-            </ProtectedRoute>
-          }
+          element={<Navigate to="/admin/dashboard" replace />}
         />
 
         {/* Transaction Explorer & Details (All Authenticated Staff) */}
