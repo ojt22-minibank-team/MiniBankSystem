@@ -334,7 +334,7 @@ class AccountServiceTest {
         AccountCreateDTO dto = new AccountCreateDTO();
         dto.setCustomerCode("CUST-1001");
         dto.setAccountType(AccountType.CURRENT);
-        dto.setInitialDeposit(BigDecimal.ZERO);
+        dto.setInitialDeposit(new BigDecimal("10000.00"));
         dto.setCurrency("MMK");
 
         CustomerCredentials existingCredentials = CustomerCredentials.builder()
@@ -528,6 +528,71 @@ class AccountServiceTest {
         assertThatThrownBy(() -> accountService.createCorporateAccountWithExistingRoles(dto))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("CORPORATE");
+
+        verify(accountRepository, never()).save(any(Accounts.class));
+    }
+
+    @Test
+    @DisplayName("Create Retail Account with initial deposit below 10,000 MMK throws IllegalArgumentException")
+    void testCreateRetailAccount_InitialDepositBelowMinimum_ThrowsException() {
+        AccountCreateDTO dto = new AccountCreateDTO();
+        dto.setCustomerCode("CUST-1001");
+        dto.setAccountType(AccountType.SAVINGS);
+        dto.setInitialDeposit(new BigDecimal("9999.00"));
+        dto.setCurrency("MMK");
+
+        when(customerRepository.findByCustomerCode("CUST-1001")).thenReturn(Optional.of(mockCustomer));
+        when(accountRepository.findByCustomerCustomerCode("CUST-1001")).thenReturn(Collections.emptyList());
+
+        assertThatThrownBy(() -> accountService.createAccount(dto))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Initial deposit for Personal account must be at least 10,000 MMK");
+
+        verify(accountRepository, never()).save(any(Accounts.class));
+    }
+
+    @Test
+    @DisplayName("Create Corporate Account with initial deposit below 50,000 MMK throws IllegalArgumentException")
+    void testCreateCorporateAccount_InitialDepositBelowMinimum_ThrowsException() {
+        CorporateAccountCreateDTO dto = CorporateAccountCreateDTO.builder()
+                .companyCustomerCode("COMP-20261102-5001")
+                .accountType("CURRENT")
+                .initialDeposit(new BigDecimal("49999.00"))
+                .currency("MMK")
+                .build();
+
+        Customers company = Customers.builder()
+                .customerId(UUID.randomUUID())
+                .customerCode("COMP-20261102-5001")
+                .customerType(CustomerType.COMPANY)
+                .fullName("Ace Global Tech Co., Ltd")
+                .build();
+
+        when(customerRepository.findByCustomerCode("COMP-20261102-5001")).thenReturn(Optional.of(company));
+        when(accountRepository.findByCustomerCustomerCode("COMP-20261102-5001")).thenReturn(Collections.emptyList());
+
+        assertThatThrownBy(() -> accountService.createCorporateAccountWithExistingRoles(dto))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Initial deposit for Corporate account must be at least 50,000 MMK");
+
+        verify(accountRepository, never()).save(any(Accounts.class));
+    }
+
+    @Test
+    @DisplayName("Create Retail Account with non-MMK currency throws IllegalArgumentException")
+    void testCreateRetailAccount_NonMmkCurrency_ThrowsException() {
+        AccountCreateDTO dto = new AccountCreateDTO();
+        dto.setCustomerCode("CUST-1001");
+        dto.setAccountType(AccountType.SAVINGS);
+        dto.setInitialDeposit(new BigDecimal("10000.00"));
+        dto.setCurrency("USD");
+
+        when(customerRepository.findByCustomerCode("CUST-1001")).thenReturn(Optional.of(mockCustomer));
+        when(accountRepository.findByCustomerCustomerCode("CUST-1001")).thenReturn(Collections.emptyList());
+
+        assertThatThrownBy(() -> accountService.createAccount(dto))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Only MMK is supported");
 
         verify(accountRepository, never()).save(any(Accounts.class));
     }
