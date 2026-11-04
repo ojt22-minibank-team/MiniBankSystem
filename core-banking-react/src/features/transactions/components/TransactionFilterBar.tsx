@@ -27,9 +27,7 @@ interface Props {
 const STATUS_OPTIONS = [
   { value: 'ALL', label: 'All Statuses' },
   { value: 'COMPLETED', label: 'Completed' },
-  { value: 'PENDING_AUTHORIZATION', label: 'Pending Auth' },
   { value: 'FAILED', label: 'Failed' },
-  { value: 'REJECTED', label: 'Rejected' },
   { value: 'CANCELLED', label: 'Cancelled' },
   { value: 'REVERSED', label: 'Reversed' },
 ];
@@ -40,7 +38,6 @@ const TYPE_OPTIONS = [
   { value: 'OTC_DEPOSIT', label: 'OTC Deposit' },
   { value: 'OTC_WITHDRAWAL', label: 'OTC Withdrawal' },
   { value: 'EXTERNAL_PAYMENT', label: 'External Payment' },
-  { value: 'LEDGER_ADJUSTMENT', label: 'Ledger Adjustment' },
   { value: 'REFUND', label: 'Refund' },
 ];
 

@@ -5,6 +5,7 @@ import com.corebanking.entity.AccountSignatories;
 import com.corebanking.entity.AccountStatusHistory;
 import com.corebanking.entity.Accounts;
 import com.corebanking.entity.Announcements;
+import com.corebanking.entity.AuditLogs;
 import com.corebanking.entity.AuthSession;
 import com.corebanking.entity.BankTransactions;
 import com.corebanking.entity.Beneficiaries;
@@ -28,7 +29,11 @@ import com.corebanking.entity.StaffUserRoles;
 import com.corebanking.entity.StaffUsers;
 import com.corebanking.entity.SystemParameters;
 import com.corebanking.entity.TransactionApprovals;
+import com.corebanking.entity.enums.AccountCategory;
 import com.corebanking.entity.enums.AccountClass;
+import com.corebanking.entity.enums.AccountStatus;
+import com.corebanking.entity.enums.AccountType;
+import com.corebanking.entity.enums.ActorType;
 import com.corebanking.entity.enums.AnnouncementAudience;
 import com.corebanking.entity.enums.ApprovalStatus;
 import com.corebanking.entity.enums.CustomerStatus;
@@ -39,6 +44,7 @@ import com.corebanking.entity.enums.FeeType;
 import com.corebanking.entity.enums.GenderType;
 import com.corebanking.entity.enums.HoldStatus;
 import com.corebanking.entity.enums.HoldType;
+import com.corebanking.entity.enums.InitiatedByType;
 import com.corebanking.entity.enums.LedgerAccountStatus;
 import com.corebanking.entity.enums.LedgerScope;
 import com.corebanking.entity.enums.ManualOperationType;
@@ -49,6 +55,9 @@ import com.corebanking.entity.enums.OtpStatus;
 import com.corebanking.entity.enums.SessionSubjectType;
 import com.corebanking.entity.enums.SignatoryRole;
 import com.corebanking.entity.enums.SignatoryStatus;
+import com.corebanking.entity.enums.StaffUserStatus;
+import com.corebanking.entity.enums.TransactionChannel;
+import com.corebanking.entity.enums.TransactionStatus;
 import com.corebanking.entity.enums.TransactionType;
 import com.corebanking.entity.enums.UpdatedByType;
 import com.corebanking.repository.AccountHoldsRepository;
@@ -60,6 +69,7 @@ import com.corebanking.repository.BankTransactionRepository;
 import com.corebanking.repository.BeneficiariesRepository;
 import com.corebanking.repository.CompanyContactPersonsRepository;
 import com.corebanking.repository.CompanyInfoRepository;
+import com.corebanking.repository.CusAuditLogsRepository;
 import com.corebanking.repository.CusAuthSessionsRepository;
 import com.corebanking.repository.CusJwtRevokedTokensRepository;
 import com.corebanking.repository.CusLoginAttemptsRepository;
@@ -82,8 +92,7 @@ import com.corebanking.repository.TransactionApprovalsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.core.annotation.Order;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -94,29 +103,65 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 
 /**
- * Method 3 seeding strategy, second batch: broad demo data across the non-reporting
- * modules (RBAC, customer KYC/profile, credentials, holdings, approvals, ledger,
- * fees, announcements, notifications, and security/history tables).
+ * Unified Core Banking Master Data Seeder:
+ * Combines SampleDataSeeder and DemoDataSeeder into a single coordinated pipeline.
  *
- * <p>Everything is guarded by "seed only when the table is empty", so it is safe to
- * leave enabled across restarts. Sections that depend on base reporting data
- * (staff/customers/accounts/transactions created by {@link SampleDataSeeder})
- * log a warning and skip when those records are missing.</p>
+ * Seeds:
+ *  - RBAC (Roles & Permissions)
+ *  - Staff users (admin.nay, teller.zin) & Role assignments
+ *  - 3,000 Customers (Retail & Corporate)
+ *  - 3,030 Bank Accounts (Active, Dormant, Frozen, Closed)
+ *  - 10,000 Bank Transactions with realistic distribution
+ *  - Full demo data (Ledger, KYC, Credentials, Beneficiaries, Approvals, Holds, Rules, Announcements)
  *
- * <p>Toggle with {@code app.seed.demo-data.enabled=true|false}.</p>
+ * Configured via:
+ *   app.seed.enabled=true (or app.seed.sample-data.enabled / app.seed.demo-data.enabled)
  */
 @Slf4j
 @Component
-@Order(2)
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.seed.demo-data.enabled", havingValue = "true")
+@ConditionalOnExpression("${app.seed.enabled:false} or ${app.seed.sample-data.enabled:false} or ${app.seed.demo-data.enabled:false}")
 public class DemoDataSeeder implements CommandLineRunner {
 
+    private static final String SEED_STAFF_NO = "STF-001";
     private static final String SEED_PASSWORD = "Password@123";
     private static final String CORPORATE_CUSTOMER_CODE = "CUS-003";
+
+    private static final int TARGET_CUSTOMERS = 3000;
+    private static final int TARGET_TRANSACTIONS = 10000;
+    private static final int[] ANCHOR_REFS = {1, 3, 4, 29, 50};
+
+    /** Balances (MMK) for the 30 anchor ACTIVE accounts. */
+    private static final BigDecimal[] ACTIVE_BALANCES = {
+            BigDecimal.valueOf(45), BigDecimal.valueOf(550), BigDecimal.valueOf(1200),
+            BigDecimal.valueOf(2500), BigDecimal.valueOf(4800), BigDecimal.valueOf(8500),
+            BigDecimal.valueOf(15000), BigDecimal.valueOf(32000), BigDecimal.valueOf(75000),
+            BigDecimal.valueOf(150000), BigDecimal.valueOf(280000), BigDecimal.valueOf(500000),
+            BigDecimal.valueOf(780000), BigDecimal.valueOf(1200000), BigDecimal.valueOf(3500000),
+            BigDecimal.valueOf(70), BigDecimal.valueOf(880), BigDecimal.valueOf(3300),
+            BigDecimal.valueOf(6700), BigDecimal.valueOf(18000), BigDecimal.valueOf(22000),
+            BigDecimal.valueOf(48000), BigDecimal.valueOf(95000), BigDecimal.valueOf(210000),
+            BigDecimal.valueOf(430000), BigDecimal.valueOf(650000), BigDecimal.valueOf(1500000),
+            BigDecimal.valueOf(2200000), BigDecimal.valueOf(10), BigDecimal.valueOf(320)
+    };
+
+    private static final BigDecimal[] DORMANT_BALANCES = {
+            BigDecimal.valueOf(25), BigDecimal.valueOf(400), BigDecimal.valueOf(1100),
+            BigDecimal.valueOf(5500), BigDecimal.valueOf(12000), BigDecimal.valueOf(55000),
+            BigDecimal.valueOf(120000), BigDecimal.valueOf(350000), BigDecimal.valueOf(800000),
+            BigDecimal.valueOf(1100000)
+    };
+
+    private static final BigDecimal[] FROZEN_BALANCES = {
+            BigDecimal.valueOf(80), BigDecimal.valueOf(700), BigDecimal.valueOf(1800),
+            BigDecimal.valueOf(4200), BigDecimal.valueOf(9000), BigDecimal.valueOf(22000),
+            BigDecimal.valueOf(68000), BigDecimal.valueOf(140000), BigDecimal.valueOf(320000),
+            BigDecimal.valueOf(600000), BigDecimal.valueOf(1000000), BigDecimal.valueOf(2500000)
+    };
 
     private final StaffUsersRepository staffUsersRepository;
     private final CustomerRepository customerRepository;
@@ -146,47 +191,520 @@ public class DemoDataSeeder implements CommandLineRunner {
     private final CusOtpChallengesRepository otpChallengesRepository;
     private final CusJwtRevokedTokensRepository jwtRevokedTokensRepository;
     private final SystemParametersRepository systemParametersRepository;
+    private final CusAuditLogsRepository auditLogsRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional
     public void run(String... args) {
         if (rolesRepository.count() > 0
-                && personalInfoRepository.count() > 0
-                && systemParametersRepository.count() > 0) {
-            log.info("[DemoDataSeeder] Demo data already present - skipping.");
+                && customerRepository.count() >= TARGET_CUSTOMERS
+                && bankTransactionRepository.count() >= TARGET_TRANSACTIONS) {
+            log.info("[DemoDataSeeder] Master seed data already present (roles: {}, customers: {}, transactions: {}) - skipping.",
+                    rolesRepository.count(), customerRepository.count(), bankTransactionRepository.count());
             return;
         }
 
         LocalDateTime now = LocalDateTime.now();
-        log.info("[DemoDataSeeder] Seeding demo data ...");
+        log.info("[DemoDataSeeder] Seeding unified data (3,000 customers, 10,000 transactions, full system demo data) ...");
 
+        // 1. RBAC (Roles & Permissions)
         seedRolesAndPermissions(now);
-        seedCorporateCustomer(now);
-        seedCustomerProfiles(now);
-        seedCustomerCredentials(now);
+
+        // 2. Base Staff Users (admin.nay, teller.zin) & Role Assignments
+        seedStaffUsers(now);
         seedStaffRoles(now);
-        seedAnnouncements(now);
-        seedFeeSchedules(now);
+
+        // 3. 3,000 Customers & 3,030 Bank Accounts
+        List<Accounts> activeAccounts = seedCustomersAndAccounts(now);
+
+        // 4. Corporate Customer & Profile
+        seedCorporateCustomer(now);
+
+        // 5. Customer Profiles (KYC / Personal Info)
+        seedCustomerProfiles(now);
+
+        // 6. Customer Credentials
+        seedCustomerCredentials(now);
+
+        // 7. Ledger Accounts
         seedLedgerAccounts(now);
+
+        // 8. 10,000 Bank Transactions
+        seedTransactions(activeAccounts, now);
+
+        // 9. Ledger Entries (referencing transactions)
+        seedLedgerEntries(now);
+
+        // 10. Audit Logs
+        seedAuditLogs(now);
+
+        // 11. Additional Banking Subsystems
         seedBeneficiaries(now);
         seedSignatories(now);
         seedStatusHistory(now);
         seedHolds(now);
         seedTransactionApprovals(now);
         seedManualTransactions(now);
-        seedLedgerEntries(now);
         seedAuthSessions(now);
         seedLoginAttempts(now);
         seedOtpChallenges(now);
         seedJwtRevokedTokens(now);
+        seedAnnouncements(now);
         seedNotifications(now);
+        seedFeeSchedules(now);
         seedSystemParameters(now);
 
-        log.info("[DemoDataSeeder] Done.");
+        log.info("[DemoDataSeeder] Completed! Seeded: {} staff, {} customers, {} accounts, {} transactions, {} audit logs.",
+                staffUsersRepository.count(), customerRepository.count(), accountRepository.count(),
+                bankTransactionRepository.count(), auditLogsRepository.count());
     }
 
     // ------------------------------------------------------------------
+    // Core Base Entities: Staff, Customers & Accounts
+    // ------------------------------------------------------------------
+
+    private void seedStaffUsers(LocalDateTime now) {
+        if (staffUsersRepository.existsByStaffNo(SEED_STAFF_NO)) {
+            return;
+        }
+        StaffUsers staff1 = StaffUsers.builder()
+                .staffNo("STF-001")
+                .username("admin.nay")
+                .fullName("Nay Min Thant")
+                .email("nay@corebank.local")
+                .phone("09-111-111-01")
+                .passwordHash(passwordEncoder.encode(SEED_PASSWORD))
+                .mustChangePassword(false)
+                .status(StaffUserStatus.ACTIVE)
+                .failedLoginCount(0)
+                .tokenVersion(1L)
+                .createdAt(now.minusDays(90))
+                .updatedAt(now.minusDays(90))
+                .build();
+
+        StaffUsers staff2 = StaffUsers.builder()
+                .staffNo("STF-002")
+                .username("teller.zin")
+                .fullName("Zin Myo Oo")
+                .email("zin@corebank.local")
+                .phone("09-111-111-02")
+                .passwordHash(passwordEncoder.encode(SEED_PASSWORD))
+                .mustChangePassword(false)
+                .status(StaffUserStatus.ACTIVE)
+                .failedLoginCount(0)
+                .tokenVersion(1L)
+                .createdAt(now.minusDays(60))
+                .updatedAt(now.minusDays(60))
+                .build();
+
+        staffUsersRepository.saveAllAndFlush(List.of(staff1, staff2));
+        log.info("[DemoDataSeeder] Seeded base staff users STF-001 and STF-002.");
+    }
+
+    private List<Accounts> seedCustomersAndAccounts(LocalDateTime now) {
+        StaffUsers staff1 = staff("admin.nay");
+        Random random = new Random(20260101L);
+
+        String[] firstNames = {
+                "Aung", "Min", "Kyaw", "Thant", "Zin", "Soe", "Myo", "Htun", "Zaw", "Naing",
+                "Thein", "Lin", "San", "Moe", "Phyo", "Wai", "Zayar", "Nay", "Khin", "Su",
+                "Hlaing", "Aye", "Thida", "Nilar", "Ei", "May", "Thinzar", "Yu", "Cho", "Win",
+                "Hnin", "Yadanar", "Phoo", "Khaing", "Nwe", "Yamin", "Shwe", "Wint", "Chit"
+        };
+        String[] middleNames = {
+                "Myat", "Zin", "Moe", "Kyaw", "Min", "Ko", "Htun", "Naing", "Soe", "Win",
+                "San", "Thein", "Aung", "Lin", "Thu", "Mon", "Swe", "Oo", "Htet", "Phyo"
+        };
+        String[] lastNames = {
+                "Htun", "Oo", "Win", "Lwin", "Aung", "Kyaw", "Zaw", "Myint", "Thant", "Soe",
+                "Naing", "Thein", "Lin", "San", "Moe", "Khaing", "Swe", "Nyein", "Aye", "Shein"
+        };
+
+        // 1. Seed 3,000 Customers
+        List<Customers> customers = new ArrayList<>(TARGET_CUSTOMERS);
+        if (customerRepository.count() < TARGET_CUSTOMERS) {
+            Customers cust1 = Customers.builder()
+                    .customerCode("CUS-001")
+                    .customerType(CustomerType.PERSONAL)
+                    .fullName("Kyaw Zin Htun")
+                    .email("kyaw@mail.local")
+                    .phone("09-200-000-01")
+                    .status(CustomerStatus.ACTIVE)
+                    .createdBy(staff1)
+                    .createdAt(now.minusDays(80))
+                    .updatedAt(now.minusDays(80))
+                    .isNew(true)
+                    .build();
+
+            Customers cust2 = Customers.builder()
+                    .customerCode("CUS-002")
+                    .customerType(CustomerType.PERSONAL)
+                    .fullName("Su Myat Noe")
+                    .email("su@mail.local")
+                    .phone("09-200-000-02")
+                    .status(CustomerStatus.ACTIVE)
+                    .createdBy(staff1)
+                    .createdAt(now.minusDays(70))
+                    .updatedAt(now.minusDays(70))
+                    .isNew(true)
+                    .build();
+
+            customers.add(cust1);
+            customers.add(cust2);
+
+            for (int i = 4; i <= TARGET_CUSTOMERS + 1; i++) {
+                String code = String.format("CUS-%04d", i);
+                String fn = firstNames[random.nextInt(firstNames.length)];
+                String mn = middleNames[random.nextInt(middleNames.length)];
+                String ln = lastNames[random.nextInt(lastNames.length)];
+                String name = fn + " " + mn + " " + ln;
+                String email = String.format("customer%04d@mail.local", i);
+                String phone = String.format("09%09d", 200000000L + i);
+                LocalDateTime created = now.minusDays(random.nextInt(85) + 5);
+
+                customers.add(Customers.builder()
+                        .customerCode(code)
+                        .customerType(CustomerType.PERSONAL)
+                        .fullName(name)
+                        .email(email)
+                        .phone(phone)
+                        .status(CustomerStatus.ACTIVE)
+                        .createdBy(staff1)
+                        .createdAt(created)
+                        .updatedAt(created)
+                        .isNew(true)
+                        .build());
+            }
+
+            for (int i = 0; i < customers.size(); i += 500) {
+                int end = Math.min(i + 500, customers.size());
+                customerRepository.saveAllAndFlush(customers.subList(i, end));
+            }
+            log.info("[DemoDataSeeder] Seeded {} customers in batches.", customers.size());
+        } else {
+            customers = customerRepository.findAll();
+        }
+
+        Customers cust1 = customerRepository.findByCustomerCode("CUS-001").orElse(customers.get(0));
+        Customers cust2 = customerRepository.findByCustomerCode("CUS-002").orElse(customers.get(1));
+
+        // 2. Seed Accounts
+        List<Accounts> activeAccounts = new ArrayList<>();
+        if (accountRepository.count() < TARGET_CUSTOMERS) {
+            List<Accounts> allAccounts = new ArrayList<>(TARGET_CUSTOMERS + 40);
+
+            // 30 Anchor ACTIVE accounts
+            for (int i = 0; i < 30; i++) {
+                allAccounts.add(newAccount(String.format("100100%04d", i + 1),
+                        indexIn(i, 10, 15, 23, 26) ? AccountType.CURRENT : AccountType.SAVINGS,
+                        ACTIVE_BALANCES[i], ACTIVE_BALANCES[i], AccountStatus.ACTIVE,
+                        i % 2 == 0 ? cust1 : cust2, staff1,
+                        now.minusDays(30 - i), null));
+            }
+
+            // 10 Anchor DORMANT accounts
+            for (int i = 0; i < 10; i++) {
+                allAccounts.add(newAccount(String.format("100200%04d", i + 1),
+                        (i == 4 || i == 5) ? AccountType.CURRENT : AccountType.SAVINGS,
+                        DORMANT_BALANCES[i], DORMANT_BALANCES[i], AccountStatus.DORMANT,
+                        i % 2 == 0 ? cust1 : cust2, staff1,
+                        now.minusDays(60 - i * 5L), null));
+            }
+
+            // 12 Anchor FROZEN accounts
+            for (int i = 0; i < 12; i++) {
+                allAccounts.add(newAccount(String.format("100300%04d", i + 1),
+                        (i == 4 || i == 5) ? AccountType.CURRENT : AccountType.SAVINGS,
+                        FROZEN_BALANCES[i], BigDecimal.ZERO, AccountStatus.FROZEN,
+                        i % 2 == 0 ? cust1 : cust2, staff1,
+                        now.minusDays(75 - i * 5L), null));
+            }
+
+            // 8 Anchor CLOSED accounts
+            for (int i = 0; i < 8; i++) {
+                allAccounts.add(newAccount(String.format("100400%04d", i + 1),
+                        i < 4 ? AccountType.SAVINGS : AccountType.CURRENT,
+                        BigDecimal.ZERO, BigDecimal.ZERO, AccountStatus.CLOSED,
+                        i % 2 == 0 ? cust1 : cust2, staff1,
+                        now.minusDays(90 - i * 5L), now.minusDays(10 - i)));
+            }
+
+            // Generated accounts for customers from index 2 up to TARGET_CUSTOMERS - 1
+            for (int i = 2; i < customers.size(); i++) {
+                Customers c = customers.get(i);
+                BigDecimal bal = BigDecimal.valueOf(10000 + (long) random.nextInt(50000) * 1000);
+                allAccounts.add(newAccount(String.format("100100%04d", i + 29),
+                        (i % 5 == 0) ? AccountType.CURRENT : AccountType.SAVINGS,
+                        bal, bal, AccountStatus.ACTIVE,
+                        c, staff1,
+                        c.getCreatedAt(), null));
+            }
+
+            for (int i = 0; i < allAccounts.size(); i += 500) {
+                int end = Math.min(i + 500, allAccounts.size());
+                accountRepository.saveAllAndFlush(allAccounts.subList(i, end));
+            }
+            log.info("[DemoDataSeeder] Seeded {} accounts in batches.", allAccounts.size());
+        }
+
+        activeAccounts = accountRepository.findByStatus(AccountStatus.ACTIVE);
+        return activeAccounts;
+    }
+
+    private Accounts newAccount(String accountNumber, AccountType type,
+                                BigDecimal currentBalance, BigDecimal availableBalance,
+                                AccountStatus status, Customers customer, StaffUsers staff,
+                                LocalDateTime openedAt, LocalDateTime closedAt) {
+        return Accounts.builder()
+                .accountNumber(accountNumber)
+                .customer(customer)
+                .accountCategory(AccountCategory.RETAIL)
+                .accountType(type)
+                .requiredApprovals((short) 1)
+                .currency("MMK")
+                .currentBalance(currentBalance.setScale(4, RoundingMode.HALF_UP))
+                .availableBalance(availableBalance.setScale(4, RoundingMode.HALF_UP))
+                .minimumBalance(BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP))
+                .status(status)
+                .openedAt(openedAt)
+                .closedAt(closedAt)
+                .createdByStaff(staff)
+                .createdAt(openedAt)
+                .updatedAt(LocalDateTime.now())
+                .build();
+    }
+
+    private boolean indexIn(int i, int... bounds) {
+        for (int b = 0; b < bounds.length; b += 2) {
+            if (i >= bounds[b] && i < bounds[b + 1]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ------------------------------------------------------------------
+    // Bank Transactions (10,000 Transactions)
+    // ------------------------------------------------------------------
+
+    private void seedTransactions(List<Accounts> active, LocalDateTime now) {
+        if (bankTransactionRepository.count() >= TARGET_TRANSACTIONS) {
+            return;
+        }
+        StaffUsers staff1 = staff("admin.nay");
+        List<BankTransactions> transactions = new ArrayList<>(TARGET_TRANSACTIONS);
+
+        // Fixed Anchor Rows (Required by Demo Data: REF-T001, REF-T003, REF-T004, REF-T029, REF-T050)
+        transactions.add(transaction("REF-T001", TransactionType.INTERNAL_TRANSFER,
+                TransactionStatus.COMPLETED, active.get(0), active.get(1),
+                BigDecimal.valueOf(5000), true, now.minusDays(30), staff1));
+        transactions.add(transaction("REF-T003", TransactionType.OTC_DEPOSIT,
+                TransactionStatus.COMPLETED, null, active.get(0),
+                BigDecimal.valueOf(8000), false, now.minusDays(30), staff1));
+        transactions.add(transaction("REF-T004", TransactionType.OTC_WITHDRAWAL,
+                TransactionStatus.COMPLETED, active.get(2), null,
+                BigDecimal.valueOf(3000), true, now.minusDays(30), staff1));
+        transactions.add(transaction("REF-T029", TransactionType.INTERNAL_TRANSFER,
+                TransactionStatus.PENDING_AUTHORIZATION, active.get(4), active.get(2),
+                BigDecimal.valueOf(25000), true, now.minusDays(13), staff1));
+        transactions.add(transaction("REF-T050", TransactionType.EXTERNAL_PAYMENT,
+                TransactionStatus.PENDING_AUTHORIZATION, active.get(2), null,
+                BigDecimal.valueOf(28000), true, now.minusHours(4), staff1));
+
+        TransactionType[] typeMix = weightedTypeMix();
+        Random random = new Random(20260101L);
+        int totalActive = active.size();
+
+        for (int ref = 2; ref <= TARGET_TRANSACTIONS; ref++) {
+            if (isAnchorRef(ref)) {
+                continue;
+            }
+
+            TransactionType type = typeMix[random.nextInt(typeMix.length)];
+            TransactionStatus status = randomStatus(type, random);
+
+            long minutesAgo = (long) (random.nextDouble() * 90 * 24 * 60);
+            LocalDateTime at = now.minusMinutes(minutesAgo);
+
+            int sourceIndex = random.nextInt(totalActive);
+            int destinationIndex = (sourceIndex + 1 + random.nextInt(totalActive - 1)) % totalActive;
+
+            Accounts source;
+            Accounts destination;
+            BigDecimal amount;
+            boolean chargeFee;
+
+            if (type == TransactionType.OTC_DEPOSIT) {
+                source = null;
+                destination = active.get(sourceIndex);
+                amount = randomAmount(random, 1_000, 2_000_000);
+                chargeFee = false;
+            } else if (type == TransactionType.OTC_WITHDRAWAL) {
+                source = active.get(sourceIndex);
+                destination = null;
+                amount = randomAmount(random, 1_000, 1_000_000);
+                chargeFee = false;
+            } else if (type == TransactionType.EXTERNAL_PAYMENT) {
+                source = active.get(sourceIndex);
+                destination = null;
+                amount = randomAmount(random, 500, 500_000);
+                chargeFee = true;
+            } else if (type == TransactionType.REFUND) {
+                source = null;
+                destination = active.get(sourceIndex);
+                amount = randomAmount(random, 500, 200_000);
+                chargeFee = false;
+            } else if (type == TransactionType.LEDGER_ADJUSTMENT) {
+                boolean debit = random.nextBoolean();
+                source = debit ? active.get(sourceIndex) : null;
+                destination = debit ? null : active.get(sourceIndex);
+                amount = randomAmount(random, 100, 100_000);
+                chargeFee = false;
+            } else { // INTERNAL_TRANSFER
+                source = active.get(sourceIndex);
+                destination = active.get(destinationIndex);
+                amount = randomAmount(random, 1_000, 3_000_000);
+                chargeFee = true;
+            }
+
+            String refStr = ref < 1000 ? String.format("REF-T%03d", ref) : String.format("REF-T%05d", ref);
+            transactions.add(transaction(refStr, type, status, source, destination, amount, chargeFee, at, staff1));
+        }
+
+        // Save in batches of 1,000
+        for (int i = 0; i < transactions.size(); i += 1000) {
+            int end = Math.min(i + 1000, transactions.size());
+            bankTransactionRepository.saveAllAndFlush(transactions.subList(i, end));
+        }
+        log.info("[DemoDataSeeder] Seeded {} bank transactions in batches.", transactions.size());
+    }
+
+    private boolean isAnchorRef(int ref) {
+        for (int anchor : ANCHOR_REFS) {
+            if (anchor == ref) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private TransactionType[] weightedTypeMix() {
+        List<TransactionType> mix = new ArrayList<>(100);
+        for (int i = 0; i < 30; i++) mix.add(TransactionType.INTERNAL_TRANSFER);
+        for (int i = 0; i < 20; i++) mix.add(TransactionType.OTC_DEPOSIT);
+        for (int i = 0; i < 20; i++) mix.add(TransactionType.OTC_WITHDRAWAL);
+        for (int i = 0; i < 15; i++) mix.add(TransactionType.EXTERNAL_PAYMENT);
+        for (int i = 0; i < 8; i++) mix.add(TransactionType.REFUND);
+        for (int i = 0; i < 7; i++) mix.add(TransactionType.LEDGER_ADJUSTMENT);
+        return mix.toArray(new TransactionType[0]);
+    }
+
+    private TransactionStatus randomStatus(TransactionType type, Random random) {
+        int roll = random.nextInt(100);
+        if (type == TransactionType.INTERNAL_TRANSFER) {
+            if (roll < 82) return TransactionStatus.COMPLETED;
+            if (roll < 88) return TransactionStatus.FAILED;
+            if (roll < 92) return TransactionStatus.CANCELLED;
+            if (roll < 97) return TransactionStatus.PENDING_AUTHORIZATION;
+            return TransactionStatus.REJECTED;
+        }
+        if (type == TransactionType.OTC_DEPOSIT || type == TransactionType.OTC_WITHDRAWAL) {
+            if (roll < 92) return TransactionStatus.COMPLETED;
+            if (roll < 97) return TransactionStatus.CANCELLED;
+            return TransactionStatus.FAILED;
+        }
+        if (type == TransactionType.EXTERNAL_PAYMENT) {
+            if (roll < 80) return TransactionStatus.COMPLETED;
+            if (roll < 87) return TransactionStatus.PENDING_AUTHORIZATION;
+            if (roll < 94) return TransactionStatus.FAILED;
+            return TransactionStatus.CANCELLED;
+        }
+        if (type == TransactionType.REFUND) {
+            return roll < 95 ? TransactionStatus.COMPLETED : TransactionStatus.CANCELLED;
+        }
+        return roll < 95 ? TransactionStatus.COMPLETED : TransactionStatus.PENDING_AUTHORIZATION;
+    }
+
+    private BigDecimal randomAmount(Random random, long minInclusive, long maxInclusive) {
+        long span = maxInclusive - minInclusive + 1;
+        long value = minInclusive + (long) (random.nextDouble() * span);
+        return BigDecimal.valueOf((value / 100) * 100);
+    }
+
+    private BankTransactions transaction(String transactionRef, TransactionType type, TransactionStatus status,
+                                         Accounts source, Accounts destination, BigDecimal amount,
+                                         boolean chargeFee, LocalDateTime at, StaffUsers staff) {
+        BigDecimal fee = chargeFee
+                ? amount.multiply(new BigDecimal("0.01")).setScale(4, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP);
+
+        boolean completed = status == TransactionStatus.COMPLETED;
+        boolean settled = completed || status == TransactionStatus.FAILED
+                || status == TransactionStatus.CANCELLED;
+
+        return BankTransactions.builder()
+                .transactionRef(transactionRef)
+                .transactionType(type)
+                .status(status)
+                .sourceAccount(source)
+                .destinationAccount(destination)
+                .amount(amount.setScale(4, RoundingMode.HALF_UP))
+                .serviceFee(fee)
+                .currency("MMK")
+                .initiatedByType(InitiatedByType.STAFF)
+                .initiatedByStaff(staff)
+                .channel(TransactionChannel.STAFF_PORTAL)
+                .description(type + " seed " + transactionRef)
+                .initiatedAt(at)
+                .authorizedAt(settled ? at : null)
+                .completedAt(completed ? at : null)
+                .updatedAt(at)
+                .build();
+    }
+
+    // ------------------------------------------------------------------
+    // Audit Logs (100 Rows)
+    // ------------------------------------------------------------------
+
+    private void seedAuditLogs(LocalDateTime now) {
+        if (auditLogsRepository.count() > 0) {
+            return;
+        }
+        StaffUsers staff1 = staff("admin.nay");
+        StaffUsers staff2 = staff("teller.zin");
+        String[] actions = {
+                "STAFF_LOGIN", "CREATE_ACCOUNT", "APPROVE_TRANSACTION", "REJECT_TRANSACTION",
+                "FREEZE_ACCOUNT", "UNFREEZE_ACCOUNT", "CLOSE_ACCOUNT"
+        };
+        String[] entityTypes = {"AUTH_SESSION", "ACCOUNT", "TRANSACTION"};
+
+        List<AuditLogs> logs = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            String action = actions[i % actions.length];
+            String entityType = entityTypes[i % entityTypes.length];
+            String entityId = action.startsWith("STAFF_LOGIN") ? ""
+                    : String.format("%08d", 10000000 + i);
+            StaffUsers actor = (i % 2 == 0) ? staff1 : staff2;
+            LocalDateTime at = now.minusHours((100L - i) * 7);
+
+            logs.add(AuditLogs.builder()
+                    .actorType(ActorType.STAFF)
+                    .actorStaff(actor)
+                    .actionType(action)
+                    .entityType(entityType)
+                    .entityId(entityId)
+                    .oldValues("{}")
+                    .newValues("{\"action\":\"" + action + "\",\"result\":\"SUCCESS\"}")
+                    .ipAddress("192.168.1." + (10 + i % 5))
+                    .userAgent("Mozilla/5.0 Staff Portal")
+                    .createdAt(at)
+                    .build());
+        }
+        auditLogsRepository.saveAllAndFlush(logs);
+        log.info("[DemoDataSeeder] Seeded {} audit logs.", logs.size());
+    }
+
     // Base reference lookups
     // ------------------------------------------------------------------
 

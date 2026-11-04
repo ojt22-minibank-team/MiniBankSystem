@@ -42,7 +42,7 @@ const LargeTransactionPanel: React.FC<Props> = ({
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [loadDuration, setLoadDuration] = useState<number | null>(null);
+  const [, setLoadDuration] = useState<number | null>(null);
 
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 30;
@@ -114,7 +114,7 @@ const LargeTransactionPanel: React.FC<Props> = ({
       key: 'transactionRef',
       label: 'Tx Reference',
       render: (r: LargeTransactionItem) => (
-        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0f766e' }}>
+        <span className="font-mono font-semibold text-teal-700">
           {r.transactionRef}
         </span>
       ),
@@ -130,11 +130,8 @@ const LargeTransactionPanel: React.FC<Props> = ({
       label: 'Type',
       render: (r: LargeTransactionItem) => (
         <span
+          className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold"
           style={{
-            padding: '2px 8px',
-            borderRadius: '10px',
-            fontSize: '11px',
-            fontWeight: 600,
             backgroundColor: (typeColors[r.transactionType] ?? '#94a3b8') + '22',
             color: typeColors[r.transactionType] ?? '#64748b',
           }}
@@ -147,15 +144,7 @@ const LargeTransactionPanel: React.FC<Props> = ({
       key: 'channel',
       label: 'Channel',
       render: (r: LargeTransactionItem) => (
-        <span
-          style={{
-            padding: '2px 6px',
-            borderRadius: '4px',
-            fontSize: '11px',
-            backgroundColor: '#f1f5f9',
-            color: '#475569',
-          }}
-        >
+        <span className="inline-block px-2 py-0.5 rounded text-[11px] bg-slate-100 text-slate-600">
           {r.channel}
         </span>
       ),
@@ -164,7 +153,7 @@ const LargeTransactionPanel: React.FC<Props> = ({
       key: 'amount',
       label: 'Amount (MMK)',
       render: (r: LargeTransactionItem) => (
-        <span style={{ fontWeight: 700, color: '#dc2626' }}>
+        <span className="font-bold text-red-600">
           {Number(r.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
         </span>
       ),
@@ -174,8 +163,8 @@ const LargeTransactionPanel: React.FC<Props> = ({
       label: 'Source Account / Customer',
       render: (r: LargeTransactionItem) => (
         <div>
-          <div style={{ fontWeight: 600, color: '#1e293b' }}>{r.sourceAccountNo}</div>
-          <div style={{ fontSize: '11px', color: '#64748b' }}>{r.sourceCustomerName}</div>
+          <div className="font-semibold text-slate-800">{r.sourceAccountNo}</div>
+          <div className="text-[11px] text-slate-500">{r.sourceCustomerName}</div>
         </div>
       ),
     },
@@ -184,8 +173,8 @@ const LargeTransactionPanel: React.FC<Props> = ({
       label: 'Destination Account / Customer',
       render: (r: LargeTransactionItem) => (
         <div>
-          <div style={{ fontWeight: 600, color: '#1e293b' }}>{r.destAccountNo}</div>
-          <div style={{ fontSize: '11px', color: '#64748b' }}>{r.destCustomerName}</div>
+          <div className="font-semibold text-slate-800">{r.destAccountNo}</div>
+          <div className="text-[11px] text-slate-500">{r.destCustomerName}</div>
         </div>
       ),
     },
@@ -195,20 +184,9 @@ const LargeTransactionPanel: React.FC<Props> = ({
       render: (r: LargeTransactionItem) => {
         const isHigh = r.riskLevel === 'HIGH RISK';
         const isMed = r.riskLevel === 'MEDIUM RISK';
-        const bg = isHigh ? '#fee2e2' : isMed ? '#fef3c7' : '#eff6ff';
-        const color = isHigh ? '#b91c1c' : isMed ? '#92400e' : '#1d4ed8';
+        const bg = isHigh ? 'bg-red-100 text-red-700' : isMed ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-700';
         return (
-          <span
-            style={{
-              padding: '3px 8px',
-              borderRadius: '12px',
-              fontSize: '10px',
-              fontWeight: 700,
-              backgroundColor: bg,
-              color: color,
-              display: 'inline-block',
-            }}
-          >
+          <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${bg}`}>
             {r.riskLevel}
           </span>
         );
@@ -217,9 +195,9 @@ const LargeTransactionPanel: React.FC<Props> = ({
   ];
 
   return (
-    <div>
-      {/* Metric Cards Row */}
-      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '20px' }}>
+    <div className="w-full">
+      {/* Metric Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 mb-5">
         <MetricCard
           icon="⚠️"
           label="Flagged Transactions"
@@ -251,46 +229,13 @@ const LargeTransactionPanel: React.FC<Props> = ({
       </div>
 
       {/* Main Table Card */}
-      <div
-        style={{
-          backgroundColor: '#fff',
-          borderRadius: '10px',
-          border: '1px solid #e2e8f0',
-          overflow: 'hidden',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '16px 20px',
-            borderBottom: '1px solid #f1f5f9',
-          }}
-        >
-          <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+      <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 border-b border-slate-100">
+          <span className="text-xs sm:text-sm font-bold text-slate-900 truncate">
             Large Transactions & AML Monitoring ({items.length} rows
             {totalPages > 1 ? ` — Page ${page} of ${totalPages} (30 rows/page)` : ''})
-            {loadDuration !== null && (
-              <span
-                style={{
-                  marginLeft: '10px',
-                  fontSize: '11px',
-                  fontWeight: 500,
-                  color: '#64748b',
-                  backgroundColor: '#f1f5f9',
-                  padding: '2px 8px',
-                  borderRadius: '12px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
-                ⏱️ {loadDuration.toFixed(2)}s
-              </span>
-            )}
           </span>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div className="flex items-center gap-2 flex-wrap">
             <ExportButtons
               onExportCsv={() => exportLargeTransactions(params, 'csv')}
               onExportExcel={() => exportLargeTransactions(params, 'excel')}
@@ -300,36 +245,20 @@ const LargeTransactionPanel: React.FC<Props> = ({
             <button
               onClick={load}
               disabled={loading}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#2563EB',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
+              className="px-3 sm:px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {loading ? 'Loading...' : 'Load Data'}
+              {loading ? 'Loading...' : 'Refresh'}
             </button>
           </div>
         </div>
 
         {error && (
-          <div
-            style={{
-              padding: '12px 20px',
-              color: '#dc2626',
-              fontSize: '13px',
-              backgroundColor: '#fef2f2',
-            }}
-          >
+          <div className="p-3 sm:p-4 text-xs sm:text-sm text-red-600 bg-red-50 border-b border-red-100">
             Error: {error}
           </div>
         )}
 
-        <div style={{ padding: '16px 20px' }}>
+        <div className="p-4 sm:p-5">
           <DataTable
             columns={columns}
             data={paginatedData}
