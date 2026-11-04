@@ -4,7 +4,6 @@ import { formatCurrency } from '../../../utils/formatCurrency';
 import {
   Activity,
   CheckCircle2,
-  AlertTriangle,
   XCircle,
   Coins,
 } from 'lucide-react';
@@ -17,8 +16,8 @@ interface Props {
 export default React.memo(function TransactionStatsCards({ stats, isLoading }: Props) {
   if (isLoading || !stats) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-6">
-        {[...Array(5)].map((_, i) => (
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
+        {[...Array(4)].map((_, i) => (
           <div
             key={i}
             className="p-4 rounded-2xl liquid-glass animate-pulse border border-slate-200/50 bg-white/40 h-24 flex flex-col justify-between"
@@ -46,15 +45,9 @@ export default React.memo(function TransactionStatsCards({ stats, isLoading }: P
       textColor: 'text-emerald-700',
       badgeBg: 'bg-emerald-50 text-emerald-600 border border-emerald-200/60',
     },
+    
     {
-      label: 'Pending Auth',
-      value: stats.heldOrPendingCount.toLocaleString(),
-      icon: AlertTriangle,
-      textColor: 'text-amber-700',
-      badgeBg: 'bg-amber-50 text-amber-600 border border-amber-200/60',
-    },
-    {
-      label: 'Failed / Rejected',
+      label: 'Failed',
       value: stats.failedCount.toLocaleString(),
       icon: XCircle,
       textColor: 'text-rose-700',
@@ -70,7 +63,7 @@ export default React.memo(function TransactionStatsCards({ stats, isLoading }: P
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-6">
+    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
       {cards.map((c) => {
         const Icon = c.icon;
         return (

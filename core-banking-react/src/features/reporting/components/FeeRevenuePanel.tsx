@@ -40,7 +40,7 @@ const FeeRevenuePanel: React.FC<Props> = ({
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [loadDuration, setLoadDuration] = useState<number | null>(null);
+  const [, setLoadDuration] = useState<number | null>(null);
 
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 30;
@@ -107,11 +107,8 @@ const FeeRevenuePanel: React.FC<Props> = ({
       label: 'Transaction Type',
       render: (r: FeeRevenueItem) => (
         <span
+          className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold"
           style={{
-            padding: '2px 8px',
-            borderRadius: '10px',
-            fontSize: '11px',
-            fontWeight: 600,
             backgroundColor: (typeColors[r.transactionType] ?? '#94a3b8') + '22',
             color: typeColors[r.transactionType] ?? '#64748b',
           }}
@@ -124,16 +121,7 @@ const FeeRevenuePanel: React.FC<Props> = ({
       key: 'channel',
       label: 'Channel',
       render: (r: FeeRevenueItem) => (
-        <span
-          style={{
-            padding: '2px 8px',
-            borderRadius: '6px',
-            fontSize: '11px',
-            fontWeight: 500,
-            backgroundColor: '#f1f5f9',
-            color: '#334155',
-          }}
-        >
+        <span className="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700">
           {r.channel}
         </span>
       ),
@@ -153,23 +141,23 @@ const FeeRevenuePanel: React.FC<Props> = ({
       key: 'totalFeeRevenue',
       label: 'Fee Revenue (MMK)',
       render: (r: FeeRevenueItem) => (
-        <span style={{ fontWeight: 700, color: '#16a34a' }}>
+        <span className="font-bold text-emerald-600">
           {Number(r.totalFeeRevenue || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
         </span>
       ),
     },
     {
       key: 'avgFeePerTx',
-      label: 'Avg Fee / Tx',
+      label: 'Avg Fee / Tx (MMK)',
       render: (r: FeeRevenueItem) =>
         Number(r.avgFeePerTx || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }),
     },
   ];
 
   return (
-    <div>
-      {/* Metric Cards Row */}
-      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '20px' }}>
+    <div className="w-full">
+      {/* Metric Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 mb-5">
         <MetricCard
           icon="💰"
           label="Total Fee Revenue"
@@ -201,46 +189,13 @@ const FeeRevenuePanel: React.FC<Props> = ({
       </div>
 
       {/* Main Table Card */}
-      <div
-        style={{
-          backgroundColor: '#fff',
-          borderRadius: '10px',
-          border: '1px solid #e2e8f0',
-          overflow: 'hidden',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '16px 20px',
-            borderBottom: '1px solid #f1f5f9',
-          }}
-        >
-          <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+      <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 border-b border-slate-100">
+          <span className="text-xs sm:text-sm font-bold text-slate-900 truncate">
             Fee & Revenue Breakdown ({items.length} rows
             {totalPages > 1 ? ` — Page ${page} of ${totalPages} (30 rows/page)` : ''})
-            {loadDuration !== null && (
-              <span
-                style={{
-                  marginLeft: '10px',
-                  fontSize: '11px',
-                  fontWeight: 500,
-                  color: '#64748b',
-                  backgroundColor: '#f1f5f9',
-                  padding: '2px 8px',
-                  borderRadius: '12px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
-                ⏱️ {loadDuration.toFixed(2)}s
-              </span>
-            )}
           </span>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div className="flex items-center gap-2 flex-wrap">
             <ExportButtons
               onExportCsv={() => exportFeeRevenue(params, 'csv')}
               onExportExcel={() => exportFeeRevenue(params, 'excel')}
@@ -250,36 +205,20 @@ const FeeRevenuePanel: React.FC<Props> = ({
             <button
               onClick={load}
               disabled={loading}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#2563EB',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
+              className="px-3 sm:px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {loading ? 'Loading...' : 'Load Data'}
+              {loading ? 'Loading...' : 'Refresh'}
             </button>
           </div>
         </div>
 
         {error && (
-          <div
-            style={{
-              padding: '12px 20px',
-              color: '#dc2626',
-              fontSize: '13px',
-              backgroundColor: '#fef2f2',
-            }}
-          >
+          <div className="p-3 sm:p-4 text-xs sm:text-sm text-red-600 bg-red-50 border-b border-red-100">
             Error: {error}
           </div>
         )}
 
-        <div style={{ padding: '16px 20px' }}>
+        <div className="p-4 sm:p-5">
           <DataTable
             columns={columns}
             data={paginatedData}

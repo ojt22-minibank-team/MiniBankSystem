@@ -142,6 +142,8 @@ export interface OtcParametersResponse {
   minDepositAmount?: number;
   minWithdrawalAmount?: number;
   minimumBalance?: number;
+  maxOnetimeWithdrawal?: number;
+  maxDailyWithdrawal?: number;
 }
 
 export interface FeeScheduleResponse {
