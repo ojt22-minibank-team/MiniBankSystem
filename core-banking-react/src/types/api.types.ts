@@ -144,6 +144,14 @@ export interface OtcParametersResponse {
   minimumBalance?: number;
   maxOnetimeWithdrawal?: number;
   maxDailyWithdrawal?: number;
+  depositFeeType?: 'FLAT' | 'PERCENTAGE';
+  depositFeeValue?: number;
+  depositMinFee?: number | null;
+  depositMaxFee?: number | null;
+  withdrawalFeeType?: 'FLAT' | 'PERCENTAGE';
+  withdrawalFeeValue?: number;
+  withdrawalMinFee?: number | null;
+  withdrawalMaxFee?: number | null;
 }
 
 export interface FeeScheduleResponse {
@@ -403,23 +411,6 @@ export interface DailyCashSummaryResponse {
   depositCount: number;
   withdrawalCount: number;
   currency: string;
-}
-
-
-export interface OtcParametersResponse {
-  minDepositAmount: number;
-  minWithdrawalAmount: number;
-  minimumBalance: number;
-  maxOnetimeWithdrawal?: number;
-  maxDailyWithdrawal?: number;
-  depositFeeType?: 'FLAT' | 'PERCENTAGE';
-  depositFeeValue?: number;
-  depositMinFee?: number | null;
-  depositMaxFee?: number | null;
-  withdrawalFeeType?: 'FLAT' | 'PERCENTAGE';
-  withdrawalFeeValue?: number;
-  withdrawalMinFee?: number | null;
-  withdrawalMaxFee?: number | null;
 }
 
 export interface OtcAccountLimitResponse {
