@@ -3,6 +3,8 @@ package com.corebanking.service;
 import com.corebanking.dto.BankTransferLimitRule;
 import com.corebanking.dto.TransferLimitInfoResponseDto;
 import com.corebanking.dto.UpdateTransferLimitRequestDto;
+import com.corebanking.entity.AccountTransferLimitHistory;
+import com.corebanking.entity.AccountTransferLimits;
 import com.corebanking.entity.Accounts;
 import com.corebanking.entity.CustomerCredentials;
 import com.corebanking.entity.Customers;
@@ -10,6 +12,7 @@ import com.corebanking.entity.SystemParameters;
 import com.corebanking.entity.enums.AccountCategory;
 import com.corebanking.entity.enums.AccountStatus;
 import com.corebanking.entity.enums.AccountType;
+import com.corebanking.entity.enums.LimitChangeAction;
 import com.corebanking.exception.AccountNotFoundException;
 import com.corebanking.exception.InvalidPinException;
 import com.corebanking.exception.TransactionException;
@@ -25,6 +28,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -37,6 +41,12 @@ class TransferLimitServiceTest {
 
     @Mock
     private AccountRepository accountRepository;
+
+    @Mock
+    private AccountTransferLimitsRepository accountTransferLimitsRepository;
+
+    @Mock
+    private AccountTransferLimitHistoryRepository accountTransferLimitHistoryRepository;
 
     @Mock
     private CustomerCredentialsRepository customerCredentialsRepository;
@@ -315,7 +325,7 @@ class TransferLimitServiceTest {
     }
 
     @Test
-    @DisplayName("updateCustomLimits - Valid custom limits update and persist successfully")
+    @DisplayName("updateCustomLimits - Valid custom limits update and persist successfully to AccountTransferLimits")
     void testUpdateCustomLimits_Success() {
         when(accountRepository.findByAccountNumber("2001111111"))
                 .thenReturn(Optional.of(sourceSavingsAccount));
@@ -328,6 +338,7 @@ class TransferLimitServiceTest {
         when(customerCredentialsRepository.findByCustomerId(customerId)).thenReturn(Optional.of(credentials));
         when(passwordEncoder.matches("123456", "$2a$10$encodedHash")).thenReturn(true);
         when(bankTransactionRepository.findTodayTotalTransferredAmount(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+        when(accountTransferLimitsRepository.findByAccount(sourceSavingsAccount)).thenReturn(Optional.empty());
 
         UpdateTransferLimitRequestDto request = UpdateTransferLimitRequestDto.builder()
                 .transactionPin("123456")
@@ -339,6 +350,216 @@ class TransferLimitServiceTest {
 
         assertNotNull(response);
         verify(accountRepository, times(1)).save(sourceSavingsAccount);
-        verify(systemParametersRepository, times(1)).save(any(SystemParameters.class));
+        verify(accountTransferLimitsRepository, atLeastOnce()).save(any(AccountTransferLimits.class));
+        verify(accountTransferLimitHistoryRepository, times(1)).save(any(AccountTransferLimitHistory.class));
+    }
+
+    @Test
+    @DisplayName("updateCustomLimits - Increasing limit within 24 hours triggers cooling-off restriction")
+    void testUpdateCustomLimits_CoolingOffPeriod_BlocksIncreaseWithin24Hours() {
+        when(accountRepository.findByAccountNumber("2001111111"))
+                .thenReturn(Optional.of(sourceSavingsAccount));
+
+        CustomerCredentials credentials = CustomerCredentials.builder()
+                .customerId(customerId)
+                .transactionPinHash("$2a$10$encodedHash")
+                .build();
+
+        when(customerCredentialsRepository.findByCustomerId(customerId)).thenReturn(Optional.of(credentials));
+        when(passwordEncoder.matches("123456", "$2a$10$encodedHash")).thenReturn(true);
+        when(bankTransactionRepository.findTodayTotalTransferredAmount(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+
+        AccountTransferLimits existingLimits = AccountTransferLimits.builder()
+                .account(sourceSavingsAccount)
+                .customer(customer)
+                .customDailyLimit(new BigDecimal("3000000.0000"))
+                .customOneTimeLimit(new BigDecimal("1000000.0000"))
+                .lastLimitIncreasedAt(LocalDateTime.now().minusHours(2)) // Increased 2 hours ago (< 24 hrs)
+                .build();
+
+        when(accountTransferLimitsRepository.findByAccount(sourceSavingsAccount)).thenReturn(Optional.of(existingLimits));
+
+        // Attempting to increase daily limit from 3,000,000 to 5,000,000
+        UpdateTransferLimitRequestDto request = UpdateTransferLimitRequestDto.builder()
+                .transactionPin("123456")
+                .customDailyLimit(new BigDecimal("5000000.00"))
+                .build();
+
+        TransactionException ex = assertThrows(TransactionException.class, () ->
+                transferLimitService.updateCustomLimits(customerId.toString(), "2001111111", request));
+
+        assertTrue(ex.getMessage().contains("Cooling-off period active"));
+    }
+
+    @Test
+    @DisplayName("updateCustomLimits - Decreasing limit takes effect immediately without cooling-off block")
+    void testUpdateCustomLimits_DecreaseAllowedImmediately() {
+        when(accountRepository.findByAccountNumber("2001111111"))
+                .thenReturn(Optional.of(sourceSavingsAccount));
+
+        CustomerCredentials credentials = CustomerCredentials.builder()
+                .customerId(customerId)
+                .transactionPinHash("$2a$10$encodedHash")
+                .build();
+
+        when(customerCredentialsRepository.findByCustomerId(customerId)).thenReturn(Optional.of(credentials));
+        when(passwordEncoder.matches("123456", "$2a$10$encodedHash")).thenReturn(true);
+        when(bankTransactionRepository.findTodayTotalTransferredAmount(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+
+        AccountTransferLimits existingLimits = AccountTransferLimits.builder()
+                .account(sourceSavingsAccount)
+                .customer(customer)
+                .customDailyLimit(new BigDecimal("8000000.0000"))
+                .customOneTimeLimit(new BigDecimal("1800000.0000"))
+                .lastLimitIncreasedAt(LocalDateTime.now().minusHours(2)) // Increased 2 hours ago
+                .build();
+
+        when(accountTransferLimitsRepository.findByAccount(sourceSavingsAccount)).thenReturn(Optional.of(existingLimits));
+
+        // Decreasing daily limit from 8,000,000 to 5,000,000 and one-time limit from 1,800,000 to 1,200,000
+        UpdateTransferLimitRequestDto request = UpdateTransferLimitRequestDto.builder()
+                .transactionPin("123456")
+                .customOneTimeLimit(new BigDecimal("1200000.00"))
+                .customDailyLimit(new BigDecimal("5000000.00"))
+                .build();
+
+        TransferLimitInfoResponseDto response = transferLimitService.updateCustomLimits(customerId.toString(), "2001111111", request);
+
+        assertNotNull(response);
+        verify(accountTransferLimitsRepository, atLeastOnce()).save(any(AccountTransferLimits.class));
+        verify(accountTransferLimitHistoryRepository, atLeastOnce()).save(any(AccountTransferLimitHistory.class));
+    }
+
+    @Test
+    @DisplayName("resetCustomLimitsToDefault - Resets custom limits to NULL and writes RESET_TO_DEFAULT history record")
+    void testResetCustomLimitsToDefault_Success() {
+        when(accountRepository.findByAccountNumber("2001111111"))
+                .thenReturn(Optional.of(sourceSavingsAccount));
+
+        AccountTransferLimits existingLimits = AccountTransferLimits.builder()
+                .account(sourceSavingsAccount)
+                .customer(customer)
+                .customDailyLimit(new BigDecimal("5000000.0000"))
+                .customOneTimeLimit(new BigDecimal("1500000.0000"))
+                .build();
+
+        when(accountTransferLimitsRepository.findByAccount(sourceSavingsAccount)).thenReturn(Optional.of(existingLimits));
+
+        TransferLimitInfoResponseDto response = transferLimitService.resetCustomLimitsToDefault(customerId.toString(), "2001111111", "Customer requested reset");
+
+        assertNotNull(response);
+        assertNull(existingLimits.getCustomDailyLimit());
+        assertNull(existingLimits.getCustomOneTimeLimit());
+        verify(accountTransferLimitsRepository, times(1)).save(existingLimits);
+        verify(accountTransferLimitHistoryRepository, times(1)).save(argThat(h ->
+                h.getChangeAction() == LimitChangeAction.RESET_TO_DEFAULT
+                        && h.getNewDailyLimit() == null
+                        && h.getNewOneTimeLimit() == null));
+    }
+
+    @Test
+    @DisplayName("updateCustomLimits - Delta pattern: only One-Time limit changed → daily fields in history must be NULL")
+    void testUpdateCustomLimits_DeltaPattern_OnlyOneTimeLimitChanged() {
+        when(accountRepository.findByAccountNumber("2001111111"))
+                .thenReturn(Optional.of(sourceSavingsAccount));
+
+        CustomerCredentials credentials = CustomerCredentials.builder()
+                .customerId(customerId)
+                .transactionPinHash("$2a$10$encodedHash")
+                .build();
+
+        when(customerCredentialsRepository.findByCustomerId(customerId)).thenReturn(Optional.of(credentials));
+        when(passwordEncoder.matches("123456", "$2a$10$encodedHash")).thenReturn(true);
+        when(bankTransactionRepository.findTodayTotalTransferredAmount(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+
+        AccountTransferLimits existingLimits = AccountTransferLimits.builder()
+                .account(sourceSavingsAccount)
+                .customer(customer)
+                .customDailyLimit(new BigDecimal("5000000.0000"))
+                .customOneTimeLimit(new BigDecimal("1000000.0000"))
+                .build();
+
+        when(accountTransferLimitsRepository.findByAccount(sourceSavingsAccount)).thenReturn(Optional.of(existingLimits));
+
+        // Only customOneTimeLimit is set — customDailyLimit is NOT included in this request
+        UpdateTransferLimitRequestDto request = UpdateTransferLimitRequestDto.builder()
+                .transactionPin("123456")
+                .customOneTimeLimit(new BigDecimal("800000.00"))
+                .build();
+
+        transferLimitService.updateCustomLimits(customerId.toString(), "2001111111", request);
+
+        verify(accountTransferLimitHistoryRepository, times(1)).save(argThat(h ->
+                // One-Time fields must be non-null (field WAS changed)
+                h.getPreviousOneTimeLimit() != null
+                && h.getNewOneTimeLimit() != null
+                // Daily fields must be null (field was NOT part of this request)
+                && h.getPreviousDailyLimit() == null
+                && h.getNewDailyLimit() == null));
+    }
+
+    @Test
+    @DisplayName("updateCustomLimits - Delta pattern: only Daily limit changed → one-time fields in history must be NULL")
+    void testUpdateCustomLimits_DeltaPattern_OnlyDailyLimitChanged() {
+        when(accountRepository.findByAccountNumber("2001111111"))
+                .thenReturn(Optional.of(sourceSavingsAccount));
+
+        CustomerCredentials credentials = CustomerCredentials.builder()
+                .customerId(customerId)
+                .transactionPinHash("$2a$10$encodedHash")
+                .build();
+
+        when(customerCredentialsRepository.findByCustomerId(customerId)).thenReturn(Optional.of(credentials));
+        when(passwordEncoder.matches("123456", "$2a$10$encodedHash")).thenReturn(true);
+        when(bankTransactionRepository.findTodayTotalTransferredAmount(any(), any(), any())).thenReturn(BigDecimal.ZERO);
+
+        AccountTransferLimits existingLimits = AccountTransferLimits.builder()
+                .account(sourceSavingsAccount)
+                .customer(customer)
+                .customDailyLimit(new BigDecimal("5000000.0000"))
+                .customOneTimeLimit(new BigDecimal("1000000.0000"))
+                .build();
+
+        when(accountTransferLimitsRepository.findByAccount(sourceSavingsAccount)).thenReturn(Optional.of(existingLimits));
+
+        // Only customDailyLimit is set — customOneTimeLimit is NOT included in this request
+        UpdateTransferLimitRequestDto request = UpdateTransferLimitRequestDto.builder()
+                .transactionPin("123456")
+                .customDailyLimit(new BigDecimal("4000000.00"))
+                .build();
+
+        transferLimitService.updateCustomLimits(customerId.toString(), "2001111111", request);
+
+        verify(accountTransferLimitHistoryRepository, times(1)).save(argThat(h ->
+                // Daily fields must be non-null (field WAS changed)
+                h.getPreviousDailyLimit() != null
+                && h.getNewDailyLimit() != null
+                // One-Time fields must be null (field was NOT part of this request)
+                && h.getPreviousOneTimeLimit() == null
+                && h.getNewOneTimeLimit() == null));
+    }
+
+    @Test
+    @DisplayName("getLimitHistory - Returns chronological audit list for account")
+    void testGetLimitHistory_Success() {
+        when(accountRepository.findByAccountNumber("2001111111"))
+                .thenReturn(Optional.of(sourceSavingsAccount));
+
+        AccountTransferLimitHistory entry = AccountTransferLimitHistory.builder()
+                .account(sourceSavingsAccount)
+                .customer(customer)
+                .changeAction(LimitChangeAction.INITIAL_SET)
+                .newDailyLimit(new BigDecimal("5000000.0000"))
+                .changedAt(LocalDateTime.now())
+                .build();
+
+        when(accountTransferLimitHistoryRepository.findByAccount_AccountNumberOrderByChangedAtDesc("2001111111"))
+                .thenReturn(List.of(entry));
+
+        List<AccountTransferLimitHistory> history = transferLimitService.getLimitHistory(customerId.toString(), "2001111111");
+
+        assertNotNull(history);
+        assertEquals(1, history.size());
+        assertEquals(LimitChangeAction.INITIAL_SET, history.get(0).getChangeAction());
     }
 }

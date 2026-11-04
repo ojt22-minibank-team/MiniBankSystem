@@ -1,10 +1,7 @@
 
-import { Link } from "react-router-dom";
 import {
   Eye,
   EyeOff,
-  ArrowUpRight,
-  Receipt,
   Sun,
   Sunrise,
   Moon,
@@ -155,34 +152,6 @@ export default function TotalBalanceCard({
               )}
             </div>
           </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="flex flex-wrap items-center gap-2.5 pt-1">
-          {/* Transfer */}
-          <Link
-            to="/transfer"
-            className="group inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs sm:text-sm font-bold text-white shadow-xs backdrop-blur-md transition-all duration-200 hover:border-[#00A3C4] hover:bg-[#00A3C4] hover:shadow-md hover:shadow-cyan-500/25 active:scale-95"
-          >
-            <ArrowUpRight
-              size={15}
-              strokeWidth={2.4}
-              className="text-cyan-300 transition-colors duration-200 group-hover:text-white"
-            />
-            <span>Transfer</span>
-          </Link>
-
-          {/* Pay */}
-          <Link
-            to="/checkout"
-            className="group inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs sm:text-sm font-bold text-white shadow-xs backdrop-blur-md transition-all duration-200 hover:border-[#00A3C4] hover:bg-[#00A3C4] hover:shadow-md hover:shadow-cyan-500/25 active:scale-95"
-          >
-            <Receipt
-              size={15}
-              className="text-cyan-300 transition-colors duration-200 group-hover:text-white"
-            />
-            <span>Pay</span>
-          </Link>
         </div>
       </div>
     </section>
