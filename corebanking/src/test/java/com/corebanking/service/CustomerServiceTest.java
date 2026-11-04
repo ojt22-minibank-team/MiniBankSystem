@@ -104,7 +104,7 @@ class CustomerServiceTest {
 				.email("yoon@test.com").phone("09123456789").customerType("PERSONAL")
 				.address("No. 123, Bogyoke Road, Yangon").occupation("Software Engineer").build();
 
-		when(customerRepository.existsByPhone("09123456789")).thenReturn(false);
+		when(customerRepository.existsByPhoneAndCustomerType("09123456789", CustomerType.PERSONAL)).thenReturn(false);
 		when(customerRepository.existsByEmailAndCustomerType("yoon@test.com", CustomerType.PERSONAL)).thenReturn(false);
 		when(personalInfoRepository.existsByNrc("12/DAGANA(N)123456")).thenReturn(false);
 		when(customerRepository.existsByCustomerCode(anyString())).thenReturn(false);
@@ -141,7 +141,7 @@ class CustomerServiceTest {
 				.email("info@acetech.com").phone("09123456789").customerType("COMPANY")
 				.address("Tower A, Level 15, Hledan Centre, Yangon").build();
 
-		when(customerRepository.existsByPhone("09123456789")).thenReturn(false);
+		when(customerRepository.existsByPhoneAndCustomerType("09123456789", CustomerType.COMPANY)).thenReturn(false);
 		when(customerRepository.existsByEmailAndCustomerType("info@acetech.com", CustomerType.COMPANY)).thenReturn(false);
 		when(companyInfoRepository.existsByRegistrationNumber("REG-2026-9988")).thenReturn(false);
 		when(companyInfoRepository.existsByTaxId("TAX-998877")).thenReturn(false);
@@ -208,13 +208,13 @@ class CustomerServiceTest {
 		CustomerDTO duplicateEmailDto = CustomerDTO.builder().fullName("Daw Yoon").nrc("12/DAGANA(N)123456")
 				.email("existing@test.com").phone("09123456789").customerType("PERSONAL").build();
 
-		when(customerRepository.existsByPhone("09123456789")).thenReturn(false);
+		when(customerRepository.existsByPhoneAndCustomerType("09123456789", CustomerType.PERSONAL)).thenReturn(false);
 		when(customerRepository.existsByEmailAndCustomerType("existing@test.com", CustomerType.PERSONAL)).thenReturn(true);
 
 		IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
 				() -> customerService.createCustomer(duplicateEmailDto));
 
-		assertTrue(ex.getMessage().contains("Email is already associated with an existing Personal customer"));
+		assertTrue(ex.getMessage().contains("A Personal customer with this email already exists"));
 		verify(customerRepository, never()).save(any(Customers.class));
 		verify(customerRepository, never()).saveAndFlush(any(Customers.class));
 	}
@@ -227,13 +227,13 @@ class CustomerServiceTest {
 				.email("info@acetech.com").phone("09123456789").customerType("COMPANY")
 				.address("Tower B, Yangon").build();
 
-		when(customerRepository.existsByPhone("09123456789")).thenReturn(false);
+		when(customerRepository.existsByPhoneAndCustomerType("09123456789", CustomerType.COMPANY)).thenReturn(false);
 		when(customerRepository.existsByEmailAndCustomerType("info@acetech.com", CustomerType.COMPANY)).thenReturn(true);
 
 		IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
 				() -> customerService.createCustomer(companyDto));
 
-		assertTrue(ex.getMessage().contains("Email is already associated with an existing Company customer"));
+		assertTrue(ex.getMessage().contains("A Company customer with this email already exists"));
 		verify(customerRepository, never()).save(any(Customers.class));
 		verify(customerRepository, never()).saveAndFlush(any(Customers.class));
 	}
@@ -245,7 +245,7 @@ class CustomerServiceTest {
 				.email("shared@bank.com").phone("09111111111").customerType("PERSONAL")
 				.address("Yangon").occupation("Engineer").build();
 
-		when(customerRepository.existsByPhone("09111111111")).thenReturn(false);
+		when(customerRepository.existsByPhoneAndCustomerType("09111111111", CustomerType.PERSONAL)).thenReturn(false);
 		when(customerRepository.existsByEmailAndCustomerType("shared@bank.com", CustomerType.PERSONAL)).thenReturn(false);
 		when(personalInfoRepository.existsByNrc("12/DAGANA(N)123456")).thenReturn(false);
 		when(customerRepository.existsByCustomerCode(anyString())).thenReturn(false);
@@ -262,7 +262,7 @@ class CustomerServiceTest {
 				.email("shared@bank.com").phone("09222222222").customerType("COMPANY")
 				.address("Yangon").build();
 
-		when(customerRepository.existsByPhone("09222222222")).thenReturn(false);
+		when(customerRepository.existsByPhoneAndCustomerType("09222222222", CustomerType.COMPANY)).thenReturn(false);
 		when(customerRepository.existsByEmailAndCustomerType("shared@bank.com", CustomerType.COMPANY)).thenReturn(false);
 		when(companyInfoRepository.existsByRegistrationNumber("REG-2026-9988")).thenReturn(false);
 		when(companyInfoRepository.existsByTaxId("TAX-998877")).thenReturn(false);
@@ -278,12 +278,12 @@ class CustomerServiceTest {
 		CustomerDTO duplicatePhoneDto = CustomerDTO.builder().fullName("Daw Yoon").nrc("12/DAGANA(N)123456")
 				.email("yoon.unique@test.com").phone("09123456789").customerType("PERSONAL").build();
 
-		when(customerRepository.existsByPhone("09123456789")).thenReturn(true);
+		when(customerRepository.existsByPhoneAndCustomerType("09123456789", CustomerType.PERSONAL)).thenReturn(true);
 
 		IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
 				() -> customerService.createCustomer(duplicatePhoneDto));
 
-		assertTrue(ex.getMessage().contains("Phone number is already registered"));
+		assertTrue(ex.getMessage().contains("A Personal customer with this phone number already exists"));
 		verify(customerRepository, never()).save(any(Customers.class));
 		verify(customerRepository, never()).saveAndFlush(any(Customers.class));
 	}
@@ -294,14 +294,14 @@ class CustomerServiceTest {
 		CustomerDTO duplicateNrcDto = CustomerDTO.builder().fullName("Daw Yoon").nrc("12/DAGANA(N)123456")
 				.email("yoon.unique@test.com").phone("09123456789").customerType("PERSONAL").build();
 
-		when(customerRepository.existsByPhone("09123456789")).thenReturn(false);
+		when(customerRepository.existsByPhoneAndCustomerType("09123456789", CustomerType.PERSONAL)).thenReturn(false);
 		when(customerRepository.existsByEmailAndCustomerType("yoon.unique@test.com", CustomerType.PERSONAL)).thenReturn(false);
 		when(personalInfoRepository.existsByNrc("12/DAGANA(N)123456")).thenReturn(true);
 
 		IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
 				() -> customerService.createCustomer(duplicateNrcDto));
 
-		assertTrue(ex.getMessage().contains("NRC number is already registered"));
+		assertTrue(ex.getMessage().contains("A Personal customer with this NRC already exists"));
 		verify(customerRepository, never()).save(any(Customers.class));
 		verify(customerRepository, never()).saveAndFlush(any(Customers.class));
 	}
