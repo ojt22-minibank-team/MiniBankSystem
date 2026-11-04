@@ -141,7 +141,7 @@ public class AccountService {
         if (existingCredOpt.isPresent()) {
             rawPassword = "(Existing Password Retained)";
         } else {
-            rawPassword = PasswordGeneratorUtil.generateTemporaryPassword(8);
+            rawPassword = generateSafeTemporaryPassword(8);
             String hashedPassword = passwordEncoder.encode(rawPassword);
 
             CustomerCredentials credentials = CustomerCredentials.builder()
@@ -304,10 +304,10 @@ public class AccountService {
                 });
 
         
-        String rawCeoPassword = PasswordGeneratorUtil.generateTemporaryPassword(8);
-        String rawMakerPassword = PasswordGeneratorUtil.generateTemporaryPassword(8);
+        String rawCeoPassword = generateSafeTemporaryPassword(8);
+        String rawMakerPassword = generateSafeTemporaryPassword(8);
         while (rawMakerPassword.equals(rawCeoPassword)) {
-            rawMakerPassword = PasswordGeneratorUtil.generateTemporaryPassword(8);
+            rawMakerPassword = generateSafeTemporaryPassword(8);
         }
 
         String hashedCeoPassword = passwordEncoder.encode(rawCeoPassword);
@@ -672,6 +672,16 @@ public class AccountService {
             code = "CORP-" + rolePrefix + "-" + datePart + "-" + randomDigits;
         } while (corporateUserRepository.existsByCorporateUserCode(code));
         return code;
+    }
+
+    private String generateSafeTemporaryPassword(int length) {
+        String chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < length; i++) {
+            int index = ThreadLocalRandom.current().nextInt(chars.length());
+            sb.append(chars.charAt(index));
+        }
+        return sb.toString();
     }
 
     private void recordInitialDepositTransaction(Accounts account, BigDecimal amount, StaffUsers staff, Customers customer) {
