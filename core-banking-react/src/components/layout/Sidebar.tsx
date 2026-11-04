@@ -1,5 +1,8 @@
+import { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { STORAGE_KEYS } from '../../config/api.config';
 import { useAuth } from '../../features/auth/hooks/useAuth';
+import { broadcastLogout } from '../../features/auth/authSlice';
 import ekarajCrown from '../../assets/ekaraj-crown-transparent.png';
 
 interface NavItem {
@@ -18,18 +21,47 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
 
   const handleLogout = async () => {
     await logout();
-    const channel = new BroadcastChannel('staff_auth_sync');
-    channel.postMessage('LOGOUT');
-    channel.close();
+    broadcastLogout();
+
+
     navigate('/login', { replace: true });
   };
 
-  const displayName = user?.username
+  const [profileName, setProfileName] = useState<string>(() => {
+    try {
+      const cached = sessionStorage.getItem(STORAGE_KEYS.STAFF_PROFILE);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.fullName) return parsed.fullName;
+      }
+    } catch {
+      // ignore
+    }
+    return '';
+  });
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      try {
+        const cached = sessionStorage.getItem(STORAGE_KEYS.STAFF_PROFILE);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed?.fullName) setProfileName(parsed.fullName);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener('staff_profile_updated', handleUpdate);
+    return () => window.removeEventListener('staff_profile_updated', handleUpdate);
+  }, []);
+
+  const displayName = profileName || (user?.username
     ? user.username.charAt(0).toUpperCase() + user.username.slice(1)
-    : 'Admin';
+    : 'Admin');
 
   const userRole = user?.roles?.[0]?.replace('ROLE_', '') || 'ADMIN';
-  const userEmail = `${displayName.toLowerCase()}@ekarajbank.com.mm`;
+  const userEmail = `${displayName.toLowerCase().replace(/\s+/g, '.')}@ekarajbank.com.mm`;
 
   // Navigation Links matching user specification and core banking routes
   const navItems: NavItem[] = [
@@ -153,10 +185,13 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
   return (
     <aside
       className={[
-        'flex flex-col h-full bg-white/75 backdrop-blur-2xl border-r border-white/80 shadow-[4px_0_30px_0_rgba(15,23,42,0.03)] z-30 shrink-0 select-none transition-all duration-300 ease-in-out',
-        isOpen ? 'w-64' : 'w-0 -translate-x-full lg:w-64 lg:translate-x-0',
+        'flex flex-col h-full bg-white/75 backdrop-blur-2xl border-r border-white/80 shadow-[4px_0_30px_0_rgba(15,23,42,0.03)] z-30 shrink-0 select-none transition-all duration-300 ease-in-out overflow-hidden',
+        isOpen
+          ? 'w-64 opacity-100 translate-x-0'
+          : 'w-0 -translate-x-full opacity-0 pointer-events-none border-r-0',
       ].join(' ')}
     >
+      <div className="w-64 flex flex-col h-full shrink-0">
       {/* â”€â”€ EKARAJ BANK Brand Header with Real Crown Logo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="px-5 py-4.5 border-b border-white/70 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
@@ -243,6 +278,7 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
           </svg>
           <span>Log out</span>
         </button>
+      </div>
       </div>
     </aside>
   );

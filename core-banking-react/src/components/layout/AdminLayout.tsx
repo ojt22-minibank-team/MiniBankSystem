@@ -17,17 +17,29 @@ export default function AdminLayout({ children, pageTitle }: AdminLayoutProps) {
   const dispatch = useDispatch<AppDispatch>();
 
   useEffect(() => {
-    const channel = new BroadcastChannel('staff_auth_sync');
+    const handleLogoutSync = () => {
+      dispatch(forceLogout());
+      navigate('/login', { replace: true });
+    };
 
+    const channel = new BroadcastChannel('staff_auth_sync');
     channel.onmessage = (event: MessageEvent) => {
       if (event.data === 'LOGOUT') {
-        dispatch(forceLogout());
-        navigate('/login', { replace: true });
+        handleLogoutSync();
       }
     };
 
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'staff_auth_logout_trigger') {
+        handleLogoutSync();
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+
     return () => {
       channel.close();
+      window.removeEventListener('storage', handleStorage);
     };
   }, [dispatch, navigate]);
 
@@ -43,6 +55,14 @@ export default function AdminLayout({ children, pageTitle }: AdminLayoutProps) {
 
       {/* Frosted Glass Stationary Sidebar */}
       <Sidebar isOpen={sidebarOpen} />
+
+      {/* Mobile Backdrop when sidebar is open */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-20 bg-slate-900/20 backdrop-blur-xs lg:hidden cursor-pointer"
+        />
+      )}
 
       {/* Main Content Column */}
       <div className="relative z-10 flex flex-1 flex-col h-full min-w-0 overflow-hidden">
