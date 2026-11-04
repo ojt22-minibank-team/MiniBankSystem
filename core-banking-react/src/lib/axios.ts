@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL, API_ENDPOINTS, STORAGE_KEYS } from '../config/api.config';
-import { updateTokens, forceLogout } from '../features/auth/authSlice';
+import { updateTokens, forceLogout, broadcastLogout } from '../features/auth/authSlice';
 
 let store: any;
 
@@ -111,6 +111,7 @@ axiosInstance.interceptors.response.use(
       } catch (refreshError) {
         
         processQueue(refreshError, null);
+        broadcastLogout();
         
         if (store) {
           store.dispatch(forceLogout());

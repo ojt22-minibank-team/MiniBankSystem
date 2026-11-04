@@ -33,11 +33,27 @@ function persistAuth(response: LoginResponse): void {
   sessionStorage.setItem(STORAGE_KEYS.ROLES, JSON.stringify(normalized));
 }
 
+export function broadcastLogout(): void {
+  try {
+    const channel = new BroadcastChannel('staff_auth_sync');
+    channel.postMessage('LOGOUT');
+    channel.close();
+  } catch {
+    // ignore
+  }
+  try {
+    localStorage.setItem('staff_auth_logout_trigger', Date.now().toString());
+  } catch {
+    // ignore
+  }
+}
+
 function clearPersistedAuth(): void {
   sessionStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
   sessionStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
   sessionStorage.removeItem(STORAGE_KEYS.USERNAME);
   sessionStorage.removeItem(STORAGE_KEYS.ROLES);
+  sessionStorage.removeItem(STORAGE_KEYS.STAFF_PROFILE);
 }
 
 function loadAuthFromStorage(): {
