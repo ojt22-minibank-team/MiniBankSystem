@@ -29,7 +29,7 @@ export default function Navbar({ onToggleSidebar, pageTitle = 'Dashboard' }: Nav
         </h1>
       </div>
 
-      {/* Right — user info + logout */}
+      {/* Right — user info */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Role badges - hide on narrower screens to prevent crowding */}
         <div className="hidden lg:flex items-center gap-1.5">
@@ -52,17 +52,6 @@ export default function Navbar({ onToggleSidebar, pageTitle = 'Dashboard' }: Nav
             {user?.username}
           </span>
         </div>
-
-        {/* Logout button */}
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-colors shrink-0 cursor-pointer"
-        >
-          <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-          <span className="hidden xs:inline">Logout</span>
-        </button>
       </div>
     </header>
   );
