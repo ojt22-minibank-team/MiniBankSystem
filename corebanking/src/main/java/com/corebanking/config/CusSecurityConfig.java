@@ -165,14 +165,15 @@ public class CusSecurityConfig {
         CorsConfiguration configuration =
                 new CorsConfiguration();
 
-        configuration.setAllowedOrigins(
-                List.of(
-                        "http://localhost:5173",
-                        "http://127.0.0.1:5173",
-                        "http://localhost:5174",
-                        "http://127.0.0.1:5174"
-                )
-        );
+        String envOrigins = System.getProperty("app.cors.allowed-origins");
+        if (envOrigins == null) {
+            envOrigins = System.getenv("CORS_ALLOWED_ORIGINS");
+        }
+        List<String> origins = (envOrigins != null && !envOrigins.isBlank())
+                ? java.util.Arrays.stream(envOrigins.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList()
+                : List.of("http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174");
+
+        configuration.setAllowedOrigins(origins);
 
         configuration.setAllowedMethods(
                 List.of(
