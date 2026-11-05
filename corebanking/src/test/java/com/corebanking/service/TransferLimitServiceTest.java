@@ -240,6 +240,32 @@ class TransferLimitServiceTest {
     }
 
     @Test
+    @DisplayName("validateTransferLimits - Own Account transfer bypasses both one-time and daily limits")
+    void testValidateTransferLimits_OwnAccount_NoLimitApplied() {
+        // Destination account belongs to the exact same customer
+        Accounts ownDestinationAccount = Accounts.builder()
+                .accountId(UUID.randomUUID())
+                .accountNumber("2003333333")
+                .customer(customer) // Same customer
+                .accountType(AccountType.CURRENT)
+                .accountCategory(AccountCategory.RETAIL)
+                .status(AccountStatus.ACTIVE)
+                .currency("MMK")
+                .build();
+
+        // Transfer amount 50,000,000 MMK (exceeds stranger, beneficiary, and daily limits)
+        BigDecimal largeAmount = new BigDecimal("50000000.00");
+
+        // Should not throw any exception and should bypass beneficiary / daily limit repo calls
+        assertDoesNotThrow(() ->
+                transferLimitService.validateTransferLimits(sourceSavingsAccount, ownDestinationAccount, largeAmount));
+
+        // Verify that beneficiary check and daily total query are completely bypassed
+        verify(beneficiaryRepository, never()).findByOwnerAccountAndBeneficiaryAccount(sourceSavingsAccount, ownDestinationAccount);
+        verify(bankTransactionRepository, never()).findTodayTotalTransferredAmount(any(), any(), any());
+    }
+
+    @Test
     @DisplayName("getTransferLimitInfo - Returns complete limits and real-time usage DTO")
     void testGetTransferLimitInfo_Success() {
         when(accountRepository.findByAccountNumber("2001111111"))

@@ -47,7 +47,8 @@ export function mapP2PResponseToReceiptData(
     description?: string;
     status?: string;
   },
-  recipientName?: string
+  recipientName?: string,
+  isOwnAccount?: boolean
 ): TransferReceiptData {
   const serviceFee = Number(result.serviceFee || 0);
   const amount = Number(result.amount);
@@ -66,12 +67,12 @@ export function mapP2PResponseToReceiptData(
     sourceAccountNumber: result.sourceAccountNumber,
     sourceDisplayName: "My Account",
     destinationAccountNumber: result.destinationAccountNumber,
-    destinationDisplayName: recipientName || "Verified Account",
+    destinationDisplayName: isOwnAccount ? "My Account" : (recipientName || "Verified Account"),
     direction: "OUT",
-    isOwnAccount: false,
+    isOwnAccount: Boolean(isOwnAccount),
     description: result.description || null,
     status: result.status || "COMPLETED",
-    badgeLabel: "P2P TRANSFER",
+    badgeLabel: isOwnAccount ? "OWN ACCOUNT TRANSFER" : "P2P TRANSFER",
     transactionType: "TRANSFER",
   };
 }
