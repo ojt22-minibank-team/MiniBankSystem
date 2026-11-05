@@ -707,7 +707,7 @@ public class StaffManagementService {
     // ENTITY -> DTO
     // =====================================================
 
-    private StaffResponse toResponse(StaffUsers staff) {
+    public StaffResponse toResponse(StaffUsers staff) {
         StaffUserRoles userRole = staffUserRolesRepository.findByStaffId(staff.getStaffId()).orElse(null);
         Roles role = (userRole != null) ? rolesRepository.findById(userRole.getRoleId()).orElse(null) : null;
         return toResponse(staff, role);

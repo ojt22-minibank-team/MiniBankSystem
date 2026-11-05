@@ -220,7 +220,7 @@ public class AnnouncementService {
     }
 
     // 9. ENTITY -> DTO
-    private AnnouncementResponse toResponse(Announcements announcement) {
+    public AnnouncementResponse toResponse(Announcements announcement) {
         return new AnnouncementResponse(
                 announcement.getAnnouncementId(),
                 announcement.getTitle(),
