@@ -15,6 +15,29 @@ import AuditLogsPage from '../../features/audit-logs/pages/AuditLogsPage';
 import TransactionDetailsPage from '../../features/transactions/pages/TransactionDetailsPage';
 import UnauthorizedPage from '../../components/common/UnauthorizedPage';
 import ProtectedRoute from './ProtectedRoute';
+import { useAuth } from '../../features/auth/hooks/useAuth';
+
+/**
+ * Dynamic root redirect: Routes authenticated users to their role-specific dashboard
+ * (/teller/dashboard for Tellers, /admin/dashboard for Admin/Auditors) and unauthenticated
+ * users to the login screen.
+ */
+function RootRedirect() {
+  const { isAuthenticated, user, isTeller } = useAuth();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const isTellerUser =
+    isTeller ||
+    (user as any)?.role?.includes('TELLER') ||
+    user?.roles?.some(
+      (r) => r === 'TELLER' || r === 'ROLE_TELLER' || r.includes('TELLER')
+    );
+
+  return <Navigate to={isTellerUser ? '/teller/dashboard' : '/admin/dashboard'} replace />;
+}
 
 export default function RouterProvider() {
   return (
@@ -30,11 +53,82 @@ export default function RouterProvider() {
         <Route path="/staff-setup" element={<StaffPasswordSetupPage />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-        {/* Protected Dashboard (available to authenticated staff) */}
+        {/* ============================================================ */}
+        {/* TELLER ROUTES (Strictly protected for TELLER role)           */}
+        {/* ============================================================ */}
+        <Route
+          path="/teller/dashboard"
+          element={
+            <ProtectedRoute requiredRole="TELLER">
+              <AdminDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/teller/customers"
+          element={
+            <ProtectedRoute requiredRole="TELLER">
+              <CustomersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/teller/accounts"
+          element={
+            <ProtectedRoute requiredRole="TELLER">
+              <AccountsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/teller/otc"
+          element={
+            <ProtectedRoute requiredRole="TELLER">
+              <OtcTransactionPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/teller/transactions"
+          element={
+            <ProtectedRoute requiredRole="TELLER">
+              <TransactionDetailsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/teller/transactions/:refOrId"
+          element={
+            <ProtectedRoute requiredRole="TELLER">
+              <TransactionDetailsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/teller/profile"
+          element={
+            <ProtectedRoute requiredRole="TELLER">
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/teller/announcements"
+          element={
+            <ProtectedRoute requiredRole="TELLER">
+              <AnnouncementsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ============================================================ */}
+        {/* ADMIN STAFF ROUTES (Strictly for ADMIN / AUDITOR staff)      */}
+        {/* ============================================================ */}
+        {/* Protected Dashboard */}
         <Route
           path="/admin/dashboard"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
               <AdminDashboardPage />
             </ProtectedRoute>
           }
@@ -54,7 +148,7 @@ export default function RouterProvider() {
         <Route
           path="/admin/profile"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
               <ProfilePage />
             </ProtectedRoute>
           }
@@ -70,44 +164,40 @@ export default function RouterProvider() {
           }
         />
 
-        {/* Announcements (Accessible to authenticated staff) */}
+        {/* Announcements (Admin and Auditor only) */}
         <Route
           path="/admin/announcements"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
               <AnnouncementsPage />
             </ProtectedRoute>
           }
         />
 
-        {/* Customers (Accessible to staff) */}
+        {/* Customers (Admin and Auditor only) */}
         <Route
           path="/admin/customers"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
               <CustomersPage />
             </ProtectedRoute>
           }
         />
 
-        {/* Bank Accounts */}
+        {/* Bank Accounts (Admin and Auditor only) */}
         <Route
           path="/admin/accounts"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
               <AccountsPage />
             </ProtectedRoute>
           }
         />
 
-        {/* OTC Banking (Deposit & Withdrawal - Teller only) */}
+        {/* OTC redirect: Route tellers to dedicated teller OTC path */}
         <Route
           path="/admin/otc"
-          element={
-            <ProtectedRoute requiredRole="TELLER">
-              <OtcTransactionPage />
-            </ProtectedRoute>
-          }
+          element={<Navigate to="/teller/otc" replace />}
         />
 
         {/* Transfers (Disabled in Admin Panel) */}
@@ -116,11 +206,11 @@ export default function RouterProvider() {
           element={<Navigate to="/admin/dashboard" replace />}
         />
 
-        {/* Transaction Explorer & Details (All Authenticated Staff) */}
+        {/* Transaction Explorer & Details (Admin and Auditor only) */}
         <Route
           path="/admin/transactions"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
               <TransactionDetailsPage />
             </ProtectedRoute>
           }
@@ -128,7 +218,7 @@ export default function RouterProvider() {
         <Route
           path="/admin/transactions/:refOrId"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
               <TransactionDetailsPage />
             </ProtectedRoute>
           }
@@ -158,11 +248,11 @@ export default function RouterProvider() {
           element={<Navigate to="/admin/reporting" replace />}
         />
 
-        {/* Default redirect */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        {/* Default redirect based on stored/authenticated role */}
+        <Route path="/" element={<RootRedirect />} />
 
         {/* 404 fallback */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<RootRedirect />} />
       </Routes>
     </BrowserRouter>
   );

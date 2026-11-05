@@ -109,12 +109,15 @@ function LiquidStatCard({
 }
 
 // ============================================================
-// Main Admin Dashboard Component
+// Main Admin / Teller Dashboard Component
 // ============================================================
 
 export default function AdminDashboardPage() {
   const { user, isAdmin, isAuditor, isTeller } = useAuth();
   const navigate = useNavigate();
+
+  // Dynamically resolve base route prefix
+  const basePath = isTeller ? '/teller' : '/admin';
 
   const [staff, setStaff] = useState<StaffResponse[]>([]);
   const [announcements, setAnnouncements] = useState<AnnouncementResponse[]>([]);
@@ -195,10 +198,10 @@ export default function AdminDashboardPage() {
   const activeAnnouncements = announcements.filter((a) => a.isActive).length;
   const activeAccounts = accounts.filter((a) => a.status === 'ACTIVE').length;
 
-  const currentRole = user?.roles?.[0]?.replace('ROLE_', '') ?? 'ADMIN';
+  const currentRole = user?.roles?.[0]?.replace('ROLE_', '') ?? (isTeller ? 'TELLER' : 'ADMIN');
 
   return (
-    <AdminLayout pageTitle="Dashboard">
+    <AdminLayout pageTitle={isTeller ? 'Teller Dashboard' : 'Dashboard'}>
       <div className="max-w-[1440px] mx-auto space-y-7">
         {/* ========================================================
             1. Liquid Glass Welcome Hero Banner
@@ -218,7 +221,7 @@ export default function AdminDashboardPage() {
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-white/15 backdrop-blur-md border border-white/20 text-white shadow-xs">
                   <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  System Operational Â· Node 01
+                  System Operational · Node 01
                 </span>
                 <span className="text-xs text-sky-200/90 font-medium">
                   {formatDate(new Date())}
@@ -226,7 +229,7 @@ export default function AdminDashboardPage() {
               </div>
 
               <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-tight">
-                Welcome back, {user?.username ?? 'Administrator'}! ðŸ‘‹
+                Welcome back, {user?.username ?? 'Banking Officer'}! 👋
               </h2>
 
               <p className="text-xs sm:text-sm text-sky-100/90 font-medium leading-relaxed">
@@ -258,7 +261,7 @@ export default function AdminDashboardPage() {
           {/* Quick 1: Customer Registry */}
           <button
             type="button"
-            onClick={() => navigate('/admin/customers')}
+            onClick={() => navigate(`${basePath}/customers`)}
             className="liquid-glass-card rounded-2xl p-3.5 flex items-center gap-3 text-left group hover:border-sky-300/80 transition-all cursor-pointer"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 border border-sky-500/20 group-hover:scale-105 transition-transform">
@@ -275,7 +278,7 @@ export default function AdminDashboardPage() {
           {/* Quick 2: Open Bank Account */}
           <button
             type="button"
-            onClick={() => navigate('/admin/accounts')}
+            onClick={() => navigate(`${basePath}/accounts`)}
             className="liquid-glass-card rounded-2xl p-3.5 flex items-center gap-3 text-left group hover:border-emerald-300/80 transition-all cursor-pointer"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 group-hover:scale-105 transition-transform">
@@ -292,7 +295,7 @@ export default function AdminDashboardPage() {
           {/* Quick 3: Announcements */}
           <button
             type="button"
-            onClick={() => navigate('/admin/announcements')}
+            onClick={() => navigate(`${basePath}/announcements`)}
             className="liquid-glass-card rounded-2xl p-3.5 flex items-center gap-3 text-left group hover:border-purple-300/80 transition-all cursor-pointer"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 border border-purple-500/20 group-hover:scale-105 transition-transform">
@@ -306,55 +309,91 @@ export default function AdminDashboardPage() {
             </div>
           </button>
 
-          {/* Quick 4: Audit Logs */}
-          <button
-            type="button"
-            onClick={() => navigate('/admin/audit-logs')}
-            className="liquid-glass-card rounded-2xl p-3.5 flex items-center gap-3 text-left group hover:border-amber-300/80 transition-all cursor-pointer"
-          >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 border border-amber-500/20 group-hover:scale-105 transition-transform">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-              </svg>
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-slate-800 truncate">Audit Trail</p>
-              <p className="text-[10px] text-slate-400 font-medium truncate">Security Inspector</p>
-            </div>
-          </button>
+          {/* Quick 4: OTC Banking (Teller) / Audit Trail (Admin & Auditor) */}
+          {isTeller ? (
+            <button
+              type="button"
+              onClick={() => navigate(`${basePath}/otc`)}
+              className="liquid-glass-card rounded-2xl p-3.5 flex items-center gap-3 text-left group hover:border-amber-300/80 transition-all cursor-pointer"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 border border-amber-500/20 group-hover:scale-105 transition-transform">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-800 truncate">OTC Banking</p>
+                <p className="text-[10px] text-slate-400 font-medium truncate">Deposit & Withdrawal</p>
+              </div>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => navigate('/admin/audit-logs')}
+              className="liquid-glass-card rounded-2xl p-3.5 flex items-center gap-3 text-left group hover:border-amber-300/80 transition-all cursor-pointer"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 border border-amber-500/20 group-hover:scale-105 transition-transform">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-800 truncate">Audit Trail</p>
+                <p className="text-[10px] text-slate-400 font-medium truncate">Security Inspector</p>
+              </div>
+            </button>
+          )}
         </div>
 
         {/* ========================================================
             3. Liquid Glass High-Impact KPI Stat Cards
            ======================================================== */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-          {/* Card 1: Staff Workforce */}
-          <LiquidStatCard
-            title="Staff Workforce"
-            value={staffLoading ? 'â€”' : staff.length}
-            subtitle={staffLoading ? 'Syncing staffâ€¦' : `${activeStaff} Active Officers`}
-            badge="Team"
-            badgeColor="sky"
-            gradient="bg-sky-400"
-            iconBg="bg-gradient-to-br from-sky-400 to-blue-600 text-white"
-            onClick={() => navigate('/admin/staff')}
-            icon={
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-              </svg>
-            }
-          />
+          {/* Card 1: Staff Workforce (Admin/Auditor) or Transactions (Teller) */}
+          {!isTeller ? (
+            <LiquidStatCard
+              title="Staff Workforce"
+              value={staffLoading ? '—' : staff.length}
+              subtitle={staffLoading ? 'Syncing staff…' : `${activeStaff} Active Officers`}
+              badge="Team"
+              badgeColor="sky"
+              gradient="bg-sky-400"
+              iconBg="bg-gradient-to-br from-sky-400 to-blue-600 text-white"
+              onClick={() => navigate('/admin/staff')}
+              icon={
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                </svg>
+              }
+            />
+          ) : (
+            <LiquidStatCard
+              title="Transactions"
+              value="Ledger"
+              subtitle="View all counter entries"
+              badge="Teller"
+              badgeColor="sky"
+              gradient="bg-sky-400"
+              iconBg="bg-gradient-to-br from-sky-400 to-blue-600 text-white"
+              onClick={() => navigate(`${basePath}/transactions`)}
+              icon={
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
+                </svg>
+              }
+            />
+          )}
 
           {/* Card 2: Customers & Portfolios */}
           <LiquidStatCard
             title="Total Customers"
-            value={customersLoading ? 'â€”' : customers.length}
-            subtitle={customersLoading ? 'Loading recordsâ€¦' : 'Active Client Accounts'}
+            value={customersLoading ? '—' : customers.length}
+            subtitle={customersLoading ? 'Loading records…' : 'Active Client Accounts'}
             badge="Verified"
             badgeColor="emerald"
             gradient="bg-emerald-400"
             iconBg="bg-gradient-to-br from-emerald-400 to-teal-600 text-white"
-            onClick={() => navigate('/admin/customers')}
+            onClick={() => navigate(`${basePath}/customers`)}
             icon={
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
@@ -365,13 +404,13 @@ export default function AdminDashboardPage() {
           {/* Card 3: Bank Accounts */}
           <LiquidStatCard
             title="Bank Accounts"
-            value={accountsLoading ? 'â€”' : accounts.length}
-            subtitle={accountsLoading ? 'Syncing ledgerâ€¦' : `${activeAccounts} Normal Standing`}
+            value={accountsLoading ? '—' : accounts.length}
+            subtitle={accountsLoading ? 'Syncing ledger…' : `${activeAccounts} Normal Standing`}
             badge="Accounts"
             badgeColor="purple"
             gradient="bg-indigo-400"
             iconBg="bg-gradient-to-br from-indigo-400 to-purple-600 text-white"
-            onClick={() => navigate('/admin/accounts')}
+            onClick={() => navigate(`${basePath}/accounts`)}
             icon={
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm6 0a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -379,23 +418,41 @@ export default function AdminDashboardPage() {
             }
           />
 
-          {/* Card 4: System Parameters */}
-          <LiquidStatCard
-            title="System Parameters"
-            value={rulesLoading ? 'â€”' : parameters.length}
-            subtitle={rulesLoading ? 'Loading rulesâ€¦' : 'Dynamic Business Rules'}
-            badge="Rules"
-            badgeColor="amber"
-            gradient="bg-amber-400"
-            iconBg="bg-gradient-to-br from-amber-400 to-orange-500 text-white"
-            onClick={() => navigate('/admin/system-rules')}
-            icon={
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />
-              </svg>
-            }
-          />
+          {/* Card 4: System Parameters (Admin) or OTC Desk (Teller) */}
+          {!isTeller ? (
+            <LiquidStatCard
+              title="System Parameters"
+              value={rulesLoading ? '—' : parameters.length}
+              subtitle={rulesLoading ? 'Loading rules…' : 'Dynamic Business Rules'}
+              badge="Rules"
+              badgeColor="amber"
+              gradient="bg-amber-400"
+              iconBg="bg-gradient-to-br from-amber-400 to-orange-500 text-white"
+              onClick={() => navigate('/admin/system-rules')}
+              icon={
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />
+                </svg>
+              }
+            />
+          ) : (
+            <LiquidStatCard
+              title="Over the Counter"
+              value="OTC"
+              subtitle="Cash deposits & withdrawals"
+              badge="Cashier"
+              badgeColor="amber"
+              gradient="bg-amber-400"
+              iconBg="bg-gradient-to-br from-amber-400 to-orange-500 text-white"
+              onClick={() => navigate(`${basePath}/otc`)}
+              icon={
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              }
+            />
+          )}
 
           {/* Card 5: Operational Analytics (Admin & Auditor) */}
           {(isAdmin || isAuditor) && (
@@ -442,7 +499,7 @@ export default function AdminDashboardPage() {
                     className="text-xs font-bold text-sky-600 hover:text-sky-700 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <span>Manage Staff</span>
-                    <span>â†’</span>
+                    <span>→</span>
                   </button>
                 )}
               </div>
@@ -467,7 +524,7 @@ export default function AdminDashboardPage() {
                           <p className="truncate text-xs font-bold text-slate-900">{s.fullName || s.username}</p>
                           <span className="text-[10px] font-mono text-slate-400">({s.staffNo})</span>
                         </div>
-                        <p className="truncate text-[11px] text-slate-400 font-medium">{s.email ?? 'â€”'}</p>
+                        <p className="truncate text-[11px] text-slate-400 font-medium">{s.email ?? '—'}</p>
                       </div>
                       <span
                         className={
@@ -507,11 +564,11 @@ export default function AdminDashboardPage() {
                 </div>
                 {!isTeller && (
                   <button
-                    onClick={() => navigate('/admin/announcements')}
+                    onClick={() => navigate(`${basePath}/announcements`)}
                     className="text-xs font-bold text-purple-600 hover:text-purple-700 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <span>Manage</span>
-                    <span>â†’</span>
+                    <span>→</span>
                   </button>
                 )}
               </div>
@@ -548,7 +605,7 @@ export default function AdminDashboardPage() {
                         <span className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 font-bold">
                           {a.audience}
                         </span>
-                        <span>Â·</span>
+                        <span>·</span>
                         <span>{formatDate(a.createdAt)}</span>
                       </div>
                     </div>
@@ -578,7 +635,7 @@ export default function AdminDashboardPage() {
               <div>
                 <h4 className="text-xs font-bold text-slate-900 tracking-tight">Security & System Sentinel</h4>
                 <p className="text-[11px] text-slate-400 font-medium">
-                  Audit Logging Active Â· MySQL 8.0 Primary Replica Connected Â· Zero Detected Anomalies
+                  Audit Logging Active · MySQL 8.0 Primary Replica Connected · Zero Detected Anomalies
                 </p>
               </div>
             </div>
@@ -586,11 +643,11 @@ export default function AdminDashboardPage() {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => navigate('/admin/audit-logs')}
+                onClick={() => navigate(isTeller ? `${basePath}/transactions` : '/admin/audit-logs')}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
               >
-                <span>Audit Logs</span>
-                <span>â†’</span>
+                <span>{isTeller ? 'Transactions' : 'Audit Logs'}</span>
+                <span>→</span>
               </button>
             </div>
           </div>

@@ -521,22 +521,36 @@ public class CustomerService {
     }
 
     /**
+     * Date မပါဝင်ဘဲ လုံခြုံစိတ်ချရသော SecureRandom နံပါတ်များဖြင့်သာ 
      * Unique Customer Code အလိုအလျောက် ထုတ်ပေးသော Method
-     * Personal Customer Code format: CUST-YYYYMMDD-XXXX
-     * Company Customer Code format: COMP-YYYYMMDD-XXXX
+     * 
+     * ဖွဲ့စည်းပုံ:
+     * - Personal: CUST-XXXXXXXX-XXXX (ဥပမာ: CUST-74820193-5835)
+     * - Company:  COMP-XXXXXXXX-XXXX (ဥပမာ: COMP-91823746-7813)
      */
     private String generateUniqueCustomerCode(CustomerType customerType) {
         String prefix = (customerType == CustomerType.COMPANY) ? "COMP-" : "CUST-";
-        String datePart = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         SecureRandom secureRandom = new SecureRandom();
         String code;
+
         do {
-            int randomDigits = 1000 + secureRandom.nextInt(9000);
-            code = prefix + datePart + "-" + randomDigits;
-        } while (customerRepository.existsByCustomerCode(code));
+            // ၁။ အလယ်အပိုင်းအတွက် ၈ လုံးပါ Random ကိန်းဂဏန်း (10,000,000 မှ 99,999,999 အထိ)
+            int middleRandom = 10000000 + secureRandom.nextInt(90000000);
+
+            // ၂။ နောက်ဆုံးအပိုင်းအတွက် ၄ လုံးပါ Random ကိန်းဂဏန်း (1000 မှ 9999 အထိ)
+            int suffixRandom = 1000 + secureRandom.nextInt(9000);
+
+            // ၃။ ပေါင်းစပ်ပြီး Code တည်ဆောက်ခြင်း (ဥပမာ: CUST-74820193-5835)
+            code = prefix + middleRandom + "-" + suffixRandom;
+
+        } while (customerRepository.existsByCustomerCode(code)); // Database တွင် ရှိနှင့်ပြီးသား ဖြစ်ပါက ပြန်လည် generate လုပ်ပါမည်
+
         return code;
     }
 
+    /**
+     * Default အနေဖြင့် Personal Customer Code ထုတ်ပေးသည့် Helper Method
+     */
     private String generateUniqueCustomerCode() {
         return generateUniqueCustomerCode(CustomerType.PERSONAL);
     }

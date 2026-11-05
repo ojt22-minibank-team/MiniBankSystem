@@ -11,8 +11,29 @@ const LEGACY_REMEMBERED_KEY = 'hiroki_remembered_username';
 type LoginStep = 'CREDENTIALS' | 'OTP';
 
 export default function LoginPage() {
-  const { login, verifyOtp, isLoading, error, isAuthenticated, dismissError } = useAuth();
+  const { login, verifyOtp, isLoading, error, isAuthenticated, dismissError, user, isTeller } = useAuth();
   const navigate = useNavigate();
+
+  // Helper to determine destination dashboard based on authenticated user role
+  const getDashboardPath = (rolesOrRole?: string[] | string): string => {
+    const roles = Array.isArray(rolesOrRole)
+      ? rolesOrRole
+      : typeof rolesOrRole === 'string'
+      ? [rolesOrRole]
+      : [];
+
+    const isTellerUser =
+      roles.some(
+        (r) =>
+          r === 'TELLER' ||
+          r === 'ROLE_TELLER' ||
+          r.toUpperCase().includes('TELLER')
+      ) ||
+      (user as any)?.role?.includes('TELLER') ||
+      isTeller;
+
+    return isTellerUser ? '/teller/dashboard' : '/admin/dashboard';
+  };
 
   // Step state
   const [step, setStep] = useState<LoginStep>('CREDENTIALS');
@@ -61,12 +82,13 @@ export default function LoginPage() {
     if (error) dismissError();
   };
 
-  // If already authenticated, redirect to dashboard
+  // If already authenticated, redirect to role-specific dashboard
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/admin/dashboard', { replace: true });
+      const destination = getDashboardPath(user?.roles);
+      navigate(destination, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, user?.roles, navigate]);
 
   // Timers for OTP step
   useEffect(() => {
@@ -151,7 +173,8 @@ export default function LoginPage() {
           setSuccessInfo('A 6-digit verification code has been dispatched to your registered email.');
         } else {
           // Direct login (if MFA wasn't required)
-          navigate('/admin/dashboard', { replace: true });
+          const destination = getDashboardPath(payload.roles);
+          navigate(destination, { replace: true });
         }
       } else if (loginThunk.rejected.match(result)) {
         const backendMessage =
@@ -243,7 +266,9 @@ export default function LoginPage() {
       const result = await verifyOtp(challengeGroupId, fullOtp);
 
       if (verifyOtpThunk.fulfilled.match(result)) {
-        navigate('/admin/dashboard', { replace: true });
+        const payload = result.payload;
+        const destination = getDashboardPath(payload.roles);
+        navigate(destination, { replace: true });
       } else if (verifyOtpThunk.rejected.match(result)) {
         const backendMessage =
           (result.payload as string) ||
@@ -531,8 +556,6 @@ export default function LoginPage() {
                     <span>{isLoading ? 'Signing in...' : 'Sign In'}</span>
                   </button>
                 </div>
-
-                
               </form>
             )}
 
@@ -659,6 +682,6 @@ export default function LoginPage() {
 
       </div>
 
-      </div>
+    </div>
   );
 }
