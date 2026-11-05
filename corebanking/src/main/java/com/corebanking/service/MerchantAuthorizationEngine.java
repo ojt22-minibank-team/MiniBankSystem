@@ -39,6 +39,10 @@ public class MerchantAuthorizationEngine {
     }
 
     public void cancelPayment(String token, String accountId) {
+        if (inFlightTokens.contains(token)) {
+            log.warn("Cannot cancel payment for token {} - transaction is currently in-flight", token);
+            throw new IllegalStateException("Payment is currently being processed and cannot be cancelled.");
+        }
         String effectiveAccountId = (accountId != null && !accountId.trim().isEmpty()) ? accountId : "UNKNOWN";
         log.info("Cancelling payment for token {} (Account: {})", token, effectiveAccountId);
 

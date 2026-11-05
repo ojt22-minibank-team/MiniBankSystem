@@ -22,6 +22,8 @@ import type {
   CustomerDetailResponse,
   CustomerCreateDTO,
   CustomerCreateResponse,
+  CustomerUpdateDTO,
+  CustomerUpdateResponse,
   AccountResponse,
   AccountCreateDTO,
   CorporateAccountCreateDTO,
@@ -33,6 +35,7 @@ import type {
   DailyCashSummaryResponse,
   OtcParametersResponse,
   OtcAccountLimitResponse,
+  AdminDashboardSummaryResponse,
 } from '../types/api.types';
 
 // ============================================================
@@ -57,12 +60,22 @@ export const authApi = {
 };
 
 // ============================================================
+// ============================================================
+// Admin — Dashboard API
+// ============================================================
+
+export const adminDashboardApi = {
+  getSummary: () =>
+    axiosInstance.get<AdminDashboardSummaryResponse>(API_ENDPOINTS.ADMIN.DASHBOARD_SUMMARY),
+};
+
+// ============================================================
 // Admin — Staff Management API
 // ============================================================
 
 export const staffApi = {
-  getAll: () =>
-    axiosInstance.get<StaffResponse[]>(API_ENDPOINTS.ADMIN.STAFF),
+  getAll: (params?: { page?: number; size?: number; [key: string]: any }) =>
+    axiosInstance.get<StaffResponse[]>(API_ENDPOINTS.ADMIN.STAFF, { params }),
 
   getRoles: () =>
     axiosInstance.get<StaffRoleOption[]>(API_ENDPOINTS.ADMIN.STAFF_ROLES),
@@ -156,8 +169,8 @@ export const systemRulesApi = {
 // ============================================================
 
 export const announcementsApi = {
-  getAll: () =>
-    axiosInstance.get<AnnouncementResponse[]>(API_ENDPOINTS.ADMIN.ANNOUNCEMENTS),
+  getAll: (params?: { page?: number; size?: number; [key: string]: any }) =>
+    axiosInstance.get<AnnouncementResponse[]>(API_ENDPOINTS.ADMIN.ANNOUNCEMENTS, { params }),
 
   getActive: () =>
     axiosInstance.get<AnnouncementResponse[]>(API_ENDPOINTS.ANNOUNCEMENTS),
@@ -186,11 +199,14 @@ export const announcementsApi = {
 // ============================================================
 
 export const customersApi = {
-  getAll: () =>
-    axiosInstance.get<CustomerResponse[]>(API_ENDPOINTS.CUSTOMERS),
+  getAll: (params?: { page?: number; size?: number; [key: string]: any }) =>
+    axiosInstance.get<CustomerResponse[]>(API_ENDPOINTS.CUSTOMERS, { params }),
 
   getByCode: (code: string) =>
     axiosInstance.get<CustomerDetailResponse>(API_ENDPOINTS.CUSTOMER_BY_CODE(code)),
+
+  update: (customerCode: string, data: CustomerUpdateDTO) =>
+    axiosInstance.put<CustomerUpdateResponse>(API_ENDPOINTS.CUSTOMER_BY_CODE(customerCode), data),
 
   create: (data: CustomerCreateDTO) =>
     axiosInstance.post<CustomerCreateResponse>(API_ENDPOINTS.CUSTOMERS, data),
@@ -201,8 +217,8 @@ export const customersApi = {
 // ============================================================
 
 export const accountsApi = {
-  getAll: () =>
-    axiosInstance.get<AccountResponse[]>(API_ENDPOINTS.ACCOUNTS),
+  getAll: (params?: { page?: number; size?: number; [key: string]: any }) =>
+    axiosInstance.get<AccountResponse[]>(API_ENDPOINTS.ACCOUNTS, { params }),
 
   create: (data: AccountCreateDTO) =>
     axiosInstance.post<AccountResponse>(API_ENDPOINTS.ACCOUNTS, data),

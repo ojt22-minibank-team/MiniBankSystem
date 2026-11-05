@@ -6,6 +6,7 @@ import com.corebanking.dto.AuditTrailLogDTO;
 import com.corebanking.dto.AuditTrailPageDTO;
 import com.corebanking.dto.BalanceBracketDTO;
 import com.corebanking.dto.DailyLedgerSummaryDTO;
+import com.corebanking.dto.TransactionDetailPageDTO;
 import com.corebanking.dto.TransactionDetailReportDTO;
 import java.math.BigDecimal;
 import com.corebanking.entity.AuditLogs;
@@ -297,6 +298,82 @@ public class ReportRepository {
                 }
             }
             return result;
+        });
+    }
+
+    // -------------------------------------------------------
+    // SP 6: Transaction Detail Report (Paged - for UI)
+    // -------------------------------------------------------
+    public TransactionDetailPageDTO getTransactionDetailsPaged(
+            LocalDate startDate, LocalDate endDate,
+            String status, String type, String channel,
+            BigDecimal minAmount, BigDecimal maxAmount,
+            int page, int pageSize) {
+
+        int validPage = (page <= 0) ? 1 : page;
+        int validPageSize = (pageSize <= 0) ? 30 : pageSize;
+
+        return jdbcTemplate.execute((Connection con) -> {
+            CallableStatement cs = con.prepareCall("{CALL sp_get_transaction_detail_report_paged(?, ?, ?, ?, ?, ?, ?, ?, ?)}");
+            cs.setObject(1, startDate);
+            cs.setObject(2, endDate);
+            cs.setString(3, (status == null || status.isBlank()) ? null : status);
+            cs.setString(4, (type == null || type.isBlank()) ? null : type);
+            cs.setString(5, (channel == null || channel.isBlank()) ? null : channel);
+            cs.setObject(6, minAmount);
+            cs.setObject(7, maxAmount);
+            cs.setInt(8, validPage);
+            cs.setInt(9, validPageSize);
+            return cs;
+        }, (CallableStatement cs) -> {
+            long totalCount = 0;
+            BigDecimal totalVolume = BigDecimal.ZERO;
+            BigDecimal totalFees = BigDecimal.ZERO;
+            List<TransactionDetailReportDTO> rows = new ArrayList<>();
+
+            boolean hasRs = cs.execute();
+
+            // RS 1: Summary Aggregates
+            if (hasRs) {
+                try (ResultSet rs = cs.getResultSet()) {
+                    if (rs.next()) {
+                        totalCount = rs.getLong("total_count");
+                        totalVolume = rs.getBigDecimal("total_volume");
+                        totalFees = rs.getBigDecimal("total_fees");
+                    }
+                }
+            }
+
+            // RS 2: Paginated Rows
+            if (cs.getMoreResults()) {
+                try (ResultSet rs = cs.getResultSet()) {
+                    while (rs.next()) {
+                        rows.add(TransactionDetailReportDTO.builder()
+                                .ref(rs.getString("ref"))
+                                .date(rs.getObject("tx_date", LocalDateTime.class))
+                                .amount(rs.getBigDecimal("amount"))
+                                .fee(rs.getBigDecimal("fee"))
+                                .sourceAccount(rs.getString("source_account"))
+                                .destAccount(rs.getString("dest_account"))
+                                .status(rs.getString("status"))
+                                .channel(rs.getString("channel"))
+                                .currency(rs.getString("currency"))
+                                .build());
+                    }
+                }
+            }
+
+            int totalPages = (int) Math.ceil((double) totalCount / validPageSize);
+
+            return TransactionDetailPageDTO.builder()
+                    .rows(rows)
+                    .totalCount(totalCount)
+                    .totalVolume(totalVolume != null ? totalVolume : BigDecimal.ZERO)
+                    .totalFees(totalFees != null ? totalFees : BigDecimal.ZERO)
+                    .page(validPage)
+                    .pageSize(validPageSize)
+                    .totalPages(totalPages)
+                    .build();
         });
     }
 }

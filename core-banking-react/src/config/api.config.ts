@@ -13,6 +13,9 @@ export const API_ENDPOINTS = {
 
   // Admin — (requires ADMIN role)
   ADMIN: {
+    // Dashboard
+    DASHBOARD_SUMMARY: "/api/admin/dashboard/summary",
+
     // Staff Management
     STAFF: "/api/admin/staff",
     STAFF_ROLES: "/api/admin/staff/roles",
@@ -90,6 +93,10 @@ export const API_ENDPOINTS = {
     BASE: "/api/v1/staff/transactions",
     BY_IDENTIFIER: (id: string) => `/api/v1/staff/transactions/detail/${encodeURIComponent(id)}`,
     STATS: "/api/v1/staff/transactions/stats",
+    FLAG: (transactionId: string) => `/api/v1/staff/transactions/${transactionId}/flag`,
+    OVERRIDE: (transactionId: string) => `/api/v1/staff/transactions/${transactionId}/override`,
+    REVIEW_QUEUE: "/api/v1/staff/transactions/review-queue",
+    REVIEW_HISTORY: (transactionId: string) => `/api/v1/staff/transactions/${transactionId}/review-history`,
   },
 } as const;
 

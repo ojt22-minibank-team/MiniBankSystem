@@ -16,6 +16,30 @@ public interface StaffUsersRepository extends JpaRepository<StaffUsers, UUID> {
     Optional<StaffUsers> findByUsername(String username);
 
     boolean existsByEmailIgnoreCase(String email);
+
+    boolean existsByPhone(String phone);
+
+    @Query("""
+            SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END
+            FROM StaffUsers s
+            WHERE s.phone = :rawPhone OR s.phone = :normalizedPhone
+            """)
+    boolean existsByPhoneMatching(
+            @Param("rawPhone") String rawPhone,
+            @Param("normalizedPhone") String normalizedPhone
+    );
+
+    @Query("""
+            SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END
+            FROM StaffUsers s
+            WHERE (s.phone = :rawPhone OR s.phone = :normalizedPhone)
+              AND s.staffId <> :staffId
+            """)
+    boolean existsByPhoneMatchingAndStaffIdNot(
+            @Param("rawPhone") String rawPhone,
+            @Param("normalizedPhone") String normalizedPhone,
+            @Param("staffId") UUID staffId
+    );
     // Brute-force Attack တွင် Race Condition ကို ကာကွယ်ရန် Pessimistic Write Lock ဖြင့် ရှာဖွေခြင်း
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM StaffUsers s WHERE s.username = :username")
@@ -43,4 +67,8 @@ public interface StaffUsersRepository extends JpaRepository<StaffUsers, UUID> {
     java.util.List<String> findStaffNosByPrefix(@Param("prefix") String prefix);
 
     Optional<StaffUsers> findFirstByStatus(com.corebanking.entity.enums.StaffUserStatus status);
+
+    long countByStatus(com.corebanking.entity.enums.StaffUserStatus status);
+
+    java.util.List<StaffUsers> findTop5ByOrderByCreatedAtDesc();
 }

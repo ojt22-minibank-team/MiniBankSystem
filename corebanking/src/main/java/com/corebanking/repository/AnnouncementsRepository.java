@@ -43,4 +43,10 @@ public interface AnnouncementsRepository
             @Param("allAudience") AnnouncementAudience allAudience,
             @Param("now") LocalDateTime now
     );
+
+    long countByIsActiveTrue();
+
+    List<Announcements> findTop4ByOrderByCreatedAtDesc();
+
+    List<Announcements> findTop4ByIsActiveTrueOrderByCreatedAtDesc();
 }

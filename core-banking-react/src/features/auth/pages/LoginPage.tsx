@@ -11,7 +11,7 @@ const LEGACY_REMEMBERED_KEY = 'hiroki_remembered_username';
 type LoginStep = 'CREDENTIALS' | 'OTP';
 
 export default function LoginPage() {
-  const { login, verifyOtp, isLoading, error, isAuthenticated, dismissError } = useAuth();
+  const { login, verifyOtp, isLoading, error, isAuthenticated, isTeller, dismissError } = useAuth();
   const navigate = useNavigate();
 
   // Step state
@@ -64,7 +64,7 @@ export default function LoginPage() {
   // If already authenticated, redirect to dashboard
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/admin/dashboard', { replace: true });
+      navigate(isTeller ? '/teller/dashboard' : '/admin/dashboard', { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -111,7 +111,7 @@ export default function LoginPage() {
 
   const validateCredentials = (): boolean => {
     const errors: { username?: string; password?: string } = {};
-    if (!username.trim()) errors.username = 'User ID or Phone Number is required.';
+    if (!username.trim()) errors.username = 'User Name is required.';
     if (!password) errors.password = 'Password is required.';
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -151,7 +151,8 @@ export default function LoginPage() {
           setSuccessInfo('A 6-digit verification code has been dispatched to your registered email.');
         } else {
           // Direct login (if MFA wasn't required)
-          navigate('/admin/dashboard', { replace: true });
+          const isTellerRole = payload?.roles?.some((r: string) => r === 'ROLE_TELLER' || r === 'TELLER');
+          navigate(isTellerRole ? '/teller/dashboard' : '/admin/dashboard', { replace: true });
         }
       } else if (loginThunk.rejected.match(result)) {
         const backendMessage =
@@ -243,7 +244,8 @@ export default function LoginPage() {
       const result = await verifyOtp(challengeGroupId, fullOtp);
 
       if (verifyOtpThunk.fulfilled.match(result)) {
-        navigate('/admin/dashboard', { replace: true });
+        const isTellerRole = result.payload?.roles?.some((r: string) => r === 'ROLE_TELLER' || r === 'TELLER');
+        navigate(isTellerRole ? '/teller/dashboard' : '/admin/dashboard', { replace: true });
       } else if (verifyOtpThunk.rejected.match(result)) {
         const backendMessage =
           (result.payload as string) ||
@@ -416,7 +418,7 @@ export default function LoginPage() {
                     htmlFor="username"
                     className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5"
                   >
-                    User ID or Phone Number
+                    User Name
                   </label>
                   <div className="relative">
                     <input
@@ -424,7 +426,7 @@ export default function LoginPage() {
                       type="text"
                       value={username}
                       onChange={(e) => handleUsernameChange(e.target.value)}
-                      placeholder="e.g. 09123456789 or Staff ID"
+                      placeholder="e.g. staff"
                       disabled={isLoading}
                       autoComplete="username"
                       autoFocus
