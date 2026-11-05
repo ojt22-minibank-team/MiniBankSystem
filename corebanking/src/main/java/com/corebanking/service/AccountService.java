@@ -71,6 +71,10 @@ import java.util.concurrent.ThreadLocalRandom;
 @RequiredArgsConstructor
 public class AccountService {
 
+    private static final BigDecimal MIN_PERSONAL_INITIAL_DEPOSIT = new BigDecimal("10000");
+    private static final BigDecimal MIN_CORPORATE_INITIAL_DEPOSIT = new BigDecimal("50000");
+    private static final String DEFAULT_CURRENCY = "MMK";
+
     private final AccountRepository accountRepository;
     private final CustomerRepository customerRepository;
     private final StaffUsersRepository staffUsersRepository;
@@ -107,10 +111,20 @@ public class AccountService {
             }
         }
 
+        // Initial deposit validation: Personal (Retail) minimum is 10,000 MMK
+        BigDecimal initialDeposit = dto.getInitialDeposit();
+        if (initialDeposit == null || initialDeposit.compareTo(MIN_PERSONAL_INITIAL_DEPOSIT) < 0) {
+            throw new IllegalArgumentException("Initial deposit for Personal account must be at least 10,000 MMK");
+        }
+
+        // Currency Restriction: Only MMK is supported
+        if (dto.getCurrency() != null && !dto.getCurrency().isBlank() && !"MMK".equalsIgnoreCase(dto.getCurrency().trim())) {
+            throw new IllegalArgumentException("Unsupported currency: " + dto.getCurrency() + ". Only MMK is supported.");
+        }
+        String currency = DEFAULT_CURRENCY;
+
         StaffUsers staff = getCurrentAuthenticatedStaff();
         String accountNumber = generateUniqueAccountNumber(dto.getAccountType());
-        BigDecimal initialDeposit = (dto.getInitialDeposit() != null) ? dto.getInitialDeposit() : BigDecimal.ZERO;
-        String currency = (dto.getCurrency() != null && !dto.getCurrency().isBlank()) ? dto.getCurrency().toUpperCase() : "MMK";
 
         // Accounts Record တည်ဆောက်ခြင်း
         Accounts account = Accounts.builder()
@@ -141,7 +155,7 @@ public class AccountService {
         if (existingCredOpt.isPresent()) {
             rawPassword = "(Existing Password Retained)";
         } else {
-            rawPassword = PasswordGeneratorUtil.generateTemporaryPassword(8);
+            rawPassword = generateSafeTemporaryPassword(8);
             String hashedPassword = passwordEncoder.encode(rawPassword);
 
             CustomerCredentials credentials = CustomerCredentials.builder()
@@ -199,6 +213,18 @@ public class AccountService {
                 throw new IllegalStateException("Customer already holds an active CORPORATE account");
             }
         }
+
+        // Initial deposit validation: Corporate account minimum is 50,000 MMK
+        BigDecimal initialDeposit = dto.getInitialDeposit();
+        if (initialDeposit == null || initialDeposit.compareTo(MIN_CORPORATE_INITIAL_DEPOSIT) < 0) {
+            throw new IllegalArgumentException("Initial deposit for Corporate account must be at least 50,000 MMK");
+        }
+
+        // Currency Restriction: Only MMK is supported
+        if (dto.getCurrency() != null && !dto.getCurrency().isBlank() && !"MMK".equalsIgnoreCase(dto.getCurrency().trim())) {
+            throw new IllegalArgumentException("Unsupported currency: " + dto.getCurrency() + ". Only MMK is supported.");
+        }
+        String currency = DEFAULT_CURRENCY;
 
         CompanyInfo companyInfo = company.getCompanyInfo();
         if (companyInfo == null) {
@@ -304,10 +330,10 @@ public class AccountService {
                 });
 
         
-        String rawCeoPassword = PasswordGeneratorUtil.generateTemporaryPassword(8);
-        String rawMakerPassword = PasswordGeneratorUtil.generateTemporaryPassword(8);
+        String rawCeoPassword = generateSafeTemporaryPassword(8);
+        String rawMakerPassword = generateSafeTemporaryPassword(8);
         while (rawMakerPassword.equals(rawCeoPassword)) {
-            rawMakerPassword = PasswordGeneratorUtil.generateTemporaryPassword(8);
+            rawMakerPassword = generateSafeTemporaryPassword(8);
         }
 
         String hashedCeoPassword = passwordEncoder.encode(rawCeoPassword);
@@ -355,8 +381,6 @@ public class AccountService {
         AccountType accountType = (dto.getAccountType() != null && dto.getAccountType().equalsIgnoreCase("CURRENT"))
                 ? AccountType.CURRENT : AccountType.SAVINGS;
         String accountNumber = generateUniqueAccountNumber(accountType);
-        BigDecimal initialDeposit = (dto.getInitialDeposit() != null) ? dto.getInitialDeposit() : BigDecimal.ZERO;
-        String currency = (dto.getCurrency() != null && !dto.getCurrency().isBlank()) ? dto.getCurrency().toUpperCase() : "MMK";
 
         Accounts account = Accounts.builder()
                 .customer(company)
@@ -596,7 +620,7 @@ public class AccountService {
    
     @Transactional(readOnly = true)
     public List<AccountResponseDTO> getAllAccounts() {
-        return accountRepository.findAll().stream()
+        return accountRepository.findAllWithCustomerAndPersonalInfo().stream()
                 .map(this::mapToResponseDTO)
                 .toList();
     }
@@ -674,6 +698,16 @@ public class AccountService {
         return code;
     }
 
+    private String generateSafeTemporaryPassword(int length) {
+        String chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < length; i++) {
+            int index = ThreadLocalRandom.current().nextInt(chars.length());
+            sb.append(chars.charAt(index));
+        }
+        return sb.toString();
+    }
+
     private void recordInitialDepositTransaction(Accounts account, BigDecimal amount, StaffUsers staff, Customers customer) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             return;
@@ -715,16 +749,24 @@ public class AccountService {
     private AccountResponseDTO mapToResponseDTO(Accounts account) {
         Customers customer = account.getCustomer();
         PersonalInfo personalInfo = customer != null ? customer.getPersonalInfo() : null;
+        com.corebanking.entity.CompanyInfo companyInfo = customer != null ? customer.getCompanyInfo() : null;
         String phone = personalInfo != null && personalInfo.getPhone() != null
                 ? personalInfo.getPhone()
-                : (customer != null ? customer.getPhone() : null);
+                : (companyInfo != null && companyInfo.getCompanyPhone() != null
+                    ? companyInfo.getCompanyPhone()
+                    : (customer != null ? customer.getPhone() : null));
+        String customerName = customer != null
+                ? (customer.getFullName() != null && !customer.getFullName().isBlank()
+                    ? customer.getFullName()
+                    : (companyInfo != null ? companyInfo.getCompanyName() : null))
+                : null;
         return AccountResponseDTO.builder()
                 .accountNumber(account.getAccountNumber())
                 .accountType(account.getAccountType() != null ? account.getAccountType().name() : null)
                 .accountCategory(account.getAccountCategory() != null ? account.getAccountCategory().name() : null)
                 .isJointAccount(account.isJointAccount())
                 .customerCode(customer != null ? customer.getCustomerCode() : null)
-                .customerName(customer != null ? customer.getFullName() : null)
+                .customerName(customerName)
                 .nrc(personalInfo != null ? personalInfo.getNrc() : null)
                 .phone(phone)
                 .profileImageUrl(personalInfo != null ? personalInfo.getProfileImageUrl() : null)

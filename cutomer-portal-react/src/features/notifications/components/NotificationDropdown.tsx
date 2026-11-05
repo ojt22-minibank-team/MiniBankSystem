@@ -34,7 +34,7 @@ import {
   isAuthenticationGenerationCurrent,
   subscribeToAuthenticationChanges,
 } from "../../../utils/tokenStorage";
-import { SESSION_TIMEOUT_EVENT } from "../../../utils/sessionEvents";
+import { SESSION_TIMEOUT_EVENT, type SessionTimeoutDetail } from "../../../utils/sessionEvents";
 
 interface NotificationRequestScope {
   generation: number;
@@ -269,10 +269,23 @@ export const NotificationDropdown: React.FC = () => {
       startPolling(scope);
     };
 
-    const handleSessionTimeout = () => {
+    const handleSessionTimeout = (event: Event) => {
+      const detail = (event as CustomEvent<SessionTimeoutDetail>).detail;
+      if (detail && Number.isSafeInteger(detail.sourceGeneration)) {
+        // Generation Ownership Check: Ignore stale timeout events belonging to a previous session
+        if (requestScopeRef.current && requestScopeRef.current.generation !== detail.sourceGeneration) {
+          return;
+        }
+        const currentGen = getAuthenticationGeneration();
+        if (currentGen > detail.sourceGeneration && hasTokens() && isAuthenticationGenerationCurrent(currentGen)) {
+          return;
+        }
+      }
       requestScopeRef.current = null;
       stopPolling();
       setIsOpen(false);
+      setUnreadCount(0);
+      setNotifications([]);
       seenNotificationIdsRef.current.clear();
       isInitialLoadRef.current = true;
     };

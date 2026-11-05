@@ -24,6 +24,10 @@ public interface AccountRepository extends JpaRepository<Accounts, UUID> {
     @Query("SELECT a FROM Accounts a LEFT JOIN FETCH a.customer c LEFT JOIN FETCH c.companyInfo WHERE a.accountNumber = :accountNumber")
     Optional<Accounts> findByAccountNumberWithCustomerAndCompany(@Param("accountNumber") String accountNumber);
 
+    // Optimized single-query fetch for sub-3-second list performance (eliminates N+1 query problem for both retail & corporate accounts)
+    @Query("SELECT DISTINCT a FROM Accounts a LEFT JOIN FETCH a.customer c LEFT JOIN FETCH c.personalInfo LEFT JOIN FETCH c.companyInfo ORDER BY a.openedAt DESC")
+    List<Accounts> findAllWithCustomerAndPersonalInfo();
+
     // 2. Check if an account number already exists (used during account creation)
     boolean existsByAccountNumber(String accountNumber);
 
@@ -44,4 +48,6 @@ public interface AccountRepository extends JpaRepository<Accounts, UUID> {
     List<Accounts> findByCustomerCustomerCode(String customerCode);
     
     List<Accounts> findByCustomer(Customers customer);
+
+    List<Accounts> findByStatus(com.corebanking.entity.enums.AccountStatus status);
 }

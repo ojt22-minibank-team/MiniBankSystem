@@ -153,7 +153,8 @@ BEGIN
       AND bt.completed_at <= CAST(CONCAT(p_end_date, ' 23:59:59') AS DATETIME)
       AND bt.amount >= COALESCE(p_min_amount, 10000000.0000)
       AND (p_tx_type IS NULL OR p_tx_type = '' OR bt.transaction_type = p_tx_type)
-    ORDER BY bt.amount DESC, bt.completed_at DESC;
+    ORDER BY bt.amount DESC, bt.completed_at DESC
+    LIMIT 1000;
 END //
 
 CREATE PROCEDURE sp_large_transactions_aml_report(
@@ -205,7 +206,8 @@ BEGIN
       AND (p_channel IS NULL OR p_channel = '' OR bt.channel = p_channel)
       AND (p_min_amount IS NULL OR bt.amount >= p_min_amount)
       AND (p_max_amount IS NULL OR bt.amount <= p_max_amount)
-    ORDER BY COALESCE(bt.completed_at, bt.initiated_at) DESC;
+    ORDER BY COALESCE(bt.completed_at, bt.initiated_at) DESC
+    LIMIT 1000;
 END //
 
 DELIMITER ;

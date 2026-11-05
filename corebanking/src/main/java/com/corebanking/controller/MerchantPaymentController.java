@@ -54,6 +54,29 @@ public class MerchantPaymentController {
         return ResponseEntity.ok(receipt);
     }
 
+    @PostMapping("/cancel")
+    public ResponseEntity<Map<String, Object>> cancelPayment(@RequestBody MerchantPaymentRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getName() == null || "anonymousUser".equals(authentication.getName())) {
+            throw new CusAuthenticationException("Customer authentication required");
+        }
+
+        try {
+            UUID customerId = UUID.fromString(authentication.getName());
+            request.setCustomerId(customerId);
+        } catch (IllegalArgumentException e) {
+            throw new CusAuthenticationException("Invalid customer identity in token");
+        }
+
+        authorizationEngine.cancelPayment(request.getPaymentToken(), request.getAccountId());
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("message", "Payment cancelled successfully");
+        response.put("timestamp", LocalDateTime.now());
+        return ResponseEntity.ok(response);
+    }
+
     // Local handler ONLY for MerchantPaymentController:
     // Returns 400 instead of 401 on wrong PIN so React's Axios interceptor doesn't trigger a logout/refresh loop
     @ExceptionHandler(InvalidPinException.class)

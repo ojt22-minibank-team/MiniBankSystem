@@ -1,9 +1,9 @@
-import axios from 'axios';
+﻿import axios from 'axios';
 
 // ၁။ Axios Instance ကို တည်ဆောက်ခြင်း
 export const axiosInstance = axios.create({
   // Spring Boot backend ရဲ့ URL (Vite environment variable သုံးထားရင် import.meta.env.VITE_API_URL လို့ ပြောင်းနိုင်ပါတယ်)
-  baseURL: 'http://localhost:8080', 
+  baseURL: ((typeof import.meta !== 'undefined' && (import.meta.env?.VITE_API_BASE_URL || import.meta.env?.VITE_API_URL)) || 'http://localhost:8080').replace(/\/+$/, ''), 
   headers: {
     'Content-Type': 'application/json',
   },

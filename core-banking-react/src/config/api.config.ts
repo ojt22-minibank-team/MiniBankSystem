@@ -1,5 +1,4 @@
-// Backend base URL
-export const API_BASE_URL = "http://localhost:8080";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 export const API_ENDPOINTS = {
   // Auth
@@ -69,6 +68,7 @@ export const API_ENDPOINTS = {
     PARAMETERS: "/api/transactions/otc/parameters",
     CHECK_REFERENCE: "/api/transactions/otc/check-reference",
     ACCOUNT_LIMITS: "/api/transactions/otc/account-limits",
+    CALCULATE_FEE: "/api/transactions/otc/calculate-fee",
   },
 
   // Teller Operations

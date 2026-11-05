@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import AdminLayout from '../../../components/layout/AdminLayout';
 import DataTable from '../../../components/common/DataTable';
+import TableSkeletonLoader from '../../../components/common/TableSkeletonLoader';
 import { customersApi } from '../../../services/apiClient';
+import { useBankingData } from '../../../hooks/useBankingData';
 import type { CustomerResponse, CustomerDetailResponse } from '../../../types/api.types';
-import type { AxiosError } from 'axios';
 import { formatDate } from '../../../utils/formatDate';
 import CustomerCreateModal from '../components/CustomerCreateModal';
 import CustomerDetailModal from '../components/CustomerDetailModal';
+import CustomerEditModal from '../components/CustomerEditModal';
 
-// â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Constants ─────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10;
 
 type StatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE' | 'FROZEN';
@@ -16,38 +18,39 @@ type SortField = 'createdAt' | 'customerCode';
 type SortDir = 'asc' | 'desc';
 
 export default function CustomersPage() {
-  // â”€â”€ Data state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const [customers, setCustomers] = useState<CustomerResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // ── High-Performance Parallel Data Fetching & SWR In-Memory Cache ─────────
+  const {
+    customers,
+    isLoading,
+    isRevalidating,
+    error,
+    loadDurationMs,
+    refresh,
+      } = useBankingData({
+    autoFetch: true,
+    pagination: { page: 0, size: 50 },
+    cacheTtlMs: 60000,
+  });
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  // â”€â”€ Customer Detail State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Customer Detail State ─────────────────────────────────────────────────
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerDetailResponse | null>(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  // â”€â”€ Search / filter / sort / page state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Customer Edit State ───────────────────────────────────────────────────
+  const [selectedEditCustomer, setSelectedEditCustomer] = useState<CustomerResponse | CustomerDetailResponse | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  // ── Search / filter / sort / page state ───────────────────────────────────
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [currentPage, setCurrentPage] = useState(1);
 
-  // â”€â”€ Fetch â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const load = () => {
-    setIsLoading(true);
-    setError(null);
-    customersApi
-      .getAll()
-      .then((res) => setCustomers(res.data ?? []))
-      .catch((err: AxiosError) => {
-        setError('Failed to load customers. Please verify backend service.');
-        console.error(err);
-      })
-      .finally(() => setIsLoading(false));
-  };
-
+  // Open details modal
   const handleOpenDetail = async (customerCode: string) => {
     setIsDetailModalOpen(true);
     setIsDetailLoading(true);
@@ -62,9 +65,13 @@ export default function CustomersPage() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  // Open edit modal
+  const handleOpenEdit = (customer: CustomerResponse) => {
+    setSelectedEditCustomer(customer);
+    setIsEditModalOpen(true);
+  };
 
-  // â”€â”€ Derived data pipeline: search â†’ filter â†’ sort â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Derived data pipeline: search → filter → sort ─────────────────────────
   const processed = useMemo(() => {
     let list = [...customers];
 
@@ -109,7 +116,7 @@ export default function CustomersPage() {
     [customers],
   );
 
-  // â”€â”€ Pagination helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Pagination helpers ───────────────────────────────────────────────────
   const totalPages = Math.max(1, Math.ceil(processed.length / PAGE_SIZE));
 
   useEffect(() => {
@@ -121,7 +128,7 @@ export default function CustomersPage() {
     [processed, currentPage],
   );
 
-  // â”€â”€ Column definitions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Column definitions ───────────────────────────────────────────────────
   const columns = [
     {
       key: 'customerCode',
@@ -190,30 +197,44 @@ export default function CustomersPage() {
     {
       key: 'createdAt',
       header: 'Created',
-      render: (row: CustomerResponse) =>
-        formatDate(row.createdAt),
+      render: (row: CustomerResponse) => formatDate(row.createdAt),
     },
     {
       key: 'actions',
       header: 'Actions',
       align: 'center' as const,
       render: (row: CustomerResponse) => (
-        <button
-          onClick={() => handleOpenDetail(row.customerCode)}
-          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-all cursor-pointer"
-          title="View detailed customer information"
-        >
-          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-          </svg>
-          <span>Details</span>
-        </button>
+        <div className="flex items-center justify-center gap-1.5">
+          {/* View Details Action */}
+          <button
+            onClick={() => handleOpenDetail(row.customerCode)}
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-all cursor-pointer"
+            title="View detailed customer information"
+          >
+            <svg className="h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            <span>Details</span>
+          </button>
+
+          {/* Edit Profile Action */}
+          <button
+            onClick={() => handleOpenEdit(row)}
+            className="inline-flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50/80 px-2.5 py-1 text-xs font-semibold text-sky-700 shadow-xs hover:bg-sky-100 hover:border-sky-300 transition-all cursor-pointer"
+            title="Edit Customer Profile (Phone, Occupation, DOB)"
+          >
+            <svg className="h-3.5 w-3.5 text-sky-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            <span>Edit</span>
+          </button>
+        </div>
       ),
     },
   ];
 
-  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Render ───────────────────────────────────────────────────────────────
   return (
     <AdminLayout pageTitle="Customers">
       <div className="max-w-[1440px] mx-auto space-y-6">
@@ -221,19 +242,50 @@ export default function CustomersPage() {
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
           <div>
-            <h2 className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight">
-              Customer Registry
-            </h2>
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight">
+                Customer Registry
+              </h2>
+              {/* SLA Performance Indicator */}
+              {loadDurationMs !== null && (
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-mono font-bold ${
+                    loadDurationMs <= 3000
+                      ? 'bg-emerald-100/80 text-emerald-800 border border-emerald-300/60'
+                      : 'bg-amber-100/80 text-amber-800 border border-amber-300/60'
+                  }`}
+                  title="Database and network response time on browser screen"
+                >
+                  <svg className="h-3 w-3 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  {loadDurationMs}ms (Sub-3s SLA)
+                </span>
+              )}
+              {isRevalidating && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-600 animate-pulse">
+                  <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+                  Syncing
+                </span>
+              )}
+            </div>
             <p className="mt-0.5 text-xs sm:text-sm text-slate-500 font-medium">
               EKARAJ BANK Portfolio: Registered corporate entities and retail clients
             </p>
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={load}
-              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs transition-colors cursor-pointer"
+              onClick={() => refresh()}
+              disabled={isLoading}
+              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg
+                className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
               <span>Refresh</span>
@@ -260,7 +312,7 @@ export default function CustomersPage() {
             </span>
             <div className="flex items-baseline justify-between mt-3">
               <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
-                {isLoading ? 'Loadingâ€¦' : customers.length}
+                {isLoading && customers.length === 0 ? '...' : customers.length}
               </span>
               <span className="status-pill-emerald text-[11px]">
                 KYC Registered
@@ -275,7 +327,7 @@ export default function CustomersPage() {
             </span>
             <div className="flex items-baseline justify-between mt-3">
               <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
-                {activeCustomersCount}
+                {isLoading && customers.length === 0 ? '...' : activeCustomersCount}
               </span>
               <span className="status-pill-emerald text-[11px]">
                 Active Standing
@@ -290,7 +342,7 @@ export default function CustomersPage() {
             </span>
             <div className="flex items-baseline justify-between mt-3">
               <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
-                {corporateCount}
+                {isLoading && customers.length === 0 ? '...' : corporateCount}
               </span>
               <span className="status-pill-blue text-[11px]">
                 Commercial Accounts
@@ -306,7 +358,7 @@ export default function CustomersPage() {
           </div>
         ) : (
           <div className="liquid-glass rounded-3xl p-6 space-y-5">
-            {/* â”€â”€ Toolbar: search Â· filter Â· sort â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ── Toolbar: search · filter · sort ─────────────────────────── */}
             <div className="flex flex-wrap items-center gap-3 pb-4 border-b border-slate-100">
               {/* Search */}
               <div className="relative flex-1 min-w-[240px]">
@@ -318,7 +370,7 @@ export default function CustomersPage() {
                 </svg>
                 <input
                   type="text"
-                  placeholder="Search by name, code, email, or phoneâ€¦"
+                  placeholder="Search by name, code, email, or phone…"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-10 pr-4 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-sky-100 focus:border-sky-500 transition-all shadow-xs"
@@ -350,7 +402,7 @@ export default function CustomersPage() {
               {/* Sort direction toggle */}
               <button
                 onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
-                title={sortDir === 'desc' ? 'Sorted descending â€“ click to toggle' : 'Sorted ascending â€“ click to toggle'}
+                title={sortDir === 'desc' ? 'Sorted descending – click to toggle' : 'Sorted ascending – click to toggle'}
                 className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs transition-colors cursor-pointer"
               >
                 {sortDir === 'desc' ? (
@@ -371,17 +423,22 @@ export default function CustomersPage() {
               </button>
             </div>
 
-            {/* â”€â”€ Table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ── Table & Skeleton Loader ─────────────────────────────────── */}
             <div>
-              <DataTable
-                columns={columns}
-                data={pageData}
-                isLoading={isLoading}
-                emptyMessage="No customers match your criteria."
-                keyExtractor={(row: CustomerResponse) => row.customerCode}
-              />
+              {isLoading && customers.length === 0 ? (
+                /* Fast visual feedback: lightweight skeleton loader renders instantly in <50ms */
+                <TableSkeletonLoader columns={7} rows={8} />
+              ) : (
+                <DataTable
+                  columns={columns}
+                  data={pageData}
+                  isLoading={false}
+                  emptyMessage="No customers match your criteria."
+                  keyExtractor={(row: CustomerResponse) => row.customerCode}
+                />
+              )}
 
-              {/* â”€â”€ Pagination â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+              {/* ── Pagination ────────────────────────────────────────────── */}
               {!isLoading && totalPages > 1 && (
                 <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-100">
                   <span className="text-xs font-medium text-slate-500">
@@ -394,7 +451,7 @@ export default function CustomersPage() {
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
-                      â† Prev
+                      ← Prev
                     </button>
 
                     {Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -412,7 +469,7 @@ export default function CustomersPage() {
                       .map((item, idx) =>
                         item === 'ellipsis' ? (
                           <span key={`e-${idx}`} className="px-2 text-slate-400">
-                            â€¦
+                            …
                           </span>
                         ) : (
                           <button
@@ -435,7 +492,7 @@ export default function CustomersPage() {
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
-                      Next â†’
+                      Next →
                     </button>
                   </div>
                 </div>
@@ -448,7 +505,7 @@ export default function CustomersPage() {
         <CustomerCreateModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
-          onSuccess={load}
+          onSuccess={() => refresh()}
         />
 
         {/* Customer Detail Modal */}
@@ -460,6 +517,25 @@ export default function CustomersPage() {
           }}
           customer={selectedCustomer}
           isLoading={isDetailLoading}
+          onEdit={(cust: CustomerDetailResponse) => {
+            setSelectedCustomer(null);
+            setIsDetailModalOpen(false);
+            setSelectedEditCustomer(cust);
+            setIsEditModalOpen(true);
+          }}
+        />
+
+        {/* Customer Profile Edit Modal */}
+        <CustomerEditModal
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setSelectedEditCustomer(null);
+          }}
+          customer={selectedEditCustomer}
+          onSuccess={() => {
+            refresh();
+          }}
         />
       </div>
     </AdminLayout>

@@ -77,7 +77,7 @@ class CusIndividualDeadlineBoundaryTest {
     @BeforeEach
     void isolatedFixturesAndClock() {
         customers = mock(CusCustomerRepository.class);
-        var accounts = mock(CusAccountsRepository.class);
+        var accounts = mock(AccountRepository.class);
         credentials = mock(CusCredentialsRepository.class);
         otps = mock(CusOtpChallengesRepository.class);
         audits = mock(CusAuditLogsRepository.class);
