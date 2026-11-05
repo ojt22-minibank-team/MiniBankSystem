@@ -8,13 +8,12 @@ import com.corebanking.entity.StaffUsers;
 import com.corebanking.repository.StaffUsersRepository;
 import com.corebanking.service.CustomerService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
+import lombok.RequiredArgsConstructor;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -27,17 +26,7 @@ import java.util.UUID;
 public class CustomerController {
 
     private final CustomerService customerService;
-    private StaffUsersRepository staffUsersRepository;
-
-    @Autowired
-    public CustomerController(CustomerService customerService, @Autowired(required = false) StaffUsersRepository staffUsersRepository) {
-        this.customerService = customerService;
-        this.staffUsersRepository = staffUsersRepository;
-    }
-
-    public CustomerController(CustomerService customerService) {
-        this(customerService, null);
-    }
+    private final StaffUsersRepository staffUsersRepository; // Changed to final
 
     @PostMapping
     public ResponseEntity<CustomerResponseDTO> createCustomer(@Valid @RequestBody CustomerDTO customerDto) {

@@ -1,11 +1,18 @@
 package com.corebanking.controller;
 
+import java.util.concurrent.CompletableFuture;
 import com.corebanking.dto.AccountStatusReportDTO;
 import com.corebanking.dto.AuditTrailPageDTO;
 import com.corebanking.dto.DailyLedgerSummaryDTO;
 import com.corebanking.dto.FeeRevenueReportDTO;
 import com.corebanking.dto.LargeTransactionReportDTO;
+import com.corebanking.dto.TransactionDetailPageDTO;
 import com.corebanking.dto.TransactionDetailReportDTO;
+import com.corebanking.dto.ExportJobResponseDTO;
+import com.corebanking.dto.ExportJobStatus;
+import com.corebanking.service.ReportExportJobService;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import com.corebanking.service.ReportService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ContentDisposition;
@@ -22,6 +29,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * ReportController — Group 2 Reporting Subsystem.
@@ -32,9 +40,11 @@ import java.util.List;
 public class ReportController {
 
     private final ReportService reportService;
+    private final ReportExportJobService reportExportJobService;
 
-    public ReportController(ReportService reportService) {
+    public ReportController(ReportService reportService, ReportExportJobService reportExportJobService) {
         this.reportService = reportService;
+        this.reportExportJobService = reportExportJobService;
     }
 
     // -------------------------------------------------------
@@ -176,9 +186,12 @@ public class ReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false) BigDecimal threshold,
-            @RequestParam(required = false) String transactionType) {
+            @RequestParam(required = false) String transactionType,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "30") int pageSize) {
 
-        return ResponseEntity.ok(reportService.getLargeTransactionSummary(startDate, endDate, threshold, transactionType));
+        return ResponseEntity.ok(reportService.getLargeTransactionSummaryPaged(
+                startDate, endDate, threshold, transactionType, page, pageSize));
     }
 
     @GetMapping("/large-transactions/export")
@@ -250,22 +263,7 @@ public class ReportController {
     // -------------------------------------------------------
 
     @GetMapping("/transaction-detail")
-    public ResponseEntity<List<TransactionDetailReportDTO>> getTransactionDetails(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String transactionType,
-            @RequestParam(required = false) String channel,
-            @RequestParam(required = false) BigDecimal minAmount,
-            @RequestParam(required = false) BigDecimal maxAmount) {
-
-        List<TransactionDetailReportDTO> data = reportService.getTransactionDetails(
-                startDate, endDate, status, transactionType, channel, minAmount, maxAmount);
-        return ResponseEntity.ok(data);
-    }
-
-    @GetMapping("/transaction-detail/export")
-    public ResponseEntity<byte[]> exportTransactionDetails(
+    public ResponseEntity<TransactionDetailPageDTO> getTransactionDetails(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false) String status,
@@ -273,22 +271,45 @@ public class ReportController {
             @RequestParam(required = false) String channel,
             @RequestParam(required = false) BigDecimal minAmount,
             @RequestParam(required = false) BigDecimal maxAmount,
-            @RequestParam(defaultValue = "csv") String format) throws IOException {
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "30") int pageSize) {
 
-        return switch (format.toLowerCase()) {
-            case "excel", "xlsx" -> buildResponse(
-                    reportService.exportTransactionDetailsExcel(startDate, endDate, status, transactionType, channel, minAmount, maxAmount),
-                    "Transaction_Detail_Report.xlsx",
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-            case "pdf" -> buildResponse(
-                    reportService.exportTransactionDetailsPdf(startDate, endDate, status, transactionType, channel, minAmount, maxAmount),
-                    "Transaction_Detail_Report.pdf",
-                    "application/pdf");
-            default -> buildResponse(
-                    reportService.exportTransactionDetailsCsv(startDate, endDate, status, transactionType, channel, minAmount, maxAmount),
-                    "Transaction_Detail_Report.csv",
-                    "text/csv");
-        };
+        TransactionDetailPageDTO data = reportService.getTransactionDetailsPaged(
+                startDate, endDate, status, transactionType, channel, minAmount, maxAmount, page, pageSize);
+        return ResponseEntity.ok(data);
+    }
+
+    @GetMapping("/transaction-detail/export")
+    public CompletableFuture<ResponseEntity<byte[]>> exportTransactionDetails(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String transactionType,
+            @RequestParam(required = false) String channel,
+            @RequestParam(required = false) BigDecimal minAmount,
+            @RequestParam(required = false) BigDecimal maxAmount,
+            @RequestParam(defaultValue = "csv") String format) {
+
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return switch (format.toLowerCase()) {
+                    case "excel", "xlsx" -> buildResponse(
+                            reportService.exportTransactionDetailsExcel(startDate, endDate, status, transactionType, channel, minAmount, maxAmount),
+                            "Transaction_Detail_Report.xlsx",
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                    case "pdf" -> buildResponse(
+                            reportService.exportTransactionDetailsPdf(startDate, endDate, status, transactionType, channel, minAmount, maxAmount),
+                            "Transaction_Detail_Report.pdf",
+                            "application/pdf");
+                    default -> buildResponse(
+                            reportService.exportTransactionDetailsCsv(startDate, endDate, status, transactionType, channel, minAmount, maxAmount),
+                            "Transaction_Detail_Report.csv",
+                            "text/csv");
+                };
+            } catch (IOException e) {
+                throw new RuntimeException("Export failed", e);
+            }
+        });
     }
 
     // -------------------------------------------------------
@@ -302,5 +323,40 @@ public class ReportController {
                 ContentDisposition.attachment().filename(filename).build());
         headers.setContentLength(body.length);
         return ResponseEntity.ok().headers(headers).body(body);
+    }
+
+    // -------------------------------------------------------
+    // Enterprise Async Background Export Endpoints
+    // -------------------------------------------------------
+
+    @PostMapping("/export-async")
+    public ResponseEntity<ExportJobResponseDTO> submitExportJob(
+            @RequestParam(defaultValue = "TRANSACTION_DETAIL") String reportType,
+            @RequestParam(defaultValue = "csv") String format,
+            @RequestParam Map<String, String> allParams) {
+
+        ExportJobResponseDTO job = reportExportJobService.submitExportJob(reportType, format, allParams);
+        return ResponseEntity.accepted().body(job);
+    }
+
+    @GetMapping("/export-jobs/{jobId}")
+    public ResponseEntity<ExportJobResponseDTO> getExportJobStatus(@PathVariable String jobId) {
+        ExportJobResponseDTO job = reportExportJobService.getJobStatus(jobId);
+        if (job == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(job);
+    }
+
+    @GetMapping("/export-jobs/{jobId}/download")
+    public ResponseEntity<byte[]> downloadExportJob(@PathVariable String jobId) throws IOException {
+        ExportJobResponseDTO job = reportExportJobService.getJobStatus(jobId);
+        if (job == null || job.getStatus() != ExportJobStatus.COMPLETED) {
+            return ResponseEntity.notFound().build();
+        }
+        byte[] bytes = reportExportJobService.getJobFile(jobId);
+        String fileName = reportExportJobService.getJobFileName(jobId);
+        String contentType = reportExportJobService.getJobContentType(jobId);
+        return buildResponse(bytes, fileName, contentType);
     }
 }

@@ -153,8 +153,7 @@ BEGIN
       AND bt.completed_at <= CAST(CONCAT(p_end_date, ' 23:59:59') AS DATETIME)
       AND bt.amount >= COALESCE(p_min_amount, 10000000.0000)
       AND (p_tx_type IS NULL OR p_tx_type = '' OR bt.transaction_type = p_tx_type)
-    ORDER BY bt.amount DESC, bt.completed_at DESC
-    LIMIT 1000;
+    ORDER BY bt.amount DESC, bt.completed_at DESC;
 END //
 
 CREATE PROCEDURE sp_large_transactions_aml_report(
@@ -165,6 +164,75 @@ CREATE PROCEDURE sp_large_transactions_aml_report(
 )
 BEGIN
     CALL sp_large_transaction_aml_report(p_start_date, p_end_date, p_min_amount, p_tx_type);
+END //
+
+DELIMITER ;
+
+-- =============================================
+-- 4.1. SP: sp_large_transaction_aml_report_paged
+--      Server-side pagination for UI AML Monitoring
+--      RS1: Summary aggregates (counts, total volume, risk breakdown)
+--      RS2: Paginated rows (limit 30)
+-- =============================================
+DELIMITER //
+
+DROP PROCEDURE IF EXISTS sp_large_transaction_aml_report_paged //
+
+CREATE PROCEDURE sp_large_transaction_aml_report_paged(
+    IN p_start_date  DATE,
+    IN p_end_date    DATE,
+    IN p_min_amount  DECIMAL(18, 4),
+    IN p_tx_type     VARCHAR(25),
+    IN p_page        INT,
+    IN p_page_size   INT
+)
+BEGIN
+    DECLARE v_offset INT;
+    DECLARE v_min DECIMAL(18, 4);
+    SET v_min = COALESCE(p_min_amount, 10000000.0000);
+    SET v_offset = (GREATEST(COALESCE(p_page, 1), 1) - 1) * COALESCE(p_page_size, 30);
+
+    -- RS1: Summary totals (index-covered scan)
+    SELECT 
+        COUNT(*) AS total_flagged_count,
+        COALESCE(SUM(bt.amount), 0.0000) AS total_flagged_volume,
+        COALESCE(SUM(CASE WHEN bt.amount >= (v_min * 2) THEN 1 ELSE 0 END), 0) AS high_risk_count,
+        COALESCE(SUM(CASE WHEN bt.amount >= v_min AND bt.amount < (v_min * 2) THEN 1 ELSE 0 END), 0) AS med_risk_count
+    FROM bank_transactions bt
+    WHERE bt.status = 'COMPLETED'
+      AND bt.completed_at >= CAST(CONCAT(p_start_date, ' 00:00:00') AS DATETIME)
+      AND bt.completed_at <= CAST(CONCAT(p_end_date, ' 23:59:59') AS DATETIME)
+      AND bt.amount >= v_min
+      AND (p_tx_type IS NULL OR p_tx_type = '' OR bt.transaction_type = p_tx_type);
+
+    -- RS2: Paginated rows (only 30 rows joined)
+    SELECT 
+        bt.transaction_ref                             AS transaction_ref,
+        bt.completed_at                                AS transaction_time,
+        bt.transaction_type                            AS transaction_type,
+        bt.channel                                     AS channel,
+        bt.amount                                      AS amount,
+        bt.currency                                    AS currency,
+        COALESCE(src_acc.account_number, 'N/A')        AS source_account_no,
+        COALESCE(src_cust.full_name, 'N/A')            AS source_customer_name,
+        COALESCE(dest_acc.account_number, 'N/A')       AS dest_account_no,
+        COALESCE(dest_cust.full_name, 'N/A')           AS dest_customer_name,
+        CASE 
+            WHEN bt.amount >= (v_min * 2) THEN 'HIGH RISK'
+            ELSE 'MEDIUM RISK'
+        END                                            AS risk_level
+    FROM bank_transactions bt
+    LEFT JOIN accounts src_acc   ON bt.source_account_id = src_acc.account_id
+    LEFT JOIN customers src_cust ON src_acc.customer_id = src_cust.customer_id
+    LEFT JOIN accounts dest_acc   ON bt.destination_account_id = dest_acc.account_id
+    LEFT JOIN customers dest_cust ON dest_acc.customer_id = dest_cust.customer_id
+    WHERE bt.status = 'COMPLETED'
+      AND bt.completed_at >= CAST(CONCAT(p_start_date, ' 00:00:00') AS DATETIME)
+      AND bt.completed_at <= CAST(CONCAT(p_end_date, ' 23:59:59') AS DATETIME)
+      AND bt.amount >= v_min
+      AND (p_tx_type IS NULL OR p_tx_type = '' OR bt.transaction_type = p_tx_type)
+    ORDER BY bt.amount DESC, bt.completed_at DESC
+    LIMIT p_page_size OFFSET v_offset;
 END //
 
 DELIMITER ;
@@ -206,8 +274,75 @@ BEGIN
       AND (p_channel IS NULL OR p_channel = '' OR bt.channel = p_channel)
       AND (p_min_amount IS NULL OR bt.amount >= p_min_amount)
       AND (p_max_amount IS NULL OR bt.amount <= p_max_amount)
+    ORDER BY COALESCE(bt.completed_at, bt.initiated_at) DESC;
+END //
+
+DELIMITER ;
+
+
+-- =============================================
+-- 6. SP: sp_get_transaction_detail_report_paged
+--    Server-side pagination for UI viewing.
+--    Returns 2 result sets:
+--      RS1: summary (total_count, total_volume, total_fees)
+--      RS2: paginated rows
+-- =============================================
+DELIMITER //
+
+DROP PROCEDURE IF EXISTS sp_get_transaction_detail_report_paged //
+
+CREATE PROCEDURE sp_get_transaction_detail_report_paged(
+    IN p_start_date DATE,
+    IN p_end_date   DATE,
+    IN p_status     VARCHAR(32),
+    IN p_type       VARCHAR(32),
+    IN p_channel    VARCHAR(32),
+    IN p_min_amount DECIMAL(18, 4),
+    IN p_max_amount DECIMAL(18, 4),
+    IN p_page       INT,
+    IN p_page_size  INT
+)
+BEGIN
+    DECLARE v_offset INT;
+    SET v_offset = (GREATEST(p_page, 1) - 1) * p_page_size;
+
+    -- RS1: Summary aggregates
+    SELECT 
+        COUNT(*)                        AS total_count,
+        COALESCE(SUM(bt.amount), 0)     AS total_volume,
+        COALESCE(SUM(bt.service_fee), 0) AS total_fees
+    FROM bank_transactions bt
+    WHERE COALESCE(bt.completed_at, bt.initiated_at) >= CAST(CONCAT(p_start_date, ' 00:00:00') AS DATETIME)
+      AND COALESCE(bt.completed_at, bt.initiated_at) <= CAST(CONCAT(p_end_date, ' 23:59:59') AS DATETIME)
+      AND (p_status IS NULL OR p_status = '' OR bt.status = p_status)
+      AND (p_type IS NULL OR p_type = '' OR bt.transaction_type = p_type)
+      AND (p_channel IS NULL OR p_channel = '' OR bt.channel = p_channel)
+      AND (p_min_amount IS NULL OR bt.amount >= p_min_amount)
+      AND (p_max_amount IS NULL OR bt.amount <= p_max_amount);
+
+    -- RS2: Paginated rows
+    SELECT 
+        bt.transaction_ref                             AS ref,
+        COALESCE(bt.completed_at, bt.initiated_at)     AS tx_date,
+        bt.amount                                      AS amount,
+        bt.service_fee                                 AS fee,
+        COALESCE(src_acc.account_number, 'N/A')        AS source_account,
+        COALESCE(dest_acc.account_number, 'N/A')       AS dest_account,
+        bt.status                                      AS status,
+        bt.channel                                     AS channel,
+        bt.currency                                    AS currency
+    FROM bank_transactions bt
+    LEFT JOIN accounts src_acc  ON bt.source_account_id = src_acc.account_id
+    LEFT JOIN accounts dest_acc ON bt.destination_account_id = dest_acc.account_id
+    WHERE COALESCE(bt.completed_at, bt.initiated_at) >= CAST(CONCAT(p_start_date, ' 00:00:00') AS DATETIME)
+      AND COALESCE(bt.completed_at, bt.initiated_at) <= CAST(CONCAT(p_end_date, ' 23:59:59') AS DATETIME)
+      AND (p_status IS NULL OR p_status = '' OR bt.status = p_status)
+      AND (p_type IS NULL OR p_type = '' OR bt.transaction_type = p_type)
+      AND (p_channel IS NULL OR p_channel = '' OR bt.channel = p_channel)
+      AND (p_min_amount IS NULL OR bt.amount >= p_min_amount)
+      AND (p_max_amount IS NULL OR bt.amount <= p_max_amount)
     ORDER BY COALESCE(bt.completed_at, bt.initiated_at) DESC
-    LIMIT 1000;
+    LIMIT p_page_size OFFSET v_offset;
 END //
 
 DELIMITER ;

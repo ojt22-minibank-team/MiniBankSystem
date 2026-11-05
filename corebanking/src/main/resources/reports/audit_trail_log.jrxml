@@ -89,7 +89,15 @@
                 </graphicElement>
             </rectangle>
             <staticText>
-                <reportElement x="0" y="0" width="100" height="24" forecolor="#FFFFFF" uuid="b2233445-0001-4000-8000-000000000011"/>
+                <reportElement x="0" y="0" width="25" height="24" forecolor="#FFFFFF" uuid="b2233445-0001-4000-8000-00000000001a"/>
+                <box leftPadding="2"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="8" isBold="true"/>
+                </textElement>
+                <text><![CDATA[No]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="25" y="0" width="95" height="24" forecolor="#FFFFFF" uuid="b2233445-0001-4000-8000-000000000011"/>
                 <box leftPadding="4"/>
                 <textElement textAlignment="Left" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="8" isBold="true"/>
@@ -97,21 +105,21 @@
                 <text><![CDATA[Timestamp]]></text>
             </staticText>
             <staticText>
-                <reportElement x="100" y="0" width="55" height="24" forecolor="#FFFFFF" uuid="b2233445-0001-4000-8000-000000000012"/>
+                <reportElement x="120" y="0" width="50" height="24" forecolor="#FFFFFF" uuid="b2233445-0001-4000-8000-000000000012"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="8" isBold="true"/>
                 </textElement>
                 <text><![CDATA[Actor]]></text>
             </staticText>
             <staticText>
-                <reportElement x="155" y="0" width="65" height="24" forecolor="#FFFFFF" uuid="b2233445-0001-4000-8000-000000000013"/>
+                <reportElement x="170" y="0" width="60" height="24" forecolor="#FFFFFF" uuid="b2233445-0001-4000-8000-000000000013"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="8" isBold="true"/>
                 </textElement>
                 <text><![CDATA[Category]]></text>
             </staticText>
             <staticText>
-                <reportElement x="220" y="0" width="75" height="24" forecolor="#FFFFFF" uuid="b2233445-0001-4000-8000-000000000014"/>
+                <reportElement x="230" y="0" width="70" height="24" forecolor="#FFFFFF" uuid="b2233445-0001-4000-8000-000000000014"/>
                 <box leftPadding="4"/>
                 <textElement textAlignment="Left" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="8" isBold="true"/>
@@ -119,7 +127,7 @@
                 <text><![CDATA[Username]]></text>
             </staticText>
             <staticText>
-                <reportElement x="295" y="0" width="85" height="24" forecolor="#FFFFFF" uuid="b2233445-0001-4000-8000-000000000015"/>
+                <reportElement x="300" y="0" width="85" height="24" forecolor="#FFFFFF" uuid="b2233445-0001-4000-8000-000000000015"/>
                 <box leftPadding="4"/>
                 <textElement textAlignment="Left" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="8" isBold="true"/>
@@ -127,14 +135,14 @@
                 <text><![CDATA[Full Name]]></text>
             </staticText>
             <staticText>
-                <reportElement x="380" y="0" width="70" height="24" forecolor="#FFFFFF" uuid="b2233445-0001-4000-8000-000000000016"/>
+                <reportElement x="385" y="0" width="65" height="24" forecolor="#FFFFFF" uuid="b2233445-0001-4000-8000-000000000016"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="8" isBold="true"/>
                 </textElement>
                 <text><![CDATA[Action]]></text>
             </staticText>
             <staticText>
-                <reportElement x="450" y="0" width="70" height="24" forecolor="#FFFFFF" uuid="b2233445-0001-4000-8000-000000000017"/>
+                <reportElement x="450" y="0" width="65" height="24" forecolor="#FFFFFF" uuid="b2233445-0001-4000-8000-000000000017"/>
                 <box leftPadding="4"/>
                 <textElement textAlignment="Left" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="8" isBold="true"/>
@@ -142,7 +150,7 @@
                 <text><![CDATA[Entity Type]]></text>
             </staticText>
             <staticText>
-                <reportElement x="520" y="0" width="70" height="24" forecolor="#FFFFFF" uuid="b2233445-0001-4000-8000-000000000018"/>
+                <reportElement x="515" y="0" width="65" height="24" forecolor="#FFFFFF" uuid="b2233445-0001-4000-8000-000000000018"/>
                 <box leftPadding="4"/>
                 <textElement textAlignment="Left" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="8" isBold="true"/>
@@ -150,7 +158,7 @@
                 <text><![CDATA[Entity ID]]></text>
             </staticText>
             <staticText>
-                <reportElement x="590" y="0" width="212" height="24" forecolor="#FFFFFF" uuid="b2233445-0001-4000-8000-000000000019"/>
+                <reportElement x="580" y="0" width="222" height="24" forecolor="#FFFFFF" uuid="b2233445-0001-4000-8000-000000000019"/>
                 <box leftPadding="4"/>
                 <textElement textAlignment="Left" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="8" isBold="true"/>
@@ -170,8 +178,16 @@
                     <pen lineWidth="0.0"/>
                 </graphicElement>
             </rectangle>
+            <textField>
+                <reportElement x="0" y="0" width="25" height="18" forecolor="#334155" uuid="b2233445-0001-4000-8000-00000000002a"/>
+                <box leftPadding="2"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="SansSerif" size="7"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+            </textField>
             <textField isBlankWhenNull="true">
-                <reportElement x="0" y="0" width="100" height="18" forecolor="#334155" uuid="b2233445-0001-4000-8000-000000000021"/>
+                <reportElement x="25" y="0" width="95" height="18" forecolor="#334155" uuid="b2233445-0001-4000-8000-000000000021"/>
                 <box leftPadding="4"/>
                 <textElement textAlignment="Left" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="7"/>
@@ -179,21 +195,21 @@
                 <textFieldExpression><![CDATA[$F{createdAt} != null ? $F{createdAt}.toString().replace("T", " ") : ""]]></textFieldExpression>
             </textField>
             <textField isBlankWhenNull="true">
-                <reportElement x="100" y="0" width="55" height="18" forecolor="#334155" uuid="b2233445-0001-4000-8000-000000000022"/>
+                <reportElement x="120" y="0" width="50" height="18" forecolor="#334155" uuid="b2233445-0001-4000-8000-000000000022"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="7"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{actorType}]]></textFieldExpression>
             </textField>
             <textField isBlankWhenNull="true">
-                <reportElement x="155" y="0" width="65" height="18" forecolor="#334155" uuid="b2233445-0001-4000-8000-000000000023"/>
+                <reportElement x="170" y="0" width="60" height="18" forecolor="#334155" uuid="b2233445-0001-4000-8000-000000000023"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="7"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{actionCategory}]]></textFieldExpression>
             </textField>
             <textField isBlankWhenNull="true">
-                <reportElement x="220" y="0" width="75" height="18" forecolor="#334155" uuid="b2233445-0001-4000-8000-000000000024"/>
+                <reportElement x="230" y="0" width="70" height="18" forecolor="#334155" uuid="b2233445-0001-4000-8000-000000000024"/>
                 <box leftPadding="4"/>
                 <textElement textAlignment="Left" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="7"/>
@@ -201,7 +217,7 @@
                 <textFieldExpression><![CDATA[$F{staffUsername}]]></textFieldExpression>
             </textField>
             <textField isBlankWhenNull="true">
-                <reportElement x="295" y="0" width="85" height="18" forecolor="#334155" uuid="b2233445-0001-4000-8000-000000000025"/>
+                <reportElement x="300" y="0" width="85" height="18" forecolor="#334155" uuid="b2233445-0001-4000-8000-000000000025"/>
                 <box leftPadding="4"/>
                 <textElement textAlignment="Left" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="7"/>
@@ -209,14 +225,14 @@
                 <textFieldExpression><![CDATA[$F{staffFullName}]]></textFieldExpression>
             </textField>
             <textField isBlankWhenNull="true">
-                <reportElement x="380" y="0" width="70" height="18" forecolor="#334155" uuid="b2233445-0001-4000-8000-000000000026"/>
+                <reportElement x="385" y="0" width="65" height="18" forecolor="#334155" uuid="b2233445-0001-4000-8000-000000000026"/>
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="7"/>
                 </textElement>
                 <textFieldExpression><![CDATA[$F{actionType}]]></textFieldExpression>
             </textField>
             <textField isBlankWhenNull="true">
-                <reportElement x="450" y="0" width="70" height="18" forecolor="#334155" uuid="b2233445-0001-4000-8000-000000000027"/>
+                <reportElement x="450" y="0" width="65" height="18" forecolor="#334155" uuid="b2233445-0001-4000-8000-000000000027"/>
                 <box leftPadding="4"/>
                 <textElement textAlignment="Left" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="7"/>
@@ -224,7 +240,7 @@
                 <textFieldExpression><![CDATA[$F{entityType}]]></textFieldExpression>
             </textField>
             <textField isBlankWhenNull="true">
-                <reportElement x="520" y="0" width="70" height="18" forecolor="#334155" uuid="b2233445-0001-4000-8000-000000000028"/>
+                <reportElement x="515" y="0" width="65" height="18" forecolor="#334155" uuid="b2233445-0001-4000-8000-000000000028"/>
                 <box leftPadding="4"/>
                 <textElement textAlignment="Left" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="7"/>
@@ -232,7 +248,7 @@
                 <textFieldExpression><![CDATA[$F{entityId}]]></textFieldExpression>
             </textField>
             <textField isBlankWhenNull="true">
-                <reportElement x="590" y="0" width="212" height="18" forecolor="#334155" uuid="b2233445-0001-4000-8000-000000000029"/>
+                <reportElement x="580" y="0" width="222" height="18" forecolor="#334155" uuid="b2233445-0001-4000-8000-000000000029"/>
                 <box leftPadding="4" rightPadding="4"/>
                 <textElement textAlignment="Left" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="7"/>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../auth/hooks/useAuth';
 import AdminLayout from '../../../components/layout/AdminLayout';
 import { transactionApi } from '../../../services/transactionService';
 import type {
@@ -27,6 +28,7 @@ import {
 } from 'lucide-react';
 
 export default function TransactionDetailsPage() {
+  const { isTeller } = useAuth();
   const { refOrId } = useParams<{ refOrId?: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -511,7 +513,7 @@ export default function TransactionDetailsPage() {
             setSelectedTransaction(null);
             // If refOrId or query param was set, clear it smoothly
             if (refOrId || searchParams.has('ref') || searchParams.has('id')) {
-              navigate('/admin/transactions', { replace: true });
+              navigate(isTeller ? '/teller/transactions' : '/admin/transactions', { replace: true });
             }
           }}
         />

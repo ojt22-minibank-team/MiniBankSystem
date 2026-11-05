@@ -4,24 +4,15 @@ import { useDispatch } from 'react-redux';
 import { forceLogout } from '../../features/auth/authSlice';
 import type { AppDispatch } from '../../lib/redux';
 import { useAuth } from '../../features/auth/hooks/useAuth';
+import UnauthorizedPage from '../../components/common/UnauthorizedPage';
 
 interface ProtectedRouteProps {
   children: ReactNode;
   requiredRole?: string | string[];
 }
 
-function RoleRedirect({ logout }: { logout: () => void }) {
-  useEffect(() => {
-    if (logout) {
-      logout();
-    }
-  }, [logout]);
-  
-  return <Navigate to="/login" replace />;
-}
-
 export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
 
@@ -71,7 +62,7 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
     });
 
     if (!hasRole) {
-      return <RoleRedirect logout={logout} />;
+      return <UnauthorizedPage />;
     }
   }
 

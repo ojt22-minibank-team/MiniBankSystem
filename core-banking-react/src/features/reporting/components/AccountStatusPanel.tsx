@@ -5,13 +5,12 @@ import type {
   AccountStatusReport,
   AccountFilterParams,
 } from '../../../types/reports/reporting.types';
-import {
-  fetchAccountStatusSummary,
-  exportAccountStatus,
-} from '../../../services/reportingService';
+import { fetchAccountStatusSummary } from '../../../services/reportingService';
 import MetricCard from './MetricCard';
 import DataTable, { type Column } from './DataTable';
 import ExportButtons from './ExportButtons';
+import { ExportNotificationBanner } from './ExportNotificationBanner';
+import { useAsyncExport } from '../hooks/useAsyncExport';
 
 interface Props {
   startDate: string;
@@ -42,6 +41,15 @@ const AccountStatusPanel: React.FC<Props> = ({
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const {
+    exportLoading,
+    exportNotice,
+    activeJob,
+    exportError,
+    triggerExport,
+    clearNotice,
+  } = useAsyncExport('ACCOUNT_STATUS');
 
   const params: AccountFilterParams = { startDate, endDate, accountStatus };
 
@@ -237,10 +245,10 @@ const AccountStatusPanel: React.FC<Props> = ({
           </span>
           <div className="flex items-center gap-2 flex-wrap">
             <ExportButtons
-              onExportCsv={() => exportAccountStatus(params, 'csv')}
-              onExportExcel={() => exportAccountStatus(params, 'excel')}
-              onExportPdf={() => exportAccountStatus(params, 'pdf')}
-              loading={loading}
+              onExportCsv={() => triggerExport(params, 'csv')}
+              onExportExcel={() => triggerExport(params, 'excel')}
+              onExportPdf={() => triggerExport(params, 'pdf')}
+              loading={exportLoading}
             />
             <button
               onClick={load}
@@ -251,6 +259,15 @@ const AccountStatusPanel: React.FC<Props> = ({
             </button>
           </div>
         </div>
+
+        {/* Enterprise Async background export banner */}
+        <ExportNotificationBanner
+          exportNotice={exportNotice}
+          exportLoading={exportLoading}
+          activeJob={activeJob}
+          exportError={exportError}
+          onDismiss={clearNotice}
+        />
 
         {error && (
           <div className="p-3 sm:p-4 text-xs sm:text-sm text-red-600 bg-red-50 border-b border-red-100">
