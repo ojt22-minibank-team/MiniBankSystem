@@ -1,75 +1,60 @@
-# React + TypeScript + Vite
+# Customer Portal React Frontend (cutomer-portal-react)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Customer Web Portal for the CoreBanking System built with React, Vite, and TypeScript.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Environment Configuration
 
-## React Compiler
+This frontend connects to the Spring Boot CoreBanking backend. All API and WebSocket endpoints are driven by environment variables.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Environment Variables Reference
 
-## Expanding the ESLint configuration
+| Variable | Description | Default (Local Dev) |
+|---|---|---|
+| `VITE_API_BASE_URL` | Base URL of the Spring Boot backend | `http://localhost:8080` |
+| `VITE_WS_URL` | *(Optional)* WebSocket URL for real-time notifications | Derived from `VITE_API_BASE_URL` |
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+---
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Local Development Setup
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+1. Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+2. Verify or update `VITE_API_BASE_URL`:
+   ```env
+   VITE_API_BASE_URL=http://localhost:8080
+   ```
 
-```
+3. Install dependencies and run:
+   ```bash
+   npm install
+   npm run dev
+   ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Production Build & Deployment
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+> **Important (Vite Note):** Vite bakes environment variables into static assets at build time (`npm run build`). Always set `VITE_API_BASE_URL` to your production backend URL before building.
 
-```
+### Build Steps
+
+1. Configure production `.env` (or set environment variable):
+   ```bash
+   # Example: Linux / macOS
+   export VITE_API_BASE_URL="https://api.yourbank.com"
+
+   # Example: Windows PowerShell
+   $env:VITE_API_BASE_URL = "https://api.yourbank.com"
+   ```
+
+2. Run the production build:
+   ```bash
+   npm run build
+   ```
+
+3. The compiled static output is located in `dist/`. Deploy the `dist/` folder to any static web server (Nginx, Apache, Cloudflare Pages, AWS S3, etc.).

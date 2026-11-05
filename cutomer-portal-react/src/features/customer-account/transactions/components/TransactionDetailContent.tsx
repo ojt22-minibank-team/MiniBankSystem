@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toBlob } from "html-to-image";
 import {
@@ -165,10 +165,10 @@ export default function TransactionDetailContent({
 
   const viewMode = getViewMode(transaction.status);
   const isCompleted = viewMode === "SUCCESS_RECEIPT";
-  const isFailed = Boolean(
-    transaction &&
-    ["FAILED", "REJECTED", "CANCELLED", "DECLINED"].includes((transaction.status || "").toUpperCase())
-  );
+  // const isFailed = Boolean(
+  //   transaction &&
+  //   ["FAILED", "REJECTED", "CANCELLED", "DECLINED"].includes((transaction.status || "").toUpperCase())
+  // );
   const isInternalTransfer = transaction.transactionType === "INTERNAL_TRANSFER";
   const isExternalPayment = transaction.transactionType === "EXTERNAL_PAYMENT";
   const isRefund = transaction.transactionType === "REFUND";

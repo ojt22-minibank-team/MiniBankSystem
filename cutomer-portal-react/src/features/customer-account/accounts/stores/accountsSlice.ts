@@ -1,16 +1,25 @@
 
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import axios from "axios";
 
 import { getMyAccounts } from "../api/customerAccountApi";
-import type { CustomerAccount } from "../types/accountTypes";
+import type {
+  CustomerAccount,
+  AccountStatus,
+} from "../types/accountTypes";
 import { submitP2PTransfer } from "../../../transfer/store/transferSlice";
+import {
+  getAuthenticationGeneration,
+  isAuthenticationGenerationCurrent,
+  hasTokens,
+} from "../../../../utils/tokenStorage";
 
 interface AccountsState {
   accounts: CustomerAccount[];
   loading: boolean;
   error: string | null;
   currentRequestId: string | null;
+  latestStatusByAccount: Record<string, AccountStatus>;
 }
 
 interface ThunkState {
@@ -22,6 +31,7 @@ const createInitialState = (): AccountsState => ({
   loading: false,
   error: null,
   currentRequestId: null,
+  latestStatusByAccount: {},
 });
 
 const LOAD_ERROR = "Failed to load accounts. Please try again.";
@@ -36,9 +46,7 @@ export const fetchMyAccounts = createAsyncThunk<
     try {
       return await getMyAccounts(signal);
     } catch (error: unknown) {
-      if (signal.aborted) {
-        throw error;
-      }
+      if (signal.aborted) throw error;
 
       if (axios.isAxiosError<{ message?: string }>(error)) {
         const message = error.response?.data?.message;
@@ -46,7 +54,7 @@ export const fetchMyAccounts = createAsyncThunk<
         return rejectWithValue(
           typeof message === "string" && message.trim()
             ? message
-            : LOAD_ERROR
+            : LOAD_ERROR,
         );
       }
 
@@ -54,10 +62,8 @@ export const fetchMyAccounts = createAsyncThunk<
     }
   },
   {
-    condition: (_, { getState }) => {
-      return !getState().accounts.loading;
-    },
-  }
+    condition: (_, { getState }) => !getState().accounts.loading,
+  },
 );
 
 const accountsSlice = createSlice({
@@ -66,45 +72,77 @@ const accountsSlice = createSlice({
 
   reducers: {
     clearAccounts: () => createInitialState(),
+
+    updateAccountStatus: (
+      state,
+      action: PayloadAction<{
+        accountNumber: string;
+        status: AccountStatus;
+      }>,
+    ) => {
+      const { accountNumber, status } = action.payload;
+
+      // Keep the latest WebSocket status even if the account
+      // has not been loaded into Redux yet.
+      state.latestStatusByAccount[accountNumber] = status;
+
+      const account = state.accounts.find(
+        (item) => item.accountNumber === accountNumber,
+      );
+
+      if (account) {
+        account.status = status;
+      }
+    },
   },
 
   extraReducers: (builder) => {
     builder
-      // Fetch accounts
       .addCase(fetchMyAccounts.pending, (state, action) => {
         state.loading = true;
         state.error = null;
         state.currentRequestId = action.meta.requestId;
       })
-
       .addCase(fetchMyAccounts.fulfilled, (state, action) => {
-        if (state.currentRequestId !== action.meta.requestId) {
-          return;
-        }
+        if (state.currentRequestId !== action.meta.requestId) return;
 
-        state.accounts = action.payload;
+        // Preserve the latest WebSocket status over potentially stale API data.
+        state.accounts = action.payload.map((account) => ({
+          ...account,
+          status:
+            state.latestStatusByAccount[account.accountNumber] ??
+            account.status,
+        }));
+
         state.loading = false;
         state.error = null;
         state.currentRequestId = null;
       })
-
       .addCase(fetchMyAccounts.rejected, (state, action) => {
-        if (state.currentRequestId !== action.meta.requestId) {
-          return;
-        }
+        if (state.currentRequestId !== action.meta.requestId) return;
 
         state.loading = false;
         state.currentRequestId = null;
 
-        if (action.meta.aborted) {
-          return;
-        }
+        if (action.meta.aborted) return;
 
         state.error = action.payload ?? LOAD_ERROR;
       })
 
       // Immediate balance updates on P2P Transfer (Debit source, Credit destination if self-transfer)
       .addCase(submitP2PTransfer.fulfilled, (state, action) => {
+        const currentGen = getAuthenticationGeneration();
+        const payloadGen = (action.payload as any)?._sessionGeneration;
+
+        // Generation Ownership Check: Ignore balance mutations if session rotated or logged out
+        if (
+          !hasTokens() ||
+          !isAuthenticationGenerationCurrent(currentGen) ||
+          (typeof payloadGen === "number" && payloadGen !== currentGen)
+        ) {
+          return;
+        }
+
         const { sourceAccountNumber, destinationAccountNumber, amount, totalDebitedAmount } = action.payload;
 
         // 1. Debit Source Account (subtract totalDebitedAmount including fee)
@@ -138,6 +176,9 @@ const accountsSlice = createSlice({
   },
 });
 
-export const { clearAccounts } = accountsSlice.actions;
+export const {
+  clearAccounts,
+  updateAccountStatus,
+} = accountsSlice.actions;
 
 export default accountsSlice.reducer;

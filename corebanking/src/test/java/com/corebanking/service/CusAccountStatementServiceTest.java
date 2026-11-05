@@ -6,10 +6,12 @@ import com.corebanking.exception.AccountNotFoundException;
 import com.corebanking.exception.CusAuthenticationException;
 import com.corebanking.exception.CusValidationException;
 import com.corebanking.repository.CusAccountStatementRepository;
+import com.corebanking.service.AuditTrailService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -25,9 +27,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,6 +45,9 @@ class CusAccountStatementServiceTest {
 
     @Mock
     private CusAccountStatementRepository statementRepository;
+
+    @Mock
+    private AuditTrailService auditTrailService;
 
     @InjectMocks
     private CusAccountStatementService statementService;
@@ -347,6 +356,15 @@ class CusAccountStatementServiceTest {
 
         assertEquals("Account not found or access denied for this customer", ex.getMessage());
         verify(statementRepository).getAccountStatement(CUSTOMER_ID, ACCOUNT_NUMBER, fromDate, toDate);
+        verify(auditTrailService, times(1)).logDataChange(
+                eq("SECURITY"),
+                eq("UNAUTHORIZED_ACCOUNT_ACCESS"),
+                eq("ACCOUNT"),
+                eq("******3817"),
+                isNull(),
+                any(),
+                any()
+        );
     }
 
     // -------------------------------------------------------------------------
@@ -376,6 +394,7 @@ class CusAccountStatementServiceTest {
 
         assertEquals("From Date cannot be earlier than the account opening date.", ex.getMessage());
         verify(statementRepository).getAccountStatement(CUSTOMER_ID, ACCOUNT_NUMBER, fromDate, toDate);
+        verifyNoInteractions(auditTrailService);
     }
 
     @Test
@@ -401,6 +420,15 @@ class CusAccountStatementServiceTest {
 
         assertEquals("Account not found or access denied for this customer", ex.getMessage());
         verify(statementRepository).getAccountStatement(CUSTOMER_ID, ACCOUNT_NUMBER, fromDate, toDate);
+        verify(auditTrailService, times(1)).logDataChange(
+                eq("SECURITY"),
+                eq("UNAUTHORIZED_ACCOUNT_ACCESS"),
+                eq("ACCOUNT"),
+                eq("******3817"),
+                isNull(),
+                any(),
+                any()
+        );
     }
 
     @Test
@@ -422,5 +450,73 @@ class CusAccountStatementServiceTest {
 
         assertSame(dae, ex);
         verify(statementRepository).getAccountStatement(CUSTOMER_ID, ACCOUNT_NUMBER, fromDate, toDate);
+        verifyNoInteractions(auditTrailService);
+    }
+
+    // -------------------------------------------------------------------------
+    // 6. Audit Logging Verification Tests (UNAUTHORIZED_ACCOUNT_ACCESS)
+    // -------------------------------------------------------------------------
+
+    @Test
+    @SuppressWarnings("unchecked")
+    @DisplayName("Confirmed ownership denial produces exactly one UNAUTHORIZED_ACCOUNT_ACCESS with result DENIED and masked account")
+    void getAccountStatement_ownershipDenial_auditsDeniedWithMaskedAccount() {
+        mockCustomerAuthentication(CUSTOMER_ID);
+        LocalDate fromDate = LocalDate.now().minusDays(10);
+        LocalDate toDate = LocalDate.now();
+
+        SQLException sqlException = new SQLException(
+                "Account not found or access denied for this customer",
+                "45000"
+        );
+        DataAccessException dae = new DataAccessException("SP execution error", sqlException) {};
+
+        when(statementRepository.getAccountStatement(CUSTOMER_ID, ACCOUNT_NUMBER, fromDate, toDate))
+                .thenThrow(dae);
+
+        assertThrows(
+                AccountNotFoundException.class,
+                () -> statementService.getAccountStatement(ACCOUNT_NUMBER, fromDate, toDate)
+        );
+
+        ArgumentCaptor<String> catCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> typeCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> entityTypeCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> entityIdCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object> newEntityCaptor = ArgumentCaptor.forClass(Object.class);
+
+        verify(auditTrailService, times(1)).logDataChange(
+                catCaptor.capture(),
+                typeCaptor.capture(),
+                entityTypeCaptor.capture(),
+                entityIdCaptor.capture(),
+                isNull(),
+                newEntityCaptor.capture(),
+                any()
+        );
+
+        assertEquals("SECURITY", catCaptor.getValue());
+        assertEquals("UNAUTHORIZED_ACCOUNT_ACCESS", typeCaptor.getValue());
+        assertEquals("ACCOUNT", entityTypeCaptor.getValue());
+        assertEquals("******3817", entityIdCaptor.getValue());
+
+        assertInstanceOf(Map.class, newEntityCaptor.getValue());
+        Map<String, Object> meta = (Map<String, Object>) newEntityCaptor.getValue();
+        assertEquals("DENIED", meta.get("result"));
+    }
+
+    @Test
+    @DisplayName("Missing customer authentication throws CusAuthenticationException without auditing")
+    void getAccountStatement_missingAuth_doesNotProduceAuditEvent() {
+        SecurityContextHolder.clearContext();
+        LocalDate fromDate = LocalDate.now().minusDays(10);
+        LocalDate toDate = LocalDate.now();
+
+        assertThrows(
+                CusAuthenticationException.class,
+                () -> statementService.getAccountStatement(ACCOUNT_NUMBER, fromDate, toDate)
+        );
+
+        verifyNoInteractions(auditTrailService, statementRepository);
     }
 }

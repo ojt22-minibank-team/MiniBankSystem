@@ -27,6 +27,9 @@ function logoutIndividualCustomer(dispatch: AppDispatch): Promise<number | null>
   // Clear customer data once, before awaiting revocation of the captured session.
   dispatch(resetCustomerState());
 
+  // Reset balance visibility for the next login session.
+sessionStorage.removeItem("customer-portal:balance-visible");
+
   const promise = (async () => {
     try {
       // Bind revocation to this session even if Axios dispatch runs after a new login.
