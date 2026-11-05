@@ -498,14 +498,14 @@ public class AsyncNotificationService {
             String destAccNo = (account != null) ? account.getAccountNumber() : 
                     (txnManaged.getDestinationAccount() != null ? txnManaged.getDestinationAccount().getAccountNumber() : "");
 
-            String message = String.format("You received %s %s via Bank Counter Deposit to account %s. Ref: %s",
+            String message = String.format("Cash deposit of %s %s to account %s was successful. Ref: %s",
                     amount, currency, destAccNo, txnRef);
 
             Notifications depositNotification = Notifications.builder()
                     .customer(customerManaged)
                     .transaction(txnManaged)
                     .notificationType(NotificationType.TRANSFER)
-                    .title("Funds Received")
+                    .title("Deposit Successful")
                     .message(message)
                     .build();
 
@@ -563,14 +563,14 @@ public class AsyncNotificationService {
             String srcAccNo = (account != null) ? account.getAccountNumber() : 
                     (txnManaged.getSourceAccount() != null ? txnManaged.getSourceAccount().getAccountNumber() : "");
 
-            String message = String.format("You have withdrawn %s %s via Bank Counter from account %s. Ref: %s",
+            String message = String.format("Cash withdrawal of %s %s from account %s was successful. Ref: %s",
                     amount, currency, srcAccNo, txnRef);
 
             Notifications withdrawalNotification = Notifications.builder()
                     .customer(customerManaged)
                     .transaction(txnManaged)
                     .notificationType(NotificationType.TRANSFER)
-                    .title("Transfer Sent")
+                    .title("Withdrawal Successful")
                     .message(message)
                     .build();
 
