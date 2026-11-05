@@ -6,6 +6,7 @@ import com.corebanking.dto.AuditTrailLogDTO;
 import com.corebanking.dto.AuditTrailPageDTO;
 import com.corebanking.dto.BalanceBracketDTO;
 import com.corebanking.dto.DailyLedgerSummaryDTO;
+import com.corebanking.service.ReportExportJobService;
 import com.corebanking.service.ReportService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -41,6 +42,9 @@ class ReportControllerTest {
 
     @Mock
     private ReportService reportService;
+
+    @Mock
+    private ReportExportJobService reportExportJobService;
 
     @InjectMocks
     private ReportController reportController;
