@@ -3,16 +3,21 @@ package com.corebanking.service;
 import com.corebanking.dto.BankTransferLimitRule;
 import com.corebanking.dto.TransferLimitInfoResponseDto;
 import com.corebanking.dto.UpdateTransferLimitRequestDto;
+import com.corebanking.entity.AccountTransferLimitHistory;
+import com.corebanking.entity.AccountTransferLimits;
 import com.corebanking.entity.Accounts;
 import com.corebanking.entity.CustomerCredentials;
 import com.corebanking.entity.SystemParameters;
 import com.corebanking.entity.enums.AccountCategory;
 import com.corebanking.entity.enums.AccountStatus;
 import com.corebanking.entity.enums.AccountType;
+import com.corebanking.entity.enums.LimitChangeAction;
 import com.corebanking.entity.enums.UpdatedByType;
 import com.corebanking.exception.AccountNotFoundException;
 import com.corebanking.exception.TransactionException;
 import com.corebanking.repository.AccountRepository;
+import com.corebanking.repository.AccountTransferLimitHistoryRepository;
+import com.corebanking.repository.AccountTransferLimitsRepository;
 import com.corebanking.repository.BankTransactionRepository;
 import com.corebanking.repository.BeneficiaryRepository;
 import com.corebanking.repository.CustomerCredentialsRepository;
@@ -24,9 +29,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -35,6 +43,8 @@ import java.util.UUID;
 public class TransferLimitService {
 
     private final AccountRepository accountRepository;
+    private final AccountTransferLimitsRepository accountTransferLimitsRepository;
+    private final AccountTransferLimitHistoryRepository accountTransferLimitHistoryRepository;
     private final CustomerCredentialsRepository customerCredentialsRepository;
     private final SystemParametersRepository systemParametersRepository;
     private final BeneficiaryRepository beneficiaryRepository;
@@ -176,16 +186,35 @@ public class TransferLimitService {
 
 
     /**
-     * Parameter key for storing user custom one-time limit without schema modification.
+     * Parameter key for legacy storage of user custom one-time limit in system_parameters.
      */
     private String getCustomOneTimeKey(String accountNumber) {
         return "LIMIT_ONETIME_" + accountNumber.trim();
     }
 
     /**
-     * Reads user-configured custom one-time limit from SystemParameters.
+     * Reads user-configured custom one-time limit from AccountTransferLimits (fallback to legacy SystemParameters).
+     */
+    public BigDecimal getUserCustomOneTimeLimit(Accounts account) {
+        if (account == null) {
+            return null;
+        }
+        return accountTransferLimitsRepository.findByAccount(account)
+                .map(AccountTransferLimits::getCustomOneTimeLimit)
+                .orElseGet(() -> getUserCustomOneTimeLimit(account.getAccountNumber()));
+    }
+
+    /**
+     * Reads user-configured custom one-time limit by account number.
      */
     public BigDecimal getUserCustomOneTimeLimit(String accountNumber) {
+        if (accountNumber == null || accountNumber.isBlank()) {
+            return null;
+        }
+        Optional<AccountTransferLimits> limits = accountTransferLimitsRepository.findByAccount_AccountNumber(accountNumber.trim());
+        if (limits.isPresent() && limits.get().getCustomOneTimeLimit() != null) {
+            return limits.get().getCustomOneTimeLimit();
+        }
         return systemParametersRepository.findByParameterKeyIgnoreCase(getCustomOneTimeKey(accountNumber))
                 .map(param -> {
                     try {
@@ -198,13 +227,25 @@ public class TransferLimitService {
     }
 
     /**
+     * Reads user-configured custom daily limit from AccountTransferLimits (fallback to accounts table).
+     */
+    public BigDecimal getUserCustomDailyLimit(Accounts account) {
+        if (account == null) {
+            return null;
+        }
+        return accountTransferLimitsRepository.findByAccount(account)
+                .map(AccountTransferLimits::getCustomDailyLimit)
+                .orElse(account.getDailyTransferLimit());
+    }
+
+    /**
      * Calculates the effective one-time limit: min(Bank Limit, User Custom Limit).
      */
     public BigDecimal getEffectiveOneTimeLimit(Accounts account, boolean isBeneficiary) {
         BankTransferLimitRule rule = getBankLimits(account.getAccountCategory(), account.getAccountType());
         BigDecimal baseBankLimit = isBeneficiary ? rule.getMaxOneTimeLimit() : rule.getStrangerOneTimeLimit();
 
-        BigDecimal customOneTime = getUserCustomOneTimeLimit(account.getAccountNumber());
+        BigDecimal customOneTime = getUserCustomOneTimeLimit(account);
         if (customOneTime != null && customOneTime.compareTo(BigDecimal.ZERO) > 0) {
             return customOneTime.min(baseBankLimit);
         }
@@ -218,8 +259,9 @@ public class TransferLimitService {
     public BigDecimal getEffectiveDailyLimit(Accounts account) {
         BankTransferLimitRule rule = getBankLimits(account.getAccountCategory(), account.getAccountType());
 
-        if (account.getDailyTransferLimit() != null && account.getDailyTransferLimit().compareTo(BigDecimal.ZERO) > 0) {
-            return account.getDailyTransferLimit().min(rule.getMaxDailyLimit());
+        BigDecimal customDaily = getUserCustomDailyLimit(account);
+        if (customDaily != null && customDaily.compareTo(BigDecimal.ZERO) > 0) {
+            return customDaily.min(rule.getMaxDailyLimit());
         }
 
         return rule.getMaxDailyLimit();
@@ -306,15 +348,16 @@ public class TransferLimitService {
         }
 
         BankTransferLimitRule rule = getBankLimits(account.getAccountCategory(), account.getAccountType());
-        BigDecimal customOneTime = getUserCustomOneTimeLimit(account.getAccountNumber());
+        BigDecimal customOneTime = getUserCustomOneTimeLimit(account);
         if (customOneTime != null && customOneTime.compareTo(rule.getMaxOneTimeLimit()) > 0) {
             customOneTime = rule.getMaxOneTimeLimit();
         }
 
         BigDecimal customDaily = null;
-        if (account.getDailyTransferLimit() != null && account.getDailyTransferLimit().compareTo(BigDecimal.ZERO) > 0) {
-            if (account.getDailyTransferLimit().compareTo(rule.getMaxDailyLimit()) <= 0) {
-                customDaily = account.getDailyTransferLimit();
+        BigDecimal userDaily = getUserCustomDailyLimit(account);
+        if (userDaily != null && userDaily.compareTo(BigDecimal.ZERO) > 0) {
+            if (userDaily.compareTo(rule.getMaxDailyLimit()) <= 0) {
+                customDaily = userDaily;
             } else {
                 customDaily = rule.getMaxDailyLimit();
             }
@@ -447,42 +490,165 @@ public class TransferLimitService {
         // Validate Relationship: One-Time Limit <= Daily Limit
         BigDecimal effectiveTargetDaily = request.getCustomDailyLimit() != null
                 ? request.getCustomDailyLimit()
-                : (account.getDailyTransferLimit() != null ? account.getDailyTransferLimit() : rule.getMaxDailyLimit());
+                : (getUserCustomDailyLimit(account) != null ? getUserCustomDailyLimit(account) : rule.getMaxDailyLimit());
 
         BigDecimal effectiveTargetOneTime = request.getCustomOneTimeLimit() != null
                 ? request.getCustomOneTimeLimit()
-                : getUserCustomOneTimeLimit(accountNumber);
+                : getUserCustomOneTimeLimit(account);
 
         if (effectiveTargetOneTime != null && effectiveTargetOneTime.compareTo(effectiveTargetDaily) > 0) {
             throw new TransactionException("One-time transfer limit cannot be greater than the daily transfer limit.");
         }
 
-        // 3. Persist Changes
-        // A. Daily Limit in Accounts entity
+        // 3. Cooling-off Period & Limit Increase Check
+        AccountTransferLimits limits = accountTransferLimitsRepository.findByAccount(account)
+                .orElseGet(() -> AccountTransferLimits.builder()
+                        .account(account)
+                        .customer(account.getCustomer())
+                        .createdAt(LocalDateTime.now())
+                        .build());
+
+        BigDecimal currentOneTime = limits.getCustomOneTimeLimit() != null
+                ? limits.getCustomOneTimeLimit()
+                : getUserCustomOneTimeLimit(accountNumber);
+        BigDecimal currentDaily = limits.getCustomDailyLimit() != null
+                ? limits.getCustomDailyLimit()
+                : account.getDailyTransferLimit();
+
+        boolean isOneTimeIncreased = request.getCustomOneTimeLimit() != null
+                && currentOneTime != null
+                && request.getCustomOneTimeLimit().compareTo(currentOneTime) > 0;
+        boolean isDailyIncreased = request.getCustomDailyLimit() != null
+                && currentDaily != null
+                && request.getCustomDailyLimit().compareTo(currentDaily) > 0;
+
+        LocalDateTime now = LocalDateTime.now();
+        if (isOneTimeIncreased || isDailyIncreased) {
+            if (limits.getLastLimitIncreasedAt() != null
+                    && limits.getLastLimitIncreasedAt().isAfter(now.minusHours(24))) {
+                throw new TransactionException("Transfer limit can only be increased once every 24 hours (Cooling-off period active).");
+            }
+            limits.setLastLimitIncreasedAt(now);
+        }
+
+        // Determine Change Action for Audit History
+        LimitChangeAction changeAction = (currentOneTime == null && currentDaily == null)
+                ? LimitChangeAction.INITIAL_SET
+                : LimitChangeAction.UPDATE;
+
+        // 4. Persist Changes to account_transfer_limits table (Standard DECIMAL(18,4))
+        limits.setAccount(account);
+        limits.setCustomer(account.getCustomer());
+        limits.setUpdatedByType(UpdatedByType.CUSTOMER);
+        limits.setUpdatedById(account.getCustomer().getCustomerId());
+        limits.setUpdatedAt(now);
+        if (limits.getCreatedAt() == null) {
+            limits.setCreatedAt(now);
+        }
+
         if (request.getCustomDailyLimit() != null) {
-            account.setDailyTransferLimit(request.getCustomDailyLimit());
+            BigDecimal standardizedDaily = request.getCustomDailyLimit().setScale(4, RoundingMode.HALF_UP);
+            limits.setCustomDailyLimit(standardizedDaily);
+            account.setDailyTransferLimit(standardizedDaily);
             accountRepository.save(account);
         }
 
-        // B. One-Time Limit in SystemParameters
         if (request.getCustomOneTimeLimit() != null) {
-            String paramKey = getCustomOneTimeKey(accountNumber);
-            SystemParameters param = systemParametersRepository.findByParameterKeyIgnoreCase(paramKey)
-                    .orElseGet(() -> SystemParameters.builder()
-                            .parameterKey(paramKey)
-                            .description("Custom one-time transfer limit for account " + accountNumber)
-                            .build());
-
-            param.setParameterValue(request.getCustomOneTimeLimit().toPlainString());
-            param.setUpdatedByType(UpdatedByType.CUSTOMER);
-            param.setUpdatedById(account.getCustomer().getCustomerId());
-            param.setUpdatedAt(LocalDateTime.now());
-            systemParametersRepository.save(param);
+            BigDecimal standardizedOneTime = request.getCustomOneTimeLimit().setScale(4, RoundingMode.HALF_UP);
+            limits.setCustomOneTimeLimit(standardizedOneTime);
         }
+
+        accountTransferLimitsRepository.save(limits);
+
+        // 5. Append Audit History Record (Delta pattern)
+        // NULL = field was NOT part of this request (not changed)
+        // Non-NULL = field was explicitly changed in this request
+        AccountTransferLimitHistory history = AccountTransferLimitHistory.builder()
+                .account(account)
+                .customer(account.getCustomer())
+                .previousOneTimeLimit(request.getCustomOneTimeLimit() != null ? currentOneTime : null)
+                .previousDailyLimit(request.getCustomDailyLimit() != null ? currentDaily : null)
+                .newOneTimeLimit(request.getCustomOneTimeLimit() != null ? limits.getCustomOneTimeLimit() : null)
+                .newDailyLimit(request.getCustomDailyLimit() != null ? limits.getCustomDailyLimit() : null)
+                .changeAction(changeAction)
+                .changedByType(UpdatedByType.CUSTOMER)
+                .changedById(account.getCustomer().getCustomerId())
+                .changedAt(now)
+                .reason("Customer updated transfer limits via Customer Portal")
+                .build();
+        accountTransferLimitHistoryRepository.save(history);
+
+        // 6. Clean up legacy parameter records from system_parameters table
+        String paramKey = getCustomOneTimeKey(accountNumber);
+        systemParametersRepository.findByParameterKeyIgnoreCase(paramKey)
+                .ifPresent(systemParametersRepository::delete);
 
         log.info("Successfully updated custom transfer limits for Account: {}. OneTime: {}, Daily: {}",
                 accountNumber, request.getCustomOneTimeLimit(), request.getCustomDailyLimit());
 
         return getTransferLimitInfo(authenticatedCustomerId, accountNumber);
+    }
+
+    /**
+     * Resets custom limits back to Bank Defaults and logs the RESET_TO_DEFAULT action.
+     */
+    @Transactional
+    public TransferLimitInfoResponseDto resetCustomLimitsToDefault(String authenticatedCustomerId, String accountNumber, String reason) {
+        Accounts account = accountRepository.findByAccountNumber(accountNumber)
+                .orElseThrow(() -> new AccountNotFoundException("Account not found: " + accountNumber));
+
+        if (!account.getCustomer().getCustomerId().toString().equalsIgnoreCase(authenticatedCustomerId)) {
+            throw new TransactionException("Authenticated user does not own this account.");
+        }
+
+        Optional<AccountTransferLimits> limitsOpt = accountTransferLimitsRepository.findByAccount(account);
+        if (limitsOpt.isPresent()) {
+            AccountTransferLimits limits = limitsOpt.get();
+            BigDecimal prevOneTime = limits.getCustomOneTimeLimit();
+            BigDecimal prevDaily = limits.getCustomDailyLimit();
+
+            LocalDateTime now = LocalDateTime.now();
+            limits.setCustomOneTimeLimit(null);
+            limits.setCustomDailyLimit(null);
+            limits.setUpdatedByType(UpdatedByType.CUSTOMER);
+            limits.setUpdatedById(account.getCustomer().getCustomerId());
+            limits.setUpdatedAt(now);
+            accountTransferLimitsRepository.save(limits);
+
+            account.setDailyTransferLimit(null);
+            accountRepository.save(account);
+
+            AccountTransferLimitHistory history = AccountTransferLimitHistory.builder()
+                    .account(account)
+                    .customer(account.getCustomer())
+                    .previousOneTimeLimit(prevOneTime)
+                    .previousDailyLimit(prevDaily)
+                    .newOneTimeLimit(null)
+                    .newDailyLimit(null)
+                    .changeAction(LimitChangeAction.RESET_TO_DEFAULT)
+                    .changedByType(UpdatedByType.CUSTOMER)
+                    .changedById(account.getCustomer().getCustomerId())
+                    .changedAt(now)
+                    .reason(reason != null && !reason.isBlank() ? reason : "Reset to Bank Default")
+                    .build();
+            accountTransferLimitHistoryRepository.save(history);
+        }
+
+        return getTransferLimitInfo(authenticatedCustomerId, accountNumber);
+    }
+
+    /**
+     * Retrieves audit history of limit changes for an account.
+     */
+    @Transactional(readOnly = true)
+    public List<AccountTransferLimitHistory> getLimitHistory(String authenticatedCustomerId, String accountNumber) {
+        Accounts account = accountRepository.findByAccountNumber(accountNumber)
+                .orElseThrow(() -> new AccountNotFoundException("Account not found: " + accountNumber));
+
+        if (!account.getCustomer().getCustomerId().toString().equalsIgnoreCase(authenticatedCustomerId)) {
+            throw new TransactionException("Authenticated user does not own this account.");
+        }
+
+        return accountTransferLimitHistoryRepository.findByAccount_AccountNumberOrderByChangedAtDesc(accountNumber);
     }
 }

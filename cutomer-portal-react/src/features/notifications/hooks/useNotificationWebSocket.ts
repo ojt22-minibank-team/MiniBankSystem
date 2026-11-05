@@ -3,7 +3,7 @@ import {
   getAccessToken, getAuthenticationGeneration, hasTokens, isAuthenticationGenerationCurrent,
   subscribeToAuthenticationChanges,
 } from "../../../utils/tokenStorage";
-import { SESSION_TIMEOUT_EVENT } from "../../../utils/sessionEvents";
+import { SESSION_TIMEOUT_EVENT, type SessionTimeoutDetail } from "../../../utils/sessionEvents";
 import type { NotificationItem } from "../types/notificationTypes";
 
 interface UseNotificationWebSocketProps {
@@ -160,8 +160,21 @@ export const useNotificationWebSocket = ({
       }
     }
 
-    const sessionEnded = () => {
-      endedGeneration = getAuthenticationGeneration();
+    const sessionEnded = (event: Event) => {
+      const detail = (event as CustomEvent<SessionTimeoutDetail>).detail;
+      if (detail && Number.isSafeInteger(detail.sourceGeneration)) {
+        // Generation Ownership Check: Ignore stale timeout events belonging to a previous session
+        if (authentication && authentication.generation !== detail.sourceGeneration) {
+          return;
+        }
+        const currentGen = getAuthenticationGeneration();
+        if (currentGen > detail.sourceGeneration && hasTokens() && isAuthenticationGenerationCurrent(currentGen)) {
+          return;
+        }
+        endedGeneration = detail.sourceGeneration;
+      } else {
+        endedGeneration = getAuthenticationGeneration();
+      }
       authentication = null;
       closeSocket();
     };

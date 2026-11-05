@@ -1,3 +1,4 @@
+
 import { Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -13,26 +14,26 @@ const HelpCenterHero = ({
   const { t } = useTranslation("help");
 
   return (
-    <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#08295C] via-[#0878E8] to-[#38A1F5] px-6 py-16 text-center sm:px-10 sm:py-20">
+    <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#08295C] via-[#0878E8] to-[#38A1F5] px-5 py-9 text-center sm:px-8 sm:py-11">
 
       {/* Background decoration */}
-      <div className="pointer-events-none absolute -left-16 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
+      <div className="pointer-events-none absolute -left-16 -top-20 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
 
-      <div className="pointer-events-none absolute -bottom-24 -right-10 h-72 w-72 rounded-full bg-[#08295C]/20 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-20 -right-10 h-56 w-56 rounded-full bg-[#08295C]/20 blur-3xl" />
 
       <div className="relative z-10 mx-auto max-w-2xl">
 
-        <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+        <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
           {t("hero.title")}
         </h1>
 
-        <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-white/85 sm:text-base">
+        <p className="mx-auto mt-2 max-w-xl text-xs leading-6 text-white/85 sm:text-sm">
           {t("hero.description")}
         </p>
 
-        <div className="mx-auto mt-8 flex max-w-lg items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-lg shadow-blue-950/20 focus-within:ring-2 focus-within:ring-blue-200">
+        <div className="mx-auto mt-5 flex max-w-md items-center gap-2.5 rounded-xl bg-white px-3.5 py-2.5 shadow-md shadow-blue-950/20 focus-within:ring-2 focus-within:ring-blue-200">
 
-          <Search className="h-5 w-5 shrink-0 text-gray-500" />
+          <Search className="h-4 w-4 shrink-0 text-gray-500" />
 
           <input
             type="search"
