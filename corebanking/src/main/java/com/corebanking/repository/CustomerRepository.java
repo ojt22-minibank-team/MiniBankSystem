@@ -3,6 +3,7 @@ package com.corebanking.repository;
 import com.corebanking.entity.Customers;
 import com.corebanking.entity.enums.CustomerType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
@@ -21,5 +22,9 @@ public interface CustomerRepository extends JpaRepository<Customers, UUID> {
     boolean existsByPhoneAndCustomerType(String phone, CustomerType customerType);
     boolean existsByPhoneAndCustomerTypeIn(String phone, Collection<CustomerType> customerTypes);
     List<Customers> findByEmail(String email);
+
+    // Optimized single-query fetch to eliminate secondary SELECT queries (fetches both personalInfo and companyInfo)
+    @Query("SELECT DISTINCT c FROM Customers c LEFT JOIN FETCH c.personalInfo LEFT JOIN FETCH c.companyInfo ORDER BY c.createdAt DESC")
+    List<Customers> findAllWithPersonalInfo();
 }
 

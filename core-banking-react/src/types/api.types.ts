@@ -283,6 +283,18 @@ export interface CustomerCreateResponse extends CustomerResponse {
   temporaryPassword?: string;
 }
 
+export interface CustomerUpdateDTO {
+  phone?: string;
+  occupation?: string;
+  dateOfBirth?: string;
+}
+
+export interface CustomerUpdateResponse {
+  status: string;
+  message: string;
+  customerCode: string;
+}
+
 // --- Account DTOs ---
 
 export interface AccountResponse {

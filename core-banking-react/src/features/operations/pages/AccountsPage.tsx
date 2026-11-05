@@ -3,7 +3,9 @@ import AdminLayout from '../../../components/layout/AdminLayout';
 import DataTable from '../../../components/common/DataTable';
 import Button from '../../../components/common/Button';
 import Modal from '../../../components/common/Modal';
+import TableSkeletonLoader from '../../../components/common/TableSkeletonLoader';
 import { accountsApi } from '../../../services/apiClient';
+import { useBankingData } from '../../../hooks/useBankingData';
 import type { AccountResponse } from '../../../types/api.types';
 import { formatCurrency } from '../../../utils/formatCurrency';
 import { formatDate } from '../../../utils/formatDate';
@@ -11,7 +13,7 @@ import type { AxiosError } from 'axios';
 import AccountCreateModal from '../components/AccountCreateModal';
 import AccountDetailModal from '../components/AccountDetailModal';
 
-// â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Constants ─────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10;
 
 type CategoryFilter = 'ALL' | 'RETAIL' | 'CORPORATE';
@@ -20,19 +22,40 @@ type SortField = 'openedAt' | 'accountNumber' | 'availableBalance';
 type SortDir = 'asc' | 'desc';
 
 export default function AccountsPage() {
-  // â”€â”€ Data state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Parallel Data Fetching & SWR In-Memory Cache (Sub-3s SLA) ─────────────
+  const {
+    accounts: bankingAccounts,
+    isLoading: isBankingLoading,
+    isRevalidating,
+    error: bankingError,
+    loadDurationMs,
+    refresh: refreshBanking,
+  } = useBankingData({
+    autoFetch: true,
+    pagination: { page: 0, size: 50 },
+    cacheTtlMs: 60000,
+  });
+
   const [accounts, setAccounts] = useState<AccountResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isCreateAccountModalOpen, setIsCreateAccountModalOpen] = useState(false);
 
-  // â”€â”€ Detail modal state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Synchronize accounts from high-performance parallel hook
+  useEffect(() => {
+    if (bankingAccounts) {
+      setAccounts(bankingAccounts);
+    }
+  }, [bankingAccounts]);
+
+  const isLoading = isBankingLoading;
+  const error = bankingError;
+
+  // ── Detail modal state ───────────────────────────────────────────────────
   const [detailAccount, setDetailAccount] = useState<AccountResponse | null>(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  // â”€â”€ Search / filter / sort / page state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Search / filter / sort / page state ───────────────────────────────────
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('ALL');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
@@ -40,7 +63,7 @@ export default function AccountsPage() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [currentPage, setCurrentPage] = useState(1);
 
-  // â”€â”€ Status modal state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Status modal state ───────────────────────────────────────────────────
   const [selectedAccount, setSelectedAccount] = useState<AccountResponse | null>(null);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [newStatus, setNewStatus] = useState('ACTIVE');
@@ -48,18 +71,9 @@ export default function AccountsPage() {
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
 
-  // â”€â”€ Fetch all accounts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Fetch all accounts with sub-3-second SWR cache ────────────────────────
   const loadAccounts = () => {
-    setIsLoading(true);
-    setError(null);
-    accountsApi
-      .getAll()
-      .then((res) => setAccounts(res.data ?? []))
-      .catch((err: AxiosError) => {
-        setError('Failed to load accounts. Please verify backend is running.');
-        console.error(err);
-      })
-      .finally(() => setIsLoading(false));
+    refreshBanking();
   };
 
   const handleOpenDetail = async (accountNumber: string) => {
@@ -78,11 +92,9 @@ export default function AccountsPage() {
     }
   };
 
-  useEffect(() => {
-    loadAccounts();
-  }, []);
+  // Initial fetch handled automatically by useBankingData with autoFetch: true
 
-  // â”€â”€ Derived data pipeline: search â†’ filter â†’ sort â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Derived data pipeline: search → filter → sort ─────────────────────────
   const processed = useMemo(() => {
     let list = [...accounts];
 
@@ -137,7 +149,7 @@ export default function AccountsPage() {
     return accounts.filter((a) => a.status === 'FROZEN').length;
   }, [accounts]);
 
-  // â”€â”€ Pagination helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Pagination helpers ───────────────────────────────────────────────────
   const totalPages = Math.max(1, Math.ceil(processed.length / PAGE_SIZE));
 
   useEffect(() => {
@@ -149,7 +161,7 @@ export default function AccountsPage() {
     [processed, currentPage],
   );
 
-  // â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Handlers ─────────────────────────────────────────────────────────────
   const handleUpdateStatus = async () => {
     if (!selectedAccount) return;
     setStatusLoading(true);
@@ -171,6 +183,7 @@ export default function AccountsPage() {
           acc.accountNumber === selectedAccount.accountNumber ? res.data : acc,
         ),
       );
+      refreshBanking();
     } catch (err) {
       const axErr = err as AxiosError<{ message?: string }>;
       setStatusError(axErr.response?.data?.message || 'Failed to update account status.');
@@ -184,7 +197,7 @@ export default function AccountsPage() {
     setSuccessMessage(`Account ${newAccNum} opened successfully!`);
   };
 
-  // â”€â”€ Column definitions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Column definitions ───────────────────────────────────────────────────
   const columns = [
     {
       key: 'accountNumber',
@@ -205,8 +218,8 @@ export default function AccountsPage() {
       header: 'Customer',
       render: (row: AccountResponse) => (
         <div>
-          <p className="font-bold text-slate-900 leading-snug">{row.customerName || 'â€”'}</p>
-          <p className="text-[11px] text-slate-400 font-mono">{row.customerCode || 'â€”'}</p>
+          <p className="font-bold text-slate-900 leading-snug">{row.customerName || '—'}</p>
+          <p className="text-[11px] text-slate-400 font-mono">{row.customerCode || '—'}</p>
         </div>
       ),
     },
@@ -292,7 +305,7 @@ export default function AccountsPage() {
       key: 'openedAt',
       header: 'Opened Date',
       render: (row: AccountResponse) =>
-        row.openedAt ? formatDate(row.openedAt) : 'â€”',
+        row.openedAt ? formatDate(row.openedAt) : '—',
     },
     {
       key: 'actions',
@@ -325,7 +338,7 @@ export default function AccountsPage() {
     },
   ];
 
-  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Render ───────────────────────────────────────────────────────────────
   return (
     <AdminLayout pageTitle="Customer Accounts">
       <div className="max-w-[1440px] mx-auto space-y-6">
@@ -333,9 +346,33 @@ export default function AccountsPage() {
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
           <div>
-            <h2 className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight">
-              Customer Accounts
-            </h2>
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight">
+                Customer Accounts
+              </h2>
+              {/* SLA Performance Indicator */}
+              {loadDurationMs !== null && (
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-mono font-bold ${
+                    loadDurationMs <= 3000
+                      ? 'bg-emerald-100/80 text-emerald-800 border border-emerald-300/60'
+                      : 'bg-amber-100/80 text-amber-800 border border-amber-300/60'
+                  }`}
+                  title="Database and network response time on browser screen"
+                >
+                  <svg className="h-3 w-3 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  {loadDurationMs}ms (Sub-3s SLA)
+                </span>
+              )}
+              {isRevalidating && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-600 animate-pulse">
+                  <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+                  Syncing
+                </span>
+              )}
+            </div>
             <p className="mt-0.5 text-xs sm:text-sm text-slate-500 font-medium">
               EKARAJ BANK: Retail savings, current accounts, and corporate deposit facilities
             </p>
@@ -372,7 +409,7 @@ export default function AccountsPage() {
             </span>
             <div className="flex items-baseline justify-between mt-3">
               <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
-                {isLoading ? 'Loadingâ€¦' : formatCurrency(totalBalance, 'MMK')}
+                {isLoading ? 'Loading…' : formatCurrency(totalBalance, 'MMK')}
               </span>
               <span className="status-pill-emerald text-[11px]">
                 {accounts.length} Accounts
@@ -418,7 +455,7 @@ export default function AccountsPage() {
               onClick={() => setSuccessMessage(null)}
               className="text-emerald-700 hover:text-emerald-950 font-bold cursor-pointer"
             >
-              Ã—
+              ×
             </button>
           </div>
         )}
@@ -430,7 +467,7 @@ export default function AccountsPage() {
           </div>
         ) : (
           <div className="liquid-glass rounded-3xl p-6 space-y-5">
-            {/* â”€â”€ Toolbar: search Â· filter Â· sort â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ── Toolbar: search · filter · sort ─────────────────────────── */}
             <div className="flex flex-wrap items-center gap-3 pb-4 border-b border-slate-100">
               {/* Search */}
               <div className="relative flex-1 min-w-[240px]">
@@ -442,7 +479,7 @@ export default function AccountsPage() {
                 </svg>
                 <input
                   type="text"
-                  placeholder="Search by account number, name, customer codeâ€¦"
+                  placeholder="Search by account number, name, customer code…"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full rounded-lg border border-slate-200 bg-slate-50/70 py-2 pl-10 pr-4 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-sky-100 focus:border-sky-500 transition-all shadow-xs"
@@ -487,7 +524,7 @@ export default function AccountsPage() {
               {/* Sort direction toggle */}
               <button
                 onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
-                title={sortDir === 'desc' ? 'Sorted descending â€“ click to toggle' : 'Sorted ascending â€“ click to toggle'}
+                title={sortDir === 'desc' ? 'Sorted descending – click to toggle' : 'Sorted ascending – click to toggle'}
                 className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs transition-colors cursor-pointer"
               >
                 {sortDir === 'desc' ? (
@@ -508,17 +545,21 @@ export default function AccountsPage() {
               </button>
             </div>
 
-            {/* â”€â”€ Table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ── Table & Skeleton Loader ─────────────────────────────────── */}
             <div>
-              <DataTable
-                columns={columns}
-                data={pageData}
-                isLoading={isLoading}
-                emptyMessage="No bank accounts found matching the criteria."
-                keyExtractor={(row: AccountResponse) => row.accountNumber}
-              />
+              {isLoading && accounts.length === 0 ? (
+                <TableSkeletonLoader columns={8} rows={8} />
+              ) : (
+                <DataTable
+                  columns={columns}
+                  data={pageData}
+                  isLoading={false}
+                  emptyMessage="No bank accounts found matching the criteria."
+                  keyExtractor={(row: AccountResponse) => row.accountNumber}
+                />
+              )}
 
-              {/* â”€â”€ Pagination â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+              {/* ── Pagination ────────────────────────────────────────────── */}
               {!isLoading && totalPages > 1 && (
                 <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-100">
                   <span className="text-xs font-medium text-slate-500">
@@ -531,7 +572,7 @@ export default function AccountsPage() {
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
-                      â† Prev
+                      ← Prev
                     </button>
 
                     {Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -549,7 +590,7 @@ export default function AccountsPage() {
                       .map((item, idx) =>
                         item === 'ellipsis' ? (
                           <span key={`e-${idx}`} className="px-2 text-slate-400">
-                            â€¦
+                            …
                           </span>
                         ) : (
                           <button
@@ -572,7 +613,7 @@ export default function AccountsPage() {
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
-                      Next â†’
+                      Next →
                     </button>
                   </div>
                 </div>
