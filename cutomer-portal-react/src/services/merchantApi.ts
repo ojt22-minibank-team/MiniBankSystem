@@ -1,4 +1,4 @@
-import axios from 'axios';
+﻿import axios from 'axios';
 
 // Matches PaymentDetailsResponse.java
 export interface PaymentDetails {
@@ -7,6 +7,7 @@ export interface PaymentDetails {
   amount: number;
   currency: string;
   status: string;
+  returnUrl?: string;
 }
 
 // Matches MerchantPaymentRequest.java
@@ -28,7 +29,8 @@ export interface PaymentReceipt {
   timestamp: string;
 }
 
-const API_BASE_URL = 'http://localhost:8080/api/customer/merchant-payment';
+const API_BASE = ((typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || 'http://localhost:8080').replace(/\/+$/, '');
+const API_BASE_URL = `${API_BASE}/api/customer/merchant-payment`;
 
 export const fetchPaymentDetails = async (token: string): Promise<PaymentDetails> => {
   const response = await axios.get<PaymentDetails>(`${API_BASE_URL}/request/${token}`);

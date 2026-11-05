@@ -51,13 +51,7 @@ build/
 # Logs
 *.log
 
-# Sensitive Configs & Local Overrides (ဤနေရာတွင် ပေါင်းထည့်ထားပါသည်)
-**/application.properties
-**/application.yml
-**/application.yaml
-application-local.properties
-application-local.yml
-application-local.yaml
+.env
 
 # OS settings
 .DS_Store

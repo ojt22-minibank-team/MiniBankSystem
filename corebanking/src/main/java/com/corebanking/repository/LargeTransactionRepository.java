@@ -89,6 +89,7 @@ public class LargeTransactionRepository {
                   AND bt.amount >= ?
                   AND (? IS NULL OR ? = '' OR bt.transaction_type = ?)
                 ORDER BY bt.amount DESC, bt.completed_at DESC
+                LIMIT 1000
             """;
             BigDecimal threshold = (minAmount != null) ? minAmount : new BigDecimal("10000000.0000");
             return jdbcTemplate.query(directSql, (rs, rowNum) -> LargeTransactionItemDTO.builder()

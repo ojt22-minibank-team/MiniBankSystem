@@ -1,3 +1,7 @@
-
 ecommerce-main/
 
+corebanking/src/main/resources/application.properties
+corebanking/.env
+
+# Frontend secrets
+cutomer-portal-react/.env

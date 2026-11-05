@@ -1,5 +1,6 @@
 package com.corebanking.service;
 
+import com.corebanking.dto.CusTransactionHistoryItemDTO;
 import com.corebanking.dto.CusTransactionHistoryResponseDTO;
 import com.corebanking.entity.enums.TransactionStatus;
 import com.corebanking.entity.enums.TransactionType;
@@ -7,6 +8,7 @@ import com.corebanking.exception.AccountNotFoundException;
 import com.corebanking.exception.CusAuthenticationException;
 import com.corebanking.exception.CusValidationException;
 import com.corebanking.repository.CusTransactionHistoryRepository;
+import com.corebanking.util.DataMaskingUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
@@ -18,6 +20,7 @@ import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -31,6 +34,7 @@ import java.util.UUID;
 public class CusTransactionService {
 
     private final CusTransactionHistoryRepository repository;
+    private final AuditTrailService auditTrailService;
 
     /**
      * Retrieves filterable paginated transaction history for the authenticated customer.
@@ -140,7 +144,41 @@ public class CusTransactionService {
                     .hasPrevious(hasPrev)
                     .build();
         } catch (DataAccessException ex) {
-            handleDatabaseException(ex);
+            handleDatabaseException(ex, accountNumber);
+            throw ex;
+        }
+    }
+
+    /**
+     * Retrieves single transaction detail for the authenticated customer.
+     */
+    public CusTransactionHistoryItemDTO getTransactionDetail(String transactionRef, String accountNumber) {
+        UUID customerId = getAuthenticatedCustomerId();
+        return getTransactionDetail(customerId, transactionRef, accountNumber);
+    }
+
+    /**
+     * Retrieves single transaction detail for an explicit customer UUID.
+     */
+    public CusTransactionHistoryItemDTO getTransactionDetail(UUID customerId, String transactionRef, String accountNumber) {
+        if (customerId == null) {
+            throw new CusAuthenticationException("Customer identity is required.");
+        }
+        if (accountNumber == null || accountNumber.trim().isEmpty()) {
+            throw new CusValidationException("Account number is required.");
+        }
+        if (transactionRef == null || transactionRef.trim().isEmpty()) {
+            throw new CusValidationException("Transaction reference is required.");
+        }
+        try {
+            return repository.getTransactionDetail(customerId, transactionRef.trim(), accountNumber.trim());
+        } catch (AccountNotFoundException ex) {
+            if (ex.getMessage() != null && ex.getMessage().contains("Account not found or access denied for this customer")) {
+                auditUnauthorizedAccess(accountNumber);
+            }
+            throw ex;
+        } catch (DataAccessException ex) {
+            handleDatabaseException(ex, accountNumber);
             throw ex;
         }
     }
@@ -162,8 +200,13 @@ public class CusTransactionService {
         }
         try {
             return repository.getDistinctStatuses(customerId, accountNumber.trim());
+        } catch (AccountNotFoundException ex) {
+            if (ex.getMessage() != null && ex.getMessage().contains("Account not found or access denied for this customer")) {
+                auditUnauthorizedAccess(accountNumber);
+            }
+            throw ex;
         } catch (DataAccessException ex) {
-            handleDatabaseException(ex);
+            handleDatabaseException(ex, accountNumber);
             throw ex;
         }
     }
@@ -185,8 +228,13 @@ public class CusTransactionService {
         }
         try {
             return repository.getDistinctTypes(customerId, accountNumber.trim());
+        } catch (AccountNotFoundException ex) {
+            if (ex.getMessage() != null && ex.getMessage().contains("Account not found or access denied for this customer")) {
+                auditUnauthorizedAccess(accountNumber);
+            }
+            throw ex;
         } catch (DataAccessException ex) {
-            handleDatabaseException(ex);
+            handleDatabaseException(ex, accountNumber);
             throw ex;
         }
     }
@@ -218,7 +266,7 @@ public class CusTransactionService {
     /**
      * Translates database SQLSTATE '45000' and known error messages to application domain exceptions.
      */
-    private void handleDatabaseException(DataAccessException ex) {
+    private void handleDatabaseException(DataAccessException ex, String accountNumber) {
         Throwable root = ex.getRootCause();
         String message = root != null ? root.getMessage() : ex.getMessage();
 
@@ -226,6 +274,7 @@ public class CusTransactionService {
             String sqlState = sqlEx.getSQLState();
             if ("45000".equals(sqlState) && message != null) {
                 if (message.contains("Account not found or access denied for this customer")) {
+                    auditUnauthorizedAccess(accountNumber);
                     throw new AccountNotFoundException("Account not found or access denied for this customer");
                 }
                 throw new CusValidationException(message);
@@ -233,7 +282,29 @@ public class CusTransactionService {
         }
 
         if (message != null && message.contains("Account not found or access denied for this customer")) {
+            auditUnauthorizedAccess(accountNumber);
             throw new AccountNotFoundException("Account not found or access denied for this customer");
+        }
+    }
+
+    private void auditUnauthorizedAccess(String accountNumber) {
+        try {
+            String maskedAccount = DataMaskingUtil.maskAccountNumber(accountNumber);
+            Map<String, Object> metadata = Map.of(
+                    "result", "DENIED"
+            );
+            auditTrailService.logDataChange(
+                    "SECURITY",
+                    "UNAUTHORIZED_ACCOUNT_ACCESS",
+                    "ACCOUNT",
+                    maskedAccount,
+                    null,
+                    metadata,
+                    "Unauthorized account access denied for account: " + maskedAccount
+            );
+        } catch (Exception ex) {
+            log.error("Failed to log audit event UNAUTHORIZED_ACCOUNT_ACCESS for account: {}",
+                    DataMaskingUtil.maskAccountNumber(accountNumber), ex);
         }
     }
 }

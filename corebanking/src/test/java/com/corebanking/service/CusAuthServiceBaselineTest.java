@@ -29,7 +29,7 @@ import com.corebanking.exception.CusOtpException;
 import com.corebanking.exception.CusOtpResendLimitException;
 import com.corebanking.exception.CusSessionExpiredException;
 import com.corebanking.exception.CusValidationException;
-import com.corebanking.repository.CusAccountsRepository;
+import com.corebanking.repository.AccountRepository;
 import com.corebanking.repository.CusAuditLogsRepository;
 import com.corebanking.repository.CusAuthSessionsRepository;
 import com.corebanking.repository.CusCredentialsRepository;
@@ -88,7 +88,7 @@ class CusAuthServiceBaselineTest {
     private static final String REFRESH_HASH = "mock-refresh-hash";
 
     @Mock private CusCustomerRepository customerRepository;
-    @Mock private CusAccountsRepository accountsRepository;
+    @Mock private AccountRepository accountsRepository;
     @Mock private CusCredentialsRepository credentialsRepository;
     @Mock private CusLoginAttemptsRepository loginAttemptsRepository;
     @Mock private CusOtpChallengesRepository otpChallengesRepository;

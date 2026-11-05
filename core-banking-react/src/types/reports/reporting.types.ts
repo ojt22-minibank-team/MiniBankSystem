@@ -125,6 +125,28 @@ export interface LargeTransactionReport {
   items: LargeTransactionItem[];
 }
 
+export interface TransactionDetailFilterParams {
+  startDate: string;
+  endDate: string;
+  status?: string;
+  transactionType?: string;
+  channel?: string;
+  minAmount?: number;
+  maxAmount?: number;
+}
+
+export interface TransactionDetail {
+  ref: string;
+  date: string;
+  amount: number;
+  fee: number;
+  sourceAccount: string;
+  destAccount: string;
+  status: string;
+  channel: string;
+  currency: string;
+}
+
 export interface LargeTxFilterParams {
   startDate: string;
   endDate: string;

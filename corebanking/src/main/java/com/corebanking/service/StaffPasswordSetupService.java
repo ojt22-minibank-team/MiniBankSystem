@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
@@ -38,6 +39,7 @@ public class StaffPasswordSetupService {
     private final AuthSessionsRepository authSessionsRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final AuditTrailService auditTrailService;
 
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -50,12 +52,21 @@ public class StaffPasswordSetupService {
     /**
      * Creates a single-use setup link and sends it to the staff email.
      */
+    @Async("mailTaskExecutor")
     @Transactional
     public void createSetupLink(UUID staffId) {
 
         StaffUsers staff = staffUsersRepository.findById(staffId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException("Staff account not found"));
+                .orElseGet(() -> {
+                    try {
+                        Thread.sleep(300);
+                    } catch (InterruptedException ignored) {}
+                    return staffUsersRepository.findById(staffId).orElse(null);
+                });
+
+        if (staff == null) {
+            throw new IllegalArgumentException("Staff account not found: " + staffId);
+        }
 
         if (staff.getStatus() != StaffUserStatus.ACTIVE) {
             throw new IllegalStateException(
@@ -103,6 +114,23 @@ public class StaffPasswordSetupService {
                 setupLink,
                 expirationMinutes
         );
+
+        if (auditTrailService != null) {
+            java.util.Map<String, Object> details = new java.util.LinkedHashMap<>();
+            details.put("staffNo", staff.getStaffNo());
+            details.put("username", staff.getUsername());
+            details.put("email", staff.getEmail());
+
+            auditTrailService.logDataChange(
+                    "SECURITY",
+                    "STAFF_PASSWORD_RESET_LINK",
+                    "STAFF_USER",
+                    staff.getStaffNo(),
+                    null,
+                    details,
+                    "Generated password setup link for staff: " + staff.getUsername()
+            );
+        }
     }
 
     /**

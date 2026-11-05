@@ -1,10 +1,12 @@
-
 package com.corebanking.controller;
 
 import com.corebanking.dto.CoreApiResponse;
 import com.corebanking.dto.CoreLoginRequest;
 import com.corebanking.dto.CoreLoginResponse;
 import com.corebanking.dto.CoreLogoutRequest;
+import com.corebanking.dto.CoreOtpResendRequest;
+import com.corebanking.dto.CoreOtpResendResponse;
+import com.corebanking.dto.CoreOtpVerifyRequest;
 import com.corebanking.dto.CoreRefreshRequest;
 import com.corebanking.service.AuthService;
 
@@ -27,12 +29,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @Tag(
         name = "Authentication API",
-        description = "APIs for login, logout, and token refresh"
+        description = "APIs for login, OTP verification, logout, and token refresh"
 )
 public class AuthController {
 
     private static final String MSG_LOGIN_SUCCESS =
             "Login successful";
+
+    private static final String MSG_OTP_REQUIRED =
+            "OTP sent to registered email";
 
     private static final String MSG_REFRESH_SUCCESS =
             "Token refreshed successfully";
@@ -43,24 +48,70 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-
     @Operation(
-            summary = "User Login",
-            description = "Authenticates a user and returns authentication tokens"
+            summary = "Staff Login (Step 1)",
+            description = "Validates staff credentials and dispatches an OTP to their registered email"
     )
     public ResponseEntity<CoreApiResponse<CoreLoginResponse>> login(
             @Valid @RequestBody CoreLoginRequest request
     ) {
-        log.info("Login request received");
+        log.info("Login request received for user: {}", request.getUsername());
 
         CoreLoginResponse data = authService.login(request);
 
-        log.info("Login request processed successfully");
+        String message = data.isOtpRequired() ? MSG_OTP_REQUIRED : MSG_LOGIN_SUCCESS;
+        log.info("Login request processed successfully for user: {}", request.getUsername());
+
+        return ResponseEntity.ok(
+                CoreApiResponse.<CoreLoginResponse>builder()
+                        .success(true)
+                        .message(message)
+                        .data(data)
+                        .build()
+        );
+    }
+
+    @PostMapping("/verify-otp")
+    @Operation(
+            summary = "Verify Login OTP (Step 2)",
+            description = "Verifies the email OTP and issues access/refresh tokens"
+    )
+    public ResponseEntity<CoreApiResponse<CoreLoginResponse>> verifyOtp(
+            @Valid @RequestBody CoreOtpVerifyRequest request
+    ) {
+        log.info("OTP verification request received");
+
+        CoreLoginResponse data = authService.verifyLoginOtp(request);
+
+        log.info("OTP verification successful");
 
         return ResponseEntity.ok(
                 CoreApiResponse.<CoreLoginResponse>builder()
                         .success(true)
                         .message(MSG_LOGIN_SUCCESS)
+                        .data(data)
+                        .build()
+        );
+    }
+
+    @PostMapping("/resend-otp")
+    @Operation(
+            summary = "Resend Login OTP",
+            description = "Resends a new login OTP code to staff email"
+    )
+    public ResponseEntity<CoreApiResponse<CoreOtpResendResponse>> resendOtp(
+            @Valid @RequestBody CoreOtpResendRequest request
+    ) {
+        log.info("OTP resend request received");
+
+        CoreOtpResendResponse data = authService.resendLoginOtp(request);
+
+        log.info("OTP resend completed");
+
+        return ResponseEntity.ok(
+                CoreApiResponse.<CoreOtpResendResponse>builder()
+                        .success(true)
+                        .message(data.getMessage())
                         .data(data)
                         .build()
         );
@@ -95,10 +146,7 @@ public class AuthController {
             description = "Logs out the user and invalidates authentication tokens"
     )
     public ResponseEntity<CoreApiResponse<Void>> logout(
-            @RequestHeader(
-                    value = "Authorization",
-                    required = false
-            ) String authorizationHeader,
+    		@RequestHeader("Authorization") String authorizationHeader,
             @Valid @RequestBody CoreLogoutRequest request
     ) {
         log.info("Logout request received");
@@ -112,6 +160,5 @@ public class AuthController {
                         .data(null)
                         .build()
         );
-
     }
 }

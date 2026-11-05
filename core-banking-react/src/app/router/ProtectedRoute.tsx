@@ -1,5 +1,8 @@
-import { type ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
+import { type ReactNode, useEffect } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { forceLogout } from '../../features/auth/authSlice';
+import type { AppDispatch } from '../../lib/redux';
 import { useAuth } from '../../features/auth/hooks/useAuth';
 
 interface ProtectedRouteProps {
@@ -7,16 +10,47 @@ interface ProtectedRouteProps {
   requiredRole?: string | string[];
 }
 
-/**
- * Guards a route by checking:
- * 1. isAuthenticated — token present and auth state loaded
- * 2. requiredRole — user must have at least one of the specified roles (e.g. 'ADMIN' or ['ADMIN', 'AUDITOR'])
- *
- * Unauthenticated users are redirected to /login.
- * Authenticated users without the required role are redirected to /unauthorized.
- */
+function RoleRedirect({ logout }: { logout: () => void }) {
+  useEffect(() => {
+    if (logout) {
+      logout();
+    }
+  }, [logout]);
+  
+  return <Navigate to="/login" replace />;
+}
+
 export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
+  const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleLogoutSync = () => {
+      dispatch(forceLogout());
+      navigate('/login', { replace: true });
+    };
+
+    const channel = new BroadcastChannel('staff_auth_sync');
+    channel.onmessage = (event: MessageEvent) => {
+      if (event.data === 'LOGOUT') {
+        handleLogoutSync();
+      }
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'staff_auth_logout_trigger') {
+        handleLogoutSync();
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      channel.close();
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [dispatch, navigate]);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -37,7 +71,7 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
     });
 
     if (!hasRole) {
-      return <Navigate to="/unauthorized" replace />;
+      return <RoleRedirect logout={logout} />;
     }
   }
 

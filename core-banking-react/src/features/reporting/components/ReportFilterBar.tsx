@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type ReportTab = 'ledger' | 'account' | 'audit' | 'fee' | 'aml';
+export type ReportTab = 'ledger' | 'account' | 'audit' | 'fee' | 'aml' | 'transactionDetail';
 
 interface ReportFilterBarProps {
   activeTab: ReportTab;
@@ -21,8 +21,8 @@ interface ReportFilterBarProps {
   accountNo: string;
   onAccountNoChange: (v: string) => void;
   auditStartDate: string;
-  onAuditStartDateChange: (v: string) => void;
   auditEndDate: string;
+  onAuditStartDateChange: (v: string) => void;
   onAuditEndDateChange: (v: string) => void;
   feeChannel?: string;
   onFeeChannelChange?: (v: string) => void;
@@ -35,35 +35,6 @@ interface ReportFilterBarProps {
   loading?: boolean;
 }
 
-const inputStyle: React.CSSProperties = {
-  padding: '8px 10px',
-  borderRadius: '6px',
-  border: '1px solid #cbd5e1',
-  fontSize: '13px',
-  outline: 'none',
-  minWidth: '140px',
-  flex: '1',
-  color: '#334155',
-  backgroundColor: '#fff',
-};
-
-const labelStyle: React.CSSProperties = {
-  fontSize: '11px',
-  fontWeight: 600,
-  color: '#475569',
-  marginBottom: '4px',
-  display: 'block',
-  textTransform: 'uppercase',
-  letterSpacing: '0.3px',
-};
-
-const fieldWrap: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  minWidth: '130px',
-  flex: '1',
-};
-
 const LEDGER_STATUSES = ['', 'COMPLETED', 'PENDING', 'FAILED', 'REVERSED'];
 const LEDGER_TRANSACTION_TYPES = [
   '',
@@ -71,7 +42,6 @@ const LEDGER_TRANSACTION_TYPES = [
   'OTC_DEPOSIT',
   'OTC_WITHDRAWAL',
   'EXTERNAL_PAYMENT',
-  'LEDGER_ADJUSTMENT',
   'REFUND',
 ];
 const ACCOUNT_STATUSES = ['', 'ACTIVE', 'FROZEN', 'SUSPENDED', 'CLOSED'];
@@ -93,6 +63,11 @@ const ACTION_TYPES = [
   'TRANSFER',
   'OTC_DEPOSIT',
 ];
+
+const inputClass =
+  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm text-slate-800 shadow-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors';
+const labelClass =
+  'block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 truncate';
 
 const ReportFilterBar: React.FC<ReportFilterBarProps> = (props) => {
   const {
@@ -129,50 +104,35 @@ const ReportFilterBar: React.FC<ReportFilterBarProps> = (props) => {
   } = props;
 
   return (
-    <div
-      style={{
-        backgroundColor: '#ffffff',
-        borderRadius: '10px',
-        border: '1px solid #e2e8f0',
-        padding: '20px 24px',
-        marginBottom: '20px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-      }}
-    >
-      <div
-        style={{
-          fontSize: '13px',
-          fontWeight: 700,
-          color: '#1E40AF',
-          marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-        }}
-      >
-        Filter & Search
+    <div className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 mb-5 shadow-xs">
+      <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-blue-900 mb-3 sm:mb-4">
+        <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+        </svg>
+        <span>Filter & Search</span>
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'flex-end' }}>
+
+      <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4 items-end">
         {activeTab !== 'audit' && (
           <>
-            <div style={fieldWrap}>
-              <label style={labelStyle}>Start Date</label>
+            <div className="min-w-0">
+              <label className={labelClass}>Start Date</label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => onStartDateChange(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && onSearch()}
-                style={inputStyle}
+                className={inputClass}
               />
             </div>
-            <div style={fieldWrap}>
-              <label style={labelStyle}>End Date</label>
+            <div className="min-w-0">
+              <label className={labelClass}>End Date</label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => onEndDateChange(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && onSearch()}
-                style={inputStyle}
+                className={inputClass}
               />
             </div>
           </>
@@ -180,12 +140,12 @@ const ReportFilterBar: React.FC<ReportFilterBarProps> = (props) => {
 
         {activeTab === 'ledger' && (
           <>
-            <div style={fieldWrap}>
-              <label style={labelStyle}>Transaction Type</label>
+            <div className="min-w-0">
+              <label className={labelClass}>Transaction Type</label>
               <select
                 value={ledgerTransactionType}
                 onChange={(e) => onLedgerTransactionTypeChange?.(e.target.value)}
-                style={inputStyle}
+                className={inputClass}
               >
                 {LEDGER_TRANSACTION_TYPES.map((t) => (
                   <option key={t} value={t}>
@@ -194,12 +154,12 @@ const ReportFilterBar: React.FC<ReportFilterBarProps> = (props) => {
                 ))}
               </select>
             </div>
-            <div style={fieldWrap}>
-              <label style={labelStyle}>Transaction Status</label>
+            <div className="min-w-0">
+              <label className={labelClass}>Transaction Status</label>
               <select
                 value={ledgerStatus}
                 onChange={(e) => onLedgerStatusChange(e.target.value)}
-                style={inputStyle}
+                className={inputClass}
               >
                 {LEDGER_STATUSES.map((s) => (
                   <option key={s} value={s}>
@@ -212,12 +172,12 @@ const ReportFilterBar: React.FC<ReportFilterBarProps> = (props) => {
         )}
 
         {activeTab === 'account' && (
-          <div style={fieldWrap}>
-            <label style={labelStyle}>Account Status</label>
+          <div className="min-w-0">
+            <label className={labelClass}>Account Status</label>
             <select
               value={accountStatus}
               onChange={(e) => onAccountStatusChange(e.target.value)}
-              style={inputStyle}
+              className={inputClass}
             >
               {ACCOUNT_STATUSES.map((s) => (
                 <option key={s} value={s}>
@@ -229,12 +189,12 @@ const ReportFilterBar: React.FC<ReportFilterBarProps> = (props) => {
         )}
 
         {activeTab === 'fee' && (
-          <div style={fieldWrap}>
-            <label style={labelStyle}>Channel</label>
+          <div className="min-w-0">
+            <label className={labelClass}>Channel</label>
             <select
               value={feeChannel}
               onChange={(e) => onFeeChannelChange?.(e.target.value)}
-              style={inputStyle}
+              className={inputClass}
             >
               {CHANNELS.map((c) => (
                 <option key={c} value={c}>
@@ -247,23 +207,23 @@ const ReportFilterBar: React.FC<ReportFilterBarProps> = (props) => {
 
         {activeTab === 'aml' && (
           <>
-            <div style={fieldWrap}>
-              <label style={labelStyle}>Min Threshold (MMK)</label>
+            <div className="min-w-0">
+              <label className={labelClass}>Min Threshold (MMK)</label>
               <input
                 type="number"
                 value={amlThreshold || ''}
                 onChange={(e) => onAmlThresholdChange?.(Number(e.target.value))}
                 onKeyDown={(e) => e.key === 'Enter' && onSearch()}
-                style={inputStyle}
+                className={inputClass}
                 placeholder="10000000"
               />
             </div>
-            <div style={fieldWrap}>
-              <label style={labelStyle}>Transaction Type</label>
+            <div className="min-w-0">
+              <label className={labelClass}>Transaction Type</label>
               <select
                 value={amlTransactionType}
                 onChange={(e) => onAmlTransactionTypeChange?.(e.target.value)}
-                style={inputStyle}
+                className={inputClass}
               >
                 {LEDGER_TRANSACTION_TYPES.map((t) => (
                   <option key={t} value={t}>
@@ -275,45 +235,92 @@ const ReportFilterBar: React.FC<ReportFilterBarProps> = (props) => {
           </>
         )}
 
+        {activeTab === 'transactionDetail' && (
+          <>
+            <div className="min-w-0">
+              <label className={labelClass}>Transaction Type</label>
+              <select
+                value={ledgerTransactionType}
+                onChange={(e) => onLedgerTransactionTypeChange?.(e.target.value)}
+                className={inputClass}
+              >
+                {LEDGER_TRANSACTION_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t || 'All Types'}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="min-w-0">
+              <label className={labelClass}>Transaction Status</label>
+              <select
+                value={ledgerStatus}
+                onChange={(e) => onLedgerStatusChange(e.target.value)}
+                className={inputClass}
+              >
+                {LEDGER_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s || 'All Statuses'}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="min-w-0">
+              <label className={labelClass}>Channel</label>
+              <select
+                value={feeChannel}
+                onChange={(e) => onFeeChannelChange?.(e.target.value)}
+                className={inputClass}
+              >
+                {CHANNELS.map((c) => (
+                  <option key={c} value={c}>
+                    {c || 'All Channels'}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
+
         {activeTab === 'audit' && (
           <>
-            <div style={fieldWrap}>
-              <label style={labelStyle}>Start DateTime</label>
+            <div className="min-w-0">
+              <label className={labelClass}>Start DateTime</label>
               <input
                 type="datetime-local"
                 value={auditStartDate}
                 onChange={(e) => onAuditStartDateChange(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && onSearch()}
-                style={inputStyle}
+                className={inputClass}
               />
             </div>
-            <div style={fieldWrap}>
-              <label style={labelStyle}>End DateTime</label>
+            <div className="min-w-0">
+              <label className={labelClass}>End DateTime</label>
               <input
                 type="datetime-local"
                 value={auditEndDate}
                 onChange={(e) => onAuditEndDateChange(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && onSearch()}
-                style={inputStyle}
+                className={inputClass}
               />
             </div>
-            <div style={fieldWrap}>
-              <label style={labelStyle}>Staff ID</label>
+            <div className="min-w-0">
+              <label className={labelClass}>Staff ID</label>
               <input
                 type="text"
                 placeholder="e.g. staff-uuid"
                 value={staffId}
                 onChange={(e) => onStaffIdChange(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && onSearch()}
-                style={inputStyle}
+                className={inputClass}
               />
             </div>
-            <div style={fieldWrap}>
-              <label style={labelStyle}>Action Type</label>
+            <div className="min-w-0">
+              <label className={labelClass}>Action Type</label>
               <select
                 value={actionType}
                 onChange={(e) => onActionTypeChange(e.target.value)}
-                style={inputStyle}
+                className={inputClass}
               >
                 {ACTION_TYPES.map((a) => (
                   <option key={a} value={a}>
@@ -322,53 +329,50 @@ const ReportFilterBar: React.FC<ReportFilterBarProps> = (props) => {
                 ))}
               </select>
             </div>
-            <div style={fieldWrap}>
-              <label style={labelStyle}>Account No.</label>
+            <div className="min-w-0">
+              <label className={labelClass}>Account No.</label>
               <input
                 type="text"
                 placeholder="e.g. ACC-001"
                 value={accountNo}
                 onChange={(e) => onAccountNoChange(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && onSearch()}
-                style={inputStyle}
+                className={inputClass}
               />
             </div>
           </>
         )}
 
-        <div style={{ display: 'flex', gap: '8px', alignSelf: 'flex-end', paddingBottom: '0' }}>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 pt-1 sm:pt-0 min-w-0 w-full">
           <button
             type="button"
             onClick={onSearch}
             disabled={loading}
-            style={{
-              padding: '8px 20px',
-              backgroundColor: '#2563EB',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              fontWeight: 700,
-              fontSize: '13px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.7 : 1,
-            }}
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {loading ? 'Loading...' : 'Search'}
+            {loading ? (
+              <>
+                <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+                <span>Searching...</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <span>Search</span>
+              </>
+            )}
           </button>
           <button
             type="button"
             onClick={onReset}
             disabled={loading}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#f1f5f9',
-              color: '#334155',
-              border: '1px solid #cbd5e1',
-              borderRadius: '6px',
-              fontWeight: 600,
-              fontSize: '13px',
-              cursor: 'pointer',
-            }}
+            className="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 text-xs sm:text-sm font-semibold transition-colors cursor-pointer disabled:opacity-60"
           >
             Reset
           </button>
