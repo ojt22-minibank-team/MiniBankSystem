@@ -220,9 +220,9 @@ public class EcommercePaymentService {
         createLedgerEntries(transaction, customerAccount, merchantAccount, request.getAmount(), serviceFee);
 
         // =========================================================================
-        // STEP 8: ASYNCHRONOUS NOTIFICATIONS (NON-BLOCKING) - COMMENTED OUT
+        // STEP 8: ASYNCHRONOUS NOTIFICATIONS (NON-BLOCKING)
         // =========================================================================
-        /*
+
         asyncNotificationService.sendMerchantPaymentNotificationAsync(
                 customerAccount.getCustomer() != null ? customerAccount.getCustomer().getCustomerId() : null,
                 customerAccount.getAccountNumber(),
@@ -233,7 +233,7 @@ public class EcommercePaymentService {
                 request.getCurrency(),
                 transaction.getTransactionRef()
         );
-        */
+
 
         log.info("E-Commerce Payment completed successfully. Ref: {}, OrderId: {}, Amount: {}, Fee: {}, MerchantNet: {}",
                 txnRef, request.getOrderId(), request.getAmount(), serviceFee, merchantCreditAmount);
