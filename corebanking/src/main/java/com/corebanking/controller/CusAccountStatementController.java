@@ -1,9 +1,11 @@
 package com.corebanking.controller;
 
 import com.corebanking.dto.CusAccountStatementDTO;
+import com.corebanking.service.AuditTrailService;
 import com.corebanking.service.CusAccountStatementCsvService;
 import com.corebanking.service.CusAccountStatementPdfService;
 import com.corebanking.service.CusAccountStatementService;
+import com.corebanking.util.DataMaskingUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.Map;
 
 /**
  * Controller for G1 Customer Portal Account Statements.
@@ -32,6 +35,7 @@ public class CusAccountStatementController {
     private final CusAccountStatementService statementService;
     private final CusAccountStatementPdfService pdfService;
     private final CusAccountStatementCsvService csvService;
+    private final AuditTrailService auditTrailService;
 
     /**
      * Download customer account statement as PDF.
@@ -52,6 +56,27 @@ public class CusAccountStatementController {
 
         CusAccountStatementDTO statement = statementService.getAccountStatement(accountNumber, fromDate, toDate);
         byte[] pdfBytes = pdfService.generateAccountStatementPdf(statement);
+
+        try {
+            String maskedAccount = DataMaskingUtil.maskAccountNumber(accountNumber);
+            Map<String, Object> metadata = Map.of(
+                    "fromDate", fromDate.toString(),
+                    "toDate", toDate.toString(),
+                    "result", "SUCCESS"
+            );
+            auditTrailService.logDataChange(
+                    "REPORTING",
+                    "ACCOUNT_STATEMENT_PDF_DOWNLOAD",
+                    "ACCOUNT",
+                    maskedAccount,
+                    null,
+                    metadata,
+                    "Account statement PDF downloaded successfully for account " + maskedAccount
+            );
+        } catch (Exception ex) {
+            log.error("Failed to log audit event ACCOUNT_STATEMENT_PDF_DOWNLOAD for account: {}",
+                    DataMaskingUtil.maskAccountNumber(accountNumber), ex);
+        }
 
         String filename = buildFilename(accountNumber, fromDate, toDate, "pdf");
 
@@ -87,6 +112,27 @@ public class CusAccountStatementController {
 
         CusAccountStatementDTO statement = statementService.getAccountStatement(accountNumber, fromDate, toDate);
         byte[] csvBytes = csvService.generateAccountStatementCsv(statement);
+
+        try {
+            String maskedAccount = DataMaskingUtil.maskAccountNumber(accountNumber);
+            Map<String, Object> metadata = Map.of(
+                    "fromDate", fromDate.toString(),
+                    "toDate", toDate.toString(),
+                    "result", "SUCCESS"
+            );
+            auditTrailService.logDataChange(
+                    "REPORTING",
+                    "ACCOUNT_STATEMENT_CSV_DOWNLOAD",
+                    "ACCOUNT",
+                    maskedAccount,
+                    null,
+                    metadata,
+                    "Account statement CSV downloaded successfully for account " + maskedAccount
+            );
+        } catch (Exception ex) {
+            log.error("Failed to log audit event ACCOUNT_STATEMENT_CSV_DOWNLOAD for account: {}",
+                    DataMaskingUtil.maskAccountNumber(accountNumber), ex);
+        }
 
         String filename = buildFilename(accountNumber, fromDate, toDate, "csv");
 

@@ -5,6 +5,7 @@
     "searchPlaceholder": "ရှာဖွေရန်"
   },
   "faq": {
+    "noResults": "ရလဒ်မရှိပါ",
     "login": {
       "question": "Account ကို ဘယ်လို Login ဝင်ရမလဲ?",
       "answer": "Login Page မှာ Customer ID သို့မဟုတ် Account Number နဲ့ Password ကို ထည့်သွင်းပါ။ လိုအပ်သော Verification ပြုလုပ်ပြီး Account ကို ဝင်ရောက်အသုံးပြုနိုင်ပါတယ်။"
@@ -26,7 +27,7 @@
       "answer": "Transfer & Payments ကို ဝင်ရောက်ပြီး လမ်းညွှန်ချက်များအတိုင်း လုပ်ဆောင်ပါ။ ငွေလွှဲနိုင်မှုသည် Account Type နှင့် ခွင့်ပြုချက်များပေါ် မူတည်ပါတယ်။"
     },
 "accountTransfer": {
-  "question": "အခြား EKARAJ အသုံးပြုသူများထံ ငွေဘယ်လိုလွှဲနိုင်မလဲ။",
+  "question": " EKARAJ အသုံးပြုသူများထံ ငွေဘယ်လိုလွှဲနိုင်မလဲ။",
   "answer": "Transfer မှတစ်ဆင့် အခြား EKARAJ အသုံးပြုသူများထံ Customer Code သို့မဟုတ် Account Number ကို အသုံးပြုပြီး လွယ်ကူလျင်မြန်စွာ ငွေလွှဲနိုင်ပါသည်။"
 },
 "pin": {
@@ -43,8 +44,8 @@
     }
   },
   "about": {
-    "title": "MiniBank အကြောင်း",
-    "description": "MiniBank သည် လုံခြုံပြီး အသုံးပြုရလွယ်ကူသော Digital Banking Platform မှတစ်ဆင့် Banking ဝန်ဆောင်မှုများကို အဆင်ပြေစွာ အသုံးပြုနိုင်ရန် ရည်ရွယ်ထားပါတယ်။",
+    "title": "EKARAJ အကြောင်း",
+    "description": "EKARAJ သည် လုံခြုံပြီး အသုံးပြုရလွယ်ကူသော Digital Banking Platform မှတစ်ဆင့် Banking ဝန်ဆောင်မှုများကို အဆင်ပြေစွာ အသုံးပြုနိုင်ရန် ရည်ရွယ်ထားပါတယ်။",
     "features": {
       "banking": {
         "title": "Digital Banking",

@@ -6,10 +6,12 @@ import com.corebanking.exception.AccountNotFoundException;
 import com.corebanking.exception.CusAuthenticationException;
 import com.corebanking.exception.CusValidationException;
 import com.corebanking.repository.CusTransactionHistoryRepository;
+import com.corebanking.service.AuditTrailService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -27,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -43,6 +46,9 @@ class CusTransactionServiceTest {
 
     @Mock
     private CusTransactionHistoryRepository repository;
+
+    @Mock
+    private AuditTrailService auditTrailService;
 
     @InjectMocks
     private CusTransactionService transactionService;
@@ -416,6 +422,15 @@ class CusTransactionServiceTest {
 
         assertEquals("Account not found or access denied for this customer", ex.getMessage());
         verify(repository).getTransactionHistory(CUSTOMER_ID, ACCOUNT_NUMBER, null, null, null, null, null, null, 0, 10);
+        verify(auditTrailService, times(1)).logDataChange(
+                eq("SECURITY"),
+                eq("UNAUTHORIZED_ACCOUNT_ACCESS"),
+                eq("ACCOUNT"),
+                eq("******3817"),
+                isNull(),
+                any(),
+                any()
+        );
     }
 
     // =========================================================================
@@ -620,5 +635,160 @@ class CusTransactionServiceTest {
 
         assertSame(dae, ex);
         verify(repository).getTransactionHistory(CUSTOMER_ID, ACCOUNT_NUMBER, null, null, null, null, null, null, 0, 10);
+        verifyNoInteractions(auditTrailService);
+    }
+
+    // =========================================================================
+    // PART G — AUDIT LOGGING VERIFICATION TESTS (UNAUTHORIZED_ACCOUNT_ACCESS)
+    // =========================================================================
+
+    @Test
+    @SuppressWarnings("unchecked")
+    @DisplayName("Transaction History ownership denial produces exactly one UNAUTHORIZED_ACCOUNT_ACCESS with result DENIED and masked account")
+    void getTransactionHistory_ownershipDenial_auditsDeniedWithMaskedAccount() {
+        mockCustomerAuthentication(CUSTOMER_ID);
+
+        SQLException sqlException = new SQLException(
+                "Account not found or access denied for this customer",
+                "45000"
+        );
+        DataAccessException dae = new DataAccessException("SP failed", sqlException) {};
+
+        when(repository.getTransactionHistory(CUSTOMER_ID, ACCOUNT_NUMBER, null, null, null, null, null, null, 0, 10))
+                .thenThrow(dae);
+
+        assertThrows(
+                AccountNotFoundException.class,
+                () -> transactionService.getTransactionHistory(ACCOUNT_NUMBER, null, null, null, null, null, null, 0, 10)
+        );
+
+        ArgumentCaptor<String> catCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> typeCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> entityTypeCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> entityIdCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object> newEntityCaptor = ArgumentCaptor.forClass(Object.class);
+
+        verify(auditTrailService, times(1)).logDataChange(
+                catCaptor.capture(),
+                typeCaptor.capture(),
+                entityTypeCaptor.capture(),
+                entityIdCaptor.capture(),
+                isNull(),
+                newEntityCaptor.capture(),
+                any()
+        );
+
+        assertEquals("SECURITY", catCaptor.getValue());
+        assertEquals("UNAUTHORIZED_ACCOUNT_ACCESS", typeCaptor.getValue());
+        assertEquals("ACCOUNT", entityTypeCaptor.getValue());
+        assertEquals("******3817", entityIdCaptor.getValue());
+
+        assertInstanceOf(Map.class, newEntityCaptor.getValue());
+        Map<String, Object> meta = (Map<String, Object>) newEntityCaptor.getValue();
+        assertEquals("DENIED", meta.get("result"));
+    }
+
+    @Test
+    @DisplayName("Transaction Detail ownership denial produces exactly one UNAUTHORIZED_ACCOUNT_ACCESS audit event")
+    void getTransactionDetail_ownershipDenial_auditsDeniedWithMaskedAccount() {
+        mockCustomerAuthentication(CUSTOMER_ID);
+
+        when(repository.getTransactionDetail(CUSTOMER_ID, TRANSACTION_REF, ACCOUNT_NUMBER))
+                .thenThrow(new AccountNotFoundException("Account not found or access denied for this customer"));
+
+        assertThrows(
+                AccountNotFoundException.class,
+                () -> transactionService.getTransactionDetail(TRANSACTION_REF, ACCOUNT_NUMBER)
+        );
+
+        verify(auditTrailService, times(1)).logDataChange(
+                eq("SECURITY"),
+                eq("UNAUTHORIZED_ACCOUNT_ACCESS"),
+                eq("ACCOUNT"),
+                eq("******3817"),
+                isNull(),
+                any(),
+                any()
+        );
+    }
+
+    @Test
+    @DisplayName("Distinct statuses ownership denial produces exactly one UNAUTHORIZED_ACCOUNT_ACCESS audit event")
+    void getDistinctStatuses_ownershipDenial_auditsDeniedWithMaskedAccount() {
+        mockCustomerAuthentication(CUSTOMER_ID);
+
+        when(repository.getDistinctStatuses(CUSTOMER_ID, ACCOUNT_NUMBER))
+                .thenThrow(new AccountNotFoundException("Account not found or access denied for this customer"));
+
+        assertThrows(
+                AccountNotFoundException.class,
+                () -> transactionService.getDistinctStatuses(ACCOUNT_NUMBER)
+        );
+
+        verify(auditTrailService, times(1)).logDataChange(
+                eq("SECURITY"),
+                eq("UNAUTHORIZED_ACCOUNT_ACCESS"),
+                eq("ACCOUNT"),
+                eq("******3817"),
+                isNull(),
+                any(),
+                any()
+        );
+    }
+
+    @Test
+    @DisplayName("Distinct types ownership denial produces exactly one UNAUTHORIZED_ACCOUNT_ACCESS audit event")
+    void getDistinctTypes_ownershipDenial_auditsDeniedWithMaskedAccount() {
+        mockCustomerAuthentication(CUSTOMER_ID);
+
+        when(repository.getDistinctTypes(CUSTOMER_ID, ACCOUNT_NUMBER))
+                .thenThrow(new AccountNotFoundException("Account not found or access denied for this customer"));
+
+        assertThrows(
+                AccountNotFoundException.class,
+                () -> transactionService.getDistinctTypes(ACCOUNT_NUMBER)
+        );
+
+        verify(auditTrailService, times(1)).logDataChange(
+                eq("SECURITY"),
+                eq("UNAUTHORIZED_ACCOUNT_ACCESS"),
+                eq("ACCOUNT"),
+                eq("******3817"),
+                isNull(),
+                any(),
+                any()
+        );
+    }
+
+    @Test
+    @DisplayName("Successful transaction history retrieval does NOT produce any audit event")
+    void getTransactionHistory_successfulRead_doesNotProduceAuditEvent() {
+        mockCustomerAuthentication(CUSTOMER_ID);
+
+        CusTransactionHistoryRepository.ProcedureResult emptyResult =
+                CusTransactionHistoryRepository.ProcedureResult.builder()
+                        .items(Collections.emptyList())
+                        .totalElements(0L)
+                        .build();
+
+        when(repository.getTransactionHistory(CUSTOMER_ID, ACCOUNT_NUMBER, null, null, null, null, null, null, 0, 10))
+                .thenReturn(emptyResult);
+
+        transactionService.getTransactionHistory(ACCOUNT_NUMBER, null, null, null, null, null, null, 0, 10);
+
+        verifyNoInteractions(auditTrailService);
+    }
+
+    @Test
+    @DisplayName("Unauthenticated request throws CusAuthenticationException without producing audit event")
+    void getTransactionHistory_unauthenticated_doesNotProduceAuditEvent() {
+        SecurityContextHolder.clearContext();
+
+        assertThrows(
+                CusAuthenticationException.class,
+                () -> transactionService.getTransactionHistory(ACCOUNT_NUMBER, null, null, null, null, null, null, 0, 10)
+        );
+
+        verifyNoInteractions(auditTrailService, repository);
     }
 }

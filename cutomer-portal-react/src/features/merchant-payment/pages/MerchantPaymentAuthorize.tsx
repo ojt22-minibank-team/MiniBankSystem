@@ -4,7 +4,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { hasTokens } from '../../../utils/tokenStorage';
+import api from '../../../config/api';
+import { hasTokens, getAccessToken } from '../../../utils/tokenStorage';
 import { clearPendingPaymentRedirect } from '../../auth/utils/pendingPaymentRedirect';
 import { fetchPaymentDetails, fetchCustomerAccounts, authorizePayment } from '../api/merchantPaymentService';
 import type { PaymentDetails, CustomerAccount, PaymentReceipt as ReceiptType } from '../types/merchantPayment';
@@ -36,6 +37,7 @@ export const MerchantPaymentAuthorize: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [errorCode, setErrorCode] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   const { register, handleSubmit, formState: { errors, isSubmitting }, reset, setValue } = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -113,6 +115,33 @@ export const MerchantPaymentAuthorize: React.FC = () => {
       isCancelled = true;
     };
   }, [token, reset]);
+
+  const handleCancel = async () => {
+    try {
+      await axios.post('/api/customer/merchant-payment/cancel', {
+        paymentToken: token,
+        accountId: selectedAccountId || "UNKNOWN"
+      }, {
+        headers: { Authorization: `Bearer ${getAccessToken()}` }
+      });
+    } catch {
+      try {
+        await api.post('/merchant-payment/cancel', {
+          paymentToken: token,
+          accountId: selectedAccountId || "UNKNOWN"
+        });
+      } catch (err) {
+        console.error('Cancel payment notification error:', err);
+      }
+    }
+
+    clearPendingPaymentRedirect();
+    if (details && details.returnUrl) {
+      window.location.href = details.returnUrl;
+    } else {
+      navigate('/dashboard');
+    }
+  };
 
   const onSubmit = async (data: CheckoutFormData) => {
     if (!selectedAccountId) {
@@ -249,10 +278,7 @@ export const MerchantPaymentAuthorize: React.FC = () => {
           <div className="flex gap-3 mt-6">
             <button 
               type="button"
-              onClick={() => {
-                clearPendingPaymentRedirect();
-                navigate('/dashboard');
-              }}
+              onClick={() => setShowCancelConfirm(true)}
               disabled={isSubmitting}
               className="flex-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium py-3.5 transition-colors text-sm"
             >
@@ -268,6 +294,34 @@ export const MerchantPaymentAuthorize: React.FC = () => {
           </div>
         </form>
       </div>
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all">
+          <div className="w-full max-w-sm rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-[#0A192F]">
+            <h3 className="text-lg font-bold text-[#0A192F] dark:text-white mb-2">Cancel Payment?</h3>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-6">
+              Are you sure you want to cancel? Your pending e-commerce order will be dropped.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="flex-1 rounded-xl border border-red-200 bg-red-50 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-900/50"
+              >
+                Yes, Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCancelConfirm(false)}
+                className="flex-1 rounded-xl bg-gradient-to-r from-[#00A3C4] to-[#0284C7] py-3 text-sm font-bold text-white shadow-md shadow-cyan-500/25 transition-all hover:from-[#0891B2] hover:to-[#0369A1] active:scale-[0.98]"
+              >
+                No, Go Back
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

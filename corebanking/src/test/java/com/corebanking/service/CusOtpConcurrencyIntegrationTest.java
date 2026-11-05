@@ -1437,7 +1437,7 @@ class CusOtpConcurrencyIntegrationTest {
     @Configuration @EnableTransactionManagement
     @EnableJpaRepositories(basePackages = "com.corebanking.repository", includeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE,
             classes = {CusCredentialsRepository.class, CusCorporateCredentialRepository.class, CusOtpChallengesRepository.class,
-                    CusCustomerRepository.class, CusAccountsRepository.class, CusCorporateUserRepository.class, CusAuthSessionsRepository.class,
+                    CusCustomerRepository.class, AccountRepository.class, CusCorporateUserRepository.class, CusAuthSessionsRepository.class,
                     CusLoginAttemptsRepository.class, CusAuditLogsRepository.class, CusJwtRevokedTokensRepository.class}))
     @Import({CusAuthService.class, CusCustomerPasswordResetService.class, CusCustomerPinResetService.class, CusCustomerSessionService.class,
             CusCustomerSessionIssuanceService.class, CusCustomerLoginAttemptService.class, CusSessionService.class, CusJwtService.class,

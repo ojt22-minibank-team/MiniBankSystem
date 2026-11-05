@@ -38,6 +38,16 @@ public class MerchantAuthorizationEngine {
         return gatewayOutboundPort.fetchPaymentDetails(paymentToken);
     }
 
+    public void cancelPayment(String token, String accountId) {
+        String effectiveAccountId = (accountId != null && !accountId.trim().isEmpty()) ? accountId : "UNKNOWN";
+        log.info("Cancelling payment for token {} (Account: {})", token, effectiveAccountId);
+
+        safeAuditLog("TRANSACTION", "MERCHANT_PAYMENT_CANCELLED", token,
+                "Customer manually cancelled checkout for payment token " + token);
+
+        notifyGatewayFailure(token, effectiveAccountId, "USER_CANCELLED", "Customer manually cancelled the checkout.");
+    }
+
     public PaymentReceiptResponse processPaymentAuthorization(MerchantPaymentRequest request) {
         String token = request.getPaymentToken();
 
@@ -86,7 +96,8 @@ public class MerchantAuthorizationEngine {
             safeAuditLog("TRANSACTION", "MERCHANT_PAYMENT_AUTHORIZED", token,
                     "Authorized merchant payment of " + realAmount + " MMK from account " + request.getAccountId());
 
-            // 4. Asynchronous real-time notification dispatch to both Payer and Merchant
+            // 4. Asynchronous real-time notification dispatch to both Payer and Merchant - COMMENTED OUT
+            /*
             try {
                 if (asyncNotificationService != null) {
                     asyncNotificationService.sendMerchantPaymentNotificationAsync(
@@ -103,6 +114,7 @@ public class MerchantAuthorizationEngine {
             } catch (Exception notiEx) {
                 log.warn("Could not dispatch merchant payment notification for token {}: {}", token, notiEx.getMessage());
             }
+            */
 
             return PaymentReceiptResponse.builder()
                     .success(true)

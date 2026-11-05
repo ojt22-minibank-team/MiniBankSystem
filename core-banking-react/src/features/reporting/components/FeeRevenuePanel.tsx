@@ -40,7 +40,7 @@ const FeeRevenuePanel: React.FC<Props> = ({
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [, setLoadDuration] = useState<number | null>(null);
+  const [loadDuration, setLoadDuration] = useState<number | null>(null);
 
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 30;
@@ -191,10 +191,17 @@ const FeeRevenuePanel: React.FC<Props> = ({
       {/* Main Table Card */}
       <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 border-b border-slate-100">
-          <span className="text-xs sm:text-sm font-bold text-slate-900 truncate">
-            Fee & Revenue Breakdown ({items.length} rows
-            {totalPages > 1 ? ` — Page ${page} of ${totalPages} (30 rows/page)` : ''})
-          </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs sm:text-sm font-bold text-slate-900 truncate">
+              Fee & Revenue Breakdown ({items.length} rows
+              {totalPages > 1 ? ` — Page ${page} of ${totalPages} (30 rows/page)` : ''})
+            </span>
+            {loadDuration !== null && (
+              <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                ⏱️ {loadDuration.toFixed(2)}s
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-2 flex-wrap">
             <ExportButtons
               onExportCsv={() => exportFeeRevenue(params, 'csv')}

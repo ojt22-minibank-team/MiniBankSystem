@@ -16,8 +16,13 @@ import {
   maskAccountNumber,
   formatNotificationMessage,
 } from "../utils/notificationFormatters";
-import { SESSION_TIMEOUT_EVENT } from "../../../utils/sessionEvents";
-import { hasTokens, subscribeToAuthenticationChanges } from "../../../utils/tokenStorage";
+import { SESSION_TIMEOUT_EVENT, type SessionTimeoutDetail } from "../../../utils/sessionEvents";
+import {
+  hasTokens,
+  getAuthenticationGeneration,
+  isAuthenticationGenerationCurrent,
+  subscribeToAuthenticationChanges,
+} from "../../../utils/tokenStorage";
 
 export interface ToastData {
   id: string;
@@ -45,6 +50,8 @@ export const showAppToast = (toast: Omit<ToastData, "id">) => {
 
 export const ToastContainer: React.FC = () => {
   const [toasts, setToasts] = useState<ToastData[]>([]);
+  // Capture the active session generation at mount so incoming events can be validated
+  const sessionGenerationRef = useRef<number | null>(null);
 
   const addToast = useCallback((newToast: ToastData) => {
     setToasts((prev) => {
@@ -77,11 +84,25 @@ export const ToastContainer: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // Capture the generation that is active when this effect runs (i.e. the current session)
+    const effectGeneration = getAuthenticationGeneration();
+    sessionGenerationRef.current = effectGeneration;
+
     // 1. Listen to real-time WebSocket notifications
     const handleWsNotification = (e: Event) => {
       const customEvent = e as CustomEvent<NotificationItem>;
       const noti = customEvent.detail;
       if (!noti) return;
+
+      // Generation Ownership Check: discard events that belong to an old session
+      const currentGen = getAuthenticationGeneration();
+      if (
+        !hasTokens() ||
+        !isAuthenticationGenerationCurrent(currentGen) ||
+        currentGen !== sessionGenerationRef.current
+      ) {
+        return;
+      }
 
       const titleLower = (noti.title || "").toLowerCase();
       const messageLower = (noti.message || "").toLowerCase();
@@ -127,13 +148,28 @@ export const ToastContainer: React.FC = () => {
     };
 
     // 3. Clear active toasts on Session Timeout or Logout
-    const clearAllToasts = () => {
+    const clearAllToasts = (event?: Event) => {
+      if (event) {
+        const detail = (event as CustomEvent<SessionTimeoutDetail>).detail;
+        if (detail && Number.isSafeInteger(detail.sourceGeneration)) {
+          // Generation Ownership Check: Ignore stale timeout events belonging to a previous session
+          const currentGen = getAuthenticationGeneration();
+          if (currentGen > detail.sourceGeneration && hasTokens() && isAuthenticationGenerationCurrent(currentGen)) {
+            return;
+          }
+        }
+      }
       setToasts([]);
     };
 
     const unsubscribeAuth = subscribeToAuthenticationChanges(() => {
       if (!hasTokens()) {
+        // Session ended: clear session generation so stale WS events are rejected
+        sessionGenerationRef.current = null;
         clearAllToasts();
+      } else {
+        // New session started (e.g. Customer B login): capture new generation
+        sessionGenerationRef.current = getAuthenticationGeneration();
       }
     });
 

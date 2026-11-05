@@ -227,7 +227,7 @@ class CusSessionClientMetadataTest {
             when(challenges.findTopByChallengeGroupIdAndSubjectTypeAndPurposeOrderByOtpIdDesc(GROUP, OtpSubjectType.CUSTOMER, OtpPurpose.LOGIN)).thenReturn(Optional.of(challenge));
             when(challenges.findFirstByChallengeGroupIdAndSubjectTypeAndPurposeOrderByOtpIdDesc(GROUP, OtpSubjectType.CUSTOMER, OtpPurpose.LOGIN)).thenReturn(Optional.of(challenge));
             when(challenges.findFirstByCustomer_CustomerIdAndSubjectTypeAndPurposeAndResendNoOrderByOtpIdDesc(ID, OtpSubjectType.CUSTOMER, OtpPurpose.LOGIN, 0)).thenReturn(Optional.of(challenge));
-            var individualAuth = new CusAuthService(mock(CusCustomerRepository.class), mock(CusAccountsRepository.class), individualCredentials,
+            var individualAuth = new CusAuthService(mock(CusCustomerRepository.class), mock(AccountRepository.class), individualCredentials,
                     new CusCustomerLoginAttemptService(attempts), challenges, encoder, sessions, jwt, shared, revoked, mock(CusEmailService.class), audit, null, null, null);
             ReflectionTestUtils.setField(individualAuth, "entityManager", mock(EntityManager.class));
             Customers company = Customers.builder().customerId(UUID.randomUUID()).customerCode("COMPANY-001").customerType(CustomerType.COMPANY).status(CustomerStatus.ACTIVE).build();
