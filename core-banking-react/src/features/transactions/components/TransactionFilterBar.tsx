@@ -4,6 +4,7 @@ import {
   RotateCcw,
   SlidersHorizontal,
   ChevronDown,
+  AlertTriangle,
 } from 'lucide-react';
 import type { StaffTransactionSearchParams } from '../../../types/transactions.types';
 
@@ -22,11 +23,15 @@ export const getTodayDateRange = () => {
 interface Props {
   onFilterChange: (params: StaffTransactionSearchParams) => void;
   isLoading: boolean;
+  selectedStatus?: string;
 }
 
 const STATUS_OPTIONS = [
   { value: 'ALL', label: 'All Statuses' },
+  { value: 'HELD', label: 'Held (Under Review / Suspicious)' },
+  { value: 'PENDING_AUTHORIZATION', label: 'Pending Authorization' },
   { value: 'COMPLETED', label: 'Completed' },
+  { value: 'REJECTED', label: 'Rejected' },
   { value: 'FAILED', label: 'Failed' },
   { value: 'CANCELLED', label: 'Cancelled' },
   { value: 'REVERSED', label: 'Reversed' },
@@ -54,9 +59,10 @@ const CHANNEL_OPTIONS = [
 export default React.memo(function TransactionFilterBar({
   onFilterChange,
   isLoading,
+  selectedStatus,
 }: Props) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [status, setStatus] = useState('ALL');
+  const [status, setStatus] = useState(selectedStatus || 'ALL');
   const [type, setType] = useState('ALL');
   const [channel, setChannel] = useState('ALL');
   const [timePreset, setTimePreset] = useState<TimeRangePreset>('TODAY');
@@ -65,6 +71,13 @@ export default React.memo(function TransactionFilterBar({
   const [minAmount, setMinAmount] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Sync with prop if parent sets it
+  React.useEffect(() => {
+    if (selectedStatus !== undefined && selectedStatus !== status) {
+      setStatus(selectedStatus);
+    }
+  }, [selectedStatus]);
 
   // Debounced search timer ref
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -187,7 +200,7 @@ export default React.memo(function TransactionFilterBar({
     maxAmount !== '';
 
   return (
-    <div className="bg-white/80 liquid-glass rounded-2xl border border-slate-200/70 p-4 mb-6 shadow-xs backdrop-blur-md">
+    <div className="bg-white/80 liquid-glass rounded-2xl border border-slate-200/70 p-4 mb-6 shadow-xs backdrop-blur-md space-y-3">
       {/* Top Filter Row: Search & Core Selectors */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
         {/* Search Input */}
@@ -198,7 +211,7 @@ export default React.memo(function TransactionFilterBar({
             placeholder="Search Reference, Account No, Customer Name..."
             value={searchTerm}
             onChange={handleSearchChange}
-            className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-white/90 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800 placeholder-slate-400 font-medium transition-all"
+            className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-white/90 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800 placeholder-slate-400 font-medium transition-all"
           />
           {searchTerm && (
             <button
@@ -208,7 +221,7 @@ export default React.memo(function TransactionFilterBar({
               }}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs px-1 cursor-pointer"
             >
-              âœ•
+              ✕
             </button>
           )}
         </div>
@@ -223,7 +236,7 @@ export default React.memo(function TransactionFilterBar({
                 setStatus(val);
                 emitFilterChange({ status: val });
               }}
-              className="w-full appearance-none pl-3 pr-8 py-2 text-xs rounded-xl border border-slate-200 bg-white/90 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-700 font-medium cursor-pointer transition-all"
+              className="w-full appearance-none pl-3 pr-8 py-2 text-xs rounded-xl border border-slate-200 bg-white/90 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-700 font-medium cursor-pointer transition-all"
             >
               {STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -245,7 +258,7 @@ export default React.memo(function TransactionFilterBar({
                 setType(val);
                 emitFilterChange({ type: val });
               }}
-              className="w-full appearance-none pl-3 pr-8 py-2 text-xs rounded-xl border border-slate-200 bg-white/90 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-700 font-medium cursor-pointer transition-all"
+              className="w-full appearance-none pl-3 pr-8 py-2 text-xs rounded-xl border border-slate-200 bg-white/90 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-700 font-medium cursor-pointer transition-all"
             >
               {TYPE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -270,7 +283,7 @@ export default React.memo(function TransactionFilterBar({
                 }
                 emitFilterChange({ timePreset: val });
               }}
-              className="w-full appearance-none pl-3 pr-8 py-2 text-xs rounded-xl border border-slate-200 bg-white/90 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-700 font-medium cursor-pointer transition-all"
+              className="w-full appearance-none pl-3 pr-8 py-2 text-xs rounded-xl border border-slate-200 bg-white/90 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-700 font-medium cursor-pointer transition-all"
             >
               <option value="TODAY">Today</option>
               <option value="YESTERDAY">Yesterday</option>
@@ -312,6 +325,43 @@ export default React.memo(function TransactionFilterBar({
         </div>
       </div>
 
+      {/* Quick Queue Filters Bar */}
+      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100 text-xs">
+        <span className="text-[11px] font-semibold text-slate-400 mr-1">Quick Filter:</span>
+        <button
+          type="button"
+          onClick={() => {
+            const next = status === 'HELD' ? 'ALL' : 'HELD';
+            setStatus(next);
+            emitFilterChange({ status: next });
+          }}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            status === 'HELD'
+              ? 'bg-amber-500 text-white shadow-xs'
+              : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
+          }`}
+        >
+          <AlertTriangle className="w-3.5 h-3.5" />
+          <span>Review Queue (Held)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            const next = status === 'PENDING_AUTHORIZATION' ? 'ALL' : 'PENDING_AUTHORIZATION';
+            setStatus(next);
+            emitFilterChange({ status: next });
+          }}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            status === 'PENDING_AUTHORIZATION'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200'
+          }`}
+        >
+          <span>Pending Authorization</span>
+        </button>
+      </div>
+
       {/* Advanced Filter Row (Expandable) */}
       {showAdvanced && (
         <div className="mt-3.5 pt-3.5 border-t border-slate-200/60 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 animate-fadeIn">
@@ -328,7 +378,7 @@ export default React.memo(function TransactionFilterBar({
                   setChannel(val);
                   emitFilterChange({ channel: val });
                 }}
-                className="w-full appearance-none pl-3 pr-8 py-2 text-xs rounded-xl border border-slate-200 bg-white/90 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                className="w-full appearance-none pl-3 pr-8 py-2 text-xs rounded-xl border border-slate-200 bg-white/90 text-slate-700 font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
               >
                 {CHANNEL_OPTIONS.map((c) => (
                   <option key={c.value} value={c.value}>
@@ -354,7 +404,7 @@ export default React.memo(function TransactionFilterBar({
                 setTimePreset('CUSTOM');
                 emitFilterChange({ timePreset: 'CUSTOM', customStart: val });
               }}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white/90 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white/90 text-slate-700 font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             />
           </div>
 
@@ -371,7 +421,7 @@ export default React.memo(function TransactionFilterBar({
                 setTimePreset('CUSTOM');
                 emitFilterChange({ timePreset: 'CUSTOM', customEnd: val });
               }}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white/90 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white/90 text-slate-700 font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             />
           </div>
 
@@ -390,7 +440,7 @@ export default React.memo(function TransactionFilterBar({
                   setMinAmount(val);
                   emitFilterChange({ minAmount: val });
                 }}
-                className="w-1/2 px-2.5 py-2 text-xs rounded-xl border border-slate-200 bg-white/90 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-1/2 px-2.5 py-2 text-xs rounded-xl border border-slate-200 bg-white/90 text-slate-700 font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               />
               <span className="text-slate-400 text-xs">-</span>
               <input
@@ -402,7 +452,7 @@ export default React.memo(function TransactionFilterBar({
                   setMaxAmount(val);
                   emitFilterChange({ maxAmount: val });
                 }}
-                className="w-1/2 px-2.5 py-2 text-xs rounded-xl border border-slate-200 bg-white/90 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-1/2 px-2.5 py-2 text-xs rounded-xl border border-slate-200 bg-white/90 text-slate-700 font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               />
             </div>
           </div>

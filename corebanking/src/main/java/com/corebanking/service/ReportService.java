@@ -406,9 +406,11 @@ public class ReportService {
         LargeTransactionReportDTO report = getLargeTransactionSummary(startDate, endDate, threshold, txType);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8))) {
-            writer.println("Reference,Timestamp,Type,Channel,Amount,Source Acc,Source Name,Dest Acc,Dest Name,Risk");
+            writer.println("No,Reference,Timestamp,Type,Channel,Amount,Source Acc,Source Name,Dest Acc,Dest Name,Risk");
+            int no = 1;
             for (LargeTransactionItemDTO item : report.getItems()) {
-                writer.printf("%s,%s,%s,%s,%.2f,%s,%s,%s,%s,%s%n",
+                writer.printf("%d,%s,%s,%s,%s,%.2f,%s,%s,%s,%s,%s%n",
+                        no++,
                         item.getTransactionRef(),
                         item.getTransactionTime(),
                         item.getTransactionType(),
@@ -432,33 +434,36 @@ public class ReportService {
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("Large Transactions AML");
             org.apache.poi.ss.usermodel.Row header = sheet.createRow(0);
-            String[] cols = {"Tx Ref", "Timestamp", "Type", "Channel", "Amount", "Source Acc", "Source Customer", "Dest Acc", "Dest Customer", "Risk Level"};
+            String[] cols = {"No", "Tx Ref", "Timestamp", "Type", "Channel", "Amount", "Source Acc", "Source Customer", "Dest Acc", "Dest Customer", "Risk Level"};
             for (int i = 0; i < cols.length; i++) header.createCell(i).setCellValue(cols[i]);
 
             int rowIdx = 1;
+            int no = 1;
             for (LargeTransactionItemDTO item : report.getItems()) {
                 org.apache.poi.ss.usermodel.Row row = sheet.createRow(rowIdx++);
-                row.createCell(0).setCellValue(item.getTransactionRef());
-                row.createCell(1).setCellValue(item.getTransactionTime() != null ? item.getTransactionTime().toString() : "");
-                row.createCell(2).setCellValue(item.getTransactionType());
-                row.createCell(3).setCellValue(item.getChannel());
-                row.createCell(4).setCellValue(item.getAmount().doubleValue());
-                row.createCell(5).setCellValue(DataMaskingUtil.maskAccountNumber(item.getSourceAccountNo()));
-                row.createCell(6).setCellValue(item.getSourceCustomerName());
-                row.createCell(7).setCellValue(DataMaskingUtil.maskAccountNumber(item.getDestAccountNo()));
-                row.createCell(8).setCellValue(item.getDestCustomerName());
-                row.createCell(9).setCellValue(item.getRiskLevel());
+                row.createCell(0).setCellValue(no++);
+                row.createCell(1).setCellValue(item.getTransactionRef());
+                row.createCell(2).setCellValue(item.getTransactionTime() != null ? item.getTransactionTime().toString() : "");
+                row.createCell(3).setCellValue(item.getTransactionType());
+                row.createCell(4).setCellValue(item.getChannel());
+                row.createCell(5).setCellValue(item.getAmount().doubleValue());
+                row.createCell(6).setCellValue(DataMaskingUtil.maskAccountNumber(item.getSourceAccountNo()));
+                row.createCell(7).setCellValue(item.getSourceCustomerName());
+                row.createCell(8).setCellValue(DataMaskingUtil.maskAccountNumber(item.getDestAccountNo()));
+                row.createCell(9).setCellValue(item.getDestCustomerName());
+                row.createCell(10).setCellValue(item.getRiskLevel());
             }
             sheet.setColumnWidth(0, 2000);  // No
             sheet.setColumnWidth(1, 4500);  // Reference
-            sheet.setColumnWidth(2, 5200);  // Date
-            sheet.setColumnWidth(3, 3800);  // Amount
-            sheet.setColumnWidth(4, 3000);  // Fee
-            sheet.setColumnWidth(5, 4500);  // Source Account
-            sheet.setColumnWidth(6, 4500);  // Dest Account
-            sheet.setColumnWidth(7, 3200);  // Status
-            sheet.setColumnWidth(8, 3000);  // Channel
-            sheet.setColumnWidth(9, 2800);  // Currency
+            sheet.setColumnWidth(2, 5200);  // Date / Timestamp
+            sheet.setColumnWidth(3, 4000);  // Type
+            sheet.setColumnWidth(4, 3500);  // Channel
+            sheet.setColumnWidth(5, 4500);  // Amount
+            sheet.setColumnWidth(6, 4500);  // Source Account
+            sheet.setColumnWidth(7, 4800);  // Source Customer
+            sheet.setColumnWidth(8, 4500);  // Dest Account
+            sheet.setColumnWidth(9, 4800);  // Dest Customer
+            sheet.setColumnWidth(10, 3500); // Risk Level
             workbook.write(out);
             workbook.dispose();
             return out.toByteArray();
