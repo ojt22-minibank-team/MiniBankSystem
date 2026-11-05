@@ -206,7 +206,8 @@ BEGIN
       AND (p_channel IS NULL OR p_channel = '' OR bt.channel = p_channel)
       AND (p_min_amount IS NULL OR bt.amount >= p_min_amount)
       AND (p_max_amount IS NULL OR bt.amount <= p_max_amount)
-    ORDER BY COALESCE(bt.completed_at, bt.initiated_at) DESC;
+    ORDER BY COALESCE(bt.completed_at, bt.initiated_at) DESC
+    LIMIT 1000;
 END //
 
 DELIMITER ;

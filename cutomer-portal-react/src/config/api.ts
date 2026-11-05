@@ -1,4 +1,4 @@
-import axios, {
+﻿import axios, {
   type AxiosError,
   type InternalAxiosRequestConfig,
 } from "axios";
@@ -22,8 +22,12 @@ import {
 // BASE URL
 // ======================================================
 
-const BASE_URL =
-  "http://localhost:8080/api/customer";
+const API_BASE = (
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
+  "http://localhost:8080"
+).replace(/\/+$/, "");
+
+const BASE_URL = `${API_BASE}/api/customer`;
 
 
 // ======================================================

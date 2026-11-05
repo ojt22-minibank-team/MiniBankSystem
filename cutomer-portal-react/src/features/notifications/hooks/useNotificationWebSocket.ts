@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import {
   getAccessToken, getAuthenticationGeneration, hasTokens, isAuthenticationGenerationCurrent,
   subscribeToAuthenticationChanges,
@@ -95,9 +95,18 @@ export const useNotificationWebSocket = ({
       attempts++;
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host = window.location.hostname || "localhost";
+      let wsUrl: string;
+      if (typeof import.meta !== "undefined" && import.meta.env?.VITE_WS_URL) {
+        wsUrl = import.meta.env.VITE_WS_URL.replace(/\/+$/, "") + "/ws/notifications?token=" + encodeURIComponent(expected.token);
+      } else if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) {
+        const wsBase = import.meta.env.VITE_API_BASE_URL.replace(/^http:/, "ws:").replace(/^https:/, "wss:").replace(/\/+$/, "");
+        wsUrl = wsBase + "/ws/notifications?token=" + encodeURIComponent(expected.token);
+      } else {
+        wsUrl = protocol + "//" + host + ":8080/ws/notifications?token=" + encodeURIComponent(expected.token);
+      }
       try {
         // Access token only; transport retained for existing browser/client compatibility.
-        const ws = new WebSocket(protocol + "//" + host + ":8080/ws/notifications?token=" + encodeURIComponent(expected.token));
+        const ws = new WebSocket(wsUrl);
         socket = ws;
         expiryTimer = window.setTimeout(() => synchronize(), Math.max(0, expected.expiresAt - Date.now()));
         ws.onopen = () => {
