@@ -11,7 +11,7 @@ import BeneficiariesPage from "./features/beneficiaries/pages/BeneficiariesPage"
 import MainLayout from "./components/layout/MainLayout";
 import AccountDetailPage from "./features/customer-account/accounts/pages/AccountDetailPage";
 import AnnouncementsPage from "./features/customer-account/announcements/pages/AnnouncementsPage";
-import  HelpSupportPage  from "./features/customer-account/help-support/pages/HelpSupportPage";
+
 function App() {
   return (
     <Routes>
@@ -62,11 +62,6 @@ function App() {
         <Route
           path="/beneficiaries"
           element={<BeneficiariesPage />}
-        />
-
-        <Route
-          path="/help"
-          element={<HelpSupportPage />}
         />
 
         {/* Account Details */}

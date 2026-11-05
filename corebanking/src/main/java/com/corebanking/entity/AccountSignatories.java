@@ -28,14 +28,6 @@ public class AccountSignatories {
     @Column(name = "signatory_id", columnDefinition = "BINARY(16)", nullable = false)
     @JdbcTypeCode(SqlTypes.BINARY)
     private UUID signatoryId;
-    
- // ... အခြား fields များ ...
-
-    @Column(name = "account_number", length = 30)
-    private String accountNumber; // 👈 ဤလိုင်းကို ထည့်သွင်းပါ
-
-    @Column(name = "customer_code", length = 50)
-    private String customerCode;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "account_id", nullable = false,

@@ -1,7 +1,7 @@
 package com.corebanking.entity.enums;
 public enum CustomerType {
     PERSONAL,
-    COMPANY, INDIVIDUAL;
+    COMPANY;
 
     public static CustomerType fromString(String value) {
         if (value == null) {

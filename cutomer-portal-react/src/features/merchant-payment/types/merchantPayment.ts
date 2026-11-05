@@ -1,10 +1,9 @@
-﻿export interface PaymentDetails {
+export interface PaymentDetails {
     merchantName: string;
     orderId: string;
     amount: number;
     currency: string;
     status: string;
-    returnUrl?: string;
 }
 
 export interface CustomerAccount {

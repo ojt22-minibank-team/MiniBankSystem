@@ -1,11 +1,10 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+// Backend base URL
+export const API_BASE_URL = "http://localhost:8080";
 
 export const API_ENDPOINTS = {
   // Auth
   AUTH: {
     LOGIN: "/api/auth/login",
-    VERIFY_OTP: "/api/auth/verify-otp",
-    RESEND_OTP: "/api/auth/resend-otp",
     LOGOUT: "/api/auth/logout",
     REFRESH: "/api/auth/refresh",
     STAFF_PASSWORD_SETUP_COMPLETE: "/api/auth/staff-password-setup/complete",
@@ -67,8 +66,6 @@ export const API_ENDPOINTS = {
     WITHDRAW: "/api/transactions/otc/withdraw",
     PARAMETERS: "/api/transactions/otc/parameters",
     CHECK_REFERENCE: "/api/transactions/otc/check-reference",
-    ACCOUNT_LIMITS: "/api/transactions/otc/account-limits",
-    CALCULATE_FEE: "/api/transactions/otc/calculate-fee",
   },
 
   // Teller Operations
@@ -84,13 +81,6 @@ export const API_ENDPOINTS = {
     BASE: "/api/v1/staff/audit-logs",
     BY_ID: (id: number | string) => `/api/v1/staff/audit-logs/${id}`,
   },
-
-  // Staff Transaction Management & Details
-  STAFF_TRANSACTIONS: {
-    BASE: "/api/v1/staff/transactions",
-    BY_IDENTIFIER: (id: string) => `/api/v1/staff/transactions/detail/${encodeURIComponent(id)}`,
-    STATS: "/api/v1/staff/transactions/stats",
-  },
 } as const;
 
 // localStorage keys
@@ -99,5 +89,4 @@ export const STORAGE_KEYS = {
   REFRESH_TOKEN: "cb_refresh_token",
   USERNAME: "cb_username",
   ROLES: "cb_roles",
-  STAFF_PROFILE: "cb_staff_profile",
 } as const;

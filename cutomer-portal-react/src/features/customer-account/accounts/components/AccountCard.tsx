@@ -62,10 +62,10 @@ export default function AccountCard({
   const maskedAccNumber = (() => {
     const cleaned = account.accountNumber.replace(/\D/g, "");
     if (cleaned.length === 10) {
-      return `**** **** ${cleaned.slice(6, 10)}`;
+      return `**** *** ${cleaned.slice(7, 10)}`;
     }
-    const last4 = cleaned.length >= 4 ? cleaned.slice(-4) : cleaned;
-    return `**** **** ${last4}`;
+    const last3 = cleaned.length >= 3 ? cleaned.slice(-3) : cleaned;
+    return `**** *** ${last3}`;
   })();
 
   return (

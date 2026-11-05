@@ -1,4 +1,4 @@
-﻿import axios, {
+import axios, {
   type AxiosError,
   type InternalAxiosRequestConfig,
 } from "axios";
@@ -22,12 +22,8 @@ import {
 // BASE URL
 // ======================================================
 
-const API_BASE = (
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
-  "http://localhost:8080"
-).replace(/\/+$/, "");
-
-const BASE_URL = `${API_BASE}/api/customer`;
+const BASE_URL =
+  "http://localhost:8080/api/customer";
 
 
 // ======================================================
@@ -48,14 +44,6 @@ const BASE_URL = `${API_BASE}/api/customer`;
 
 const api = axios.create({
   baseURL: BASE_URL,
-});
-
-// Axios merges defaults at request creation, before asynchronous interceptors.
-// Capture the origin there so a queued A request cannot be relabelled as B.
-// An explicit originating generation (including retries) takes precedence.
-Object.defineProperty(api.defaults, "_authGeneration", {
-  enumerable: true,
-  get: getAuthenticationGeneration,
 });
 
 
@@ -187,8 +175,8 @@ api.interceptors.request.use(
     if (!isPublicEndpoint(config.url) && config.url !== "/auth/logout") {
       const request = config as RetryableRequestConfig;
       request._authGeneration ??= getAuthenticationGeneration();
-      if (!isAuthenticationGenerationCurrent(request._authGeneration)) {
-        return Promise.reject(new axios.CanceledError("Authentication changed before sending the request.", config));
+      if (request._retry && !isAuthenticationGenerationCurrent(request._authGeneration)) {
+        return Promise.reject(new Error("Authentication changed before retrying the request."));
       }
     }
 
@@ -442,12 +430,6 @@ api.interceptors.response.use(
 
   (response) => {
 
-    const request = response.config as RetryableRequestConfig;
-    if (!isPublicEndpoint(request.url) && request.url !== "/auth/logout" &&
-        (request._authGeneration === undefined || !isAuthenticationGenerationCurrent(request._authGeneration))) {
-      return Promise.reject(new axios.CanceledError("Authentication changed before accepting the response.", request));
-    }
-
     return response;
 
   },
@@ -576,15 +558,13 @@ api.interceptors.response.use(
       "SESSION_EXPIRED"
     ) {
 
-      const invalidatedGeneration = invalidateAuthenticationGeneration();
+      invalidateAuthenticationGeneration();
 
       dispatchSessionTimeout(
 
         responseData.message ||
 
-        "Your session has expired.",
-        generation,
-        invalidatedGeneration
+        "Your session has expired."
 
       );
 

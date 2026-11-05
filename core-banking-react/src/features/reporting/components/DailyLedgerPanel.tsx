@@ -36,6 +36,7 @@ const DailyLedgerPanel: React.FC<Props> = ({
 }) => {
   const [data, setData] = useState<DailyLedgerSummary[]>([]);
   const [loading, setLoading] = useState(false);
+  const [fetched, setFetched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadDuration, setLoadDuration] = useState<number | null>(null);
 
@@ -63,6 +64,7 @@ const DailyLedgerPanel: React.FC<Props> = ({
       const elapsedSec = (performance.now() - startTime) / 1000;
       setLoadDuration(elapsedSec);
       setData(result);
+      setFetched(true);
     } catch (e: unknown) {
       const elapsedSec = (performance.now() - startTime) / 1000;
       setLoadDuration(elapsedSec);
@@ -95,6 +97,10 @@ const DailyLedgerPanel: React.FC<Props> = ({
   const totalFee = filteredData.reduce((s, r) => s + Number(r.totalFee || 0), 0);
   const uniqueDates = new Set(filteredData.map((r) => r.reportDate)).size;
 
+  const chartData = [...filteredData].sort((a, b) => b.totalAmount - a.totalAmount).slice(0, 8);
+  const maxAmt = Math.max(...chartData.map((r) => r.totalAmount), 1);
+  const BAR_H = 120;
+
   const columns: Column<DailyLedgerSummary>[] = [
     {
       key: 'no',
@@ -106,8 +112,11 @@ const DailyLedgerPanel: React.FC<Props> = ({
       label: 'Transaction Type',
       render: (r: DailyLedgerSummary) => (
         <span
-          className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold"
           style={{
+            padding: '2px 8px',
+            borderRadius: '10px',
+            fontSize: '11px',
+            fontWeight: 600,
             backgroundColor: (typeColors[r.transactionType] ?? '#94a3b8') + '22',
             color: typeColors[r.transactionType] ?? '#64748b',
           }}
@@ -120,13 +129,13 @@ const DailyLedgerPanel: React.FC<Props> = ({
     { key: 'transactionCount', label: 'Count' },
     {
       key: 'totalAmount',
-      label: 'Total Amount (MMK)',
+      label: 'Total Amount',
       render: (r: DailyLedgerSummary) =>
         r.totalAmount?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
     },
     {
       key: 'totalFee',
-      label: 'Total Fee (MMK)',
+      label: 'Total Fee',
       render: (r: DailyLedgerSummary) =>
         r.totalFee?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
     },
@@ -134,32 +143,31 @@ const DailyLedgerPanel: React.FC<Props> = ({
   ];
 
   return (
-    <div className="w-full">
-      {/* Metric Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 mb-5">
+    <div>
+      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '20px' }}>
         <MetricCard
-          icon="💳"
+          icon="Transactions"
           label="Total Transactions"
           value={totalTxns.toLocaleString()}
           sub="Across all types"
           color="#2563EB"
         />
         <MetricCard
-          icon="📊"
+          icon="Volume"
           label="Total Volume"
           value={totalAmt.toLocaleString('en-US', { minimumFractionDigits: 2 })}
           sub="Sum of amounts"
           color="#1E40AF"
         />
         <MetricCard
-          icon="💰"
+          icon="Fees"
           label="Total Fees Collected"
           value={totalFee.toLocaleString('en-US', { minimumFractionDigits: 2 })}
           sub="All fee types"
           color="#7c3aed"
         />
         <MetricCard
-          icon="📅"
+          icon="Days"
           label="Active Days"
           value={uniqueDates}
           sub="Days with transactions"
@@ -167,20 +175,127 @@ const DailyLedgerPanel: React.FC<Props> = ({
         />
       </div>
 
-      {/* Main Table Card */}
-      <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 border-b border-slate-100">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs sm:text-sm font-bold text-slate-900 truncate">
-              Daily Ledger Records ({filteredData.length} rows{totalPages > 1 ? ` — Page ${page} of ${totalPages} (30 rows/page)` : ''})
-            </span>
+      {fetched && chartData.length > 0 && (
+        <div
+          style={{
+            backgroundColor: '#fff',
+            borderRadius: '10px',
+            border: '1px solid #e2e8f0',
+            padding: '20px 24px',
+            marginBottom: '20px',
+          }}
+        >
+          <div
+            style={{
+              fontSize: '13px',
+              fontWeight: 700,
+              color: '#1E40AF',
+              marginBottom: '12px',
+            }}
+          >
+            Top Transactions by Volume
+          </div>
+          <svg
+            width="100%"
+            height={BAR_H + 40}
+            viewBox={`0 0 ${chartData.length * 72} ${BAR_H + 40}`}
+            preserveAspectRatio="xMidYMid meet"
+          >
+            {chartData.map((r, i) => {
+              const barH = Math.max(4, (r.totalAmount / maxAmt) * BAR_H);
+              const color = typeColors[r.transactionType] ?? '#2563EB';
+              return (
+                <g key={i} transform={`translate(${i * 72}, 0)`}>
+                  <rect
+                    x={10}
+                    y={BAR_H - barH}
+                    width={50}
+                    height={barH}
+                    fill={color}
+                    rx={4}
+                    fillOpacity={0.85}
+                  />
+                  <text x={35} y={BAR_H + 14} textAnchor="middle" fontSize="9" fill="#64748b">
+                    {r.reportDate}
+                  </text>
+                  <text
+                    x={35}
+                    y={BAR_H - barH - 4}
+                    textAnchor="middle"
+                    fontSize="9"
+                    fill={color}
+                    fontWeight="bold"
+                  >
+                    {r.transactionCount}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '8px' }}>
+            {Array.from(new Set(chartData.map((r) => r.transactionType))).map((type) => {
+              const color = typeColors[type] ?? '#2563EB';
+              return (
+                <span
+                  key={type}
+                  style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <span
+                    style={{
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '2px',
+                      backgroundColor: color,
+                      display: 'inline-block',
+                    }}
+                  />
+                  {type}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div
+        style={{
+          backgroundColor: '#fff',
+          borderRadius: '10px',
+          border: '1px solid #e2e8f0',
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '16px 20px',
+            borderBottom: '1px solid #f1f5f9',
+          }}
+        >
+          <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+            Daily Ledger Records ({filteredData.length} rows{totalPages > 1 ? ` — Page ${page} of ${totalPages} (30 rows/page)` : ''})
             {loadDuration !== null && (
-              <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+              <span
+                style={{
+                  marginLeft: '10px',
+                  fontSize: '11px',
+                  fontWeight: 500,
+                  color: '#64748b',
+                  backgroundColor: '#f1f5f9',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
                 ⏱️ {loadDuration.toFixed(2)}s
               </span>
             )}
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          </span>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <ExportButtons
               onExportCsv={() => exportDailyLedger(params, 'csv')}
               onExportExcel={() => exportDailyLedger(params, 'excel')}
@@ -190,20 +305,34 @@ const DailyLedgerPanel: React.FC<Props> = ({
             <button
               onClick={load}
               disabled={loading}
-              className="px-3 sm:px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#2563EB',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
             >
-              {loading ? 'Loading...' : 'Refresh'}
+              {loading ? 'Loading...' : 'Load Data'}
             </button>
           </div>
         </div>
-
         {error && (
-          <div className="p-3 sm:p-4 text-xs sm:text-sm text-red-600 bg-red-50 border-b border-red-100">
+          <div
+            style={{
+              padding: '12px 20px',
+              color: '#dc2626',
+              fontSize: '13px',
+              backgroundColor: '#fef2f2',
+            }}
+          >
             Error: {error}
           </div>
         )}
-
-        <div className="p-4 sm:p-5">
+        <div style={{ padding: '16px 20px' }}>
           <DataTable
             columns={columns}
             data={paginatedData}

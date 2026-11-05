@@ -272,19 +272,22 @@ html.dark .border-red-200:not([data-bank-card] *) {
   html, body {
     width: 100% !important;
     height: auto !important;
-    min-height: 0 !important;
+    min-height: 100% !important;
     background: #ffffff !important;
     color: #0f172a !important;
-    padding: 0 !important;
+    padding: 8mm 0 !important;
     margin: 0 !important;
     overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
   body {
-    display: block !important;
-    padding: 4mm 0 !important;
-    margin: 0 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    padding: 8mm 0 !important;
+    margin: 0 !important;
   }
   header,
   aside,
@@ -321,71 +324,6 @@ html.dark .border-red-200:not([data-bank-card] *) {
     background: #ffffff !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-  }
-}
-
-/* ========================================================================== */
-/* Single-Page Fitting for Landscape Orientation                              */
-/* ========================================================================== */
-@media print and (orientation: landscape) {
-  html, body {
-    padding: 0 !important;
-    margin: 0 !important;
-    height: auto !important;
-    min-height: 0 !important;
-  }
-  body {
-    padding: 2.5mm 0 !important;
-    margin: 0 auto !important;
-  }
-  .print-receipt-container {
-    max-width: 860px !important;
-    width: 860px !important;
-    margin: 0 auto !important;
-    border-radius: 12px !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-    page-break-after: avoid !important;
-    break-after: avoid !important;
-  }
-  .print-receipt-container .receipt-header-section {
-    padding-top: 10px !important;
-    padding-bottom: 10px !important;
-    padding-left: 24px !important;
-    padding-right: 24px !important;
-  }
-  .print-receipt-container .receipt-hero-section {
-    padding-top: 8px !important;
-    padding-bottom: 6px !important;
-  }
-  .print-receipt-container .receipt-pathway-section {
-    padding-top: 8px !important;
-    padding-bottom: 8px !important;
-    padding-left: 24px !important;
-    padding-right: 24px !important;
-  }
-  .print-receipt-container .receipt-details-wrapper {
-    padding-top: 8px !important;
-    padding-bottom: 6px !important;
-    padding-left: 24px !important;
-    padding-right: 24px !important;
-  }
-  .print-receipt-container .receipt-details-list {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    column-gap: 2.5rem !important;
-    row-gap: 0 !important;
-  }
-  .print-receipt-container .receipt-details-list > div {
-    border-top: 1px solid #f1f5f9 !important;
-    padding-top: 3.5px !important;
-    padding-bottom: 3.5px !important;
-  }
-  .print-receipt-container .receipt-qr-section {
-    padding-top: 6px !important;
-    padding-bottom: 6px !important;
-    padding-left: 24px !important;
-    padding-right: 24px !important;
   }
 }
 

@@ -1,6 +1,6 @@
 import { useSelector, useDispatch } from 'react-redux';
 import type { RootState, AppDispatch } from '../../../lib/redux';
-import { loginThunk, verifyOtpThunk, logoutThunk, clearError } from '../authSlice';
+import { loginThunk, logoutThunk, clearError } from '../authSlice';
 import type { LoginRequest } from '../../../types/api.types';
 
 // ============================================================
@@ -13,10 +13,6 @@ export function useAuth() {
 
   const login = (credentials: LoginRequest) => {
     return dispatch(loginThunk(credentials));
-  };
-
-  const verifyOtp = (challengeGroupId: string, otp: string) => {
-    return dispatch(verifyOtpThunk({ challengeGroupId, otp }));
   };
 
   const logout = () => {
@@ -47,7 +43,6 @@ export function useAuth() {
   return {
     ...authState,
     login,
-    verifyOtp,
     logout,
     dismissError,
     hasRole,

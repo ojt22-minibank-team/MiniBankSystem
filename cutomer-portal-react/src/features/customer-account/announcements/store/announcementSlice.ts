@@ -15,12 +15,8 @@ interface AnnouncementState {
   loading: boolean;
   hasLoaded: boolean;
   error: string | null;
-
-  // announcementId -> requestId
-  pendingRequests: Record<number, string>;
-
-  markAllRequestId: string | null;
-  fetchRequestId: string | null;
+  pendingIds: number[];
+  isMarkingAllRead: boolean;
   actionError: string | null;
 }
 
@@ -28,16 +24,15 @@ interface ThunkState {
   announcements: AnnouncementState;
 }
 
-const createInitialState = (): AnnouncementState => ({
+const initialState: AnnouncementState = {
   announcements: [],
   loading: false,
   hasLoaded: false,
   error: null,
-  pendingRequests: {},
-  markAllRequestId: null,
-  fetchRequestId: null,
+  pendingIds: [],
+  isMarkingAllRead: false,
   actionError: null,
-});
+};
 
 const LOAD_ERROR =
   "We couldn't load announcements. Please try again.";
@@ -48,21 +43,19 @@ const UPDATE_ERROR =
 const MARK_ALL_ERROR =
   "We couldn't mark all announcements as read. Please try again.";
 
-// Fetch announcements
 export const fetchAnnouncements = createAsyncThunk<
   Announcement[],
   void,
-  { state: ThunkState; rejectValue: string }
+  {
+    state: ThunkState;
+    rejectValue: string;
+  }
 >(
   "announcements/fetchAnnouncements",
-  async (_, { rejectWithValue, signal }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      return await getCustomerAnnouncements(signal);
-    } catch (error: unknown) {
-      if (signal.aborted) {
-        throw error;
-      }
-
+      return await getCustomerAnnouncements();
+    } catch {
       return rejectWithValue(LOAD_ERROR);
     }
   },
@@ -70,19 +63,21 @@ export const fetchAnnouncements = createAsyncThunk<
     condition: (_, { getState }) => {
       return !getState().announcements.loading;
     },
-  }
+  },
 );
 
-// Toggle announcement read status
 export const toggleAnnouncementRead = createAsyncThunk<
   { announcementId: number; isRead: boolean },
   number,
-  { state: ThunkState; rejectValue: string }
+  {
+    state: ThunkState;
+    rejectValue: string;
+  }
 >(
   "announcements/toggleAnnouncementRead",
-  async (announcementId, { getState, rejectWithValue, signal }) => {
+  async (announcementId, { getState, rejectWithValue }) => {
     const announcement = getState().announcements.announcements.find(
-      (item) => item.announcementId === announcementId
+      (item) => item.announcementId === announcementId,
     );
 
     if (!announcement) {
@@ -93,17 +88,16 @@ export const toggleAnnouncementRead = createAsyncThunk<
 
     try {
       if (nextIsRead) {
-        await markAnnouncementAsRead(announcementId, signal);
+        await markAnnouncementAsRead(announcementId);
       } else {
-        await markAnnouncementAsUnread(announcementId, signal);
+        await markAnnouncementAsUnread(announcementId);
       }
 
-      return { announcementId, isRead: nextIsRead };
-    } catch (error: unknown) {
-      if (signal.aborted) {
-        throw error;
-      }
-
+      return {
+        announcementId,
+        isRead: nextIsRead,
+      };
+    } catch {
       return rejectWithValue(UPDATE_ERROR);
     }
   },
@@ -113,31 +107,29 @@ export const toggleAnnouncementRead = createAsyncThunk<
 
       return (
         !state.loading &&
-        !state.markAllRequestId &&
-        !state.pendingRequests[announcementId] &&
+        !state.isMarkingAllRead &&
+        !state.pendingIds.includes(announcementId) &&
         state.announcements.some(
-          (item) => item.announcementId === announcementId
+          (item) => item.announcementId === announcementId,
         )
       );
     },
-  }
+  },
 );
 
-// Mark all announcements as read
 export const markAllAnnouncementsRead = createAsyncThunk<
   void,
   void,
-  { state: ThunkState; rejectValue: string }
+  {
+    state: ThunkState;
+    rejectValue: string;
+  }
 >(
   "announcements/markAllAnnouncementsRead",
-  async (_, { rejectWithValue, signal }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      await markAllAnnouncementsAsRead(signal);
-    } catch (error: unknown) {
-      if (signal.aborted) {
-        throw error;
-      }
-
+      await markAllAnnouncementsAsRead();
+    } catch {
       return rejectWithValue(MARK_ALL_ERROR);
     }
   },
@@ -147,124 +139,93 @@ export const markAllAnnouncementsRead = createAsyncThunk<
 
       return (
         !state.loading &&
-        !state.markAllRequestId &&
-        Object.keys(state.pendingRequests).length === 0 &&
+        !state.isMarkingAllRead &&
+        state.pendingIds.length === 0 &&
         state.announcements.some((item) => !item.isRead)
       );
     },
-  }
+  },
 );
 
 const announcementSlice = createSlice({
   name: "announcements",
-  initialState: createInitialState(),
-
+  initialState,
   reducers: {
-    clearAnnouncementErrors: (state) => {
+    clearAnnouncementErrors(state) {
       state.error = null;
       state.actionError = null;
     },
-
-    clearAnnouncements: () => createInitialState(),
   },
-
   extraReducers: (builder) => {
     builder
-      // Fetch announcements
-      .addCase(fetchAnnouncements.pending, (state, action) => {
+      // Load announcements
+      .addCase(fetchAnnouncements.pending, (state) => {
         state.loading = true;
         state.error = null;
-        state.fetchRequestId = action.meta.requestId;
       })
       .addCase(fetchAnnouncements.fulfilled, (state, action) => {
-        if (state.fetchRequestId !== action.meta.requestId) return;
-
         state.loading = false;
         state.hasLoaded = true;
         state.announcements = action.payload;
         state.error = null;
-        state.fetchRequestId = null;
       })
       .addCase(fetchAnnouncements.rejected, (state, action) => {
-        if (state.fetchRequestId !== action.meta.requestId) return;
-
         state.loading = false;
-        state.fetchRequestId = null;
-
-        if (action.meta.aborted) return;
-
+        state.hasLoaded = true;
         state.error = action.payload ?? LOAD_ERROR;
       })
 
-      // Toggle one announcement
+      // Toggle one announcement's read status
       .addCase(toggleAnnouncementRead.pending, (state, action) => {
         state.actionError = null;
-        state.pendingRequests[action.meta.arg] = action.meta.requestId;
+        state.pendingIds.push(action.meta.arg);
       })
       .addCase(toggleAnnouncementRead.fulfilled, (state, action) => {
         const { announcementId, isRead } = action.payload;
 
-        if (
-          state.pendingRequests[announcementId] !== action.meta.requestId
-        ) {
-          return;
-        }
-
-        const announcement = state.announcements.find(
-          (item) => item.announcementId === announcementId
+        state.announcements = state.announcements.map((item) =>
+          item.announcementId === announcementId
+            ? { ...item, isRead }
+            : item,
         );
 
-        if (announcement) {
-          announcement.isRead = isRead;
-        }
-
-        delete state.pendingRequests[announcementId];
+        state.pendingIds = state.pendingIds.filter(
+          (id) => id !== announcementId,
+        );
       })
       .addCase(toggleAnnouncementRead.rejected, (state, action) => {
-        const announcementId = action.meta.arg;
+        state.pendingIds = state.pendingIds.filter(
+          (id) => id !== action.meta.arg,
+        );
 
-        if (
-          state.pendingRequests[announcementId] !== action.meta.requestId
-        ) {
-          return;
+        if (!action.meta.aborted && action.payload) {
+          state.actionError = action.payload;
         }
-
-        delete state.pendingRequests[announcementId];
-
-        if (action.meta.aborted) return;
-
-        state.actionError = action.payload ?? UPDATE_ERROR;
       })
 
       // Mark all announcements as read
-      .addCase(markAllAnnouncementsRead.pending, (state, action) => {
+      .addCase(markAllAnnouncementsRead.pending, (state) => {
         state.actionError = null;
-        state.markAllRequestId = action.meta.requestId;
+        state.isMarkingAllRead = true;
       })
-      .addCase(markAllAnnouncementsRead.fulfilled, (state, action) => {
-        if (state.markAllRequestId !== action.meta.requestId) return;
+      .addCase(markAllAnnouncementsRead.fulfilled, (state) => {
+        state.isMarkingAllRead = false;
 
-        state.announcements.forEach((announcement) => {
-          announcement.isRead = true;
-        });
-
-        state.markAllRequestId = null;
+        state.announcements = state.announcements.map((item) => ({
+          ...item,
+          isRead: true,
+        }));
       })
       .addCase(markAllAnnouncementsRead.rejected, (state, action) => {
-        if (state.markAllRequestId !== action.meta.requestId) return;
+        state.isMarkingAllRead = false;
 
-        state.markAllRequestId = null;
-
-        if (action.meta.aborted) return;
-
-        state.actionError = action.payload ?? MARK_ALL_ERROR;
+        if (!action.meta.aborted && action.payload) {
+          state.actionError = action.payload;
+        }
       });
   },
 });
 
-export const {
-  clearAnnouncementErrors,
-  clearAnnouncements,
-} = announcementSlice.actions;
+export const { clearAnnouncementErrors } = announcementSlice.actions;
 
 export default announcementSlice.reducer;

@@ -170,7 +170,6 @@ public class TransferNotificationVerificationTest {
         assertEquals("2001111111", receiverWsDto.getCounterpartyAccountNumber());
     }
 
-    /*
     @Test
     @DisplayName("Verify Merchant Payment notifications are saved and pushed via WebSocket to both Payer and Merchant")
     void testMerchantPaymentNotificationsCreated() {
@@ -227,7 +226,6 @@ public class TransferNotificationVerificationTest {
         assertEquals("Merchant Payment Received", merchantWs.getTitle());
         assertEquals("U Ba", merchantWs.getCounterpartyName());
     }
-    */
 
     @Test
     @DisplayName("Verify that CusNotificationService HTTP mapping retains all details for payment notifications")
@@ -256,142 +254,5 @@ public class TransferNotificationVerificationTest {
         assertEquals("MMK", dto.getCurrency());
         assertEquals("Ocean Supercenter", dto.getCounterpartyName());
         assertEquals("TXN-ECOM-9900", dto.getTransactionRef());
-    }
-
-    @Test
-    @DisplayName("Verify Failed Transfer notification is saved in DB and pushed via WebSocket")
-    void testFailedTransferNotificationCreatedAndPushed() {
-        asyncNotificationService.sendFailedTransferNotificationAsync(
-                sender,
-                "2002222222",
-                new BigDecimal("10000.0000"),
-                "MMK",
-                "Insufficient balance"
-        );
-
-        ArgumentCaptor<Notifications> notiCaptor = ArgumentCaptor.forClass(Notifications.class);
-        verify(notificationRepository).save(notiCaptor.capture());
-
-        Notifications saved = notiCaptor.getValue();
-        assertEquals(senderId, saved.getCustomer().getCustomerId());
-        assertEquals("Transfer Failed", saved.getTitle());
-        assertEquals(NotificationType.TRANSFER, saved.getNotificationType());
-        assertTrue(saved.getMessage().contains("Transfer of 10000.0000 MMK to account 2002222222 failed: Insufficient balance"));
-
-        ArgumentCaptor<NotificationResponseDto> wsCaptor = ArgumentCaptor.forClass(NotificationResponseDto.class);
-        verify(notificationWebSocketHandler).sendNotification(eq(senderId.toString()), wsCaptor.capture());
-
-        NotificationResponseDto wsDto = wsCaptor.getValue();
-        assertEquals("Transfer Failed", wsDto.getTitle());
-        assertEquals(new BigDecimal("10000.0000"), wsDto.getAmount());
-        assertEquals("MMK", wsDto.getCurrency());
-        assertFalse(wsDto.isRead());
-    }
-
-    @Test
-    @DisplayName("Verify Failed Transfer notification uses fallback defaults when optional arguments are null")
-    void testFailedTransferNotification_FallbackDefaultsWhenArgumentsNull() {
-        asyncNotificationService.sendFailedTransferNotificationAsync(
-                sender,
-                null,
-                null,
-                null,
-                null
-        );
-
-        ArgumentCaptor<Notifications> notiCaptor = ArgumentCaptor.forClass(Notifications.class);
-        verify(notificationRepository).save(notiCaptor.capture());
-
-        Notifications saved = notiCaptor.getValue();
-        assertTrue(saved.getMessage().contains("Transfer of 0 MMK to account N/A failed: Transaction rejected"));
-
-        ArgumentCaptor<NotificationResponseDto> wsCaptor = ArgumentCaptor.forClass(NotificationResponseDto.class);
-        verify(notificationWebSocketHandler).sendNotification(eq(senderId.toString()), wsCaptor.capture());
-
-        NotificationResponseDto wsDto = wsCaptor.getValue();
-        assertEquals("Transfer Failed", wsDto.getTitle());
-        assertEquals("MMK", wsDto.getCurrency());
-    }
-
-    @Test
-    @DisplayName("Verify Transfer Reversal notification is saved in DB and pushed via WebSocket with REFUND direction")
-    void testReversalNotificationCreatedAndPushed() {
-        asyncNotificationService.sendReversalNotificationAsync(sender, transaction, "Service timeout");
-
-        ArgumentCaptor<Notifications> notiCaptor = ArgumentCaptor.forClass(Notifications.class);
-        verify(notificationRepository).save(notiCaptor.capture());
-
-        Notifications saved = notiCaptor.getValue();
-        assertEquals(senderId, saved.getCustomer().getCustomerId());
-        assertEquals("Transfer Auto-Reversed & Refunded", saved.getTitle());
-        assertEquals(NotificationType.TRANSFER, saved.getNotificationType());
-        assertTrue(saved.getMessage().contains("could not be completed and has been automatically refunded to account 2001111111"));
-        assertTrue(saved.getMessage().contains("Reason: Service timeout"));
-        assertTrue(saved.getMessage().contains("50000.0000 MMK"));
-
-        ArgumentCaptor<NotificationResponseDto> wsCaptor = ArgumentCaptor.forClass(NotificationResponseDto.class);
-        verify(notificationWebSocketHandler).sendNotification(eq(senderId.toString()), wsCaptor.capture());
-
-        NotificationResponseDto wsDto = wsCaptor.getValue();
-        assertEquals("REFUND", wsDto.getTransferDirection());
-        assertEquals("TXN-P2P-20261021-0001", wsDto.getTransactionRef());
-        assertEquals(new BigDecimal("50000.0000"), wsDto.getAmount());
-        assertEquals("2001111111", wsDto.getSourceAccountNumber());
-    }
-
-    @Test
-    @DisplayName("Verify Deposit notification is saved in DB and pushed via WebSocket with Bank Counter counterparty")
-    void testDepositNotificationCreatedAndPushed() {
-        asyncNotificationService.sendDepositNotificationAsync(receiver, destAccount, transaction);
-
-        ArgumentCaptor<Notifications> notiCaptor = ArgumentCaptor.forClass(Notifications.class);
-        verify(notificationRepository).save(notiCaptor.capture());
-
-        Notifications saved = notiCaptor.getValue();
-        assertEquals(receiverId, saved.getCustomer().getCustomerId());
-        assertEquals("Funds Received", saved.getTitle());
-        assertTrue(saved.getMessage().contains("You received 50000.0000 MMK via Bank Counter Deposit to account 2002222222"));
-
-        ArgumentCaptor<NotificationResponseDto> wsCaptor = ArgumentCaptor.forClass(NotificationResponseDto.class);
-        verify(notificationWebSocketHandler).sendNotification(eq(receiverId.toString()), wsCaptor.capture());
-
-        NotificationResponseDto wsDto = wsCaptor.getValue();
-        assertEquals("RECEIVED", wsDto.getTransferDirection());
-        assertEquals("Bank Counter", wsDto.getCounterpartyName());
-        assertEquals("BANK-OTC", wsDto.getCounterpartyAccountNumber());
-        assertEquals("2002222222", wsDto.getDestinationAccountNumber());
-    }
-
-    @Test
-    @DisplayName("Verify Withdrawal notification is saved in DB and pushed via WebSocket with Bank Counter counterparty")
-    void testWithdrawalNotificationCreatedAndPushed() {
-        asyncNotificationService.sendWithdrawalNotificationAsync(sender, sourceAccount, transaction);
-
-        ArgumentCaptor<Notifications> notiCaptor = ArgumentCaptor.forClass(Notifications.class);
-        verify(notificationRepository).save(notiCaptor.capture());
-
-        Notifications saved = notiCaptor.getValue();
-        assertEquals(senderId, saved.getCustomer().getCustomerId());
-        assertEquals("Transfer Sent", saved.getTitle());
-        assertTrue(saved.getMessage().contains("You have withdrawn 50000.0000 MMK via Bank Counter from account 2001111111"));
-
-        ArgumentCaptor<NotificationResponseDto> wsCaptor = ArgumentCaptor.forClass(NotificationResponseDto.class);
-        verify(notificationWebSocketHandler).sendNotification(eq(senderId.toString()), wsCaptor.capture());
-
-        NotificationResponseDto wsDto = wsCaptor.getValue();
-        assertEquals("SENT", wsDto.getTransferDirection());
-        assertEquals("Bank Counter", wsDto.getCounterpartyName());
-        assertEquals("BANK-OTC", wsDto.getCounterpartyAccountNumber());
-        assertEquals("2001111111", wsDto.getSourceAccountNumber());
-    }
-
-    @Test
-    @DisplayName("Verify AsyncNotificationService null safety does not throw exceptions")
-    void testAsyncNotificationNullSafety() {
-        assertDoesNotThrow(() -> asyncNotificationService.sendDepositNotificationAsync(null, null, null));
-        assertDoesNotThrow(() -> asyncNotificationService.sendWithdrawalNotificationAsync(null, null, null));
-        assertDoesNotThrow(() -> asyncNotificationService.sendTransferNotificationsAsync(null, null, null));
-        assertDoesNotThrow(() -> asyncNotificationService.sendReversalNotificationAsync(null, null, null));
-        assertDoesNotThrow(() -> asyncNotificationService.sendFailedTransferNotificationAsync(null, null, null, null, null));
     }
 }

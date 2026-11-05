@@ -1,20 +1,13 @@
 
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import {
   AlertCircle,
   CheckCheck,
+  Megaphone,
   RefreshCw,
 } from "lucide-react";
 
 import { useAppDispatch, useAppSelector } from "../../../../lib/redux";
-
-import {
-  getAuthenticationGeneration,
-  hasTokens,
-  isAuthenticationGenerationCurrent,
-  subscribeToAuthenticationChanges,
-} from "../../../../utils/tokenStorage";
 
 import {
   clearAnnouncementErrors,
@@ -26,10 +19,6 @@ import {
 import AnnouncementList from "../components/AnnouncementList";
 
 import type { AnnouncementFilter } from "../types/announcementTypes";
-
-// Tracks the initial auto-fetch attempt for each authentication session.
-// Persists across component unmounts and remounts within this application runtime.
-let lastAutoFetchGeneration: number | null = null;
 
 const filters: {
   value: AnnouncementFilter;
@@ -48,67 +37,22 @@ export default function AnnouncementsPage() {
     loading,
     hasLoaded,
     error,
-    pendingRequests,
-    markAllRequestId,
+    pendingIds,
+    isMarkingAllRead,
     actionError,
   } = useAppSelector((state) => state.announcements);
 
-  const [authenticationGeneration, setAuthenticationGeneration] =
-    useState(getAuthenticationGeneration);
-
   const [filter, setFilter] = useState<AnnouncementFilter>("ALL");
 
-  const pendingIds = useMemo(
-    () => Object.keys(pendingRequests || {}).map(Number),
-    [pendingRequests]
-  );
-
-  const isMarkingAllRead = Boolean(markAllRequestId);
-
-  // Subscribe to login, logout and authentication changes.
   useEffect(() => {
-    const unsubscribe = subscribeToAuthenticationChanges(() => {
-      setAuthenticationGeneration(getAuthenticationGeneration());
-    });
-
-    // Synchronize in case authentication changed before subscription.
-    setAuthenticationGeneration(getAuthenticationGeneration());
-
-    return unsubscribe;
-  }, []);
-
-  // Automatically fetch announcements once per valid authentication session.
-  useEffect(() => {
-    const generation = authenticationGeneration;
-
-    const isSessionValid =
-      hasTokens() &&
-      isAuthenticationGenerationCurrent(generation);
-
-    if (
-      !isSessionValid ||
-      lastAutoFetchGeneration === generation ||
-      hasLoaded ||
-      loading
-    ) {
-      return;
+    if (!hasLoaded && !loading) {
+      void dispatch(fetchAnnouncements());
     }
-
-    // Mark the attempt before dispatch to prevent duplicate requests
-    // from React Strict Mode or component remounts.
-    lastAutoFetchGeneration = generation;
-
-    void dispatch(fetchAnnouncements());
-  }, [
-    dispatch,
-    authenticationGeneration,
-    hasLoaded,
-    loading,
-  ]);
+  }, [dispatch, hasLoaded, loading]);
 
   const unreadCount = useMemo(
     () => announcements.filter((item) => !item.isRead).length,
-    [announcements]
+    [announcements],
   );
 
   const readCount = announcements.length - unreadCount;
@@ -123,10 +67,8 @@ export default function AnnouncementsPage() {
     switch (filter) {
       case "UNREAD":
         return announcements.filter((item) => !item.isRead);
-
       case "READ":
         return announcements.filter((item) => item.isRead);
-
       default:
         return announcements;
     }
@@ -151,19 +93,8 @@ export default function AnnouncementsPage() {
     void dispatch(markAllAnnouncementsRead());
   };
 
-  // Manual refresh is intentionally independent of the auto-fetch attempt.
-  // It can retry after a failed initial request within the same session.
   const handleRefresh = () => {
     if (loading) return;
-
-    const generation = getAuthenticationGeneration();
-
-    const isSessionValid =
-      hasTokens() &&
-      isAuthenticationGenerationCurrent(generation);
-
-    if (!isSessionValid) return;
-
     void dispatch(fetchAnnouncements());
   };
 
@@ -172,26 +103,10 @@ export default function AnnouncementsPage() {
       <header className="mb-6">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
-            {/* Breadcrumb Navigation */}
-            <nav
-              aria-label="Breadcrumb"
-              className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold"
-            >
-              <Link
-                to="/dashboard"
-                className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
-              >
-                Dashboard
-              </Link>
-
-              <span className="text-slate-300" aria-hidden="true">
-                /
-              </span>
-
-              <span className="text-[#00A3C4]" aria-current="page">
-                Announcements
-              </span>
-            </nav>
+            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-[#00A3C4]">
+              <Megaphone size={15} aria-hidden="true" />
+              Bank updates
+            </div>
 
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               Announcements
@@ -252,9 +167,7 @@ export default function AnnouncementsPage() {
                   {item.value !== "ALL" && (
                     <span
                       className={`text-xs tabular-nums ${
-                        selected
-                          ? "text-[#00A3C4]"
-                          : "text-slate-400"
+                        selected ? "text-[#00A3C4]" : "text-slate-400"
                       }`}
                     >
                       {counts[item.value]}
@@ -317,9 +230,7 @@ export default function AnnouncementsPage() {
                 Unable to load announcements
               </h2>
 
-              <p className="mt-1 text-sm text-slate-500">
-                {error}
-              </p>
+              <p className="mt-1 text-sm text-slate-500">{error}</p>
 
               <button
                 type="button"
@@ -345,8 +256,7 @@ export default function AnnouncementsPage() {
 
       {!loading && !error && announcements.length > 0 && (
         <p className="mt-4 text-center text-xs text-slate-400">
-          Showing {filteredAnnouncements.length} of{" "}
-          {announcements.length} announcements
+          Showing {filteredAnnouncements.length} of {announcements.length} announcements
         </p>
       )}
     </main>

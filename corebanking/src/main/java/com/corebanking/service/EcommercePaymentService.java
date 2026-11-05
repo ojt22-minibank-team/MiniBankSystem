@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -31,6 +32,7 @@ public class EcommercePaymentService {
     private final BankTransactionRepository bankTransactionRepository;
     private final LedgerAccountRepository ledgerAccountRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
+    private final FeeScheduleRepository feeScheduleRepository;
     private final AsyncNotificationService asyncNotificationService;
     private final TransferLimitService transferLimitService;
 
@@ -59,26 +61,12 @@ public class EcommercePaymentService {
         }
 
         // =========================================================================
-        // STEP 2: GATEWAY SERVICE FEE ASSIGNMENT & NET ALLOCATION
-        // Service fee is determined strictly by Group 3 Merchant Gateway with NO default.
-        // Customer pays exactly the product amount; fee is deducted from merchant payout.
+        // STEP 2: DYNAMIC FEE CALCULATION FOR EXTERNAL_PAYMENT
         // =========================================================================
-        if (request.getServiceFee() == null) {
-            throw new TransactionException("Service fee is required from Merchant Gateway.");
-        }
-        BigDecimal serviceFee = request.getServiceFee();
+        BigDecimal serviceFee = calculateServiceFee(request.getAmount());
+        BigDecimal totalRequiredAmount = request.getAmount().add(serviceFee);
 
-        if (serviceFee.compareTo(BigDecimal.ZERO) < 0) {
-            throw new TransactionException("Service fee cannot be negative.");
-        }
-        if (serviceFee.compareTo(request.getAmount()) > 0) {
-            throw new TransactionException("Service fee cannot exceed total transaction amount.");
-        }
-
-        BigDecimal customerDebitAmount = request.getAmount();
-        BigDecimal merchantCreditAmount = request.getAmount().subtract(serviceFee);
-
-        // =========================================================================
+     // =========================================================================
         // STEP 3: DETERMINISTIC PESSIMISTIC LOCKING (DEADLOCK PREVENTION)
         // =========================================================================
         boolean swap = request.getSourceAccountNumber().compareTo(request.getMerchantAccountNumber()) > 0;
@@ -106,50 +94,20 @@ public class EcommercePaymentService {
             throw new TransactionException("Merchant settlement account is not ACTIVE. Current status: " + merchantAccount.getStatus());
         }
 
-        // Customer & Merchant Account Owner Lock Status Verifications
-        if (customerAccount.getCustomer() != null && customerAccount.getCustomer().getStatus() == CustomerStatus.LOCKED) {
-            throw new TransactionException("Customer account owner is currently LOCKED.");
-        }
-
-        if (merchantAccount.getCustomer() != null && merchantAccount.getCustomer().getStatus() == CustomerStatus.LOCKED) {
-            throw new TransactionException("Merchant settlement account owner is currently LOCKED.");
-        }
-
-        // Internal Ledger Accounts Prohibition
-        if (customerAccount.getAccountCategory() == AccountCategory.INTERNAL) {
-            throw new TransactionException("Customer account cannot be an INTERNAL bank ledger account.");
-        }
-
-        if (merchantAccount.getAccountCategory() == AccountCategory.INTERNAL) {
-            throw new TransactionException("Merchant settlement account cannot be an INTERNAL bank ledger account.");
-        }
-
-        // Merchant Corporate / Business Entity Verification
-        boolean isCorporateCategory = merchantAccount.getAccountCategory() == AccountCategory.CORPORATE;
-        boolean isCompanyCustomer = merchantAccount.getCustomer() != null && merchantAccount.getCustomer().getCustomerType() == CustomerType.COMPANY;
-        boolean hasCompanyInfo = merchantAccount.getCustomer() != null && merchantAccount.getCustomer().getCompanyInfo() != null;
-
-        if (!isCorporateCategory && !isCompanyCustomer && !hasCompanyInfo) {
-            throw new TransactionException(String.format(
-                    "Merchant settlement account must belong to a registered corporate or company entity (Current Category: %s).",
-                    merchantAccount.getAccountCategory()
-            ));
-        }
-
         if (!customerAccount.getCurrency().equalsIgnoreCase(request.getCurrency()) ||
             !merchantAccount.getCurrency().equalsIgnoreCase(request.getCurrency())) {
             throw new TransactionException("Currency mismatch across customer account, merchant account, and payment currency.");
         }
 
-        // Minimum Balance Rule Enforcement (Customer only pays product amount)
+        // Minimum Balance Rule Enforcement
         BigDecimal customerAvailable = customerAccount.getAvailableBalance();
         BigDecimal minBalance = transferLimitService.getMinimumBalance();
-        BigDecimal postDeductionBalance = customerAvailable.subtract(customerDebitAmount);
+        BigDecimal postDeductionBalance = customerAvailable.subtract(totalRequiredAmount);
 
         if (postDeductionBalance.compareTo(minBalance) < 0) {
             throw new InsufficientFundsException(String.format(
-                    "Insufficient available funds. Required: %s (Amount: %s). Must maintain minimum balance: %s. Current available: %s",
-                    customerDebitAmount, request.getAmount(), minBalance, customerAvailable
+                    "Insufficient available funds. Required: %s (Amount: %s + Fee: %s). Must maintain minimum balance: %s. Current available: %s",
+                    totalRequiredAmount, request.getAmount(), serviceFee, minBalance, customerAvailable
             ));
         }
 
@@ -176,12 +134,12 @@ public class EcommercePaymentService {
         // =========================================================================
         // STEP 5: ATOMIC BALANCE UPDATES
         // =========================================================================
-        customerAccount.setCurrentBalance(customerAccount.getCurrentBalance().subtract(customerDebitAmount));
-        customerAccount.setAvailableBalance(customerAccount.getAvailableBalance().subtract(customerDebitAmount));
+        customerAccount.setCurrentBalance(customerAccount.getCurrentBalance().subtract(totalRequiredAmount));
+        customerAccount.setAvailableBalance(customerAccount.getAvailableBalance().subtract(totalRequiredAmount));
         accountRepository.save(customerAccount);
 
-        merchantAccount.setCurrentBalance(merchantAccount.getCurrentBalance().add(merchantCreditAmount));
-        merchantAccount.setAvailableBalance(merchantAccount.getAvailableBalance().add(merchantCreditAmount));
+        merchantAccount.setCurrentBalance(merchantAccount.getCurrentBalance().add(request.getAmount()));
+        merchantAccount.setAvailableBalance(merchantAccount.getAvailableBalance().add(request.getAmount()));
         accountRepository.save(merchantAccount);
 
         // =========================================================================
@@ -215,14 +173,12 @@ public class EcommercePaymentService {
 
         // =========================================================================
         // STEP 7: DOUBLE-ENTRY GENERAL LEDGER ACCOUNTING
-        // Debit Customer (10000) = Credit Merchant Net (9900) + Credit Bank Fee Revenue (100)
         // =========================================================================
         createLedgerEntries(transaction, customerAccount, merchantAccount, request.getAmount(), serviceFee);
 
         // =========================================================================
-        // STEP 8: ASYNCHRONOUS NOTIFICATIONS (NON-BLOCKING) - COMMENTED OUT
+        // STEP 8: ASYNCHRONOUS NOTIFICATIONS (NON-BLOCKING)
         // =========================================================================
-        /*
         asyncNotificationService.sendMerchantPaymentNotificationAsync(
                 customerAccount.getCustomer() != null ? customerAccount.getCustomer().getCustomerId() : null,
                 customerAccount.getAccountNumber(),
@@ -233,16 +189,15 @@ public class EcommercePaymentService {
                 request.getCurrency(),
                 transaction.getTransactionRef()
         );
-        */
 
-        log.info("E-Commerce Payment completed successfully. Ref: {}, OrderId: {}, Amount: {}, Fee: {}, MerchantNet: {}",
-                txnRef, request.getOrderId(), request.getAmount(), serviceFee, merchantCreditAmount);
+        log.info("E-Commerce Payment completed successfully. Ref: {}, OrderId: {}, Amount: {}",
+                txnRef, request.getOrderId(), request.getAmount());
 
         return mapToResponseDto(transaction, "E-Commerce payment completed successfully.");
     }
 
     private void createLedgerEntries(BankTransactions txn, Accounts customer, Accounts merchant, BigDecimal amount, BigDecimal fee) {
-        BigDecimal merchantCredit = amount.subtract(fee);
+        BigDecimal totalDebit = amount.add(fee);
 
         // 1. Customer Sub-Ledger or Master Deposit Pool (LIABILITY)
         LedgerAccounts customerLedger = ledgerAccountRepository.findByCustomerAccount(customer)
@@ -254,35 +209,35 @@ public class EcommercePaymentService {
                 .orElseGet(() -> ledgerAccountRepository.findByLedgerCode("GL-CUSTOMER-DEPOSITS")
                         .orElseThrow(() -> new TransactionException("Merchant liability ledger account not configured.")));
 
-        // Line 1: DEBIT Customer Liability (Reduces Bank's Liability to Customer by total purchase amount)
+        // Line 1: DEBIT Customer Liability (Reduces Bank's Liability to Customer)
         LedgerEntries debitLine = LedgerEntries.builder()
                 .transaction(txn)
                 .lineNo(1)
                 .ledgerAccount(customerLedger)
                 .entryType(EntryType.DEBIT)
-                .amount(amount)
+                .amount(totalDebit)
                 .currency(txn.getCurrency())
-                .balanceBefore(customer.getCurrentBalance().add(amount))
+                .balanceBefore(customer.getCurrentBalance().add(totalDebit))
                 .balanceAfter(customer.getCurrentBalance())
                 .narration(String.format("Debit customer %s for Order %s", customer.getAccountNumber(), txn.getExternalReference()))
                 .build();
         ledgerEntryRepository.save(debitLine);
 
-        // Line 2: CREDIT Merchant Liability (Increases Bank's Liability to Merchant by Net Payout)
+        // Line 2: CREDIT Merchant Liability (Increases Bank's Liability to Merchant)
         LedgerEntries creditMerchantLine = LedgerEntries.builder()
                 .transaction(txn)
                 .lineNo(2)
                 .ledgerAccount(merchantLedger)
                 .entryType(EntryType.CREDIT)
-                .amount(merchantCredit)
+                .amount(amount)
                 .currency(txn.getCurrency())
-                .balanceBefore(merchant.getCurrentBalance().subtract(merchantCredit))
+                .balanceBefore(merchant.getCurrentBalance().subtract(amount))
                 .balanceAfter(merchant.getCurrentBalance())
-                .narration(String.format("Credit merchant %s net payout for Order %s", merchant.getAccountNumber(), txn.getExternalReference()))
+                .narration(String.format("Credit merchant %s for Order %s", merchant.getAccountNumber(), txn.getExternalReference()))
                 .build();
         ledgerEntryRepository.save(creditMerchantLine);
 
-        // Line 3: CREDIT Fee Revenue (Bank's Fee Income: GL-FEE-REVENUE)
+        // Line 3: CREDIT Fee Revenue (If service fee is applied)
         if (fee.compareTo(BigDecimal.ZERO) > 0) {
             LedgerAccounts feeLedger = ledgerAccountRepository.findByLedgerCode("GL-FEE-REVENUE")
                     .orElseThrow(() -> new TransactionException("GL-FEE-REVENUE ledger account not configured."));
@@ -300,6 +255,27 @@ public class EcommercePaymentService {
         }
     }
 
+    private BigDecimal calculateServiceFee(BigDecimal amount) {
+        return feeScheduleRepository.findFirstByTransactionTypeAndIsActiveTrueOrderByCreatedAtDesc(TransactionType.EXTERNAL_PAYMENT)
+                .map(schedule -> {
+                    BigDecimal calculated;
+                    if (schedule.getFeeType() == FeeType.PERCENTAGE) {
+                        calculated = amount.multiply(schedule.getFeeValue())
+                                .divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
+                    } else {
+                        calculated = schedule.getFeeValue();
+                    }
+                    if (schedule.getMinimumFee() != null && calculated.compareTo(schedule.getMinimumFee()) < 0) {
+                        calculated = schedule.getMinimumFee();
+                    }
+                    if (schedule.getMaximumFee() != null && calculated.compareTo(schedule.getMaximumFee()) > 0) {
+                        calculated = schedule.getMaximumFee();
+                    }
+                    return calculated;
+                })
+                .orElse(BigDecimal.ZERO);
+    }
+
     private String generateTransactionRef() {
         String dateStr = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
         int randomNum = ThreadLocalRandom.current().nextInt(100000, 999999);
@@ -307,9 +283,6 @@ public class EcommercePaymentService {
     }
 
     private EcommercePaymentResponseDto mapToResponseDto(BankTransactions txn, String message) {
-        BigDecimal fee = txn.getServiceFee() != null ? txn.getServiceFee() : BigDecimal.ZERO;
-        BigDecimal netMerchant = txn.getAmount().subtract(fee);
-
         return EcommercePaymentResponseDto.builder()
                 .transactionRef(txn.getTransactionRef())
                 .orderId(txn.getExternalReference())
@@ -317,9 +290,8 @@ public class EcommercePaymentService {
                 .sourceAccountNumber(txn.getSourceAccount() != null ? txn.getSourceAccount().getAccountNumber() : null)
                 .merchantAccountNumber(txn.getDestinationAccount() != null ? txn.getDestinationAccount().getAccountNumber() : null)
                 .amount(txn.getAmount())
-                .serviceFee(fee)
-                .totalDebitedAmount(txn.getAmount())
-                .netMerchantAmount(netMerchant)
+                .serviceFee(txn.getServiceFee())
+                .totalDebitedAmount(txn.getAmount().add(txn.getServiceFee()))
                 .currency(txn.getCurrency())
                 .completedAt(txn.getCompletedAt())
                 .description(txn.getDescription())

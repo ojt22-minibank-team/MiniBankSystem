@@ -17,19 +17,8 @@ import com.corebanking.entity.enums.CustomerStatus;
 import com.corebanking.entity.enums.CustomerType;
 import com.corebanking.entity.enums.SignatoryRole;
 import com.corebanking.entity.enums.SignatoryStatus;
-import com.corebanking.dto.CorporateAccountCreateDTO;
-import com.corebanking.entity.CompanyInfo;
-import com.corebanking.entity.CorporateAccountAccess;
-import com.corebanking.entity.CorporateCredential;
-import com.corebanking.entity.CorporateUser;
-import com.corebanking.entity.enums.CorporateRole;
 import com.corebanking.repository.AccountRepository;
 import com.corebanking.repository.AccountSignatoriesRepository;
-import com.corebanking.repository.BankTransactionRepository;
-import com.corebanking.repository.CompanyInfoRepository;
-import com.corebanking.repository.CorporateAccountAccessRepository;
-import com.corebanking.repository.CorporateCredentialRepository;
-import com.corebanking.repository.CorporateUserRepository;
 import com.corebanking.repository.CustomerCredentialsRepository;
 import com.corebanking.repository.CustomerRepository;
 import com.corebanking.repository.StaffUsersRepository;
@@ -37,7 +26,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -53,8 +41,6 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -81,40 +67,14 @@ class AccountServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
-    @Mock
-    private CompanyInfoRepository companyInfoRepository;
-
-    @Mock
-    private CorporateUserRepository corporateUserRepository;
-
-    @Mock
-    private CorporateCredentialRepository corporateCredentialRepository;
-
-    @Mock
-    private CorporateAccountAccessRepository corporateAccountAccessRepository;
-
-    @Mock
-    private BankTransactionRepository bankTransactionRepository;
-
     @InjectMocks
     private AccountService accountService;
 
     private Customers mockCustomer;
     private Accounts mockAccount;
 
-    private StaffUsers mockStaff;
-
     @BeforeEach
     void setUp() {
-        mockStaff = StaffUsers.builder()
-                .staffId(UUID.randomUUID())
-                .staffNo("STF-001")
-                .username("admin")
-                .fullName("System Admin")
-                .build();
-        lenient().when(staffUsersRepository.findByUsername(anyString())).thenReturn(Optional.of(mockStaff));
-        lenient().when(staffUsersRepository.findAll()).thenReturn(List.of(mockStaff));
-
         mockCustomer = Customers.builder()
                 .customerId(UUID.randomUUID())
                 .customerCode("CUST-1001")
@@ -286,314 +246,5 @@ class AccountServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.getAccountNumber()).isEqualTo("1001234567");
         assertThat(response.getCustomerCode()).isEqualTo("CUST-1001");
-    }
-
-    @Test
-    @DisplayName("Create first Retail Account generates credentials and sends email with customerCode")
-    void testCreateRetailAccount_FirstAccount_GeneratesCredentialsAndSendsEmail() {
-        AccountCreateDTO dto = new AccountCreateDTO();
-        dto.setCustomerCode("CUST-1001");
-        dto.setAccountType(AccountType.SAVINGS);
-        dto.setInitialDeposit(new BigDecimal("10000.00"));
-        dto.setCurrency("MMK");
-
-        when(customerRepository.findByCustomerCode("CUST-1001")).thenReturn(Optional.of(mockCustomer));
-        when(accountRepository.findByCustomerCustomerCode("CUST-1001")).thenReturn(Collections.emptyList());
-        when(accountRepository.save(any(Accounts.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(customerCredentialsRepository.findByCustomerId(mockCustomer.getId())).thenReturn(Optional.empty());
-        when(passwordEncoder.encode(anyString())).thenReturn("hashed_password");
-
-        AccountResponseDTO response = accountService.createAccount(dto);
-
-        assertThat(response).isNotNull();
-        assertThat(response.getAccountNumber()).isNotNull();
-        assertThat(response.getCustomerCode()).isEqualTo("CUST-1001");
-
-        // Verify credentials saved
-        verify(customerCredentialsRepository, times(1)).save(any(CustomerCredentials.class));
-
-        ArgumentCaptor<String> rawPasswordCaptor = ArgumentCaptor.forClass(String.class);
-        verify(passwordEncoder, times(1)).encode(rawPasswordCaptor.capture());
-        String generatedRawPassword = rawPasswordCaptor.getValue();
-        assertThat(generatedRawPassword).isNotEmpty();
-
-        // Verify email sent with customerCode, accountNumber, accountType, and the exact same tempPassword
-        verify(cusEmailService, times(1)).sendAccountOpeningConfirmation(
-                eq("john@example.com"),
-                eq("John Doe"),
-                eq("CUST-1001"),
-                eq(response.getAccountNumber()),
-                eq("SAVINGS"),
-                eq(generatedRawPassword)
-        );
-    }
-
-    @Test
-    @DisplayName("Create second Retail Account for existing customer retains credentials without overwriting")
-    void testCreateRetailAccount_ExistingCustomer_RetainsCredentialsWithoutOverwriting() {
-        AccountCreateDTO dto = new AccountCreateDTO();
-        dto.setCustomerCode("CUST-1001");
-        dto.setAccountType(AccountType.CURRENT);
-        dto.setInitialDeposit(new BigDecimal("10000.00"));
-        dto.setCurrency("MMK");
-
-        CustomerCredentials existingCredentials = CustomerCredentials.builder()
-                .customerId(mockCustomer.getId())
-                .passwordHash("existing_hash")
-                .build();
-
-        when(customerRepository.findByCustomerCode("CUST-1001")).thenReturn(Optional.of(mockCustomer));
-        when(accountRepository.findByCustomerCustomerCode("CUST-1001")).thenReturn(List.of(mockAccount)); // already has SAVINGS
-        when(accountRepository.save(any(Accounts.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(customerCredentialsRepository.findByCustomerId(mockCustomer.getId())).thenReturn(Optional.of(existingCredentials));
-
-        AccountResponseDTO response = accountService.createAccount(dto);
-
-        assertThat(response).isNotNull();
-        assertThat(response.getAccountType()).isEqualTo("CURRENT");
-
-        // Verify existing credential hash was retained without saving/overwriting it
-        verify(customerCredentialsRepository, never()).save(any(CustomerCredentials.class));
-
-        // Verify email sent
-        verify(cusEmailService, times(1)).sendAccountOpeningConfirmation(
-                eq("john@example.com"),
-                eq("John Doe"),
-                eq("CUST-1001"),
-                eq(response.getAccountNumber()),
-                eq("CURRENT"),
-                eq("(Existing Password Retained)")
-        );
-    }
-
-    @Test
-    @DisplayName("Create Corporate Account generates two independent credentials and sends two formal emails")
-    void testCreateCorporateAccount_CreatesTwoIndependentCredentialsAndSendsTwoFormalEmails() {
-        CorporateAccountCreateDTO dto = CorporateAccountCreateDTO.builder()
-                .companyCustomerCode("COMP-20261102-5001")
-                .accountType("CURRENT")
-                .ceoCustomerCode("CUST-CEO-001")
-                .accountantCustomerCode("CUST-ACC-002")
-                .ceoFullName("U Tin Win")
-                .ceoEmail("ceo@acetech.com")
-                .ceoPhone("09111222333")
-                .makerFullName("Daw Khin")
-                .makerEmail("accountant@acetech.com")
-                .makerPhone("09444555666")
-                .initialDeposit(new BigDecimal("2000000.00"))
-                .currency("MMK")
-                .build();
-
-        UUID companyCustomerId = UUID.randomUUID();
-        CompanyInfo companyInfo = CompanyInfo.builder()
-                .customerId(companyCustomerId)
-                .companyName("Ace Global Tech Co., Ltd")
-                .registrationNumber("REG-998877")
-                .taxId("TAX-998877")
-                .build();
-
-        Customers company = Customers.builder()
-                .customerId(companyCustomerId)
-                .customerCode("COMP-20261102-5001")
-                .customerType(CustomerType.COMPANY)
-                .fullName("Ace Global Tech Co., Ltd")
-                .email("corp@acetech.com")
-                .companyInfo(companyInfo)
-                .status(CustomerStatus.ACTIVE)
-                .build();
-
-        Customers ceoCustomer = Customers.builder()
-                .customerId(UUID.randomUUID())
-                .customerCode("CUST-CEO-001")
-                .fullName("U Tin Win")
-                .email("ceo@acetech.com")
-                .build();
-
-        Customers accountantCustomer = Customers.builder()
-                .customerId(UUID.randomUUID())
-                .customerCode("CUST-ACC-002")
-                .fullName("Daw Khin")
-                .email("accountant@acetech.com")
-                .build();
-
-        when(customerRepository.findByCustomerCode("COMP-20261102-5001")).thenReturn(Optional.of(company));
-        when(customerRepository.findByCustomerCode("CUST-CEO-001")).thenReturn(Optional.of(ceoCustomer));
-        when(customerRepository.findByCustomerCode("CUST-ACC-002")).thenReturn(Optional.of(accountantCustomer));
-        when(accountRepository.findByCustomerCustomerCode("COMP-20261102-5001")).thenReturn(Collections.emptyList());
-
-        when(corporateUserRepository.findByCompanyInfoCustomerIdAndCorporateRole(any(), eq(CorporateRole.CEO)))
-                .thenReturn(Optional.empty());
-        when(corporateUserRepository.findByCompanyInfoCustomerIdAndCorporateRole(any(), eq(CorporateRole.MAKER)))
-                .thenReturn(Optional.empty());
-        when(corporateUserRepository.save(any(CorporateUser.class))).thenAnswer(invocation -> {
-            CorporateUser user = invocation.getArgument(0);
-            user.setCorporateUserId(UUID.randomUUID());
-            return user;
-        });
-
-        when(corporateCredentialRepository.findByCorporateUserId(any())).thenReturn(Optional.empty());
-        when(corporateCredentialRepository.save(any(CorporateCredential.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(accountRepository.save(any(Accounts.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(corporateAccountAccessRepository.save(any(CorporateAccountAccess.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(passwordEncoder.encode(anyString())).thenReturn("hashed_corporate_password");
-
-        String createdAccountNumber = accountService.createCorporateAccountWithExistingRoles(dto);
-
-        assertThat(createdAccountNumber).isNotNull();
-        assertThat(createdAccountNumber).startsWith("200");
-
-        // Verifies 2 corporate credentials created: one for CEO, one for Maker
-        verify(corporateCredentialRepository, times(2)).save(any(CorporateCredential.class));
-
-        ArgumentCaptor<String> encodedPasswordsCaptor = ArgumentCaptor.forClass(String.class);
-        verify(passwordEncoder, times(2)).encode(encodedPasswordsCaptor.capture());
-        List<String> encodedPasswords = encodedPasswordsCaptor.getAllValues();
-        String ceoRawPassword = encodedPasswords.get(0);
-        String makerRawPassword = encodedPasswords.get(1);
-
-        assertThat(ceoRawPassword).isNotEmpty();
-        assertThat(makerRawPassword).isNotEmpty();
-        assertThat(ceoRawPassword).isNotEqualTo(makerRawPassword);
-
-        // Verifies 2 SEPARATE formal emails dispatched: one to CEO, one to Maker with exact passwords
-        verify(cusEmailService, times(1)).sendCorporateAccountCredentials(
-                eq("ceo@acetech.com"),
-                eq("U Tin Win"),
-                eq("Ace Global Tech Co., Ltd"),
-                eq("COMP-20261102-5001"),
-                anyString(),
-                eq("CEO / Authorizer"),
-                eq(createdAccountNumber),
-                eq("CURRENT"),
-                eq(ceoRawPassword)
-        );
-
-        verify(cusEmailService, times(1)).sendCorporateAccountCredentials(
-                eq("accountant@acetech.com"),
-                eq("Daw Khin"),
-                eq("Ace Global Tech Co., Ltd"),
-                eq("COMP-20261102-5001"),
-                anyString(),
-                eq("Maker / Accountant"),
-                eq(createdAccountNumber),
-                eq("CURRENT"),
-                eq(makerRawPassword)
-        );
-    }
-
-    @Test
-    @DisplayName("Create duplicate active retail account of same type throws IllegalStateException")
-    void testCreateAccount_DuplicateAccountType_ThrowsException() {
-        AccountCreateDTO dto = new AccountCreateDTO();
-        dto.setCustomerCode("CUST-1001");
-        dto.setAccountType(AccountType.SAVINGS);
-
-        when(customerRepository.findByCustomerCode("CUST-1001")).thenReturn(Optional.of(mockCustomer));
-        when(accountRepository.findByCustomerCustomerCode("CUST-1001")).thenReturn(List.of(mockAccount)); // already active SAVINGS
-
-        assertThatThrownBy(() -> accountService.createAccount(dto))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("SAVINGS");
-
-        verify(accountRepository, never()).save(any(Accounts.class));
-    }
-
-    @Test
-    @DisplayName("Create duplicate active corporate account throws IllegalStateException")
-    void testCreateCorporateAccount_DuplicateCorporateAccount_ThrowsException() {
-        CorporateAccountCreateDTO dto = CorporateAccountCreateDTO.builder()
-                .companyCustomerCode("COMP-20261102-5001")
-                .accountType("CURRENT")
-                .build();
-
-        Customers company = Customers.builder()
-                .customerId(UUID.randomUUID())
-                .customerCode("COMP-20261102-5001")
-                .customerType(CustomerType.COMPANY)
-                .fullName("Ace Global Tech Co., Ltd")
-                .build();
-
-        Accounts corporateAccount = Accounts.builder()
-                .accountId(UUID.randomUUID())
-                .accountNumber("2009998877")
-                .accountCategory(AccountCategory.CORPORATE)
-                .accountType(AccountType.CURRENT)
-                .status(AccountStatus.ACTIVE)
-                .customer(company)
-                .build();
-
-        when(customerRepository.findByCustomerCode("COMP-20261102-5001")).thenReturn(Optional.of(company));
-        when(accountRepository.findByCustomerCustomerCode("COMP-20261102-5001")).thenReturn(List.of(corporateAccount));
-
-        assertThatThrownBy(() -> accountService.createCorporateAccountWithExistingRoles(dto))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("CORPORATE");
-
-        verify(accountRepository, never()).save(any(Accounts.class));
-    }
-
-    @Test
-    @DisplayName("Create Retail Account with initial deposit below 10,000 MMK throws IllegalArgumentException")
-    void testCreateRetailAccount_InitialDepositBelowMinimum_ThrowsException() {
-        AccountCreateDTO dto = new AccountCreateDTO();
-        dto.setCustomerCode("CUST-1001");
-        dto.setAccountType(AccountType.SAVINGS);
-        dto.setInitialDeposit(new BigDecimal("9999.00"));
-        dto.setCurrency("MMK");
-
-        when(customerRepository.findByCustomerCode("CUST-1001")).thenReturn(Optional.of(mockCustomer));
-        when(accountRepository.findByCustomerCustomerCode("CUST-1001")).thenReturn(Collections.emptyList());
-
-        assertThatThrownBy(() -> accountService.createAccount(dto))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Initial deposit for Personal account must be at least 10,000 MMK");
-
-        verify(accountRepository, never()).save(any(Accounts.class));
-    }
-
-    @Test
-    @DisplayName("Create Corporate Account with initial deposit below 50,000 MMK throws IllegalArgumentException")
-    void testCreateCorporateAccount_InitialDepositBelowMinimum_ThrowsException() {
-        CorporateAccountCreateDTO dto = CorporateAccountCreateDTO.builder()
-                .companyCustomerCode("COMP-20261102-5001")
-                .accountType("CURRENT")
-                .initialDeposit(new BigDecimal("49999.00"))
-                .currency("MMK")
-                .build();
-
-        Customers company = Customers.builder()
-                .customerId(UUID.randomUUID())
-                .customerCode("COMP-20261102-5001")
-                .customerType(CustomerType.COMPANY)
-                .fullName("Ace Global Tech Co., Ltd")
-                .build();
-
-        when(customerRepository.findByCustomerCode("COMP-20261102-5001")).thenReturn(Optional.of(company));
-        when(accountRepository.findByCustomerCustomerCode("COMP-20261102-5001")).thenReturn(Collections.emptyList());
-
-        assertThatThrownBy(() -> accountService.createCorporateAccountWithExistingRoles(dto))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Initial deposit for Corporate account must be at least 50,000 MMK");
-
-        verify(accountRepository, never()).save(any(Accounts.class));
-    }
-
-    @Test
-    @DisplayName("Create Retail Account with non-MMK currency throws IllegalArgumentException")
-    void testCreateRetailAccount_NonMmkCurrency_ThrowsException() {
-        AccountCreateDTO dto = new AccountCreateDTO();
-        dto.setCustomerCode("CUST-1001");
-        dto.setAccountType(AccountType.SAVINGS);
-        dto.setInitialDeposit(new BigDecimal("10000.00"));
-        dto.setCurrency("USD");
-
-        when(customerRepository.findByCustomerCode("CUST-1001")).thenReturn(Optional.of(mockCustomer));
-        when(accountRepository.findByCustomerCustomerCode("CUST-1001")).thenReturn(Collections.emptyList());
-
-        assertThatThrownBy(() -> accountService.createAccount(dto))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Only MMK is supported");
-
-        verify(accountRepository, never()).save(any(Accounts.class));
     }
 }

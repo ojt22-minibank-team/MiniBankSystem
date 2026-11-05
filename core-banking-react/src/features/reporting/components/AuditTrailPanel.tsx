@@ -111,7 +111,7 @@ const AuditTrailPanel: React.FC<Props> = ({
       key: 'createdAt',
       label: 'Timestamp',
       render: (r: AuditTrailLog) => (
-        <span className="text-[11px] text-slate-500 whitespace-nowrap">
+        <span style={{ fontSize: '11px', color: '#64748b', whiteSpace: 'nowrap' }}>
           {r.createdAt?.replace('T', ' ')}
         </span>
       ),
@@ -121,10 +121,10 @@ const AuditTrailPanel: React.FC<Props> = ({
       label: 'Actor / User',
       render: (r: AuditTrailLog) => (
         <div>
-          <div className="font-semibold text-blue-800 text-xs truncate max-w-[140px]">
+          <div style={{ fontWeight: 600, color: '#1E40AF', fontSize: '12px' }}>
             {r.staffUsername || r.staffId || '-'}
           </div>
-          <div className="text-[10px] text-slate-400 truncate max-w-[140px]">
+          <div style={{ fontSize: '10px', color: '#94a3b8' }}>
             {r.staffFullName ? `${r.staffFullName} (${r.actorType || 'STAFF'})` : (r.actorType || 'STAFF')}
           </div>
         </div>
@@ -134,7 +134,17 @@ const AuditTrailPanel: React.FC<Props> = ({
       key: 'actionCategory',
       label: 'Category',
       render: (r: AuditTrailLog) => (
-        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 uppercase tracking-wide">
+        <span
+          style={{
+            padding: '2px 6px',
+            borderRadius: '4px',
+            fontSize: '10px',
+            fontWeight: 600,
+            backgroundColor: '#f1f5f9',
+            color: '#475569',
+            textTransform: 'uppercase',
+          }}
+        >
           {r.actionCategory || '-'}
         </span>
       ),
@@ -144,10 +154,14 @@ const AuditTrailPanel: React.FC<Props> = ({
       label: 'Action',
       render: (r: AuditTrailLog) => (
         <span
-          className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap"
           style={{
+            padding: '2px 8px',
+            borderRadius: '10px',
+            fontSize: '10px',
+            fontWeight: 700,
             backgroundColor: (ACTION_BADGE_COLOR[r.actionType] ?? '#94a3b8') + '22',
             color: ACTION_BADGE_COLOR[r.actionType] ?? '#64748b',
+            whiteSpace: 'nowrap',
           }}
         >
           {r.actionType}
@@ -160,7 +174,7 @@ const AuditTrailPanel: React.FC<Props> = ({
       key: 'ipAddress',
       label: 'IP Address',
       render: (r: AuditTrailLog) => (
-        <span className="font-mono text-xs text-slate-600">{r.ipAddress}</span>
+        <span style={{ fontFamily: 'monospace', fontSize: '12px' }}>{r.ipAddress}</span>
       ),
     },
     {
@@ -168,7 +182,15 @@ const AuditTrailPanel: React.FC<Props> = ({
       label: 'Description',
       render: (r: AuditTrailLog) => (
         <span
-          className="text-xs text-slate-600 max-w-xs block truncate"
+          style={{
+            fontSize: '12px',
+            color: '#475569',
+            maxWidth: '220px',
+            display: 'block',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
           title={r.description}
         >
           {r.description || '-'}
@@ -178,18 +200,17 @@ const AuditTrailPanel: React.FC<Props> = ({
   ];
 
   return (
-    <div className="w-full">
-      {/* Metric Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4 mb-5">
+    <div>
+      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '20px' }}>
         <MetricCard
-          icon="📜"
+          icon="Logs"
           label="Total Log Entries"
           value={pageData.totalCount.toLocaleString()}
           sub="Matching filters"
           color="#1E40AF"
         />
         <MetricCard
-          icon="📑"
+          icon="Pages"
           label="Current Page"
           value={`${pageData.page} / ${pageData.totalPages || 1}`}
           sub={`${PAGE_SIZE} rows/page`}
@@ -197,20 +218,36 @@ const AuditTrailPanel: React.FC<Props> = ({
         />
       </div>
 
-      {/* Main Table Card */}
-      <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 border-b border-slate-100">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs sm:text-sm font-bold text-slate-900">
+      <div
+        style={{
+          backgroundColor: '#fff',
+          borderRadius: '10px',
+          border: '1px solid #e2e8f0',
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '16px 20px',
+            borderBottom: '1px solid #f1f5f9',
+            flexWrap: 'wrap',
+            gap: '8px',
+          }}
+        >
+          <div>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
               System Audit Trail Logs
             </span>
             {pageData.totalCount > 0 && (
-              <span className="text-[11px] text-slate-400 font-medium">
-                ({pageData.totalCount.toLocaleString()} total entries)
+              <span style={{ fontSize: '11px', color: '#94a3b8', marginLeft: '8px' }}>
+                {pageData.totalCount.toLocaleString()} total entries
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
             <ExportButtons
               onExportCsv={() => exportAuditTrail({ ...params, pageSize: 1000 }, 'csv')}
               onExportExcel={() => exportAuditTrail({ ...params, pageSize: 1000 }, 'excel')}
@@ -220,20 +257,34 @@ const AuditTrailPanel: React.FC<Props> = ({
             <button
               onClick={() => load(1)}
               disabled={loading}
-              className="px-3 sm:px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#2563EB',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
             >
-              {loading ? 'Loading...' : 'Refresh'}
+              {loading ? 'Loading...' : 'Load Logs'}
             </button>
           </div>
         </div>
-
         {error && (
-          <div className="p-3 sm:p-4 text-xs sm:text-sm text-red-600 bg-red-50 border-b border-red-100">
+          <div
+            style={{
+              padding: '12px 20px',
+              color: '#dc2626',
+              fontSize: '13px',
+              backgroundColor: '#fef2f2',
+            }}
+          >
             Error: {error}
           </div>
         )}
-
-        <div className="p-4 sm:p-5">
+        <div style={{ padding: '16px 20px' }}>
           <DataTable
             columns={columns}
             data={pageData.logs}

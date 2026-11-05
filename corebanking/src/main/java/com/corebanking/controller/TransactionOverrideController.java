@@ -1,13 +1,8 @@
 package com.corebanking.controller;
 
-import com.corebanking.dto.StaffTransactionDetailDto;
-import com.corebanking.dto.StaffTransactionResponseDto;
-import com.corebanking.dto.StaffTransactionSearchCriteria;
-import com.corebanking.dto.StaffTransactionStatsDto;
 import com.corebanking.dto.TransactionFlagRequestDto;
 import com.corebanking.dto.TransactionOverrideRequestDto;
 import com.corebanking.dto.TransactionOverrideResponseDto;
-import com.corebanking.service.StaffTransactionService;
 import com.corebanking.service.TransactionOverrideService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,8 +20,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * REST Controller for Staff transaction management, inspection, review,
- * suspicious activity flagging, and managerial overrides (release/reject).
+ * REST Controller for Staff-initiated transaction review, suspicious activity flagging,
+ * and managerial overrides (release/reject).
  */
 @Slf4j
 @Validated
@@ -36,49 +31,6 @@ import java.util.UUID;
 public class TransactionOverrideController {
 
     private final TransactionOverrideService transactionOverrideService;
-    private final StaffTransactionService staffTransactionService;
-
-    /**
-     * Search and filter transactions with dynamic criteria and pagination for Staff/Admin portal.
-     *
-     * @param criteria dynamic search criteria
-     * @param pageable pagination parameters (defaults to 20 items sorted by initiatedAt descending)
-     * @return paginated list of transaction summary DTOs
-     */
-    @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'TELLER', 'AUDITOR')")
-    public ResponseEntity<Page<StaffTransactionResponseDto>> searchTransactions(
-            @ModelAttribute StaffTransactionSearchCriteria criteria,
-            @PageableDefault(size = 20, sort = "initiatedAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        log.debug("REST request to search staff transactions, criteria={}", criteria);
-        Page<StaffTransactionResponseDto> page = staffTransactionService.searchTransactions(criteria, pageable);
-        return ResponseEntity.ok(page);
-    }
-
-    /**
-     * Retrieve full transaction detail by UUID or transactionRef string.
-     *
-     * @param identifier UUID or transactionRef
-     * @return detailed transaction DTO
-     */
-    @GetMapping("/detail/{identifier}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TELLER', 'AUDITOR')")
-    public ResponseEntity<StaffTransactionDetailDto> getTransactionDetail(@PathVariable String identifier) {
-        log.debug("REST request to fetch transaction detail: identifier={}", identifier);
-        StaffTransactionDetailDto detail = staffTransactionService.getTransactionDetail(identifier);
-        return ResponseEntity.ok(detail);
-    }
-
-    /**
-     * Retrieve high-level statistics summary for transactions overview chips.
-     */
-    @GetMapping("/stats")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TELLER', 'AUDITOR')")
-    public ResponseEntity<StaffTransactionStatsDto> getTransactionStats() {
-        log.debug("REST request to fetch transaction stats");
-        StaffTransactionStatsDto stats = staffTransactionService.getTransactionStats();
-        return ResponseEntity.ok(stats);
-    }
 
     /**
      * Retrieve a paginated review queue of transactions that are held or pending authorization.

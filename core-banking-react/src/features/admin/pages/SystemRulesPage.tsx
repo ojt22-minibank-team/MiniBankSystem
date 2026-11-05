@@ -11,7 +11,7 @@ import type {
   SystemParameterResponse,
   FeeScheduleResponse,
 } from '../../../types/api.types';
-import { formatDateTime, formatDate } from '../../../utils/formatDate';
+import { formatDateTime } from '../../../utils/formatDate';
 import type { AxiosError } from 'axios';
 
 type ActiveTab = 'parameters' | 'fees';
@@ -259,7 +259,7 @@ export default function SystemRulesPage() {
           {(row.minimumFee != null || row.maximumFee != null) && (
             <p className="text-[10px] text-zinc-400 mt-0.5 font-mono">
               {row.minimumFee != null ? `Min: ${row.minimumFee}` : ''}
-              {row.minimumFee != null && row.maximumFee != null ? ' Â· ' : ''}
+              {row.minimumFee != null && row.maximumFee != null ? ' · ' : ''}
               {row.maximumFee != null ? `Max: ${row.maximumFee}` : ''}
             </p>
           )}
@@ -271,9 +271,9 @@ export default function SystemRulesPage() {
       header: 'Active Schedule',
       render: (row: FeeScheduleResponse) => (
         <div className="text-xs text-zinc-500 font-medium">
-          <p>From: {formatDate(row.activeFrom)}</p>
+          <p>From: {new Date(row.activeFrom).toLocaleDateString()}</p>
           <p className="text-zinc-400 text-[10px]">
-            Until: {row.activeUntil ? formatDate(row.activeUntil) : 'Indefinite'}
+            Until: {row.activeUntil ? new Date(row.activeUntil).toLocaleDateString() : 'Indefinite'}
           </p>
         </div>
       ),
@@ -402,10 +402,10 @@ export default function SystemRulesPage() {
           </div>
         </div>
 
-        {/* 3 Summary KPI Cards (Liquid Glass) */}
+        {/* 3 Summary KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          <div className="liquid-glass-card rounded-3xl p-6">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+          <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)]">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
               System Parameters
             </span>
             <div className="flex items-baseline justify-between mt-3">
@@ -418,12 +418,12 @@ export default function SystemRulesPage() {
             </div>
           </div>
 
-          <div className="liquid-glass-card rounded-3xl p-6">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+          <div className="glass-panel p-6">
+            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
               Active Fee Schedules
             </span>
             <div className="flex items-baseline justify-between mt-3">
-              <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
+              <span className="text-2xl sm:text-[28px] font-black text-[#1E1B4B] font-mono tabular-nums">
                 {activeFeesCount}
               </span>
               <span className="status-pill-amber text-[11px]">
@@ -432,12 +432,12 @@ export default function SystemRulesPage() {
             </div>
           </div>
 
-          <div className="liquid-glass-card rounded-3xl p-6">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+          <div className="glass-panel p-6">
+            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
               Security Protocol
             </span>
             <div className="flex items-baseline justify-between mt-3">
-              <span className="text-xl sm:text-2xl font-bold text-slate-900">
+              <span className="text-xl sm:text-2xl font-black text-[#1E1B4B]">
                 Pessimistic Locks
               </span>
               <span className="status-pill-purple text-[11px]">
@@ -452,7 +452,7 @@ export default function SystemRulesPage() {
           <div className="rounded-2xl border border-emerald-500/30 bg-emerald-50/80 backdrop-blur-md px-5 py-3 text-xs font-semibold text-emerald-800 flex items-center justify-between">
             <span>{successMessage}</span>
             <button onClick={() => setSuccessMessage(null)} className="text-emerald-700 hover:text-emerald-950 font-bold">
-              âœ•
+              ✕
             </button>
           </div>
         )}
@@ -464,7 +464,7 @@ export default function SystemRulesPage() {
               <p className="mt-0.5">{error}</p>
             </div>
             <button onClick={() => setError(null)} className="text-red-700 hover:text-red-950 font-bold">
-              âœ•
+              ✕
             </button>
           </div>
         )}
@@ -530,7 +530,7 @@ export default function SystemRulesPage() {
                     onClick={() => setParamSearch('')}
                     className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-zinc-400 hover:text-zinc-600"
                   >
-                    âœ•
+                    ✕
                   </button>
                 )}
               </div>
@@ -575,7 +575,7 @@ export default function SystemRulesPage() {
                     onClick={() => setFeeSearch('')}
                     className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-zinc-400 hover:text-zinc-600"
                   >
-                    âœ•
+                    ✕
                   </button>
                 )}
               </div>

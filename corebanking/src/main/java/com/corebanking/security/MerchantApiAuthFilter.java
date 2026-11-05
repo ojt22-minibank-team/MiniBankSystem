@@ -32,7 +32,7 @@ import java.util.Optional;
 
 /**
  * Filter responsible for validating HMAC-SHA256 signatures on Merchant and Payment Gateway requests.
- * Restricts exclusively to /api/v1/payments/ecommerce/** and /api/v1/payments/gateway/**.
+ * Restricts exclusively to /api/v1/payments/ecommerce/**.
  */
 @Slf4j
 @Component
@@ -46,7 +46,6 @@ public class MerchantApiAuthFilter extends OncePerRequestFilter {
     private static final String HMAC_ALGORITHM = "HmacSHA256";
     private static final long TIMESTAMP_EXPIRY_SECONDS = 300L; // 5-minute replay window
     private static final String ECOMMERCE_PATH_PATTERN = "/api/v1/payments/ecommerce/**";
-    private static final String GATEWAY_PATH_PATTERN = "/api/v1/payments/gateway/**";
 
     private final MerchantSecretService merchantSecretService;
     private final ObjectMapper objectMapper;
@@ -65,10 +64,8 @@ public class MerchantApiAuthFilter extends OncePerRequestFilter {
             return true;
         }
 
-        // Filter ONLY paths matching /api/v1/payments/ecommerce/** OR /api/v1/payments/gateway/**
-        boolean matchesEcommerce = pathMatcher.match(ECOMMERCE_PATH_PATTERN, uri);
-        boolean matchesGateway = pathMatcher.match(GATEWAY_PATH_PATTERN, uri);
-        return !(matchesEcommerce || matchesGateway);
+        // Filter ONLY paths matching /api/v1/payments/ecommerce/**
+        return !pathMatcher.match(ECOMMERCE_PATH_PATTERN, uri);
     }
 
     @Override

@@ -19,7 +19,6 @@ import java.util.UUID;
         indexes = {
                 @Index(name = "fk_otp_customer", columnList = "customer_id"),
                 @Index(name = "idx_otp_corporate_user", columnList = "corporate_user_id"),
-                @Index(name = "fk_otp_staff", columnList = "staff_id"),
                 @Index(name = "fk_otp_transaction", columnList = "transaction_id")
         }
 )
@@ -49,11 +48,6 @@ public class OtpChallenge {
     @JoinColumn(name = "corporate_user_id",
             foreignKey = @ForeignKey(name = "fk_otp_corporate_user"))
     private CorporateUser corporateUser;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "staff_id",
-            foreignKey = @ForeignKey(name = "fk_otp_staff"))
-    private StaffUsers staff;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "transaction_id",

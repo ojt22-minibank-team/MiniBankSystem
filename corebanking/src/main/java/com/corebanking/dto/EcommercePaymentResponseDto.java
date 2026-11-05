@@ -20,7 +20,6 @@ public class EcommercePaymentResponseDto {
     private BigDecimal amount;
     private BigDecimal serviceFee;
     private BigDecimal totalDebitedAmount;
-    private BigDecimal netMerchantAmount;
     private String currency;
     private LocalDateTime completedAt;
     private String description;

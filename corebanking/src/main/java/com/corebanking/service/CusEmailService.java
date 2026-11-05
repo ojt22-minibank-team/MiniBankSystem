@@ -2,37 +2,29 @@ package com.corebanking.service;
 
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CusEmailService {
 
     private final JavaMailSender mailSender;
 
-    @Async("mailTaskExecutor")
     public void sendCorporateLoginOtp(String email, String otp) {
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(email);
-            message.setSubject("Corporate Banking Login OTP");
-            message.setText(
-                    "Your Corporate Banking login OTP code is: "
-                            + otp
-                            + "\n\nThis OTP will expire in 5 minutes."
-                            + "\n\nDo not share this OTP with anyone."
-                            + "\n\nIf you did not request this login, please ignore this email."
-            );
-            mailSender.send(message);
-        } catch (Exception ex) {
-            log.error("Failed to send corporate login OTP to {}", email, ex);
-        }
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(email);
+        message.setSubject("Corporate Banking Login OTP");
+        message.setText(
+                "Your Corporate Banking login OTP code is: "
+                        + otp
+                        + "\n\nThis OTP will expire in 5 minutes."
+                        + "\n\nDo not share this OTP with anyone."
+                        + "\n\nIf you did not request this login, please ignore this email."
+        );
+        mailSender.send(message);
     }
 
 
@@ -41,7 +33,6 @@ public class CusEmailService {
     // =========================================================
 
     
-    @Async("mailTaskExecutor")
     public void sendLoginOtp(
             String toEmail,
             String otp) {
@@ -79,31 +70,27 @@ public class CusEmailService {
         // SEND OTP EMAIL
         // ==========================================
 
-        try {
-            SimpleMailMessage message =
-                    new SimpleMailMessage();
+        SimpleMailMessage message =
+                new SimpleMailMessage();
 
-            message.setTo(
-                    toEmail
-            );
+        message.setTo(
+                toEmail
+        );
 
-            message.setSubject(
-                    "Online Banking Login OTP"
-            );
+        message.setSubject(
+                "Online Banking Login OTP"
+        );
 
-            message.setText(
-                    "Your OTP code is: "
-                            + otp
-                            + "\n\nThis OTP will expire in 5 minutes."
-                            + "\n\nDo not share this OTP with anyone."
-            );
+        message.setText(
+                "Your OTP code is: "
+                        + otp
+                        + "\n\nThis OTP will expire in 5 minutes."
+                        + "\n\nDo not share this OTP with anyone."
+        );
 
-            mailSender.send(
-                    message
-            );
-        } catch (Exception ex) {
-            log.error("Failed to send login OTP to {}", toEmail, ex);
-        }
+        mailSender.send(
+                message
+        );
     }
 
 
@@ -111,70 +98,67 @@ public class CusEmailService {
     // PASSWORD RESET OTP EMAIL
     // =========================================================
 
-    @Async("mailTaskExecutor")
     public void sendPasswordResetOtp(
             String toEmail,
             String otp) {
 
-        try {
-            SimpleMailMessage message =
-                    new SimpleMailMessage();
+        SimpleMailMessage message =
+                new SimpleMailMessage();
 
-            message.setTo(
-                    toEmail
-            );
 
-            message.setSubject(
-                    "Online Banking Password Reset OTP"
-            );
+        message.setTo(
+                toEmail
+        );
 
-            message.setText(
-                    "Your password reset OTP code is: "
-                            + otp
-                            + "\n\nThis OTP will expire in 5 minutes."
-                            + "\n\nDo not share this OTP with anyone."
-                            + "\n\nIf you did not request a password reset, "
-                            + "please ignore this email."
-            );
 
-            mailSender.send(
-                    message
-            );
-        } catch (Exception ex) {
-            log.error("Failed to send password reset OTP to {}", toEmail, ex);
-        }
+        message.setSubject(
+                "Online Banking Password Reset OTP"
+        );
+
+
+        message.setText(
+                "Your password reset OTP code is: "
+                        + otp
+                        + "\n\nThis OTP will expire in 5 minutes."
+                        + "\n\nDo not share this OTP with anyone."
+                        + "\n\nIf you did not request a password reset, "
+                        + "please ignore this email."
+        );
+
+
+        mailSender.send(
+                message
+        );
     }
     
-    @Async("mailTaskExecutor")
     public void sendPinResetOtp(
             String toEmail,
             String otp) {
 
-        try {
-            SimpleMailMessage message =
-                    new SimpleMailMessage();
+        SimpleMailMessage message =
+                new SimpleMailMessage();
 
-            message.setTo(
-                    toEmail
-            );
+        message.setTo(
+                toEmail
+        );
 
-            message.setSubject(
-                    "Online Banking Transaction PIN Reset OTP"
-            );
+        message.setSubject(
+                "Online Banking Transaction PIN Reset OTP"
+        );
 
-            message.setText(
-                    "Your Transaction PIN reset OTP code is: "
-                            + otp
-                            + "\n\nThis OTP will expire in 5 minutes."
-                            + "\n\nDo not share this OTP with anyone."
-            );
-            mailSender.send(message);
-        } catch (Exception ex) {
-            log.error("Failed to send PIN reset OTP to {}", toEmail, ex);
-        }
+        message.setText(
+                "Your Transaction PIN reset OTP code is: "
+                        + otp
+                        + "\n\nThis OTP will expire in 5 minutes."
+                        + "\n\nDo not share this OTP with anyone."
+        );
+        mailSender.send(message);
     }
 
-    
+    /**
+     * Customer အသစ် စာရင်းသွင်းပြီးချိန်တွင် Customer Code နှင့် Temporary Password အား 
+     * Customer ၏ Email သို့ တစ်ခါတည်း ပေးပို့ခြင်း (Async)
+     */
     public void sendCustomerRegistrationCredentials(
             String toEmail, 
             String customerName, 
@@ -187,17 +171,17 @@ public class CusEmailService {
                 message.setTo(toEmail);
                 message.setSubject("🏦 Core Banking - Customer Registration & Login Credentials");
                 message.setText(
-                		"Dear " + customerName + ",\n\n"
-                                + "Your customer account has been successfully registered in the Core Banking system.\n\n"
-                                + "Your official credentials are as follows:\n"
-                                + "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                                + "🔹 Customer Code      : " + customerCode + "\n"
-                                + "🔹 Temporary Password : " + tempPassword + "\n"
-                                + "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                                + "You can use the Customer Code and temporary password above to log in to Online/Mobile Banking.\n"
-                                + "⚠ For security reasons, please change your password immediately after your first login.\n\n"
-                                + "Best regards,\n"
-                                + "Core Banking Team"
+                        "မင်္ဂလာပါ " + customerName + " ခင်ဗျာ,\n\n"
+                        + "Core Banking စနစ်တွင် သင်၏ Customer အကောင့်မှတ်ပုံတင်ခြင်း အောင်မြင်စွာ ပြီးမြောက်ပါပြီ။\n\n"
+                        + "သင်၏ တရားဝင် စနစ်သုံး အချက်အလက်များမှာ အောက်ပါအတိုင်း ဖြစ်ပါသည်:\n"
+                        + "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        + "🔹 Customer Code      : " + customerCode + "\n"
+                        + "🔹 Temporary Password : " + tempPassword + "\n"
+                        + "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                        + "Online/Mobile Banking စနစ်သို့ စတင်ဝင်ရောက်ရန် အထက်ပါ Customer Code နှင့် ယာယီစကားဝှက်ကို အသုံးပြုနိုင်ပါသည်။\n"
+                        + "⚠ လုံခြုံရေးအရ ပထမဆုံးအကြိမ် ဝင်ရောက်ပြီးသည်နှင့် စကားဝှက်အား ချက်ချင်း အသစ်ပြောင်းလဲပေးပါရန် မေတ္တာရပ်ခံအပ်ပါသည်။\n\n"
+                        + "လေးစားစွာဖြင့်,\n"
+                        + "Core Banking Team"
                 );
 
                 mailSender.send(message);
@@ -208,21 +192,12 @@ public class CusEmailService {
         });
     }
 
-  
+    /**
+     * Account Number နှင့် Temporary Password အား Customer Gmail သို့ ပေးပို့ခြင်း (Async)
+     */
     public void sendAccountOpeningConfirmation(
             String toEmail, 
             String customerName, 
-            String accountNumber, 
-            String accountType, 
-            String tempPassword) {
-        sendAccountOpeningConfirmation(toEmail, customerName, null, accountNumber, accountType, tempPassword);
-    }
-
-    
-    public void sendAccountOpeningConfirmation(
-            String toEmail, 
-            String customerName, 
-            String customerCode,
             String accountNumber, 
             String accountType, 
             String tempPassword) {
@@ -232,69 +207,21 @@ public class CusEmailService {
                 SimpleMailMessage message = new SimpleMailMessage();
                 message.setTo(toEmail);
                 message.setSubject("🏦 Core Banking - Account Credentials & Temporary Password");
-                
-                StringBuilder text = new StringBuilder();
-                text.append("Dear ").append(customerName).append(",\n\n")
-                    .append("Your Core Banking account has been successfully opened.\n\n");
-                if (customerCode != null && !customerCode.isBlank()) {
-                    text.append("🔹 Customer Code      : ").append(customerCode).append("\n");
-                }
-                text.append("🔹 Account Number      : ").append(accountNumber).append("\n")
-                    .append("🔹 Account Type        : ").append(accountType).append("\n")
-                    .append("🔹 Temporary Password  : ").append(tempPassword).append("\n\n")
-                    .append("You can use the temporary password above to log in to Online/Mobile Banking.\n")
-                    .append("For security reasons, please change your password immediately after your first login.\n\n")
-                    .append("Best regards,\nCore Banking Team");
+                message.setText(
+                        "မင်္ဂလာပါ " + customerName + " ခင်ဗျာ,\n\n"
+                        + "သင့်၏ Core Banking ဘဏ်အကောင့်ကို အောင်မြင်စွာ ဖွင့်လှစ်ပြီး ဖြစ်ပါသည်။\n\n"
+                        + "🔹 Account Number: " + accountNumber + "\n"
+                        + "🔹 Account Type: " + accountType + "\n"
+                        + "🔹 Temporary Password: " + tempPassword + "\n\n"
+                        + "Online/Mobile Banking သို့ ဝင်ရောက်ရန် အထက်ပါ ယာယီစကားဝှက်ကို အသုံးပြုနိုင်ပါသည်။\n"
+                        + "လုံခြုံရေးအရ ပထမဆုံးအကြိမ် ဝင်ရောက်ပြီးသည်နှင့် စကားဝှက်ကို ချက်ချင်း ပြောင်းလဲပေးပါရန် မေတ္တာရပ်ခံအပ်ပါသည်။\n\n"
+                        + "လေးစားစွာဖြင့်,\nCore Banking Team"
+                );
 
-                message.setText(text.toString());
                 mailSender.send(message);
                 System.out.println("Credentials email sent to: " + toEmail);
             } catch (Exception e) {
                 System.err.println("Failed to send credentials email to " + toEmail + ": " + e.getMessage());
-            }
-        });
-    }
-
-   
-    public void sendCorporateAccountCredentials(
-            String toEmail,
-            String recipientName,
-            String companyName,
-            String companyCustomerCode,
-            String corporateUserCode,
-            String roleName,
-            String accountNumber,
-            String accountType,
-            String tempPassword) {
-
-        java.util.concurrent.CompletableFuture.runAsync(() -> {
-            try {
-                SimpleMailMessage message = new SimpleMailMessage();
-                message.setTo(toEmail);
-                message.setSubject("Core Banking - Corporate Account Credentials (" + companyName + ")");
-                message.setText(
-                        "Dear " + recipientName + ",\n\n"
-                        + "The Corporate Banking account registration for " + companyName + " has been successfully completed in the Core Banking system.\n\n"
-                        + "Your official credentials are as follows:\n"
-                        + "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                        + "🔹 Company Name          : " + companyName + "\n"
-                        + "🔹 Company Customer Code : " + companyCustomerCode + "\n"
-                        + "🔹 Corporate User Code   : " + corporateUserCode + "\n"
-                        + "🔹 Assigned Role         : " + roleName + "\n"
-                        + "🔹 Account Number        : " + accountNumber + "\n"
-                        + "🔹 Account Type          : " + accountType + "\n"
-                        + "🔹 Temporary Password    : " + tempPassword + "\n"
-                        + "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                        + "You can use the Company Customer Code, Corporate User Code, and temporary password above to log in to Corporate Online Banking.\n\n"
-                        + "⚠ For security reasons, please change your password immediately after your first login.\n\n"
-                        + "Best regards,\n"
-                        + "Core Banking Team"
-                );
-
-                mailSender.send(message);
-                System.out.println("✅ [EmailService] Corporate credentials email sent successfully to: " + toEmail + " (" + corporateUserCode + ")");
-            } catch (Exception e) {
-                System.err.println("❌ [EmailService] Failed to send corporate credentials email to " + toEmail + ": " + e.getMessage());
             }
         });
     }

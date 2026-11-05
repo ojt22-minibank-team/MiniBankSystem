@@ -11,8 +11,6 @@ import type {
   FeeFilterParams,
   LargeTransactionReport,
   LargeTxFilterParams,
-  TransactionDetail,
-  TransactionDetailFilterParams,
 } from '../types/reports/reporting.types';
 
 const BASE = '/api/v1/reports';
@@ -211,49 +209,5 @@ export async function exportLargeTransactions(
     responseType: 'blob',
   });
   const ext = format === 'excel' ? 'xlsx' : format === 'pdf' ? 'pdf' : 'csv';
-  triggerDownload(res.data as Blob, `Large_Transactions.${ext}`);
-}
-
-// Transaction Detail Report endpoints
-export async function fetchTransactionDetails(
-  params: TransactionDetailFilterParams
-): Promise<TransactionDetail[]> {
-  const res = await axiosInstance.get<TransactionDetail[]>(
-    `${BASE}/transaction-detail`,
-    {
-      headers: authHeaders(),
-      params: {
-        startDate: params.startDate,
-        endDate: params.endDate,
-        status: params.status || undefined,
-        transactionType: params.transactionType || undefined,
-        channel: params.channel || undefined,
-        minAmount: params.minAmount,
-        maxAmount: params.maxAmount,
-      },
-    }
-  );
-  return res.data;
-}
-
-export async function exportTransactionDetails(
-  params: TransactionDetailFilterParams,
-  format: 'csv' | 'excel' | 'pdf'
-): Promise<void> {
-  const res = await axiosInstance.get(`${BASE}/transaction-detail/export`, {
-    headers: authHeaders(),
-    params: {
-      startDate: params.startDate,
-      endDate: params.endDate,
-      status: params.status || undefined,
-      transactionType: params.transactionType || undefined,
-      channel: params.channel || undefined,
-      minAmount: params.minAmount,
-      maxAmount: params.maxAmount,
-      format,
-    },
-    responseType: 'blob',
-  });
-  const ext = format === 'excel' ? 'xlsx' : format === 'pdf' ? 'pdf' : 'csv';
-  triggerDownload(res.data as Blob, `Transaction_Detail_Report.${ext}`);
+  triggerDownload(res.data as Blob, `Large_Transactions_AML.${ext}`);
 }

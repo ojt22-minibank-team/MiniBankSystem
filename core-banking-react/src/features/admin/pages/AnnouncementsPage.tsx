@@ -11,7 +11,7 @@ import type {
 } from '../../../types/api.types';
 import type { AxiosError } from 'axios';
 
-// â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Constants ────────────────────────────────────────────────────────
 const PAGE_SIZE = 10;
 const MYANMAR_TZ = 'Asia/Rangoon'; // UTC+06:30
 
@@ -22,14 +22,7 @@ function nowMs(): number {
 }
 
 function formatMMDateTime(iso: string): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return '—';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const dateStr = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
-  const hours = pad(d.getHours());
-  const minutes = pad(d.getMinutes());
-  return `${dateStr}, ${hours}:${minutes}`;
+  return new Date(iso).toLocaleString(undefined, { timeZone: MYANMAR_TZ });
 }
 
 function getCurrentMMLocalDateTime(): string {
@@ -58,14 +51,14 @@ export default function AnnouncementsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // â”€â”€ Filter & pagination state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Filter & pagination state ────────────────────────────────────
   const [statusView, setStatusView] = useState<StatusView>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
 
-  // â”€â”€ Bulk delete state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Bulk delete state ────────────────────────────────────────────
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
-  // â”€â”€ Create modal state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Create modal state ───────────────────────────────────────────
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createTitle, setCreateTitle] = useState('');
   const [createMessage, setCreateMessage] = useState('');
@@ -100,13 +93,10 @@ export default function AnnouncementsPage() {
   }, [isTeller]);
 
   const filtered = useMemo(() => {
-    let list = announcements;
     if (statusView === 'EXPIRED') {
-      list = announcements.filter((a) => !isAnnouncementActive(a));
+      return announcements.filter((a) => !isAnnouncementActive(a));
     }
-    return [...list].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    return announcements;
   }, [announcements, statusView]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -217,7 +207,7 @@ export default function AnnouncementsPage() {
     <AdminLayout pageTitle="Announcements">
       <div className="max-w-[1440px] mx-auto space-y-6">
 
-        {/* â”€â”€ Page header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Page header ──────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
           <div>
             <h2 className="text-2xl sm:text-[28px] font-black text-[#1E1B4B] tracking-tight">
@@ -273,8 +263,8 @@ export default function AnnouncementsPage() {
 
         {/* 3 Summary KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          <div className="liquid-glass-card rounded-3xl p-6">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+          <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)]">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
               Total Bulletins
             </span>
             <div className="flex items-baseline justify-between mt-3">
@@ -287,12 +277,12 @@ export default function AnnouncementsPage() {
             </div>
           </div>
 
-          <div className="liquid-glass-card rounded-3xl p-6">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+          <div className="glass-panel p-6">
+            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
               Active Broadcasts
             </span>
             <div className="flex items-baseline justify-between mt-3">
-              <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
+              <span className="text-2xl sm:text-[28px] font-black text-[#1E1B4B] font-mono tabular-nums">
                 {activeCount}
               </span>
               <span className="status-pill-emerald text-[11px]">
@@ -301,12 +291,12 @@ export default function AnnouncementsPage() {
             </div>
           </div>
 
-          <div className="liquid-glass-card rounded-3xl p-6">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+          <div className="glass-panel p-6">
+            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
               Expired Broadcasts
             </span>
             <div className="flex items-baseline justify-between mt-3">
-              <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
+              <span className="text-2xl sm:text-[28px] font-black text-[#1E1B4B] font-mono tabular-nums">
                 {expiredCount}
               </span>
               <span className="status-pill-amber text-[11px]">
@@ -323,7 +313,7 @@ export default function AnnouncementsPage() {
           </div>
         )}
 
-        {/* â”€â”€ Filter Toolbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Filter Toolbar ────────────────────────────────────────────── */}
         {!isLoading && announcements.length > 0 && (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <select
@@ -340,7 +330,7 @@ export default function AnnouncementsPage() {
           </div>
         )}
 
-        {/* â”€â”€ Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Content ──────────────────────────────────────────────── */}
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <svg className="h-8 w-8 animate-spin text-amber-500" fill="none" viewBox="0 0 24 24">
@@ -351,7 +341,7 @@ export default function AnnouncementsPage() {
         ) : announcements.length === 0 ? (
           <div className="glass-panel p-16 text-center space-y-3">
             <div className="flex h-12 w-12 mx-auto items-center justify-center rounded-2xl bg-purple-100 text-[#1E1B4B] text-xl">
-              ðŸ“¢
+              📢
             </div>
             <p className="text-sm font-bold text-zinc-700">No announcements published yet.</p>
             {!isTeller && (
@@ -359,7 +349,7 @@ export default function AnnouncementsPage() {
                 onClick={() => setShowCreateModal(true)}
                 className="btn-liquid-gold px-5 py-2 text-xs inline-flex items-center gap-1.5"
               >
-                Create your first announcement â†’
+                Create your first announcement →
               </button>
             )}
           </div>
@@ -369,7 +359,7 @@ export default function AnnouncementsPage() {
           </div>
         ) : (
           <>
-            {/* â”€â”€ Announcement cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ── Announcement cards ──────────────── */}
             <div className="space-y-4">
               {pageData.map((a) => {
                 const active = isAnnouncementActive(a);
@@ -396,18 +386,18 @@ export default function AnnouncementsPage() {
                         {/* Date range display */}
                         <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-zinc-400 font-medium">
                           {a.startsAt && (
-                            <span>ðŸ“… Start: {formatMMDateTime(a.startsAt)}</span>
+                            <span>📅 Start: {formatMMDateTime(a.startsAt)}</span>
                           )}
-                          {a.startsAt && a.endsAt && <span>Â·</span>}
+                          {a.startsAt && a.endsAt && <span>·</span>}
                           {a.endsAt && (
-                            <span>ðŸ”š End: {formatMMDateTime(a.endsAt)}</span>
+                            <span>🔚 End: {formatMMDateTime(a.endsAt)}</span>
                           )}
                         </div>
 
                         <p className="mt-1 text-[11px] text-zinc-400">
-                          ID #{a.announcementId} Â· Published {formatMMDateTime(a.createdAt)}
+                          ID #{a.announcementId} · Published {formatMMDateTime(a.createdAt)}
                           {a.updatedAt && a.updatedAt !== a.createdAt && (
-                            <> Â· Updated {formatMMDateTime(a.updatedAt)}</>
+                            <> · Updated {formatMMDateTime(a.updatedAt)}</>
                           )}
                         </p>
                       </div>
@@ -439,7 +429,7 @@ export default function AnnouncementsPage() {
               })}
             </div>
 
-            {/* â”€â”€ Pagination â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ── Pagination ──────────────────────────────────────── */}
             {totalPages > 1 && (
               <div className="mt-6 flex items-center justify-between">
                 <span className="text-xs font-medium text-zinc-500">
@@ -452,7 +442,7 @@ export default function AnnouncementsPage() {
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     className="rounded-full border border-purple-950/15 bg-white/80 px-3.5 py-1.5 text-xs font-bold text-[#1E1B4B] hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
-                    â† Prev
+                    ← Prev
                   </button>
 
                   {Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -469,7 +459,7 @@ export default function AnnouncementsPage() {
                     }, [])
                     .map((item, idx) =>
                       item === 'ellipsis' ? (
-                        <span key={`e-${idx}`} className="px-2 text-zinc-400">â€¦</span>
+                        <span key={`e-${idx}`} className="px-2 text-zinc-400">…</span>
                       ) : (
                         <button
                           key={item}
@@ -491,7 +481,7 @@ export default function AnnouncementsPage() {
                     onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     className="rounded-full border border-purple-950/15 bg-white/80 px-3.5 py-1.5 text-xs font-bold text-[#1E1B4B] hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
-                    Next â†’
+                    Next →
                   </button>
                 </div>
               </div>
@@ -499,7 +489,7 @@ export default function AnnouncementsPage() {
           </>
         )}
 
-        {/* â”€â”€ Create Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Create Modal ─────────────────────────────────────────── */}
         <Modal
           isOpen={showCreateModal}
           onClose={() => {

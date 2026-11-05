@@ -42,7 +42,7 @@ interface StatusConfig {
   transferTypeLabel: string;
 }
 
-function resolveTypeLabel(typeUpper: string, descLower: string, _direction?: "IN" | "OUT" | "NONE"): string {
+function resolveTypeLabel(typeUpper: string, descLower: string, direction?: "IN" | "OUT" | "NONE"): string {
   if (typeUpper.includes("PAYMENT") || descLower.includes("payment") || descLower.includes("merchant")) {
     return "Merchant Payment";
   }
@@ -52,7 +52,10 @@ function resolveTypeLabel(typeUpper: string, descLower: string, _direction?: "IN
   if (typeUpper.includes("DEPOSIT") || descLower.includes("deposit")) {
     return "Cash Deposit";
   }
-  return "Internal Transfer";
+  if (direction === "IN") {
+    return "Incoming Fund Transfer";
+  }
+  return "Internal Fund Transfer";
 }
 
 function resolveStatusConfig(data: TransferReceiptData): StatusConfig {
@@ -111,7 +114,7 @@ function resolveStatusConfig(data: TransferReceiptData): StatusConfig {
   }
 
   // 3. Successful Cases
-  let title: string;
+  let title = "Transfer Successful";
   if (typeUpper.includes("PAYMENT") || descLower.includes("merchant") || descLower.includes("payment")) {
     title = "Payment Successful";
   } else if (typeUpper.includes("WITHDRAW") || descLower.includes("withdraw")) {
@@ -199,36 +202,34 @@ export default function TransferReceiptView({
     ].join("\n");
   }, [data, completedDate, statusConfig.badgeLabel]);
 
-  // Memo Resolution: Display sender's typed memo, or default to "Internal Transfer" if not provided
+  // Memo Resolution: Never display long notification sentences; default to "Internal Transfer" or appropriate transfer text
   const formattedMemo = useMemo(() => {
     const raw = (data.description || "").trim();
 
-    // Discard legacy system notification messages that were mistakenly stored as description
-    const isSystemNotificationSentence =
-      raw.toLowerCase().startsWith("you have transferred") ||
+    // Check if it's a long notification message/sentence rather than a short memo
+    const isLongSentence =
+      raw.length > 35 ||
+      raw.toLowerCase().startsWith("you have") ||
       raw.toLowerCase().startsWith("you received") ||
-      raw.toLowerCase().startsWith("p2p fund transfer");
+      raw.toLowerCase().startsWith("transfer of") ||
+      raw.toLowerCase().includes("transferred") ||
+      raw.toLowerCase().includes("received");
 
-    if (!raw || isSystemNotificationSentence) {
+    if (!raw || isLongSentence) {
       if (statusConfig.theme === "failed") {
         return "Transaction Failed";
       }
-      return "Internal Transfer";
+      if (data.direction === "IN") {
+        return "Funds Received";
+      }
+      if (statusConfig.transferTypeLabel === "Merchant Payment") {
+        return "Merchant Payment";
+      }
+      return statusConfig.transferTypeLabel || "Internal Transfer";
     }
 
     return raw.startsWith('"') && raw.endsWith('"') ? raw : `"${raw}"`;
-  }, [data.description, statusConfig.theme]);
-
-  // Direction Resolution: "Incoming" for received receipts, "Outgoing" for sender receipts
-  const directionLabel = useMemo(() => {
-    if (data.direction === "IN") return "Incoming";
-    if (data.direction === "OUT") return "Outgoing";
-    const badgeUpper = (data.badgeLabel || "").toUpperCase();
-    if (badgeUpper.includes("RECEIVED") || badgeUpper.includes("INCOMING")) {
-      return "Incoming";
-    }
-    return "Outgoing";
-  }, [data.direction, data.badgeLabel]);
+  }, [data.description, data.direction, statusConfig]);
 
   return (
     <>
@@ -278,7 +279,7 @@ export default function TransferReceiptView({
 
       {/* Official Banking E-Receipt Card */}
       <div
-        className={`print-receipt-container max-w-xl mx-auto bg-white rounded-3xl print:rounded-2xl shadow-2xl print:shadow-none border border-slate-200 print:border-slate-300 overflow-hidden relative print:break-inside-avoid ${className}`}
+        className={`print-receipt-container max-w-xl print:max-w-[700px] print:w-[700px] mx-auto bg-white rounded-3xl print:rounded-2xl shadow-2xl print:shadow-none border border-slate-200 print:border-slate-300 overflow-hidden relative print:break-inside-avoid ${className}`}
       >
         {/* Printable/Shareable Receipt Slip Body */}
         <div id="receipt-capture-area" className="relative bg-white overflow-hidden print:break-inside-avoid">
@@ -295,12 +296,12 @@ export default function TransferReceiptView({
           </div>
 
         {/* Official Bank Header: EKARAJ BANK with Official Receipt directly below */}
-        <div className="receipt-header-section bg-[#EFF6FF] dark:bg-[#071328] px-5 sm:px-6 py-4 print:py-4.5 print:px-8 text-[#001D77] dark:text-white flex items-center justify-between border-b border-blue-100 dark:border-slate-800 relative z-10">
+        <div className="bg-[#08295C] px-5 sm:px-6 py-4 print:py-4.5 print:px-8 text-white flex items-center justify-between border-b border-blue-900/50 relative z-10">
           <div>
-            <h2 className="text-base sm:text-lg print:text-xl font-black tracking-wide uppercase text-[#001D77] dark:text-blue-300 leading-tight">
+            <h2 className="text-base sm:text-lg print:text-xl font-black tracking-wide uppercase text-white leading-tight">
               EKARAJ BANK
             </h2>
-            <p className="text-[10px] print:text-xs text-[#4B5869] dark:text-slate-400 font-semibold tracking-wider uppercase mt-0.5">
+            <p className="text-[10px] print:text-xs text-blue-200 font-semibold tracking-wider uppercase mt-0.5">
               Official Transaction Receipt
             </p>
           </div>
@@ -311,7 +312,7 @@ export default function TransferReceiptView({
               <button
                 type="button"
                 onClick={onClose}
-                className="no-print p-1.5 -mr-1.5 sm:-mr-2 rounded-lg text-slate-400 hover:text-[#001D77] hover:bg-blue-100/60 dark:hover:bg-slate-800 dark:hover:text-blue-300 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-slate-700 cursor-pointer"
+                className="no-print p-1.5 -mr-1.5 sm:-mr-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10 active:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-white/40 cursor-pointer"
                 aria-label="Close receipt"
                 title="Close"
               >
@@ -322,7 +323,7 @@ export default function TransferReceiptView({
         </div>
 
         {/* Hero Section: Status & Amount */}
-        <div className="receipt-hero-section bg-white/95 px-6 pt-5 pb-3 print:pt-6 print:pb-4 text-center relative z-10">
+        <div className="bg-white/95 px-6 pt-5 pb-3 print:pt-6 print:pb-4 text-center relative z-10">
           <div className="inline-flex items-center justify-center gap-2 mb-2 print:mb-1.5">
             {statusConfig.theme === "failed" ? (
               <div className="w-6 h-6 sm:w-6.5 sm:h-6.5 print:w-7 print:h-7 rounded-full bg-rose-500 text-white flex items-center justify-center shadow-xs shadow-rose-500/40 shrink-0">
@@ -358,7 +359,7 @@ export default function TransferReceiptView({
         </div>
 
         {/* FROM ➔ TO Transfer Pathway Card */}
-        <div className="receipt-pathway-section p-4 sm:p-5 print:px-8 print:py-4 bg-slate-50/70 border-b border-slate-100 relative z-10">
+        <div className="p-4 sm:p-5 print:px-8 print:py-4 bg-slate-50/70 border-b border-slate-100 relative z-10">
           <div className="bg-white rounded-2xl print:rounded-xl border border-slate-200/90 p-4 print:p-4 shadow-2xs">
             {/* Header: FROM  →  TO */}
             <div className="flex items-center justify-between text-[10px] print:text-xs font-black uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-2 print:pb-1.5 mb-3 print:mb-2.5">
@@ -374,11 +375,10 @@ export default function TransferReceiptView({
               {/* Sender */}
               <div className="space-y-0.5 min-w-0">
                 <p className="text-xs sm:text-sm print:text-sm font-black text-slate-900 truncate">
-                  {data.isOwnAccount
-                    ? "My Account"
-                    : data.direction === "IN"
-                    ? normalizeDisplayName(data.sourceDisplayName, "Sender")
-                    : "My Account"}
+                  {normalizeDisplayName(
+                    data.sourceDisplayName,
+                    data.direction === "IN" ? "Sender" : "My Account"
+                  )}
                 </p>
                 <p className="text-xs print:text-[13px] font-bold text-slate-600 truncate font-mono">
                   {maskAccount(data.sourceAccountNumber)}
@@ -388,11 +388,10 @@ export default function TransferReceiptView({
               {/* Recipient */}
               <div className="text-right space-y-0.5 min-w-0">
                 <p className="text-xs sm:text-sm print:text-sm font-black text-slate-900 truncate">
-                  {data.isOwnAccount
-                    ? "My Account"
-                    : data.direction === "IN"
-                    ? "My Account"
-                    : normalizeDisplayName(data.destinationDisplayName, "Recipient")}
+                  {normalizeDisplayName(
+                    data.destinationDisplayName,
+                    data.direction === "IN" ? "My Account" : "Recipient"
+                  )}
                 </p>
                 <p className="text-xs print:text-[13px] font-bold text-slate-600 truncate font-mono">
                   {maskAccount(data.destinationAccountNumber)}
@@ -403,14 +402,14 @@ export default function TransferReceiptView({
         </div>
 
         {/* Transaction Details (Sequential Order 1 to 8) */}
-        <div className="receipt-details-wrapper px-6 pt-3.5 pb-2.5 print:px-8 print:pt-3.5 print:pb-2.5 bg-white/95 border-b border-slate-100 relative z-10">
+        <div className="px-6 pt-3.5 pb-2.5 print:px-8 print:pt-3.5 print:pb-2.5 bg-white/95 border-b border-slate-100 relative z-10">
           <div className="border-b border-slate-200/80 pb-2 mb-2 print:pb-2 print:mb-2">
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 print:text-[11px]">
               Transaction Details
             </h4>
           </div>
 
-          <div className="receipt-details-list divide-y divide-slate-100 text-xs sm:text-[13px] print:text-sm">
+          <div className="divide-y divide-slate-100 text-xs sm:text-[13px] print:text-sm">
             {/* 1. Transaction ID */}
             <div className="flex items-center justify-between py-2 sm:py-2.5 print:py-2 gap-3">
               <span className="text-slate-600 font-semibold shrink-0 print:text-[13px]">Transaction ID</span>
@@ -447,14 +446,6 @@ export default function TransferReceiptView({
               <span className="text-slate-600 font-semibold shrink-0 print:text-[13px]">Transfer Type</span>
               <span className="font-bold text-slate-900 text-right truncate print:text-[13px]">
                 {statusConfig.transferTypeLabel}
-              </span>
-            </div>
-
-            {/* 4. Direction */}
-            <div className="flex items-center justify-between py-2 sm:py-2.5 print:py-2 gap-3">
-              <span className="text-slate-600 font-semibold shrink-0 print:text-[13px]">Direction</span>
-              <span className="font-bold text-slate-900 text-right truncate print:text-[13px]">
-                {directionLabel}
               </span>
             </div>
 
@@ -524,7 +515,7 @@ export default function TransferReceiptView({
 
         {/* Compact Integrated Transaction QR Section */}
         {showQr && (
-          <div className="receipt-qr-section py-2.5 px-6 border-b border-slate-100 print:border-b-0 flex flex-col print:flex-row print:items-center print:justify-between items-center justify-center text-center print:text-left relative z-10 bg-slate-50/50 print:bg-slate-50/30 print:px-8 print:py-3.5 print:break-inside-avoid">
+          <div className="py-2.5 px-6 border-b border-slate-100 print:border-b-0 flex flex-col print:flex-row print:items-center print:justify-between items-center justify-center text-center print:text-left relative z-10 bg-slate-50/50 print:bg-slate-50/30 print:px-8 print:py-3.5 print:break-inside-avoid">
             {/* Left side in print: Official bank footer notes */}
             <div className="hidden print:block space-y-1 text-slate-500 max-w-sm">
               <p className="text-[10px] print:text-[11px] font-bold text-slate-800 tracking-wider uppercase">
@@ -559,7 +550,7 @@ export default function TransferReceiptView({
               </div>
 
               <p className="text-[9px] font-medium text-slate-400 leading-none">
-                Scan to view encoded transaction details.
+                Scan to verify transaction
               </p>
             </div>
           </div>

@@ -32,14 +32,14 @@ public class MerchantSecurityConfig {
     }
 
     /**
-     * Dedicated SecurityFilterChain for Merchant & Payment Gateway requests (Ecommerce and Gateway verification).
-     * Order(-1) ensures this takes precedence for /api/v1/payments/ecommerce/** and /api/v1/payments/gateway/**.
+     * Dedicated SecurityFilterChain for Merchant & Payment Gateway E-commerce payments.
+     * Order(-1) ensures this takes precedence for /api/v1/payments/ecommerce/** before general chains.
      */
     @Bean
     @Order(-1)
     public SecurityFilterChain merchantSecurityFilterChain(HttpSecurity http) throws Exception {
         http
-                .securityMatcher("/api/v1/payments/ecommerce/**", "/api/v1/payments/gateway/**")
+                .securityMatcher("/api/v1/payments/ecommerce/**")
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session ->
@@ -47,8 +47,7 @@ public class MerchantSecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/v1/payments/ecommerce/**", "/api/v1/payments/gateway/**")
-                        .hasAuthority("ROLE_MERCHANT_GATEWAY")
+                        .requestMatchers("/api/v1/payments/ecommerce/**").hasAuthority("ROLE_MERCHANT_GATEWAY")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(

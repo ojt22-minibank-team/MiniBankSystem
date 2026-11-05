@@ -13,10 +13,6 @@ interface CustomerCreateModalProps {
   onSuccess: () => void;
 }
 
-const NRC_PREFIXES = [
-  '1/', '2/', '3/', '4/', '5/', '6/', '7/', '8/', '9/', '10/', '11/', '12/', '13/', '14/'
-];
-
 export default function CustomerCreateModal({
   isOpen,
   onClose,
@@ -26,11 +22,11 @@ export default function CustomerCreateModal({
   const [customerType, setCustomerType] = useState<'PERSONAL' | 'COMPANY'>('PERSONAL');
 
   // Personal Fields
-  const [fullName, setFullName] = useState('');
-  const [nrcPrefix, setNrcPrefix] = useState('12/');
-  const [nrcNumber, setNrcNumber] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [gender, setGender] = useState<'MALE' | 'FEMALE' | 'OTHER'>('MALE');
   const [dateOfBirth, setDateOfBirth] = useState('');
+  const [nrc, setNrc] = useState('');
   const [occupation, setOccupation] = useState('');
 
   // Company Fields
@@ -53,11 +49,11 @@ export default function CustomerCreateModal({
 
   const resetForm = () => {
     setCustomerType('PERSONAL');
-    setFullName('');
-    setNrcPrefix('12/');
-    setNrcNumber('');
+    setFirstName('');
+    setLastName('');
     setGender('MALE');
     setDateOfBirth('');
+    setNrc('');
     setOccupation('');
     setCompanyName('');
     setRegistrationNumber('');
@@ -83,75 +79,34 @@ export default function CustomerCreateModal({
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  const clearError = (field: string) => {
-    if (errors[field]) {
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-    }
-  };
-
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
 
-    if (customerType === 'PERSONAL') {
-      // 1. Full Name
-      if (!fullName.trim()) {
-        errs.fullName = 'Full name is required';
-      }
+    if (!email.trim()) {
+      errs.email = 'Email address is required.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      errs.email = 'Please enter a valid email address.';
+    }
 
-      // 2. NRC
-      if (!nrcNumber.trim()) {
-        errs.nrc = 'NRC is required';
+    if (!phone.trim()) {
+      errs.phone = 'Phone number is required.';
+    }
+
+    if (customerType === 'PERSONAL') {
+      if (!firstName.trim()) errs.firstName = 'First name is required.';
+      if (!lastName.trim()) errs.lastName = 'Last name is required.';
+      if (!nrc.trim()) {
+        errs.nrc = 'NRC number is required.';
       } else {
-        const combinedNrc = `${nrcPrefix}${nrcNumber.trim().toUpperCase()}`;
-        const nrcRegex = /^[0-9]{1,2}\/[A-Za-z]{3,10}\([A-Za-z]{1,5}\)\d{6}$/;
-        if (!nrcRegex.test(combinedNrc)) {
-          errs.nrc = 'Format must be e.g. 12/DAGANA(N)123456';
+        const nrcRegex = /^[0-9]{1,2}\/[A-Z]{3,10}\([A-Z]{1,5}\)[0-9]{6}$/i;
+        if (!nrcRegex.test(nrc.trim())) {
+          errs.nrc = 'Format must be e.g. 12/KAMAYA(N)012345';
         }
       }
-
-      // 3. Phone (must be exactly 11 digits)
-      const personalPhoneDigits = phone.trim().replace(/[\s-]/g, '');
-      if (!phone.trim()) {
-        errs.phone = 'Phone number is required';
-      } else if (!/^\d{11}$/.test(personalPhoneDigits)) {
-        errs.phone = 'Phone must be exactly 11 digits';
-      }
-
-      // 4. Email
-      if (!email.trim()) {
-        errs.email = 'Email address is required';
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-        errs.email = 'Please enter a valid email address';
-      }
     } else {
-      // Corporate Validations: Company Name, Registration Number, Tax ID, Official Email, Phone
-      if (!companyName.trim()) {
-        errs.companyName = 'Company name is required';
-      }
-
-      if (!registrationNumber.trim()) {
-        errs.registrationNumber = 'Registration number is required';
-      }
-
-      if (!taxId.trim()) {
-        errs.taxId = 'Tax ID is required';
-      }
-
-      if (!email.trim()) {
-        errs.email = 'Official email is required';
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-        errs.email = 'Please enter a valid email address';
-      }
-
-      if (!phone.trim()) {
-        errs.phone = 'Phone number is required';
-      } else if (phone.trim().replace(/[\s-]/g, '').length < 8) {
-        errs.phone = 'Please enter a valid phone number';
-      }
+      if (!companyName.trim()) errs.companyName = 'Company name is required.';
+      if (!registrationNumber.trim()) errs.registrationNumber = 'Company registration number is required.';
+      if (!taxId.trim()) errs.taxId = 'Tax ID is required.';
     }
 
     setErrors(errs);
@@ -165,24 +120,18 @@ export default function CustomerCreateModal({
     setIsLoading(true);
     setApiError(null);
 
-    const combinedNrc = `${nrcPrefix}${nrcNumber.trim().toUpperCase()}`;
-    const nameParts = fullName.trim().split(/\s+/);
-    const derivedFirstName = nameParts[0] || '';
-    const derivedLastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : derivedFirstName;
-
-    const payload: CustomerCreateDTO & { fullName?: string; officialEmail?: string } = {
+    const payload: CustomerCreateDTO = {
       customerType,
       email: email.trim(),
       phone: phone.trim(),
       address: address.trim() || undefined,
       ...(customerType === 'PERSONAL'
         ? {
-            fullName: fullName.trim(),
-            firstName: derivedFirstName,
-            lastName: derivedLastName,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
             gender,
             dateOfBirth: dateOfBirth || undefined,
-            nrc: combinedNrc,
+            nrc: nrc.trim(),
             occupation: occupation.trim() || undefined,
           }
         : {
@@ -190,7 +139,6 @@ export default function CustomerCreateModal({
             registrationNumber: registrationNumber.trim(),
             taxId: taxId.trim(),
             businessType: businessType.trim() || undefined,
-            officialEmail: email.trim(),
           }),
     };
 
@@ -204,12 +152,6 @@ export default function CustomerCreateModal({
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleSwitchCategory = (type: 'PERSONAL' | 'COMPANY') => {
-    setCustomerType(type);
-    setErrors({});
-    setApiError(null);
   };
 
   return (
@@ -247,7 +189,7 @@ export default function CustomerCreateModal({
                 <button
                   type="button"
                   onClick={() => handleCopy(createdCustomer.customerCode, 'code')}
-                  className="rounded border border-gray-300 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer"
+                  className="rounded border border-gray-300 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50"
                 >
                   {copiedKey === 'code' ? 'Copied!' : 'Copy'}
                 </button>
@@ -281,7 +223,7 @@ export default function CustomerCreateModal({
                   <button
                     type="button"
                     onClick={() => handleCopy(createdCustomer.temporaryPassword!, 'pass')}
-                    className="rounded border border-amber-300 bg-white px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-50 cursor-pointer"
+                    className="rounded border border-amber-300 bg-white px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-50"
                   >
                     {copiedKey === 'pass' ? 'Copied!' : 'Copy'}
                   </button>
@@ -301,7 +243,7 @@ export default function CustomerCreateModal({
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+        <form onSubmit={handleSubmit} className="space-y-5">
           {apiError && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {apiError}
@@ -316,9 +258,9 @@ export default function CustomerCreateModal({
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => handleSwitchCategory('PERSONAL')}
+                onClick={() => setCustomerType('PERSONAL')}
                 className={[
-                  'flex items-center justify-center gap-2 rounded-xl border p-3.5 text-sm font-semibold transition-all cursor-pointer',
+                  'flex items-center justify-center gap-2 rounded-xl border p-3.5 text-sm font-semibold transition-all',
                   customerType === 'PERSONAL'
                     ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm'
                     : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
@@ -331,9 +273,9 @@ export default function CustomerCreateModal({
               </button>
               <button
                 type="button"
-                onClick={() => handleSwitchCategory('COMPANY')}
+                onClick={() => setCustomerType('COMPANY')}
                 className={[
-                  'flex items-center justify-center gap-2 rounded-xl border p-3.5 text-sm font-semibold transition-all cursor-pointer',
+                  'flex items-center justify-center gap-2 rounded-xl border p-3.5 text-sm font-semibold transition-all',
                   customerType === 'COMPANY'
                     ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm'
                     : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
@@ -350,102 +292,51 @@ export default function CustomerCreateModal({
           {/* Form Fields: Personal */}
           {customerType === 'PERSONAL' && (
             <div className="space-y-4 rounded-xl border border-gray-100 bg-gray-50/50 p-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Full Name <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  placeholder="e.g. Aung San Oo"
-                  value={fullName}
-                  onChange={(e) => {
-                    setFullName(e.target.value);
-                    clearError('fullName');
-                  }}
-                  className={errors.fullName ? '!border-red-500 !bg-red-50/20 focus:!border-red-500' : ''}
-                />
-                {errors.fullName && (
-                  <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
-                    {errors.fullName}
-                  </p>
-                )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">First Name *</label>
+                  <Input
+                    placeholder="e.g. Aung"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    error={errors.firstName}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Last Name *</label>
+                  <Input
+                    placeholder="e.g. Myint"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    error={errors.lastName}
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {/* NRC Number with Combined Prefix Selector */}
-                <div className="sm:col-span-1">
+                <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    NRC Number <span className="text-red-500">*</span>
+                    NRC Number * <span className="text-[11px] text-gray-500 font-normal">(e.g. 12/KAMAYA(N)012345)</span>
                   </label>
-                  <div className="flex gap-1.5">
-                    <div className="w-20 shrink-0">
-                      <select
-                        value={nrcPrefix}
-                        onChange={(e) => {
-                          setNrcPrefix(e.target.value);
-                          clearError('nrc');
-                        }}
-                        className={`w-full rounded-xl border px-2.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all cursor-pointer ${
-                          errors.nrc
-                            ? 'border-red-500 focus:border-red-500 bg-red-50/20'
-                            : 'border-slate-200 hover:border-slate-300 focus:border-sky-500'
-                        }`}
-                        title="Myanmar State/Region Prefix"
-                      >
-                        {NRC_PREFIXES.map((prefix) => (
-                          <option key={prefix} value={prefix}>
-                            {prefix}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <input
-                        type="text"
-                        placeholder="DAGANA(N)123456"
-                        value={nrcNumber}
-                        onChange={(e) => {
-                          let val = e.target.value.toUpperCase().replace(/\s+/g, '');
-                          const prefixMatch = val.match(/^([1-9]|1[0-4])\/(.*)$/);
-                          if (prefixMatch) {
-                            const matchedPrefix = `${prefixMatch[1]}/`;
-                            if (NRC_PREFIXES.includes(matchedPrefix)) {
-                              setNrcPrefix(matchedPrefix);
-                              val = prefixMatch[2];
-                            }
-                          }
-                          setNrcNumber(val);
-                          clearError('nrc');
-                        }}
-                        className={`w-full rounded-xl border px-3 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all ${
-                          errors.nrc
-                            ? 'border-red-500 focus:border-red-500 bg-red-50/20'
-                            : 'border-slate-200 hover:border-slate-300 focus:border-sky-500'
-                        }`}
-                      />
-                    </div>
-                  </div>
-                  {errors.nrc ? (
-                    <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
-                      {errors.nrc}
-                    </p>
-                  ) : (
-                    <p className="mt-1 text-[11px] text-gray-500">e.g. 12/DAGANA(N)123456</p>
-                  )}
+                  <Input
+                    placeholder="12/KAMAYA(N)012345"
+                    value={nrc}
+                    onChange={(e) => setNrc(e.target.value.toUpperCase())}
+                    error={errors.nrc}
+                  />
                 </div>
-
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Gender</label>
                   <select
                     value={gender}
-                    onChange={(e) => setGender(e.target.value as 'MALE' | 'FEMALE' | 'OTHER')}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs sm:text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-100 bg-white transition-all cursor-pointer"
+                    onChange={(e) => setGender(e.target.value as any)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
                   >
                     <option value="MALE">Male</option>
                     <option value="FEMALE">Female</option>
                     <option value="OTHER">Other</option>
                   </select>
                 </div>
-
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Date of Birth</label>
                   <Input
@@ -471,66 +362,34 @@ export default function CustomerCreateModal({
           {customerType === 'COMPANY' && (
             <div className="space-y-4 rounded-xl border border-gray-100 bg-gray-50/50 p-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Company Name <span className="text-red-500">*</span>
-                </label>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Company Name *</label>
                 <Input
                   placeholder="e.g. Golden Land Trading Co., Ltd."
                   value={companyName}
-                  onChange={(e) => {
-                    setCompanyName(e.target.value);
-                    clearError('companyName');
-                  }}
-                  className={errors.companyName ? '!border-red-500 !bg-red-50/20 focus:!border-red-500' : ''}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  error={errors.companyName}
                 />
-                {errors.companyName && (
-                  <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
-                    {errors.companyName}
-                  </p>
-                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Registration No. <span className="text-red-500">*</span>
-                  </label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Registration No. *</label>
                   <Input
                     placeholder="e.g. DICA-10928374"
                     value={registrationNumber}
-                    onChange={(e) => {
-                      setRegistrationNumber(e.target.value);
-                      clearError('registrationNumber');
-                    }}
-                    className={errors.registrationNumber ? '!border-red-500 !bg-red-50/20 focus:!border-red-500' : ''}
+                    onChange={(e) => setRegistrationNumber(e.target.value)}
+                    error={errors.registrationNumber}
                   />
-                  {errors.registrationNumber && (
-                    <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
-                      {errors.registrationNumber}
-                    </p>
-                  )}
                 </div>
-
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Tax ID <span className="text-red-500">*</span>
-                  </label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Tax ID *</label>
                   <Input
                     placeholder="e.g. TAX-998877"
                     value={taxId}
-                    onChange={(e) => {
-                      setTaxId(e.target.value);
-                      clearError('taxId');
-                    }}
-                    className={errors.taxId ? '!border-red-500 !bg-red-50/20 focus:!border-red-500' : ''}
+                    onChange={(e) => setTaxId(e.target.value)}
+                    error={errors.taxId}
                   />
-                  {errors.taxId && (
-                    <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
-                      {errors.taxId}
-                    </p>
-                  )}
                 </div>
-
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Business Type</label>
                   <Input
@@ -548,48 +407,23 @@ export default function CustomerCreateModal({
             <h4 className="text-xs font-bold uppercase tracking-wider text-gray-600">Contact & Address</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  {customerType === 'PERSONAL' ? 'Email Address' : 'Official Email'}{' '}
-                  <span className="text-red-500">*</span>
-                </label>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Email Address *</label>
                 <Input
                   type="email"
-                  placeholder={customerType === 'PERSONAL' ? 'client@example.com' : 'official@company.com'}
+                  placeholder="client@example.com"
                   value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    clearError('email');
-                  }}
-                  className={errors.email ? '!border-red-500 !bg-red-50/20 focus:!border-red-500' : ''}
+                  onChange={(e) => setEmail(e.target.value)}
+                  error={errors.email}
                 />
-                {errors.email && (
-                  <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
-                    {errors.email}
-                  </p>
-                )}
               </div>
-
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Phone Number <span className="text-red-500">*</span>
-                  {customerType === 'PERSONAL' && (
-                    <span className="text-[11px] text-gray-500 font-normal ml-1">(11 digits)</span>
-                  )}
-                </label>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Phone Number *</label>
                 <Input
-                  placeholder={customerType === 'PERSONAL' ? '09123456789' : '09123456789'}
+                  placeholder="+95 9123456789"
                   value={phone}
-                  onChange={(e) => {
-                    setPhone(e.target.value);
-                    clearError('phone');
-                  }}
-                  className={errors.phone ? '!border-red-500 !bg-red-50/20 focus:!border-red-500' : ''}
+                  onChange={(e) => setPhone(e.target.value)}
+                  error={errors.phone}
                 />
-                {errors.phone && (
-                  <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
-                    {errors.phone}
-                  </p>
-                )}
               </div>
             </div>
 

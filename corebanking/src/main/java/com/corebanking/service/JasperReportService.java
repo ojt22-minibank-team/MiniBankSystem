@@ -44,31 +44,6 @@ public class JasperReportService {
     @PostConstruct
     public void init() {
         loadAndCacheLogo();
-        precompileReports();
-    }
-
-    /**
-     * Pre-compiles all report templates into memory at startup to eliminate
-     * first-request compilation latency.
-     */
-    public void precompileReports() {
-        List<String> templates = List.of(
-                "daily_ledger_summary",
-                "account_status_summary",
-                "account_status_subreport",
-                "balance_bracket_subreport",
-                "audit_trail_log",
-                "fee_revenue_report",
-                "large_transaction_report"
-        );
-        for (String template : templates) {
-            try {
-                getCompiledReport(template);
-            } catch (Exception e) {
-                log.warn("Could not precompile report template: {}. Will retry on demand.", template, e);
-            }
-        }
-        log.info("Completed pre-compilation of {} JasperReports templates.", templates.size());
     }
 
     /**

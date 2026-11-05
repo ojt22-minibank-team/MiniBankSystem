@@ -20,7 +20,7 @@ public interface AnnouncementsRepository
               AND a.startsAt <= :now
               AND (a.endsAt IS NULL OR a.endsAt > :now)
               AND (a.audience = :audience OR a.audience = :allAudience)
-            ORDER BY a.createdAt DESC, a.startsAt DESC
+            ORDER BY a.startsAt DESC
             """)
     List<Announcements> findVisibleAnnouncements(
             @Param("audience") AnnouncementAudience audience,

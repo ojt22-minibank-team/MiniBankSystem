@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL, API_ENDPOINTS, STORAGE_KEYS } from '../config/api.config';
-import { updateTokens, forceLogout, broadcastLogout } from '../features/auth/authSlice';
+import { updateTokens, forceLogout } from '../features/auth/authSlice';
 
 let store: any;
 
@@ -37,12 +37,8 @@ const axiosInstance = axios.create({
 
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = sessionStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-    const isPublicAuth =
-      config.url?.includes('/api/auth/login') ||
-      config.url?.includes('/api/auth/verify-otp') ||
-      config.url?.includes('/api/auth/resend-otp');
-    if (token && config.headers && !isPublicAuth) {
+    const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+    if (token && config.headers) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
     return config;
@@ -55,8 +51,8 @@ axiosInstance.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Do not intercept or refresh tokens for auth endpoints (login, verify-otp, resend-otp, etc.)
-    if (!originalRequest || originalRequest.url?.includes('/api/auth/')) {
+    // Do not intercept or refresh tokens for the login endpoint
+    if (!originalRequest || originalRequest.url?.includes(API_ENDPOINTS.AUTH.LOGIN)) {
       return Promise.reject(error);
     }
 
@@ -80,7 +76,7 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = sessionStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+        const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
 
         if (!refreshToken) {
           throw new Error('No refresh token available');
@@ -101,34 +97,33 @@ axiosInstance.interceptors.response.use(
             })
           );
         } else {
-          sessionStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
+          localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
           if (newRefreshToken) {
-            sessionStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
+            localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
           }
         }
 
-        
+        // စောင့်နေတဲ့ Queue တွေအားလုံးကို Token အသစ်ပေးပြီး ဆက်အလုပ်လုပ်ခိုင်းမယ်
         processQueue(null, accessToken);
 
         originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
         return axiosInstance(originalRequest);
       } catch (refreshError) {
-        
+        // Refresh ပါ Fail သွားရင် Queue ထဲက ကောင်တွေပါ အကုန် Reject လုပ်ပြီး Logout လုပ်မယ်
         processQueue(refreshError, null);
-        broadcastLogout();
         
         if (store) {
           store.dispatch(forceLogout());
         } else {
-          sessionStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-          sessionStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-          sessionStorage.removeItem(STORAGE_KEYS.USERNAME);
-          sessionStorage.removeItem(STORAGE_KEYS.ROLES);
+          localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+          localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+          localStorage.removeItem(STORAGE_KEYS.USERNAME);
+          localStorage.removeItem(STORAGE_KEYS.ROLES);
         }
         window.location.href = '/login';
         return Promise.reject(refreshError);
       } finally {
-        isRefreshing = false; 
+        isRefreshing = false; // အားလုံးပြီးသွားရင် ဖွင့်ပေးလိုက်မယ်
       }
     }
 

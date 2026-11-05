@@ -1,16 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import AdminLayout from '../../../components/layout/AdminLayout';
 import DataTable from '../../../components/common/DataTable';
-import TableSkeletonLoader from '../../../components/common/TableSkeletonLoader';
 import { customersApi } from '../../../services/apiClient';
-import { useBankingData } from '../../../hooks/useBankingData';
 import type { CustomerResponse, CustomerDetailResponse } from '../../../types/api.types';
-import { formatDate } from '../../../utils/formatDate';
+import type { AxiosError } from 'axios';
 import CustomerCreateModal from '../components/CustomerCreateModal';
 import CustomerDetailModal from '../components/CustomerDetailModal';
-import CustomerEditModal from '../components/CustomerEditModal';
 
-// ── Constants ─────────────────────────────────────────────────────────────
+// ── Constants ────────────────────────────────────────────────────────
 const PAGE_SIZE = 10;
 
 type StatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE' | 'FROZEN';
@@ -18,39 +15,38 @@ type SortField = 'createdAt' | 'customerCode';
 type SortDir = 'asc' | 'desc';
 
 export default function CustomersPage() {
-  // ── High-Performance Parallel Data Fetching & SWR In-Memory Cache ─────────
-  const {
-    customers,
-    isLoading,
-    isRevalidating,
-    error,
-    loadDurationMs,
-    refresh,
-      } = useBankingData({
-    autoFetch: true,
-    pagination: { page: 0, size: 50 },
-    cacheTtlMs: 60000,
-  });
-
+  // ── Data state ───────────────────────────────────────────────────
+  const [customers, setCustomers] = useState<CustomerResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  // ── Customer Detail State ─────────────────────────────────────────────────
+  // ── Customer Detail State ─────────────────────────────────────────
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerDetailResponse | null>(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  // ── Customer Edit State ───────────────────────────────────────────────────
-  const [selectedEditCustomer, setSelectedEditCustomer] = useState<CustomerResponse | CustomerDetailResponse | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-
-  // ── Search / filter / sort / page state ───────────────────────────────────
+  // ── Search / filter / sort / page state ──────────────────────────
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Open details modal
+  // ── Fetch ────────────────────────────────────────────────────────
+  const load = () => {
+    setIsLoading(true);
+    setError(null);
+    customersApi
+      .getAll()
+      .then((res) => setCustomers(res.data ?? []))
+      .catch((err: AxiosError) => {
+        setError('Failed to load customers. Please verify backend service.');
+        console.error(err);
+      })
+      .finally(() => setIsLoading(false));
+  };
+
   const handleOpenDetail = async (customerCode: string) => {
     setIsDetailModalOpen(true);
     setIsDetailLoading(true);
@@ -65,13 +61,9 @@ export default function CustomersPage() {
     }
   };
 
-  // Open edit modal
-  const handleOpenEdit = (customer: CustomerResponse) => {
-    setSelectedEditCustomer(customer);
-    setIsEditModalOpen(true);
-  };
+  useEffect(() => { load(); }, []);
 
-  // ── Derived data pipeline: search → filter → sort ─────────────────────────
+  // ── Derived data pipeline: search → filter → sort ────────────────
   const processed = useMemo(() => {
     let list = [...customers];
 
@@ -116,7 +108,7 @@ export default function CustomersPage() {
     [customers],
   );
 
-  // ── Pagination helpers ───────────────────────────────────────────────────
+  // ── Pagination helpers ───────────────────────────────────────────
   const totalPages = Math.max(1, Math.ceil(processed.length / PAGE_SIZE));
 
   useEffect(() => {
@@ -128,7 +120,7 @@ export default function CustomersPage() {
     [processed, currentPage],
   );
 
-  // ── Column definitions ───────────────────────────────────────────────────
+  // ── Column definitions ──────────────────────────────────────────
   const columns = [
     {
       key: 'customerCode',
@@ -197,44 +189,30 @@ export default function CustomersPage() {
     {
       key: 'createdAt',
       header: 'Created',
-      render: (row: CustomerResponse) => formatDate(row.createdAt),
+      render: (row: CustomerResponse) =>
+        new Date(row.createdAt).toLocaleDateString(),
     },
     {
       key: 'actions',
       header: 'Actions',
       align: 'center' as const,
       render: (row: CustomerResponse) => (
-        <div className="flex items-center justify-center gap-1.5">
-          {/* View Details Action */}
-          <button
-            onClick={() => handleOpenDetail(row.customerCode)}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-all cursor-pointer"
-            title="View detailed customer information"
-          >
-            <svg className="h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-            <span>Details</span>
-          </button>
-
-          {/* Edit Profile Action */}
-          <button
-            onClick={() => handleOpenEdit(row)}
-            className="inline-flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50/80 px-2.5 py-1 text-xs font-semibold text-sky-700 shadow-xs hover:bg-sky-100 hover:border-sky-300 transition-all cursor-pointer"
-            title="Edit Customer Profile (Phone, Occupation, DOB)"
-          >
-            <svg className="h-3.5 w-3.5 text-sky-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            <span>Edit</span>
-          </button>
-        </div>
+        <button
+          onClick={() => handleOpenDetail(row.customerCode)}
+          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-all cursor-pointer"
+          title="View detailed customer information"
+        >
+          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          <span>Details</span>
+        </button>
       ),
     },
   ];
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────────────
   return (
     <AdminLayout pageTitle="Customers">
       <div className="max-w-[1440px] mx-auto space-y-6">
@@ -242,50 +220,19 @@ export default function CustomersPage() {
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
           <div>
-            <div className="flex items-center gap-2.5">
-              <h2 className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight">
-                Customer Registry
-              </h2>
-              {/* SLA Performance Indicator */}
-              {loadDurationMs !== null && (
-                <span
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-mono font-bold ${
-                    loadDurationMs <= 3000
-                      ? 'bg-emerald-100/80 text-emerald-800 border border-emerald-300/60'
-                      : 'bg-amber-100/80 text-amber-800 border border-amber-300/60'
-                  }`}
-                  title="Database and network response time on browser screen"
-                >
-                  <svg className="h-3 w-3 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  {loadDurationMs}ms (Sub-3s SLA)
-                </span>
-              )}
-              {isRevalidating && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-600 animate-pulse">
-                  <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
-                  Syncing
-                </span>
-              )}
-            </div>
+            <h2 className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight">
+              Customer Registry
+            </h2>
             <p className="mt-0.5 text-xs sm:text-sm text-slate-500 font-medium">
               EKARAJ BANK Portfolio: Registered corporate entities and retail clients
             </p>
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => refresh()}
-              disabled={isLoading}
-              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+              onClick={load}
+              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs transition-colors cursor-pointer"
             >
-              <svg
-                className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
               <span>Refresh</span>
@@ -303,16 +250,16 @@ export default function CustomersPage() {
           </div>
         </div>
 
-        {/* 3 Summary KPI Cards (Liquid Glass) */}
+        {/* 3 Summary KPI Cards (Clear High-Contrast Dark Numbers on Crisp White Cards) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           {/* Card 1: Total Customers */}
-          <div className="liquid-glass-card rounded-3xl p-6">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+          <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)]">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
               Total Customers
             </span>
             <div className="flex items-baseline justify-between mt-3">
               <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
-                {isLoading && customers.length === 0 ? '...' : customers.length}
+                {isLoading ? 'Loading…' : customers.length}
               </span>
               <span className="status-pill-emerald text-[11px]">
                 KYC Registered
@@ -321,13 +268,13 @@ export default function CustomersPage() {
           </div>
 
           {/* Card 2: Active Clients */}
-          <div className="liquid-glass-card rounded-3xl p-6">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+          <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)]">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
               Active Clients
             </span>
             <div className="flex items-baseline justify-between mt-3">
               <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
-                {isLoading && customers.length === 0 ? '...' : activeCustomersCount}
+                {activeCustomersCount}
               </span>
               <span className="status-pill-emerald text-[11px]">
                 Active Standing
@@ -336,13 +283,13 @@ export default function CustomersPage() {
           </div>
 
           {/* Card 3: Corporate Entities */}
-          <div className="liquid-glass-card rounded-3xl p-6">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+          <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)]">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
               Corporate Entities
             </span>
             <div className="flex items-baseline justify-between mt-3">
               <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
-                {isLoading && customers.length === 0 ? '...' : corporateCount}
+                {corporateCount}
               </span>
               <span className="status-pill-blue text-[11px]">
                 Commercial Accounts
@@ -352,13 +299,13 @@ export default function CustomersPage() {
         </div>
 
         {error ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50/80 backdrop-blur-md px-5 py-4 text-xs font-semibold text-rose-700">
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-5 py-4 text-xs font-semibold text-rose-700">
             <p className="font-bold">Error</p>
             <p className="mt-1">{error}</p>
           </div>
         ) : (
-          <div className="liquid-glass rounded-3xl p-6 space-y-5">
-            {/* ── Toolbar: search · filter · sort ─────────────────────────── */}
+          <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] space-y-5">
+            {/* ── Toolbar: search · filter · sort ─────────────────── */}
             <div className="flex flex-wrap items-center gap-3 pb-4 border-b border-slate-100">
               {/* Search */}
               <div className="relative flex-1 min-w-[240px]">
@@ -423,22 +370,17 @@ export default function CustomersPage() {
               </button>
             </div>
 
-            {/* ── Table & Skeleton Loader ─────────────────────────────────── */}
+            {/* ── Table ───────────────────────────────────────────── */}
             <div>
-              {isLoading && customers.length === 0 ? (
-                /* Fast visual feedback: lightweight skeleton loader renders instantly in <50ms */
-                <TableSkeletonLoader columns={7} rows={8} />
-              ) : (
-                <DataTable
-                  columns={columns}
-                  data={pageData}
-                  isLoading={false}
-                  emptyMessage="No customers match your criteria."
-                  keyExtractor={(row: CustomerResponse) => row.customerCode}
-                />
-              )}
+              <DataTable
+                columns={columns}
+                data={pageData}
+                isLoading={isLoading}
+                emptyMessage="No customers match your criteria."
+                keyExtractor={(row: CustomerResponse) => row.customerCode}
+              />
 
-              {/* ── Pagination ────────────────────────────────────────────── */}
+              {/* ── Pagination ──────────────────────────────────────── */}
               {!isLoading && totalPages > 1 && (
                 <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-100">
                   <span className="text-xs font-medium text-slate-500">
@@ -505,7 +447,7 @@ export default function CustomersPage() {
         <CustomerCreateModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
-          onSuccess={() => refresh()}
+          onSuccess={load}
         />
 
         {/* Customer Detail Modal */}
@@ -517,25 +459,6 @@ export default function CustomersPage() {
           }}
           customer={selectedCustomer}
           isLoading={isDetailLoading}
-          onEdit={(cust: CustomerDetailResponse) => {
-            setSelectedCustomer(null);
-            setIsDetailModalOpen(false);
-            setSelectedEditCustomer(cust);
-            setIsEditModalOpen(true);
-          }}
-        />
-
-        {/* Customer Profile Edit Modal */}
-        <CustomerEditModal
-          isOpen={isEditModalOpen}
-          onClose={() => {
-            setIsEditModalOpen(false);
-            setSelectedEditCustomer(null);
-          }}
-          customer={selectedEditCustomer}
-          onSuccess={() => {
-            refresh();
-          }}
         />
       </div>
     </AdminLayout>

@@ -83,9 +83,6 @@ public class CusNotificationService {
                     if (txn.getDestinationAccount() != null) {
                         builder.destinationAccountNumber(txn.getDestinationAccount().getAccountNumber());
                     }
-                    if (txn.getDescription() != null && !txn.getDescription().isBlank()) {
-                        builder.description(txn.getDescription().trim());
-                    }
 
                     // Populate counterparty details
                     UUID currentCustomerId = n.getCustomer() != null ? n.getCustomer().getCustomerId() : null;

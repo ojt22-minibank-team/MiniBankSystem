@@ -32,7 +32,6 @@ async function setup({ kind = 'CUSTOMER', type = 'ACCESS', expired = false, toke
   let now = Math.floor(originalNow() / 1000) * 1000, nextTimer = 0, sequence = 0;
   Date.now = () => now;
   const timers = new Map(), calls = [], sockets = [], notifications = [], events = [], cache = new Map();
-  const dispatch = action => action;
   let handler, latest, logout, location, closed = false;
   const token = (sub = A, sid = SID, subjectType = 'CUSTOMER', tokenType = 'ACCESS', lifetime = 900) =>
     [Buffer.from('{"alg":"HS256"}').toString('base64url'), Buffer.from(JSON.stringify({ sub, sid, subjectType, tokenType, exp: Math.floor(now / 1000) + lifetime, jti: 'synthetic-' + ++sequence })).toString('base64url'), 'synthetic-test-signature'].join('.');
@@ -62,10 +61,6 @@ async function setup({ kind = 'CUSTOMER', type = 'ACCESS', expired = false, toke
     const file = path.resolve(project, relative);
     if (cache.has(file)) return cache.get(file).exports;
     const module = { exports: {} }; cache.set(file, module);
-    if (file.endsWith('/lib/redux.ts')) {
-      module.exports = { useAppDispatch: () => dispatch, resetCustomerState: () => ({ type: 'customer/resetState' }) };
-      return module.exports;
-    }
     if (file.endsWith('/SessionTimeoutModal.tsx')) {
       module.exports = { __esModule: true, default: props => props.open ? React.createElement('div', { 'data-timeout': true }, props.message) : null };
       return module.exports;

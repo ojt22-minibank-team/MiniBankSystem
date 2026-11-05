@@ -16,13 +16,8 @@ import {
   maskAccountNumber,
   formatNotificationMessage,
 } from "../utils/notificationFormatters";
-import { SESSION_TIMEOUT_EVENT, type SessionTimeoutDetail } from "../../../utils/sessionEvents";
-import {
-  hasTokens,
-  getAuthenticationGeneration,
-  isAuthenticationGenerationCurrent,
-  subscribeToAuthenticationChanges,
-} from "../../../utils/tokenStorage";
+import { SESSION_TIMEOUT_EVENT } from "../../../utils/sessionEvents";
+import { hasTokens, subscribeToAuthenticationChanges } from "../../../utils/tokenStorage";
 
 export interface ToastData {
   id: string;
@@ -50,8 +45,6 @@ export const showAppToast = (toast: Omit<ToastData, "id">) => {
 
 export const ToastContainer: React.FC = () => {
   const [toasts, setToasts] = useState<ToastData[]>([]);
-  // Capture the active session generation at mount so incoming events can be validated
-  const sessionGenerationRef = useRef<number | null>(null);
 
   const addToast = useCallback((newToast: ToastData) => {
     setToasts((prev) => {
@@ -84,41 +77,22 @@ export const ToastContainer: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Capture the generation that is active when this effect runs (i.e. the current session)
-    const effectGeneration = getAuthenticationGeneration();
-    sessionGenerationRef.current = effectGeneration;
-
     // 1. Listen to real-time WebSocket notifications
     const handleWsNotification = (e: Event) => {
       const customEvent = e as CustomEvent<NotificationItem>;
       const noti = customEvent.detail;
       if (!noti) return;
 
-      // Generation Ownership Check: discard events that belong to an old session
-      const currentGen = getAuthenticationGeneration();
-      if (
-        !hasTokens() ||
-        !isAuthenticationGenerationCurrent(currentGen) ||
-        currentGen !== sessionGenerationRef.current
-      ) {
-        return;
-      }
-
       const titleLower = (noti.title || "").toLowerCase();
-      const messageLower = (noti.message || "").toLowerCase();
       const isFailed = titleLower.includes("fail") || titleLower.includes("reject");
       const isReceived =
         noti.transferDirection === "RECEIVED" ||
         titleLower.includes("received") ||
-        titleLower.includes("funds received") ||
-        messageLower.includes("you received") ||
-        messageLower.includes("received");
+        titleLower.includes("funds received");
       const isSent =
         noti.transferDirection === "SENT" ||
         titleLower.includes("transfer sent") ||
-        titleLower.includes("transferred") ||
-        titleLower.includes("sent") ||
-        messageLower.includes("you have transferred");
+        titleLower.includes("transferred");
 
       let direction: "SENT" | "RECEIVED" | null = null;
       if (isReceived) direction = "RECEIVED";
@@ -148,28 +122,13 @@ export const ToastContainer: React.FC = () => {
     };
 
     // 3. Clear active toasts on Session Timeout or Logout
-    const clearAllToasts = (event?: Event) => {
-      if (event) {
-        const detail = (event as CustomEvent<SessionTimeoutDetail>).detail;
-        if (detail && Number.isSafeInteger(detail.sourceGeneration)) {
-          // Generation Ownership Check: Ignore stale timeout events belonging to a previous session
-          const currentGen = getAuthenticationGeneration();
-          if (currentGen > detail.sourceGeneration && hasTokens() && isAuthenticationGenerationCurrent(currentGen)) {
-            return;
-          }
-        }
-      }
+    const clearAllToasts = () => {
       setToasts([]);
     };
 
     const unsubscribeAuth = subscribeToAuthenticationChanges(() => {
       if (!hasTokens()) {
-        // Session ended: clear session generation so stale WS events are rejected
-        sessionGenerationRef.current = null;
         clearAllToasts();
-      } else {
-        // New session started (e.g. Customer B login): capture new generation
-        sessionGenerationRef.current = getAuthenticationGeneration();
       }
     });
 
@@ -238,7 +197,6 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
   }, [isPaused, duration]);
 
   const titleLower = toast.title.toLowerCase();
-  const messageLower = (toast.message || "").toLowerCase();
   const isError =
     toast.type === "ERROR" ||
     titleLower.includes("fail") ||
@@ -247,14 +205,11 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
   const isReceived =
     toast.transferDirection === "RECEIVED" ||
     titleLower.includes("received") ||
-    titleLower.includes("funds received") ||
-    messageLower.includes("you received") ||
-    messageLower.includes("received");
+    titleLower.includes("funds received");
   const isSent =
     toast.transferDirection === "SENT" ||
     titleLower.includes("transfer sent") ||
-    titleLower.includes("sent") ||
-    messageLower.includes("you have transferred");
+    titleLower.includes("sent");
   const isPayment =
     toast.type === "PAYMENT" ||
     titleLower.includes("payment");
@@ -336,7 +291,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
           <div className="flex items-center justify-between gap-2">
             <h4 className="text-xs font-black text-slate-900 tracking-tight flex items-center gap-1.5 truncate">
               {toast.title}
-              <span className={`inline-block w-1.5 h-1.5 rounded-full ${isReceived ? "bg-emerald-500" : isSent ? "bg-blue-500" : isError ? "bg-red-500" : "bg-slate-400"} animate-ping`} />
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />
             </h4>
 
             {/* Amount Badge */}
@@ -359,7 +314,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
           {/* Prominent Counterparty Account Holder Name */}
           {toast.counterpartyName && (
             <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-800">
-              <User className={`w-3.5 h-3.5 ${isReceived ? "text-emerald-600" : "text-blue-600"} shrink-0`} />
+              <User className="w-3.5 h-3.5 text-blue-600 shrink-0" />
               <span className="truncate">
                 {isReceived ? "From: " : isSent ? "To: " : ""}
                 {toast.counterpartyName}
@@ -381,13 +336,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
 
             <button
               onClick={handleOpenReceipt}
-              className={`${
-                isReceived
-                  ? "text-emerald-600 hover:text-emerald-800"
-                  : isSent
-                  ? "text-blue-600 hover:text-blue-800"
-                  : "text-slate-600 hover:text-slate-800"
-              } font-semibold inline-flex items-center gap-1 hover:underline transition`}
+              className="text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1 hover:underline transition"
             >
               <span>View slip</span>
               <ExternalLink className="w-2.5 h-2.5" />

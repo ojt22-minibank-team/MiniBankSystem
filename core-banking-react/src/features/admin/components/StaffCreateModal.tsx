@@ -112,23 +112,7 @@ export default function StaffCreateModal({
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
       errs.email = 'Please enter a valid email address.';
     }
-    if (!formData.phone.trim()) {
-      errs.phone = 'Phone number is required.';
-    } else {
-      const cleanPhone = formData.phone.trim().replace(/[\s-]/g, '');
-      const normalized = cleanPhone.startsWith('+959')
-        ? '09' + cleanPhone.slice(4)
-        : cleanPhone.startsWith('959')
-        ? '09' + cleanPhone.slice(3)
-        : cleanPhone;
-
-      const digitsOnly = cleanPhone.replace(/\D/g, '');
-      if (digitsOnly.length < 9) {
-        errs.phone = 'Myanmar phone number must be at least 9 digits (e.g. 09xxxxxxxxx).';
-      } else if (!/^09\d{7,9}$/.test(normalized)) {
-        errs.phone = 'Please enter a valid Myanmar phone number starting with 09 (e.g. 09xxxxxxxxx).';
-      }
-    }
+    if (!formData.phone.trim()) errs.phone = 'Phone number is required.';
     if (!formData.roleId) errs.roleId = 'Role selection is required.';
 
     setErrors(errs);
@@ -279,7 +263,7 @@ export default function StaffCreateModal({
           <Input
             label="Phone Number"
             type="tel"
-            placeholder="e.g. 09123456789"
+            placeholder="e.g. +1 555-0199"
             value={formData.phone}
             onChange={(e) => {
               setFormData({ ...formData, phone: e.target.value });

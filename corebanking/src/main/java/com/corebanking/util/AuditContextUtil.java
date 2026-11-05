@@ -174,15 +174,7 @@ public final class AuditContextUtil {
     public static ActorType resolveActorType() {
         Optional<Authentication> authOpt = getAuthentication();
         if (authOpt.isEmpty()) {
-            Optional<HttpServletRequest> requestOpt = getCurrentHttpRequest();
-            if (requestOpt.isPresent()) {
-                String uri = requestOpt.get().getRequestURI();
-                if (uri != null && (uri.contains("/admin") || uri.contains("/staff") || uri.contains("/customers") || uri.contains("/accounts") || uri.contains("/transactions"))) {
-                    return ActorType.STAFF;
-                }
-                return ActorType.GUEST;
-            }
-            return ActorType.SYSTEM;
+            return getCurrentHttpRequest().isPresent() ? ActorType.GUEST : ActorType.SYSTEM;
         }
 
         Authentication auth = authOpt.get();
@@ -212,17 +204,12 @@ public final class AuditContextUtil {
      */
     public static Optional<String> getCurrentStaffUsername() {
         Optional<Authentication> authOpt = getAuthentication();
-        if (authOpt.isPresent() && resolveActorType() == ActorType.STAFF) {
-            return Optional.ofNullable(authOpt.get().getName());
+        if (authOpt.isEmpty()) {
+            return Optional.empty();
         }
 
-        Optional<HttpServletRequest> requestOpt = getCurrentHttpRequest();
-        if (requestOpt.isPresent()) {
-            HttpServletRequest req = requestOpt.get();
-            String staffUsername = req.getHeader("X-Staff-Username");
-            if (staffUsername != null && !staffUsername.isBlank()) {
-                return Optional.of(staffUsername.trim());
-            }
+        if (resolveActorType() == ActorType.STAFF) {
+            return Optional.ofNullable(authOpt.get().getName());
         }
 
         return Optional.empty();

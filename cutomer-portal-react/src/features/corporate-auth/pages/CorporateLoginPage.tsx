@@ -42,7 +42,7 @@ export default function CorporateLoginPage() {
   return (
     <EkarajAuthLayout
       title="EKARAJ BANK  Corporate Login"
-      portalLabel="EKARAJ BANK  Corporate Portal"
+      portalLabel="EKARAJ Bank  Corporate Portal"
       securityLabel="Secure Corporate Banking"
     >
       <section aria-label="Corporate login card" className="grid w-full max-w-[976px] rounded-3xl border border-[#CDC0A8] bg-[#F5F3EF] shadow-[0_18px_50px_-26px_rgba(18,46,82,0.3)] md:grid-cols-[0.92fr_1.08fr]">

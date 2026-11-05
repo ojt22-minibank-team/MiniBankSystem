@@ -30,11 +30,6 @@ public class EcommercePaymentRequestDto {
     @Digits(integer = 14, fraction = 4, message = "Invalid amount format")
     private BigDecimal amount;
 
-    @NotNull(message = "Service fee is required from Merchant Gateway")
-    @DecimalMin(value = "0.00", message = "Service fee cannot be negative")
-    @Digits(integer = 14, fraction = 4, message = "Invalid service fee format")
-    private BigDecimal serviceFee;
-
     @Builder.Default
     @NotBlank(message = "Currency is required")
     @Pattern(regexp = "^[A-Z]{3}$", message = "Currency must be 3 uppercase letters (e.g., MMK)")

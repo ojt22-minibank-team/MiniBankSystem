@@ -49,7 +49,7 @@ import com.corebanking.exception.CusEmailException;
 import com.corebanking.exception.CusOtpException;
 import com.corebanking.exception.CusOtpResendLimitException;
 import com.corebanking.exception.CusSessionExpiredException;
-import com.corebanking.repository.AccountRepository;
+import com.corebanking.repository.CusAccountsRepository;
 import com.corebanking.repository.CusAuditLogsRepository;
 import com.corebanking.repository.CusAuthSessionsRepository;
 import com.corebanking.repository.CusCredentialsRepository;
@@ -67,7 +67,7 @@ import lombok.RequiredArgsConstructor;
 public class CusAuthService {
 
     private final CusCustomerRepository customerRepository;
-    private final AccountRepository accountsRepository;
+    private final CusAccountsRepository accountsRepository;
     private final CusCredentialsRepository credentialsRepository;
     private final CusCustomerLoginAttemptService customerLoginAttemptService;
     private final CusOtpChallengesRepository otpChallengesRepository;
@@ -91,7 +91,7 @@ public class CusAuthService {
      */
     public CusAuthService(
             CusCustomerRepository customerRepository,
-            AccountRepository accountsRepository,
+            CusAccountsRepository accountsRepository,
             CusCredentialsRepository credentialsRepository,
             CusCustomerLoginAttemptService customerLoginAttemptService,
             CusOtpChallengesRepository otpChallengesRepository,
@@ -121,7 +121,7 @@ public class CusAuthService {
      */
     public CusAuthService(
             CusCustomerRepository customerRepository,
-            AccountRepository accountsRepository,
+            CusAccountsRepository accountsRepository,
             CusCredentialsRepository credentialsRepository,
             CusLoginAttemptsRepository loginAttemptsRepository,
             CusOtpChallengesRepository otpChallengesRepository,
@@ -151,7 +151,7 @@ public class CusAuthService {
      */
     public CusAuthService(
             CusCustomerRepository customerRepository,
-            AccountRepository accountsRepository,
+            CusAccountsRepository accountsRepository,
             CusCredentialsRepository credentialsRepository,
             CusLoginAttemptsRepository loginAttemptsRepository,
             CusOtpChallengesRepository otpChallengesRepository,

@@ -64,20 +64,8 @@ public class AsyncNotificationService {
     @Transactional
     public void sendTransferNotificationsAsync(Customers sender, Customers receiver, BankTransactions transaction) {
         try {
-            UUID senderId = null;
-            try {
-                if (sender != null) senderId = sender.getCustomerId();
-            } catch (Exception ex) {
-                log.debug("Could not read sender customerId directly: {}", ex.getMessage());
-            }
-
-            UUID receiverId = null;
-            try {
-                if (receiver != null) receiverId = receiver.getCustomerId();
-            } catch (Exception ex) {
-                log.debug("Could not read receiver customerId directly: {}", ex.getMessage());
-            }
-
+            UUID senderId = (sender != null) ? sender.getCustomerId() : null;
+            UUID receiverId = (receiver != null) ? receiver.getCustomerId() : null;
             UUID txnId = (transaction != null) ? transaction.getTransactionId() : null;
 
             // Re-fetch managed entities within this thread's transaction to ensure full initialization
@@ -90,48 +78,18 @@ public class AsyncNotificationService {
                 return;
             }
 
+            BigDecimal amount = txnManaged.getAmount() != null ? txnManaged.getAmount() : BigDecimal.ZERO;
+            BigDecimal fee = txnManaged.getServiceFee() != null ? txnManaged.getServiceFee() : BigDecimal.ZERO;
+            BigDecimal totalDebited = amount.add(fee);
+            String currency = txnManaged.getCurrency() != null ? txnManaged.getCurrency() : "MMK";
+            String txnRef = txnManaged.getTransactionRef() != null ? txnManaged.getTransactionRef() : "";
+
             String sourceAccNo = (txnManaged.getSourceAccount() != null)
                     ? txnManaged.getSourceAccount().getAccountNumber()
                     : "";
             String destAccNo = (txnManaged.getDestinationAccount() != null)
                     ? txnManaged.getDestinationAccount().getAccountNumber()
                     : "";
-
-            // Resilient fallback resolution for receiverManaged if detached or null in async thread
-            if (receiverManaged == null) {
-                try {
-                    if (txnManaged.getDestinationAccount() != null && txnManaged.getDestinationAccount().getCustomer() != null) {
-                        receiverManaged = txnManaged.getDestinationAccount().getCustomer();
-                    } else if (!destAccNo.isEmpty() && accountRepository != null) {
-                        receiverManaged = accountRepository.findByAccountNumber(destAccNo)
-                                .map(Accounts::getCustomer)
-                                .orElse(null);
-                    }
-                } catch (Exception ex) {
-                    log.warn("Could not lazily resolve receiver customer: {}", ex.getMessage());
-                }
-            }
-
-            // Resilient fallback resolution for senderManaged if detached or null in async thread
-            if (senderManaged == null) {
-                try {
-                    if (txnManaged.getSourceAccount() != null && txnManaged.getSourceAccount().getCustomer() != null) {
-                        senderManaged = txnManaged.getSourceAccount().getCustomer();
-                    } else if (!sourceAccNo.isEmpty() && accountRepository != null) {
-                        senderManaged = accountRepository.findByAccountNumber(sourceAccNo)
-                                .map(Accounts::getCustomer)
-                                .orElse(null);
-                    }
-                } catch (Exception ex) {
-                    log.warn("Could not lazily resolve sender customer: {}", ex.getMessage());
-                }
-            }
-
-            BigDecimal amount = txnManaged.getAmount() != null ? txnManaged.getAmount() : BigDecimal.ZERO;
-            BigDecimal fee = txnManaged.getServiceFee() != null ? txnManaged.getServiceFee() : BigDecimal.ZERO;
-            BigDecimal totalDebited = amount.add(fee);
-            String currency = txnManaged.getCurrency() != null ? txnManaged.getCurrency() : "MMK";
-            String txnRef = txnManaged.getTransactionRef() != null ? txnManaged.getTransactionRef() : "";
 
             String senderName = (senderManaged != null && senderManaged.getFullName() != null && !senderManaged.getFullName().isBlank())
                     ? senderManaged.getFullName()
@@ -177,7 +135,6 @@ public class AsyncNotificationService {
                             .transferDirection("SENT")
                             .sourceAccountNumber(sourceAccNo)
                             .destinationAccountNumber(destAccNo)
-                            .description(txnManaged.getDescription())
                             .build();
 
                     notificationWebSocketHandler.sendNotification(senderManaged.getCustomerId().toString(), senderDto);
@@ -223,7 +180,6 @@ public class AsyncNotificationService {
                             .transferDirection("RECEIVED")
                             .sourceAccountNumber(sourceAccNo)
                             .destinationAccountNumber(destAccNo)
-                            .description(txnManaged.getDescription())
                             .build();
 
                     notificationWebSocketHandler.sendNotification(receiverManaged.getCustomerId().toString(), receiverDto);
@@ -289,8 +245,6 @@ public class AsyncNotificationService {
             BigDecimal amount,
             String currency,
             String transactionRef) {
-        // Merchant payment notification is disabled
-        /*
         try {
             Customers payerManaged = (customerId != null && customerRepository != null)
                     ? customerRepository.findById(customerId).orElse(null)
@@ -417,7 +371,6 @@ public class AsyncNotificationService {
         } catch (Exception e) {
             log.error("Failed to dispatch merchant payment notifications for Ref: {}", transactionRef, e);
         }
-        */
     }
     @Async
     @Transactional
@@ -472,136 +425,6 @@ public class AsyncNotificationService {
             }
         } catch (Exception e) {
             log.error("Failed to record and dispatch reversal notification for transaction: {}",
-                    transaction != null ? transaction.getTransactionRef() : "unknown", e);
-        }
-    }
-
-    @Async
-    @Transactional
-    public void sendDepositNotificationAsync(Customers customer, Accounts account, BankTransactions transaction) {
-        try {
-            if (customer == null || transaction == null) {
-                log.warn("Cannot dispatch deposit notification: customer or transaction is null.");
-                return;
-            }
-
-            UUID customerId = customer.getCustomerId();
-            Customers customerManaged = (customerId != null && customerRepository != null)
-                    ? customerRepository.findById(customerId).orElse(customer)
-                    : customer;
-
-            UUID txnId = transaction.getTransactionId();
-            BankTransactions txnManaged = (txnId != null && bankTransactionRepository != null)
-                    ? bankTransactionRepository.findById(txnId).orElse(transaction)
-                    : transaction;
-
-            BigDecimal amount = txnManaged.getAmount() != null ? txnManaged.getAmount() : BigDecimal.ZERO;
-            String currency = txnManaged.getCurrency() != null ? txnManaged.getCurrency() : "MMK";
-            String txnRef = txnManaged.getTransactionRef() != null ? txnManaged.getTransactionRef() : "";
-            String destAccNo = (account != null) ? account.getAccountNumber() : 
-                    (txnManaged.getDestinationAccount() != null ? txnManaged.getDestinationAccount().getAccountNumber() : "");
-
-            String message = String.format("You received %s %s via Bank Counter Deposit to account %s. Ref: %s",
-                    amount, currency, destAccNo, txnRef);
-
-            Notifications depositNotification = Notifications.builder()
-                    .customer(customerManaged)
-                    .transaction(txnManaged)
-                    .notificationType(NotificationType.TRANSFER)
-                    .title("Funds Received")
-                    .message(message)
-                    .build();
-
-            Notifications savedNotification = notificationRepository.save(depositNotification);
-
-            NotificationResponseDto dto = NotificationResponseDto.builder()
-                    .notificationId(savedNotification.getNotificationId())
-                    .notificationType(savedNotification.getNotificationType())
-                    .title(savedNotification.getTitle())
-                    .message(savedNotification.getMessage())
-                    .isRead(false)
-                    .createdAt(savedNotification.getCreatedAt() != null ? savedNotification.getCreatedAt() : LocalDateTime.now())
-                    .transactionId(txnManaged.getTransactionId())
-                    .transactionRef(txnRef)
-                    .amount(amount)
-                    .currency(currency)
-                    .counterpartyName("Bank Counter")
-                    .counterpartyAccountNumber("BANK-OTC")
-                    .transferDirection("RECEIVED")
-                    .sourceAccountNumber("BANK-OTC")
-                    .destinationAccountNumber(destAccNo)
-                    .build();
-
-            notificationWebSocketHandler.sendNotification(customerManaged.getCustomerId().toString(), dto);
-            log.info("Deposit notification #{} saved and pushed via WebSocket for customer: {}, Ref: {}",
-                    savedNotification.getNotificationId(), customerManaged.getCustomerId(), txnRef);
-        } catch (Exception e) {
-            log.error("Failed to dispatch asynchronous deposit notification for Ref: {}",
-                    transaction != null ? transaction.getTransactionRef() : "unknown", e);
-        }
-    }
-
-    @Async
-    @Transactional
-    public void sendWithdrawalNotificationAsync(Customers customer, Accounts account, BankTransactions transaction) {
-        try {
-            if (customer == null || transaction == null) {
-                log.warn("Cannot dispatch withdrawal notification: customer or transaction is null.");
-                return;
-            }
-
-            UUID customerId = customer.getCustomerId();
-            Customers customerManaged = (customerId != null && customerRepository != null)
-                    ? customerRepository.findById(customerId).orElse(customer)
-                    : customer;
-
-            UUID txnId = transaction.getTransactionId();
-            BankTransactions txnManaged = (txnId != null && bankTransactionRepository != null)
-                    ? bankTransactionRepository.findById(txnId).orElse(transaction)
-                    : transaction;
-
-            BigDecimal amount = txnManaged.getAmount() != null ? txnManaged.getAmount() : BigDecimal.ZERO;
-            String currency = txnManaged.getCurrency() != null ? txnManaged.getCurrency() : "MMK";
-            String txnRef = txnManaged.getTransactionRef() != null ? txnManaged.getTransactionRef() : "";
-            String srcAccNo = (account != null) ? account.getAccountNumber() : 
-                    (txnManaged.getSourceAccount() != null ? txnManaged.getSourceAccount().getAccountNumber() : "");
-
-            String message = String.format("You have withdrawn %s %s via Bank Counter from account %s. Ref: %s",
-                    amount, currency, srcAccNo, txnRef);
-
-            Notifications withdrawalNotification = Notifications.builder()
-                    .customer(customerManaged)
-                    .transaction(txnManaged)
-                    .notificationType(NotificationType.TRANSFER)
-                    .title("Transfer Sent")
-                    .message(message)
-                    .build();
-
-            Notifications savedNotification = notificationRepository.save(withdrawalNotification);
-
-            NotificationResponseDto dto = NotificationResponseDto.builder()
-                    .notificationId(savedNotification.getNotificationId())
-                    .notificationType(savedNotification.getNotificationType())
-                    .title(savedNotification.getTitle())
-                    .message(savedNotification.getMessage())
-                    .isRead(false)
-                    .createdAt(savedNotification.getCreatedAt() != null ? savedNotification.getCreatedAt() : LocalDateTime.now())
-                    .transactionId(txnManaged.getTransactionId())
-                    .transactionRef(txnRef)
-                    .amount(amount)
-                    .currency(currency)
-                    .counterpartyName("Bank Counter")
-                    .counterpartyAccountNumber("BANK-OTC")
-                    .transferDirection("SENT")
-                    .sourceAccountNumber(srcAccNo)
-                    .destinationAccountNumber("BANK-OTC")
-                    .build();
-
-            notificationWebSocketHandler.sendNotification(customerManaged.getCustomerId().toString(), dto);
-            log.info("Withdrawal notification #{} saved and pushed via WebSocket for customer: {}, Ref: {}",
-                    savedNotification.getNotificationId(), customerManaged.getCustomerId(), txnRef);
-        } catch (Exception e) {
-            log.error("Failed to dispatch asynchronous withdrawal notification for Ref: {}",
                     transaction != null ? transaction.getTransactionRef() : "unknown", e);
         }
     }

@@ -22,8 +22,6 @@ const initialState: DashboardState = {
   currentRequestId: null,
 };
 
-const DEFAULT_ERROR = "Unable to load dashboard. Please try again.";
-
 export const fetchDashboard = createAsyncThunk<
   DashboardResponse,
   void,
@@ -44,11 +42,13 @@ export const fetchDashboard = createAsyncThunk<
         return rejectWithValue(
           typeof message === "string" && message.trim()
             ? message
-            : DEFAULT_ERROR,
+            : "Unable to load dashboard. Please try again.",
         );
       }
 
-      return rejectWithValue(DEFAULT_ERROR);
+      return rejectWithValue(
+        "Unable to load dashboard. Please try again.",
+      );
     }
   },
 );
@@ -67,7 +67,12 @@ const dashboardSlice = createSlice({
       state.currentRequestId = null;
     },
 
-    clearDashboard: () => initialState,
+    clearDashboard: (state) => {
+      state.data = null;
+      state.status = "idle";
+      state.error = null;
+      state.currentRequestId = null;
+    },
   },
 
   extraReducers: (builder) => {
@@ -102,11 +107,17 @@ const dashboardSlice = createSlice({
         }
 
         state.status = "failed";
-        state.error = action.payload ?? action.error.message ?? DEFAULT_ERROR;
+        state.error =
+          action.payload ??
+          action.error.message ??
+          "Unable to load dashboard. Please try again.";
       });
   },
 });
 
-export const { setDashboard, clearDashboard } = dashboardSlice.actions;
+export const {
+  setDashboard,
+  clearDashboard,
+} = dashboardSlice.actions;
 
 export default dashboardSlice.reducer;

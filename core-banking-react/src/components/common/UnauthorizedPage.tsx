@@ -8,9 +8,6 @@ export default function UnauthorizedPage() {
 
   const handleLogout = async () => {
     await logout();
-    const channel = new BroadcastChannel('staff_auth_sync');
-    channel.postMessage('LOGOUT');
-    channel.close();
     navigate('/login', { replace: true });
   };
 

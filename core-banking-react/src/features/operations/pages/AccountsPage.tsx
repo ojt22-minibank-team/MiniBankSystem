@@ -3,17 +3,14 @@ import AdminLayout from '../../../components/layout/AdminLayout';
 import DataTable from '../../../components/common/DataTable';
 import Button from '../../../components/common/Button';
 import Modal from '../../../components/common/Modal';
-import TableSkeletonLoader from '../../../components/common/TableSkeletonLoader';
 import { accountsApi } from '../../../services/apiClient';
-import { useBankingData } from '../../../hooks/useBankingData';
 import type { AccountResponse } from '../../../types/api.types';
 import { formatCurrency } from '../../../utils/formatCurrency';
-import { formatDate } from '../../../utils/formatDate';
 import type { AxiosError } from 'axios';
 import AccountCreateModal from '../components/AccountCreateModal';
 import AccountDetailModal from '../components/AccountDetailModal';
 
-// ── Constants ─────────────────────────────────────────────────────────────
+// ── Constants ────────────────────────────────────────────────────────
 const PAGE_SIZE = 10;
 
 type CategoryFilter = 'ALL' | 'RETAIL' | 'CORPORATE';
@@ -22,40 +19,19 @@ type SortField = 'openedAt' | 'accountNumber' | 'availableBalance';
 type SortDir = 'asc' | 'desc';
 
 export default function AccountsPage() {
-  // ── Parallel Data Fetching & SWR In-Memory Cache (Sub-3s SLA) ─────────────
-  const {
-    accounts: bankingAccounts,
-    isLoading: isBankingLoading,
-    isRevalidating,
-    error: bankingError,
-    loadDurationMs,
-    refresh: refreshBanking,
-  } = useBankingData({
-    autoFetch: true,
-    pagination: { page: 0, size: 50 },
-    cacheTtlMs: 60000,
-  });
-
+  // ── Data state ───────────────────────────────────────────────────
   const [accounts, setAccounts] = useState<AccountResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isCreateAccountModalOpen, setIsCreateAccountModalOpen] = useState(false);
 
-  // Synchronize accounts from high-performance parallel hook
-  useEffect(() => {
-    if (bankingAccounts) {
-      setAccounts(bankingAccounts);
-    }
-  }, [bankingAccounts]);
-
-  const isLoading = isBankingLoading;
-  const error = bankingError;
-
-  // ── Detail modal state ───────────────────────────────────────────────────
+  // ── Detail modal state ───────────────────────────────────────────
   const [detailAccount, setDetailAccount] = useState<AccountResponse | null>(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  // ── Search / filter / sort / page state ───────────────────────────────────
+  // ── Search / filter / sort / page state ──────────────────────────
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('ALL');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
@@ -63,7 +39,7 @@ export default function AccountsPage() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [currentPage, setCurrentPage] = useState(1);
 
-  // ── Status modal state ───────────────────────────────────────────────────
+  // ── Status modal state ───────────────────────────────────────────
   const [selectedAccount, setSelectedAccount] = useState<AccountResponse | null>(null);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [newStatus, setNewStatus] = useState('ACTIVE');
@@ -71,9 +47,18 @@ export default function AccountsPage() {
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
 
-  // ── Fetch all accounts with sub-3-second SWR cache ────────────────────────
+  // ── Fetch all accounts ───────────────────────────────────────────
   const loadAccounts = () => {
-    refreshBanking();
+    setIsLoading(true);
+    setError(null);
+    accountsApi
+      .getAll()
+      .then((res) => setAccounts(res.data ?? []))
+      .catch((err: AxiosError) => {
+        setError('Failed to load accounts. Please verify backend is running.');
+        console.error(err);
+      })
+      .finally(() => setIsLoading(false));
   };
 
   const handleOpenDetail = async (accountNumber: string) => {
@@ -92,9 +77,11 @@ export default function AccountsPage() {
     }
   };
 
-  // Initial fetch handled automatically by useBankingData with autoFetch: true
+  useEffect(() => {
+    loadAccounts();
+  }, []);
 
-  // ── Derived data pipeline: search → filter → sort ─────────────────────────
+  // ── Derived data pipeline: search → filter → sort ────────────────
   const processed = useMemo(() => {
     let list = [...accounts];
 
@@ -149,7 +136,7 @@ export default function AccountsPage() {
     return accounts.filter((a) => a.status === 'FROZEN').length;
   }, [accounts]);
 
-  // ── Pagination helpers ───────────────────────────────────────────────────
+  // ── Pagination helpers ───────────────────────────────────────────
   const totalPages = Math.max(1, Math.ceil(processed.length / PAGE_SIZE));
 
   useEffect(() => {
@@ -161,7 +148,7 @@ export default function AccountsPage() {
     [processed, currentPage],
   );
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
+  // ── Handlers ─────────────────────────────────────────────────────
   const handleUpdateStatus = async () => {
     if (!selectedAccount) return;
     setStatusLoading(true);
@@ -183,7 +170,6 @@ export default function AccountsPage() {
           acc.accountNumber === selectedAccount.accountNumber ? res.data : acc,
         ),
       );
-      refreshBanking();
     } catch (err) {
       const axErr = err as AxiosError<{ message?: string }>;
       setStatusError(axErr.response?.data?.message || 'Failed to update account status.');
@@ -197,7 +183,7 @@ export default function AccountsPage() {
     setSuccessMessage(`Account ${newAccNum} opened successfully!`);
   };
 
-  // ── Column definitions ───────────────────────────────────────────────────
+  // ── Column definitions ──────────────────────────────────────────
   const columns = [
     {
       key: 'accountNumber',
@@ -305,7 +291,7 @@ export default function AccountsPage() {
       key: 'openedAt',
       header: 'Opened Date',
       render: (row: AccountResponse) =>
-        row.openedAt ? formatDate(row.openedAt) : '—',
+        row.openedAt ? new Date(row.openedAt).toLocaleDateString() : '—',
     },
     {
       key: 'actions',
@@ -338,7 +324,7 @@ export default function AccountsPage() {
     },
   ];
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────────────
   return (
     <AdminLayout pageTitle="Customer Accounts">
       <div className="max-w-[1440px] mx-auto space-y-6">
@@ -346,33 +332,9 @@ export default function AccountsPage() {
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
           <div>
-            <div className="flex items-center gap-2.5">
-              <h2 className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight">
-                Customer Accounts
-              </h2>
-              {/* SLA Performance Indicator */}
-              {loadDurationMs !== null && (
-                <span
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-mono font-bold ${
-                    loadDurationMs <= 3000
-                      ? 'bg-emerald-100/80 text-emerald-800 border border-emerald-300/60'
-                      : 'bg-amber-100/80 text-amber-800 border border-amber-300/60'
-                  }`}
-                  title="Database and network response time on browser screen"
-                >
-                  <svg className="h-3 w-3 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  {loadDurationMs}ms (Sub-3s SLA)
-                </span>
-              )}
-              {isRevalidating && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-600 animate-pulse">
-                  <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
-                  Syncing
-                </span>
-              )}
-            </div>
+            <h2 className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight">
+              Customer Accounts
+            </h2>
             <p className="mt-0.5 text-xs sm:text-sm text-slate-500 font-medium">
               EKARAJ BANK: Retail savings, current accounts, and corporate deposit facilities
             </p>
@@ -400,11 +362,11 @@ export default function AccountsPage() {
           </div>
         </div>
 
-        {/* 3 Summary KPI Cards (Liquid Glass) */}
+        {/* 3 Summary KPI Cards (Clear High-Contrast Dark Numbers on Crisp White Cards) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           {/* Card 1: Total Portfolio Balance */}
-          <div className="liquid-glass-card rounded-3xl p-6">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+          <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)]">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
               Total Portfolio Balance
             </span>
             <div className="flex items-baseline justify-between mt-3">
@@ -418,8 +380,8 @@ export default function AccountsPage() {
           </div>
 
           {/* Card 2: Active Accounts */}
-          <div className="liquid-glass-card rounded-3xl p-6">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+          <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)]">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
               Active Accounts
             </span>
             <div className="flex items-baseline justify-between mt-3">
@@ -433,8 +395,8 @@ export default function AccountsPage() {
           </div>
 
           {/* Card 3: Frozen Accounts */}
-          <div className="liquid-glass-card rounded-3xl p-6">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+          <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)]">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
               Frozen / Restricted
             </span>
             <div className="flex items-baseline justify-between mt-3">
@@ -449,7 +411,7 @@ export default function AccountsPage() {
         </div>
 
         {successMessage && (
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-50/80 backdrop-blur-md px-5 py-3 text-xs font-semibold text-emerald-800 flex items-center justify-between">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800 flex items-center justify-between">
             <span>{successMessage}</span>
             <button
               onClick={() => setSuccessMessage(null)}
@@ -461,13 +423,13 @@ export default function AccountsPage() {
         )}
 
         {error ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50/80 backdrop-blur-md px-5 py-4 text-xs font-semibold text-rose-700">
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-5 py-4 text-xs font-semibold text-rose-700">
             <p className="font-bold">Error</p>
             <p className="mt-1">{error}</p>
           </div>
         ) : (
-          <div className="liquid-glass rounded-3xl p-6 space-y-5">
-            {/* ── Toolbar: search · filter · sort ─────────────────────────── */}
+          <div className="bg-white rounded-xl p-6 border border-slate-200/80 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] space-y-5">
+            {/* ── Toolbar: search · filter · sort ─────────────────── */}
             <div className="flex flex-wrap items-center gap-3 pb-4 border-b border-slate-100">
               {/* Search */}
               <div className="relative flex-1 min-w-[240px]">
@@ -545,21 +507,17 @@ export default function AccountsPage() {
               </button>
             </div>
 
-            {/* ── Table & Skeleton Loader ─────────────────────────────────── */}
+            {/* ── Table ───────────────────────────────────────────── */}
             <div>
-              {isLoading && accounts.length === 0 ? (
-                <TableSkeletonLoader columns={8} rows={8} />
-              ) : (
-                <DataTable
-                  columns={columns}
-                  data={pageData}
-                  isLoading={false}
-                  emptyMessage="No bank accounts found matching the criteria."
-                  keyExtractor={(row: AccountResponse) => row.accountNumber}
-                />
-              )}
+              <DataTable
+                columns={columns}
+                data={pageData}
+                isLoading={isLoading}
+                emptyMessage="No bank accounts found matching the criteria."
+                keyExtractor={(row: AccountResponse) => row.accountNumber}
+              />
 
-              {/* ── Pagination ────────────────────────────────────────────── */}
+              {/* ── Pagination ──────────────────────────────────────── */}
               {!isLoading && totalPages > 1 && (
                 <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-100">
                   <span className="text-xs font-medium text-slate-500">

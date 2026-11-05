@@ -11,31 +11,11 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  otpRequired?: boolean;
-  challengeGroupId?: string;
-  destinationMasked?: string;
   accessToken: string;
   refreshToken: string;
   username: string;
   roles: string[];
   permissions: string[];
-}
-
-export interface OtpVerifyRequest {
-  challengeGroupId: string;
-  otp: string;
-}
-
-export interface OtpResendRequest {
-  challengeGroupId: string;
-}
-
-export interface OtpResendResponse {
-  success: boolean;
-  message: string;
-  challengeGroupId: string;
-  resendNo?: number;
-  maxResendAttempts?: number;
 }
 
 export interface CoreApiResponse<T> {
@@ -137,22 +117,6 @@ export type TransactionType =
   | 'REFUND';
 
 export type FeeType = 'FLAT' | 'PERCENTAGE';
-
-export interface OtcParametersResponse {
-  minDepositAmount?: number;
-  minWithdrawalAmount?: number;
-  minimumBalance?: number;
-  maxOnetimeWithdrawal?: number;
-  maxDailyWithdrawal?: number;
-  depositFeeType?: 'FLAT' | 'PERCENTAGE';
-  depositFeeValue?: number;
-  depositMinFee?: number | null;
-  depositMaxFee?: number | null;
-  withdrawalFeeType?: 'FLAT' | 'PERCENTAGE';
-  withdrawalFeeValue?: number;
-  withdrawalMinFee?: number | null;
-  withdrawalMaxFee?: number | null;
-}
 
 export interface FeeScheduleResponse {
   feeScheduleId: number;
@@ -281,18 +245,6 @@ export interface CustomerCreateDTO {
 
 export interface CustomerCreateResponse extends CustomerResponse {
   temporaryPassword?: string;
-}
-
-export interface CustomerUpdateDTO {
-  phone?: string;
-  occupation?: string;
-  dateOfBirth?: string;
-}
-
-export interface CustomerUpdateResponse {
-  status: string;
-  message: string;
-  customerCode: string;
 }
 
 // --- Account DTOs ---
@@ -425,10 +377,9 @@ export interface DailyCashSummaryResponse {
   currency: string;
 }
 
-export interface OtcAccountLimitResponse {
-  accountNumber: string;
-  maxOnetimeWithdrawal: number;
-  maxDailyWithdrawal: number;
-  todayWithdrawnAmount: number;
-  remainingDailyLimit: number;
+
+export interface OtcParametersResponse {
+  minDepositAmount: number;
+  minWithdrawalAmount: number;
+  minimumBalance: number;
 }

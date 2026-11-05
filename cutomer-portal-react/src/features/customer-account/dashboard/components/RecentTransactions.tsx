@@ -1,9 +1,8 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import axios from "axios";
 import { mapHistoryItemToTransferReceiptData } from "../../transactions/utils/transactionReceiptAdapter";
 import type { TransferReceiptData } from "../../../transfer/types/transferReceiptTypes";
-import { ChevronRight } from "lucide-react";
+import { ChevronDown, Check, ChevronRight } from "lucide-react";
 import { getTransactions } from "../../transactions/services/transactionHistoryService";
 import type { CusTransactionHistoryItemDTO } from "../../transactions/types/transactionHistoryTypes";
 import {
@@ -12,49 +11,27 @@ import {
   formatTypeLabel,
 } from "../../transactions/types/transactionHistoryTypes";
 import TransactionStatusBadge from "../../transactions/components/TransactionStatusBadge";
-import type { DashboardAccount } from "../types/dashboardTypes";
 
 interface RecentTransactionsProps {
-  accounts?: DashboardAccount[];
+  accountNumber?: string;
+  showBalance?: boolean;
 }
 
+type PeriodFilter = "today" | "week" | "month" | "all";
+
+const PERIOD_LABELS: Record<PeriodFilter, string> = {
+  today: "Today",
+  week: "This Week",
+  month: "This Month",
+  all: "All Time",
+};
+
 export default function RecentTransactions({
-  accounts,
+  accountNumber,
+  showBalance = true,
 }: RecentTransactionsProps) {
   const navigate = useNavigate();
   const [transactions, setTransactions] = useState<CusTransactionHistoryItemDTO[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  // User manual selection override (null means compute default)
-  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
-
-  // Filter to active accounts only
-  const activeAccounts = useMemo(() => {
-    return (accounts || []).filter((acc) => acc.status === "ACTIVE");
-  }, [accounts]);
-
-  // Derive active account number using the standard hierarchy:
-  // 1. If manual selection is set AND still exists in activeAccounts, keep it.
-  // 2. Otherwise, prefer first ACTIVE CURRENT account.
-  // 3. Otherwise, fallback to first ACTIVE account (e.g. SAVINGS).
-  // 4. Otherwise, empty string "".
-  const activeAccountNumber = useMemo(() => {
-    if (selectedAccount !== null && activeAccounts.some((a) => a.accountNumber === selectedAccount)) {
-      return selectedAccount;
-    }
-
-    const activeCurrent = activeAccounts.find((a) => a.accountType === "CURRENT");
-    if (activeCurrent) {
-      return activeCurrent.accountNumber;
-    }
-
-    const firstActive = activeAccounts[0];
-    if (firstActive) {
-      return firstActive.accountNumber;
-    }
-
-    return "";
-  }, [selectedAccount, activeAccounts]);
 
   const isTransfer = (tx: CusTransactionHistoryItemDTO): boolean => {
     const normType = (tx.transactionType || "").toUpperCase();
@@ -74,11 +51,11 @@ export default function RecentTransactions({
         ...rawReceipt,
         sourceAccountNumber:
           tx.direction === "OUT"
-            ? (tx.sourceAccountNumber || activeAccountNumber || rawReceipt.sourceAccountNumber)
+            ? (tx.sourceAccountNumber || accountNumber || rawReceipt.sourceAccountNumber)
             : (tx.sourceAccountNumber || rawReceipt.sourceAccountNumber),
         destinationAccountNumber:
           tx.direction === "IN"
-            ? (tx.destinationAccountNumber || activeAccountNumber || rawReceipt.destinationAccountNumber)
+            ? (tx.destinationAccountNumber || accountNumber || rawReceipt.destinationAccountNumber)
             : (tx.destinationAccountNumber || rawReceipt.destinationAccountNumber),
       };
 
@@ -92,53 +69,86 @@ export default function RecentTransactions({
       navigate("/transaction");
     }
   };
+  const [loading, setLoading] = useState(false);
+  const [period, setPeriod] = useState<PeriodFilter>("month");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const displayTransactions = activeAccountNumber ? transactions : [];
+  // Close filter dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
-    if (!activeAccountNumber) {
-      return;
-    }
+    if (!accountNumber) return;
 
-    const controller = new AbortController();
-
+    let isMounted = true;
     const fetchRecent = async () => {
       try {
         setLoading(true);
-        const data = await getTransactions(
-          {
-            accountNumber: activeAccountNumber,
-            size: 7,
-            page: 0,
-          },
-          controller.signal
-        );
-        if (data && Array.isArray(data.content)) {
+        const data = await getTransactions({
+          accountNumber,
+          size: 25,
+          page: 0,
+        });
+        if (isMounted && data && Array.isArray(data.content)) {
           setTransactions(data.content);
-        } else {
-          setTransactions([]);
         }
-      } catch (err: unknown) {
-        if (
-          axios.isCancel(err) ||
-          (err instanceof Error && (err.name === "CanceledError" || err.name === "AbortError"))
-        ) {
-          return;
-        }
+      } catch (err) {
         console.error("Failed to load dashboard recent transactions:", err);
       } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     };
 
     void fetchRecent();
-
     return () => {
-      controller.abort();
+      isMounted = false;
     };
-  }, [activeAccountNumber]);
+  }, [accountNumber]);
+
+  // Real-time client-side date filter
+  const filteredTransactions = useMemo(() => {
+    if (period === "all") return transactions;
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const currentDay = now.getDay();
+    const daysSinceMonday = (currentDay + 6) % 7;
+    const startOfWeek = new Date(startOfToday);
+    startOfWeek.setDate(startOfWeek.getDate() - daysSinceMonday);
+
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    return transactions.filter((tx) => {
+      const rawDate = tx.transactionDate || tx.initiatedAt;
+      if (!rawDate) return false;
+      const txDate = new Date(rawDate);
+      if (isNaN(txDate.getTime())) return false;
+
+      if (period === "today") {
+        return txDate >= startOfToday;
+      }
+      if (period === "week") {
+        return txDate >= startOfWeek;
+      }
+      if (period === "month") {
+        return txDate >= startOfMonth;
+      }
+      return true;
+    });
+  }, [transactions, period]);
+
+  const displayItems = filteredTransactions.slice(0, 5);
 
   return (
     <div className="flex flex-col rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#0A192F] p-5 sm:p-6 shadow-xs transition-colors duration-200">
@@ -149,34 +159,57 @@ export default function RecentTransactions({
         </h3>
 
         <div className="flex items-center gap-3">
-          {/* Account Filter Dropdown */}
-          <div className="relative">
-            <select
-              id="recent-transactions-account-select"
-              aria-label="Select account for recent transactions"
-              value={activeAccountNumber}
-              onChange={(e) => setSelectedAccount(e.target.value)}
-              disabled={activeAccounts.length === 0}
-              className="flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 focus:outline-none focus:ring-2 focus:ring-[#00A3C4]/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+          {/* Time Filter Dropdown */}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              type="button"
+              onClick={() => setDropdownOpen((prev) => !prev)}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 focus:outline-none focus:ring-2 focus:ring-[#00A3C4]/30 cursor-pointer"
+              aria-haspopup="true"
+              aria-expanded={dropdownOpen}
             >
-              {activeAccounts.length === 0 ? (
-                <option value="">No active accounts</option>
-              ) : (
-                activeAccounts.map((acc) => (
-                  <option key={acc.accountNumber} value={acc.accountNumber}>
-                    {acc.accountNumber} • {acc.accountType}
-                  </option>
-                ))
-              )}
-            </select>
+              <span>{PERIOD_LABELS[period]}</span>
+              <ChevronDown
+                size={13}
+                className={`text-slate-400 dark:text-slate-400 transition-transform duration-200 ${
+                  dropdownOpen ? "rotate-180 text-[#00A3C4]" : ""
+                }`}
+              />
+            </button>
+
+            {dropdownOpen && (
+              <div className="absolute right-0 mt-1.5 w-36 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1 shadow-lg ring-1 ring-black/5 z-30">
+                {(["today", "week", "month", "all"] as PeriodFilter[]).map((p) => {
+                  const isSelected = period === p;
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => {
+                        setPeriod(p);
+                        setDropdownOpen(false);
+                      }}
+                      className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-medium transition cursor-pointer ${
+                        isSelected
+                          ? "bg-slate-100 dark:bg-slate-700 text-[#00A3C4] font-bold"
+                          : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                    >
+                      <span>{PERIOD_LABELS[p]}</span>
+                      {isSelected && <Check size={13} className="text-[#00A3C4]" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
-          {/* Standard Single "View Transactions" link in Header */}
+          {/* Standard Single "See All" link in Header */}
           <Link
             to="/transaction"
-            className="text-xs font-bold text-[#00A3C4] transition hover:text-[#0891B2] hover:underline shrink-0"
+            className="text-xs font-bold text-[#00A3C4] transition hover:text-[#0891B2] hover:underline"
           >
-            View Transactions
+            See All
           </Link>
         </div>
       </div>
@@ -186,7 +219,7 @@ export default function RecentTransactions({
         {/* Loading Skeletons */}
         {loading && (
           <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
-            {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+            {[1, 2, 3, 4, 5].map((i) => (
               <div
                 key={i}
                 className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-6 py-4 px-2 sm:px-3 animate-pulse"
@@ -205,19 +238,26 @@ export default function RecentTransactions({
         )}
 
         {/* Empty State */}
-        {!loading && displayTransactions.length === 0 && (
+        {!loading && displayItems.length === 0 && (
           <div className="py-10 text-center">
             <p className="text-xs font-medium text-slate-400 dark:text-slate-500">
-              {activeAccounts.length === 0
-                ? "No active accounts available."
-                : "No recent transactions found for this account."}
+              No transactions found for {PERIOD_LABELS[period].toLowerCase()}.
             </p>
+            {period !== "all" && (
+              <button
+                type="button"
+                onClick={() => setPeriod("all")}
+                className="mt-2 text-xs font-bold text-[#00A3C4] hover:underline cursor-pointer"
+              >
+                View all transactions
+              </button>
+            )}
           </div>
         )}
 
         {/* Populated Transaction Rows */}
         {!loading &&
-          displayTransactions.map((tx) => {
+          displayItems.map((tx) => {
             const primaryTitle =
               tx.displayTitle && tx.displayTitle.trim().length > 0
                 ? tx.displayTitle.trim()
@@ -264,7 +304,13 @@ export default function RecentTransactions({
                   <div className="flex flex-col items-start sm:items-end justify-center gap-1.5 shrink-0">
                     {/* Primary Line: Signed Amount */}
                     <div className="text-sm sm:text-base font-semibold tabular-nums text-slate-900 dark:text-white">
-                      {formatTransactionAmount(tx.amount, tx.currency, tx.direction)}
+                      {!showBalance ? (
+                        <span className="text-slate-400 dark:text-slate-500 tracking-wider">
+                          ••••••••••
+                        </span>
+                      ) : (
+                        formatTransactionAmount(tx.amount, tx.currency, tx.direction)
+                      )}
                     </div>
 
                     {/* Secondary Line: Status Badge */}

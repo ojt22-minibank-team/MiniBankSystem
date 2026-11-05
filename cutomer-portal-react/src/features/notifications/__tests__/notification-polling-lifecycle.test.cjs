@@ -29,7 +29,6 @@ async function setup(t, { authenticated = true, provider = false, handler: initi
   const originals = Object.fromEntries(['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'addEventListener', 'removeEventListener'].map(key => [key, window[key]]));
   let now = originalNow(), timerId = 0, subscriptions = 0, sequence = 0, logout, mounted = false, handler = initialHandler;
   const timers = new Map(), listeners = new Map(), calls = [], sockets = [], cache = new Map();
-  const dispatch = action => action;
   Date.now = () => now;
   const timer = (fn, delay, interval) => { const id = ++timerId; timers.set(id, { fn, at: now + Number(delay), interval }); return id; };
   window.setTimeout = (fn, delay) => timer(fn, delay, 0);
@@ -70,10 +69,6 @@ async function setup(t, { authenticated = true, provider = false, handler: initi
     const file = path.resolve(project, relative);
     if (cache.has(file)) return cache.get(file).exports;
     const module = { exports: {} }; cache.set(file, module);
-    if (file.endsWith('/lib/redux.ts')) {
-      module.exports = { useAppDispatch: () => dispatch, resetCustomerState: () => ({ type: 'customer/resetState' }) };
-      return module.exports;
-    }
     if (file.endsWith('/SessionTimeoutModal.tsx')) {
       module.exports = { __esModule: true, default: props => props.open ? React.createElement('div', { 'data-timeout': true }, props.message) : null };
       return module.exports;

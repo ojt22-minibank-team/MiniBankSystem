@@ -1,8 +1,5 @@
-import { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { STORAGE_KEYS } from '../../config/api.config';
 import { useAuth } from '../../features/auth/hooks/useAuth';
-import { broadcastLogout } from '../../features/auth/authSlice';
 import ekarajCrown from '../../assets/ekaraj-crown-transparent.png';
 
 interface NavItem {
@@ -16,52 +13,20 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isOpen = true }: SidebarProps) {
-  const { logout, user, isAdmin, isAuditor, isTeller } = useAuth();
+  const { logout, user, isAdmin, isAuditor } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
     await logout();
-    broadcastLogout();
-
-
     navigate('/login', { replace: true });
   };
 
-  const [profileName, setProfileName] = useState<string>(() => {
-    try {
-      const cached = sessionStorage.getItem(STORAGE_KEYS.STAFF_PROFILE);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed?.fullName) return parsed.fullName;
-      }
-    } catch {
-      // ignore
-    }
-    return '';
-  });
-
-  useEffect(() => {
-    const handleUpdate = () => {
-      try {
-        const cached = sessionStorage.getItem(STORAGE_KEYS.STAFF_PROFILE);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (parsed?.fullName) setProfileName(parsed.fullName);
-        }
-      } catch {
-        // ignore
-      }
-    };
-    window.addEventListener('staff_profile_updated', handleUpdate);
-    return () => window.removeEventListener('staff_profile_updated', handleUpdate);
-  }, []);
-
-  const displayName = profileName || (user?.username
+  const displayName = user?.username
     ? user.username.charAt(0).toUpperCase() + user.username.slice(1)
-    : 'Admin');
+    : 'Admin';
 
   const userRole = user?.roles?.[0]?.replace('ROLE_', '') || 'ADMIN';
-  const userEmail = `${displayName.toLowerCase().replace(/\s+/g, '.')}@ekarajbank.com.mm`;
+  const userEmail = `${displayName.toLowerCase()}@ekarajbank.com.mm`;
 
   // Navigation Links matching user specification and core banking routes
   const navItems: NavItem[] = [
@@ -93,18 +58,15 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
       ),
     },
     {
-      to: '/admin/transactions',
-      label: 'Transaction Details',
+      to: '/admin/transfers',
+      label: 'Transactions',
       icon: (
         <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
         </svg>
       ),
     },
-  ];
-
-  if (isTeller) {
-    navItems.push({
+    {
       to: '/admin/otc',
       label: 'VIP Overdrafts & OTC',
       icon: (
@@ -112,8 +74,8 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
-    });
-  }
+    },
+  ];
 
   if (isAdmin || isAuditor) {
     navItems.push({
@@ -152,21 +114,12 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
 
   if (isAdmin || isAuditor) {
     navItems.push(
-            {
+      {
         to: '/admin/reporting',
         label: 'Operational Analytics',
         icon: (
           <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-          </svg>
-        ),
-      },
-      {
-        to: '/admin/profile',
-        label: 'Profile',
-        icon: (
-          <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
           </svg>
         ),
       },
@@ -185,23 +138,20 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
   return (
     <aside
       className={[
-        'flex flex-col h-full bg-white/75 backdrop-blur-2xl border-r border-white/80 shadow-[4px_0_30px_0_rgba(15,23,42,0.03)] z-30 shrink-0 select-none transition-all duration-300 ease-in-out overflow-hidden',
-        isOpen
-          ? 'w-64 opacity-100 translate-x-0'
-          : 'w-0 -translate-x-full opacity-0 pointer-events-none border-r-0',
+        'flex flex-col h-full bg-white border-r border-slate-200/80 shadow-[1px_0_2px_0_rgba(15,23,42,0.02)] z-30 shrink-0 select-none transition-all duration-300 ease-in-out',
+        isOpen ? 'w-64' : 'w-0 -translate-x-full lg:w-64 lg:translate-x-0',
       ].join(' ')}
     >
-      <div className="w-64 flex flex-col h-full shrink-0">
-      {/* â”€â”€ EKARAJ BANK Brand Header with Real Crown Logo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <div className="px-5 py-4.5 border-b border-white/70 flex items-center justify-between shrink-0">
+      {/* ── EKARAJ BANK Brand Header with Real Crown Logo ────────── */}
+      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          {/* Animated 3D Floating Crown Logo with Soft Liquid Glow */}
+          {/* Animated 3D Floating Crown Logo */}
           <div className="relative group">
-            <div className="absolute -inset-1.5 rounded-full bg-gradient-to-r from-sky-400/30 to-indigo-400/20 blur-md opacity-60 group-hover:opacity-100 transition duration-500" />
+            <div className="absolute -inset-1 rounded-full bg-sky-400/20 blur-md opacity-0 group-hover:opacity-100 transition duration-500" />
             <img
               src={ekarajCrown}
               alt="EKARAJ BANK"
-              className="relative h-9.5 w-auto object-contain filter drop-shadow-[0_4px_12px_rgba(2,132,199,0.3)] transition-transform duration-300 group-hover:scale-105 group-hover:-translate-y-0.5 animate-gentle-float"
+              className="relative h-9 w-auto object-contain filter drop-shadow-[0_2px_8px_rgba(2,132,199,0.25)] transition-transform duration-300 group-hover:scale-105 group-hover:-translate-y-0.5 animate-gentle-float"
             />
           </div>
           <div>
@@ -209,43 +159,40 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
               EKARAJ BANK
             </span>
             <span className="text-[10px] font-bold text-sky-600 block tracking-wider uppercase mt-0.5">
-              Core Banking Portal Â· Enterprise
+              ဧကရာဇ် ဘဏ် · Core Portal
             </span>
           </div>
         </div>
       </div>
 
-      {/* â”€â”€ Admin Profile Card (Liquid Glass Badge) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <div className="px-4 py-3 shrink-0">
-        <NavLink
-          to="/admin/profile"
-          className="flex items-center gap-3 p-2.5 rounded-2xl bg-white/70 backdrop-blur-md border border-white/90 shadow-[0_4px_15px_-3px_rgba(15,23,42,0.04)] hover:bg-white/95 hover:shadow-md transition-all group cursor-pointer"
-        >
+      {/* ── Admin Profile Card ───────────────────────────────── */}
+      <div className="px-4 py-3.5 border-b border-slate-100 shrink-0 bg-slate-50/50">
+        <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 text-white font-bold text-xs shadow-md shadow-sky-500/20">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-100 text-sky-700 font-bold text-xs border border-sky-200/80 shadow-xs">
               {displayName.charAt(0).toUpperCase()}
             </div>
-            <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white animate-pulse" />
+            <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white animate-pulse" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-1">
               <h3 className="text-xs font-bold text-slate-900 truncate">
                 {displayName}
               </h3>
-              <span className="status-pill-sky text-[9px] py-0 px-1.5 font-bold uppercase">
+              <span className="rounded-full bg-sky-100 text-sky-700 px-1.5 py-0.5 text-[9px] font-bold uppercase">
                 {userRole}
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 truncate mt-0.5 font-medium">
+            <p className="text-[11px] text-slate-400 truncate mt-0.5">
               {userEmail}
             </p>
           </div>
-        </NavLink>
+        </div>
       </div>
 
-      {/* â”€â”€ Navigation Links (Flex-1 & Scrollable) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
-        <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+      {/* ── Navigation Links (Flex-1 & Scrollable) ────────────── */}
+      <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
+        <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
           Navigation
         </p>
         {navItems.map((item) => (
@@ -254,10 +201,10 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
             to={item.to}
             className={({ isActive }) =>
               [
-                'flex items-center gap-3 px-3.5 py-2.5 text-xs transition-all duration-200 ease-in-out rounded-xl',
+                'flex items-center gap-3 px-3 py-2 text-xs transition-all duration-200 ease-in-out rounded-r-lg',
                 isActive
-                  ? 'bg-gradient-to-r from-sky-500/15 via-sky-400/10 to-transparent border-l-[3px] border-sky-500 text-sky-700 font-bold shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 hover:backdrop-blur-md hover:translate-x-0.5 font-medium',
+                  ? 'border-l-4 border-sky-500 bg-sky-50/70 text-sky-600 font-semibold shadow-xs'
+                  : 'text-[#475569] hover:text-slate-900 hover:bg-slate-50 hover:translate-x-0.5 font-medium',
               ].join(' ')
             }
           >
@@ -267,18 +214,17 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
         ))}
       </nav>
 
-      {/* â”€â”€ Permanently Pinned Logout Button at the Bottom â”€â”€â”€â”€â”€â”€ */}
-      <div className="mt-auto border-t border-white/70 p-3 shrink-0">
+      {/* ── Permanently Pinned Logout Button at the Bottom ────── */}
+      <div className="mt-auto border-t border-slate-100 p-3 shrink-0">
         <button
           onClick={handleLogout}
-          className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-600 hover:text-rose-600 hover:bg-rose-50/80 transition-all duration-200 ease-in-out focus:outline-none cursor-pointer"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold text-[#475569] hover:text-rose-600 hover:bg-rose-50 transition-all duration-200 ease-in-out focus:outline-none cursor-pointer"
         >
           <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
           </svg>
           <span>Log out</span>
         </button>
-      </div>
       </div>
     </aside>
   );

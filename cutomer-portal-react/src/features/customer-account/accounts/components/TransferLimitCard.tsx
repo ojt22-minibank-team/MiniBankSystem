@@ -199,26 +199,30 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
 
     if (!hasChanges) {
       setModalError("Please enter a new limit to update.");
-      setPinDigits(Array(6).fill(""));
-      pinInputRefs.current[0]?.focus();
       return;
     }
 
     if (hasValidationError) {
       if (oneTimeExceedsCeiling) {
         setModalError(`Custom one-time limit cannot exceed Bank ceiling of ${formatAmount(limits?.bankMaxOneTimeLimit)} ${currency}.`);
-      } else if (dailyExceedsCeiling) {
-        setModalError(`Custom daily limit cannot exceed Bank ceiling of ${formatAmount(limits?.bankMaxDailyLimit)} ${currency}.`);
-      } else if (oneTimeExceedsDaily) {
-        setModalError("One-time limit cannot be greater than the daily limit.");
-      } else if (dailyBelowTodayTransferred) {
-        setModalError(`Custom daily limit cannot be less than today's already transferred amount of ${formatAmount(limits?.todayTransferredAmount)} ${currency}.`);
-      } else if (isOneTimeInvalidNumber || isDailyInvalidNumber) {
-        setModalError("Limits must be greater than zero.");
+        return;
       }
-      setPinDigits(Array(6).fill(""));
-      pinInputRefs.current[0]?.focus();
-      return;
+      if (dailyExceedsCeiling) {
+        setModalError(`Custom daily limit cannot exceed Bank ceiling of ${formatAmount(limits?.bankMaxDailyLimit)} ${currency}.`);
+        return;
+      }
+      if (oneTimeExceedsDaily) {
+        setModalError("One-time limit cannot be greater than the daily limit.");
+        return;
+      }
+      if (dailyBelowTodayTransferred) {
+        setModalError(`Custom daily limit cannot be less than today's already transferred amount of ${formatAmount(limits?.todayTransferredAmount)} ${currency}.`);
+        return;
+      }
+      if (isOneTimeInvalidNumber || isDailyInvalidNumber) {
+        setModalError("Limits must be greater than zero.");
+        return;
+      }
     }
 
     try {
@@ -252,8 +256,6 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
           err?.message ||
           "Failed to update transfer limits. Please check your PIN."
       );
-      setPinDigits(Array(6).fill(""));
-      pinInputRefs.current[0]?.focus();
     } finally {
       setSubmitting(false);
     }

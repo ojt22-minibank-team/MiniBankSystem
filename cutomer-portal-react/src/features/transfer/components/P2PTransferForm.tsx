@@ -1,21 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useLocation, useNavigate, Link } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../lib/redux";
 import { submitP2PTransfer, resetTransferState, clearTransferError } from "../store/transferSlice";
 import { fetchMyAccounts } from "../../customer-account/accounts/stores/accountsSlice";
-import { fetchDashboard } from "../../customer-account/dashboard/store/dashboardSlice";
 import { lookupDestinationAccount } from "../services/transferService";
 import { getBeneficiaries, addBeneficiary } from "../../beneficiaries/services/beneficiaryService";
 import type { Beneficiary } from "../../beneficiaries/types/beneficiaryTypes";
 import type { P2PTransferRequest } from "../types/transferTypes";
 import { getAccountTransferLimits } from "../../customer-account/accounts/api/customerAccountApi";
 import type { TransferLimitInfo } from "../../customer-account/accounts/types/accountTypes";
-import {
-  getCurrentCustomerSubject,
-  getAuthenticationGeneration,
-  isAuthenticationGenerationCurrent,
-  hasTokens,
-} from "../../../utils/tokenStorage";
+import { getCurrentCustomerSubject } from "../../../utils/tokenStorage";
 import TransferReceiptView from "./TransferReceiptView";
 import TransferFailedSlip from "./TransferFailedSlip";
 import { mapP2PResponseToReceiptData } from "../types/transferReceiptTypes";
@@ -963,7 +957,6 @@ function ReceiptStep({
   const [shareImageBlob, setShareImageBlob] = useState<Blob | null>(null);
   const [shareImageUrl, setShareImageUrl] = useState<string | null>(null);
   const [imageCopied, setImageCopied] = useState(false);
-  const [imageSaved, setImageSaved] = useState(false);
 
   const receiptData = React.useMemo(
     () => mapP2PResponseToReceiptData(result, recipientName),
@@ -1059,21 +1052,6 @@ function ReceiptStep({
     }
     // Directly open WhatsApp Web to chats
     window.open("https://web.whatsapp.com", "_blank", "noopener,noreferrer");
-  };
-
-    const handleDownloadImage = () => {
-    if (!shareImageUrl && !shareImageBlob) return;
-    const url = shareImageUrl || (shareImageBlob ? URL.createObjectURL(shareImageBlob) : null);
-    if (!url) return;
-    const link = document.createElement("a");
-    link.href = url;
-    const refCode = result?.transactionRef ? String(result.transactionRef).replace(/[^a-zA-Z0-9_-]/g, "_") : Date.now();
-    link.download = `ekaraj-receipt-${refCode}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setImageSaved(true);
-    setTimeout(() => setImageSaved(false), 3000);
   };
 
   const handleShare = async () => {
@@ -1256,12 +1234,12 @@ function ReceiptStep({
 
       {/* Interactive Desktop Share Modal */}
       {showShareModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 no-print">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in"
             onClick={() => setShowShareModal(false)}
           />
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-4 sm:p-5 text-slate-800 animate-in zoom-in-95 border border-slate-100 max-h-[92vh] overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-5 text-slate-800 animate-in zoom-in-95 border border-slate-100 max-h-[92vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
               <div className="flex items-center gap-2">
@@ -1293,7 +1271,7 @@ function ReceiptStep({
                 <img
                   src={shareImageUrl}
                   alt="Receipt Preview"
-                  className="max-h-32 sm:max-h-36 w-auto object-contain rounded-xl shadow-2xs"
+                  className="max-h-40 w-auto object-contain rounded-xl shadow-2xs"
                 />
               </div>
             )}
@@ -1308,8 +1286,8 @@ function ReceiptStep({
               </div>
             )}
 
-            {/* Quick Actions (Copy Image + Save Image to Device) */}
-            <div className="mb-2.5 space-y-2">
+            {/* Quick Actions (Full-width Copy Image Button) */}
+            <div className="mb-3">
               <button
                 type="button"
                 onClick={async () => {
@@ -1318,7 +1296,7 @@ function ReceiptStep({
                     setImageCopied(ok);
                   }
                 }}
-                className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl font-bold text-xs transition duration-200 shadow-sm cursor-pointer ${
+                className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl font-bold text-xs transition duration-200 shadow-sm cursor-pointer ${
                   imageCopied
                     ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20"
                     : "bg-[#00A3C4] hover:bg-[#0891B2] text-white shadow-cyan-500/20"
@@ -1336,32 +1314,10 @@ function ReceiptStep({
                   </>
                 )}
               </button>
-
-              <button
-                type="button"
-                onClick={handleDownloadImage}
-                className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl font-bold text-xs transition duration-200 cursor-pointer border ${
-                  imageSaved
-                    ? "bg-emerald-50 border-emerald-300 text-emerald-700"
-                    : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700"
-                }`}
-              >
-                {imageSaved ? (
-                  <>
-                    <Check className="w-4 h-4 shrink-0 text-emerald-600" />
-                    <span>Saved to Device (Downloads)!</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4 shrink-0 text-slate-500" />
-                    <span>Save Image to Device (Download PNG)</span>
-                  </>
-                )}
-              </button>
             </div>
 
             {/* Social / Chat Share Apps */}
-            <div className="pt-2.5 border-t border-slate-100">
+            <div className="pt-3 border-t border-slate-100">
               <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">
                 Open Chat App to Paste
               </p>
@@ -1431,7 +1387,7 @@ function ReceiptStep({
 
             {/* Helpful Instruction Tip */}
             <div className="mt-3 p-2 bg-slate-50 rounded-xl border border-slate-100 text-[10px] text-slate-500 leading-normal text-center">
-              💡 <strong>Device Storage:</strong> Click <strong>Save Image</strong> to download the slip into your device's <strong>Downloads</strong> folder, or press <kbd className="px-1 py-0.5 bg-white border border-slate-200 rounded font-mono font-bold text-slate-700">Ctrl + V</kbd> to paste directly into any chat app above.
+              💡 <strong>Tip:</strong> Receipt image is automatically copied. Open any chat app above, then press <kbd className="px-1 py-0.5 bg-white border border-slate-200 rounded font-mono font-bold text-slate-700">Ctrl + V</kbd> to paste.
             </div>
           </div>
         </div>
@@ -1721,9 +1677,6 @@ export const P2PTransferForm = () => {
 
   /* Real-world Automated API Transfer Submission Handler */
   const handleTransferSubmit = async (pin: string) => {
-    const submissionGen = getAuthenticationGeneration();
-    const submissionSubject = getCurrentCustomerSubject();
-
     const payload: P2PTransferRequest = {
       sourceAccountNumber: sourceAccount,
       destinationAccountNumber: destinationAccount,
@@ -1738,20 +1691,10 @@ export const P2PTransferForm = () => {
       // 1. Submit to Real Banking API
       const resultAction = await dispatch(submitP2PTransfer(payload));
 
-      // Guard: Discard side-effects if user logged out or session rotated during transfer
-      if (
-        !hasTokens() ||
-        !isAuthenticationGenerationCurrent(submissionGen) ||
-        (submissionSubject && getCurrentCustomerSubject() !== submissionSubject)
-      ) {
-        return;
-      }
-
       // 2. HTTP Status 200 / 201: Success Flow
       if (submitP2PTransfer.fulfilled.match(resultAction)) {
         saveDestination(destinationAccount);
         dispatch(fetchMyAccounts());
-        dispatch(fetchDashboard());
         window.dispatchEvent(new Event("new-notification-event"));
         setShowPinModal(false);
         setStep("receipt");
@@ -1815,14 +1758,6 @@ export const P2PTransferForm = () => {
       setStep("failed");
 
     } catch (err: any) {
-      // Guard: Discard error display if user logged out or session rotated during transfer
-      if (
-        !hasTokens() ||
-        !isAuthenticationGenerationCurrent(submissionGen) ||
-        (submissionSubject && getCurrentCustomerSubject() !== submissionSubject)
-      ) {
-        return;
-      }
       // Network Disconnection or unhandled exception
       setShowPinModal(false);
       setFailureData({
@@ -1947,20 +1882,7 @@ export const P2PTransferForm = () => {
         />
       ) : (
         /* 2-Column Responsive Layout for Step 1 & Step 2 */
-        <div className="space-y-4">
-          {/* Breadcrumb Navigation */}
-          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-xs font-semibold no-print">
-            <Link
-              to="/dashboard"
-              className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
-            >
-              Dashboard
-            </Link>
-            <span className="text-slate-300" aria-hidden="true">/</span>
-            <span className="text-[#00A3C4]" aria-current="page">Internal Transfer</span>
-          </nav>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Main Left Column (Step Wizard Form) */}
           <div className="lg:col-span-8 xl:col-span-8 bg-white dark:bg-[#0A192F] rounded-3xl p-6 sm:p-7 shadow-sm border border-slate-200 dark:border-slate-800">
             {/* Header with Visual Stepper */}
@@ -2202,7 +2124,6 @@ export const P2PTransferForm = () => {
             </div>
           </div>
         </div>
-      </div>
       )}
     </>
   );

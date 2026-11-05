@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { KeyRound, Loader2, AlertCircle } from "lucide-react";
+import { KeyRound, Loader2, ArrowRight, AlertCircle } from "lucide-react";
 import SettingsSection from "./SettingsSection";
 import { requestPinReset } from "../../../../services/authService";
 
@@ -106,6 +106,7 @@ export default function SecuritySettings() {
           ) : (
             <>
               <span>{t("forgotTransactionPin", { defaultValue: "Forgot Transaction PIN" })}</span>
+              <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
             </>
           )}
         </button>

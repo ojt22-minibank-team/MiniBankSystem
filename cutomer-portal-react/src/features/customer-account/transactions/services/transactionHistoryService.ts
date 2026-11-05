@@ -1,6 +1,5 @@
 import api from "../../../../config/api";
 import type {
-  CusTransactionHistoryItemDTO,
   CusTransactionHistoryResponseDTO,
   TransactionHistoryQueryParams,
 } from "../types/transactionHistoryTypes";
@@ -79,23 +78,3 @@ export async function getTransactionTypes(
 
   return Array.isArray(response.data) ? response.data : [];
 }
-
-/**
- * Fetches single transaction detail for a given transaction reference and account number.
- */
-export async function getTransactionDetail(
-  transactionRef: string,
-  accountNumber: string,
-  signal?: AbortSignal
-): Promise<CusTransactionHistoryItemDTO> {
-  const response = await api.get<CusTransactionHistoryItemDTO>(
-    `/transactions/${encodeURIComponent(transactionRef)}`,
-    {
-      params: { accountNumber },
-      signal,
-    }
-  );
-
-  return response.data;
-}
-

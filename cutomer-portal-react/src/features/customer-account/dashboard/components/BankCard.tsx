@@ -1,18 +1,12 @@
-
-import { useState, type MouseEvent } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Check, Copy, Eye, EyeOff } from "lucide-react";
-
 import type { DashboardAccount } from "../types/dashboardTypes";
-import type { AccountStatus as AccountStatusType } from "../../accounts/types/accountTypes";
-import AccountStatus from "../../accounts/components/AccountStatus";
-
 import {
   EkarajCrown,
   EbMonogram,
   CardGeometricLines,
 } from "../../../../components/common/EkarajLogo";
-
 import { useAppSelector, type RootState } from "../../../../lib/redux";
 
 interface BankCardProps {
@@ -21,7 +15,6 @@ interface BankCardProps {
   index?: number;
   showBalance?: boolean;
   onToggleBalance?: () => void;
-  showStatus?: boolean;
   className?: string;
   isLink?: boolean;
   onClick?: () => void;
@@ -48,6 +41,7 @@ export interface EkarajCardTheme {
 export type EkararjCardTheme = EkarajCardTheme;
 
 export const EKARAJ_CARD_THEMES: EkarajCardTheme[] = [
+  // 1. Brushed Platinum Silver
   {
     id: "platinum",
     name: "Platinum Silver",
@@ -55,20 +49,16 @@ export const EKARAJ_CARD_THEMES: EkarajCardTheme[] = [
     themeType: "platinum",
     textMode: "dark",
     embossedClass: "embossed-text-silver",
-    bankTitleClass:
-      "text-[#0A192F] drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)]",
+    bankTitleClass: "text-[#0A192F] drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)]",
     balanceLabelClass: "text-slate-600 font-bold",
-    balanceNumberClass:
-      "text-[#0A192F] drop-shadow-[0_1px_0_rgba(255,255,255,0.8)]",
+    balanceNumberClass: "text-[#0A192F] drop-shadow-[0_1px_0_rgba(255,255,255,0.8)]",
     currencyClass: "text-[#007088]",
-    cardholderNameClass:
-      "text-[#1E293B] drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]",
-    badgeClass:
-      "bg-[#0A192F]/10 text-[#0A192F] border border-[#0A192F]/20",
+    cardholderNameClass: "text-[#1E293B] drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]",
+    badgeClass: "bg-[#0A192F]/10 text-[#0A192F] border border-[#0A192F]/20",
     dividerClass: "border-slate-300/70",
-    actionBtnClass:
-      "text-slate-600 hover:text-[#0A192F] hover:bg-slate-200/60",
+    actionBtnClass: "text-slate-600 hover:text-[#0A192F] hover:bg-slate-200/60",
   },
+  // 2. Royal Sapphire Navy
   {
     id: "navy",
     name: "Sapphire Navy",
@@ -78,15 +68,14 @@ export const EKARAJ_CARD_THEMES: EkarajCardTheme[] = [
     embossedClass: "embossed-text-navy",
     bankTitleClass: "text-white drop-shadow-sm",
     balanceLabelClass: "text-cyan-200/90 font-bold",
-    balanceNumberClass:
-      "text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]",
+    balanceNumberClass: "text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]",
     currencyClass: "text-cyan-300",
     cardholderNameClass: "text-white/95 drop-shadow-xs",
     badgeClass: "bg-white/15 text-cyan-200 border border-white/20",
     dividerClass: "border-white/15",
-    actionBtnClass:
-      "text-white/80 hover:text-white hover:bg-white/20",
+    actionBtnClass: "text-white/80 hover:text-white hover:bg-white/20",
   },
+  // 3. Titanium Champagne Gold
   {
     id: "gold",
     name: "Titanium Gold",
@@ -94,38 +83,31 @@ export const EKARAJ_CARD_THEMES: EkarajCardTheme[] = [
     themeType: "gold",
     textMode: "dark",
     embossedClass: "embossed-text-gold",
-    bankTitleClass:
-      "text-[#1B1202] drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)]",
+    bankTitleClass: "text-[#1B1202] drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)]",
     balanceLabelClass: "text-[#694808] font-bold",
-    balanceNumberClass:
-      "text-[#1B1202] drop-shadow-[0_1px_0_rgba(255,255,255,0.8)]",
+    balanceNumberClass: "text-[#1B1202] drop-shadow-[0_1px_0_rgba(255,255,255,0.8)]",
     currencyClass: "text-[#78540C]",
-    cardholderNameClass:
-      "text-[#2D1E04] drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]",
-    badgeClass:
-      "bg-[#2D1E04]/10 text-[#2D1E04] border border-[#2D1E04]/20",
+    cardholderNameClass: "text-[#2D1E04] drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]",
+    badgeClass: "bg-[#2D1E04]/10 text-[#2D1E04] border border-[#2D1E04]/20",
     dividerClass: "border-amber-400/50",
-    actionBtnClass:
-      "text-[#694808] hover:text-[#1B1202] hover:bg-amber-400/25",
+    actionBtnClass: "text-[#694808] hover:text-[#1B1202] hover:bg-amber-400/25",
   },
+  // 4. Obsidian Black Diamond
   {
     id: "obsidian",
     name: "Black Diamond",
-    cardClass:
-      "card-brushed-obsidian border border-slate-700/80 shadow-xl",
+    cardClass: "card-brushed-obsidian border border-slate-700/80 shadow-xl",
     themeType: "obsidian",
     textMode: "light",
     embossedClass: "embossed-text-navy",
     bankTitleClass: "text-white drop-shadow-sm",
     balanceLabelClass: "text-cyan-200/90 font-bold",
-    balanceNumberClass:
-      "text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)]",
+    balanceNumberClass: "text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)]",
     currencyClass: "text-cyan-300",
     cardholderNameClass: "text-white/95 drop-shadow-xs",
     badgeClass: "bg-white/15 text-cyan-200 border border-white/20",
     dividerClass: "border-white/15",
-    actionBtnClass:
-      "text-white/80 hover:text-white hover:bg-white/20",
+    actionBtnClass: "text-white/80 hover:text-white hover:bg-white/20",
   },
 ];
 
@@ -139,16 +121,15 @@ export function formatBalance(amount: number): string {
 }
 
 /**
- * Returns a masked account number for card display.
- * DB 10-digit format: **** **** 568
+ * Returns clean masked account number for card display
+ * DB 10 digits format: '••••  •••  568'
  */
 export function formatHashedCardNumber(accountNumber: string): string {
   if (!accountNumber) return "••••  •••  •••";
-
   const cleaned = accountNumber.replace(/\D/g, "");
 
   if (cleaned.length === 10) {
-    return `****  ****  ${cleaned.slice(6, 10)}`;
+    return `****  ***  ${cleaned.slice(7, 10)}`;
   }
 
   if (cleaned.length === 16) {
@@ -156,70 +137,38 @@ export function formatHashedCardNumber(accountNumber: string): string {
   }
 
   const last4 = cleaned.length >= 4 ? cleaned.slice(-4) : cleaned;
-
   return `**** ${last4}`;
-}
-
-function normalizeAccountStatus(
-  status: unknown,
-): AccountStatusType | null {
-  if (typeof status !== "string") return null;
-
-  switch (status.toUpperCase()) {
-    case "ACTIVE":
-    case "DORMANT":
-    case "FROZEN":
-    case "CLOSED":
-      return status.toUpperCase() as AccountStatusType;
-
-    default:
-      return null;
-  }
 }
 
 export default function BankCard({
   account,
   accountName,
   index = 0,
-  showBalance,
+  showBalance = true,
   onToggleBalance,
-  showStatus = false,
   className = "",
   isLink = true,
   onClick,
   compact = false,
 }: BankCardProps) {
   const [copied, setCopied] = useState(false);
+  const [isBalanceVisible, setIsBalanceVisible] = useState(showBalance);
 
-  // Local fallback for standalone usage.
-  // Dashboard usage is controlled by the parent visibility state.
-  const [internalVisibility, setInternalVisibility] = useState(
-    showBalance ?? true,
-  );
+  useEffect(() => {
+    setIsBalanceVisible(showBalance);
+  }, [showBalance]);
 
-  const isControlled =
-    showBalance !== undefined && onToggleBalance !== undefined;
-
-  const isBalanceVisible = isControlled
-    ? showBalance
-    : internalVisibility;
-
-  // Resolve customer name from props, account, or Redux state.
+  // Resolve customer name from props, account, or Redux state
   const reduxFullName = useAppSelector((state: RootState) => {
     const profile = state.profile?.profile;
-
     if (profile) {
       if (profile.firstName || profile.lastName) {
-        return `${profile.firstName || ""} ${
-          profile.lastName || ""
-        }`.trim();
+        return `${profile.firstName || ""} ${profile.lastName || ""}`.trim();
       }
-
       if (profile.companyName) {
         return profile.companyName;
       }
     }
-
     return state.dashboard?.data?.fullName || null;
   });
 
@@ -237,94 +186,65 @@ export default function BankCard({
       ? "SAVINGS ACCOUNT"
       : "CURRENT ACCOUNT";
 
-  const accountStatus = normalizeAccountStatus(account.status);
+  const hashedCardNumber = formatHashedCardNumber(account.accountNumber);
 
-  const hashedCardNumber = formatHashedCardNumber(
-    account.accountNumber,
-  );
-
-  // Available Balance = Current Balance - Minimum Reserve.
+  // Business Logic: Available Balance (usable money) = Current Balance - Minimum Reserve
   const effectiveAvailableBalance = (() => {
-    const minReserve =
-      (account as { minimumBalance?: number }).minimumBalance ?? 10000;
-
-    if (
-      account.currentBalance !== undefined &&
-      account.currentBalance !== null
-    ) {
-      if (
-        account.availableBalance !== undefined &&
-        account.availableBalance < account.currentBalance
-      ) {
+    const minReserve = (account as { minimumBalance?: number }).minimumBalance ?? 10000;
+    if (account.currentBalance !== undefined && account.currentBalance !== null) {
+      if (account.availableBalance !== undefined && account.availableBalance < account.currentBalance) {
         return account.availableBalance;
       }
-
       return Math.max(0, account.currentBalance - minReserve);
     }
-
     return account.availableBalance ?? 0;
   })();
 
-  const handleToggleEye = (e: MouseEvent) => {
+  const handleToggleEye = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
-    if (isControlled) {
+    setIsBalanceVisible((prev) => !prev);
+    if (onToggleBalance) {
       onToggleBalance();
-      return;
     }
-
-    setInternalVisibility((currentVisibility) => !currentVisibility);
   };
 
-  const handleCopy = (e: MouseEvent) => {
+  const handleCopy = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
     void navigator.clipboard.writeText(account.accountNumber);
-
     setCopied(true);
-
-    setTimeout(() => {
-      setCopied(false);
-    }, 1500);
+    setTimeout(() => setCopied(false), 1500);
   };
-
-  // Reuse the same AccountStatus component and exact design.
-  const statusBadge =
-    showStatus && accountStatus ? (
-      <AccountStatus status={accountStatus} />
-    ) : null;
 
   const cardInner = (
     <>
-      {/* Card Geometric Lines */}
+      {/* 1. Card Geometric Lines in Background */}
       <CardGeometricLines />
 
-      {/* TOP ROW: EB Monogram + Bank Title + Optional Status + Crown */}
+      {/* 2. TOP ROW: 'EB' Monogram + 'EKARAJ BANK' on Left, Official 3D Crown on Right */}
       <div className="relative z-10 flex items-start justify-between">
         <div className="flex items-center gap-2.5">
+          {/* 3D Metallic Cyan 'EB' */}
           <EbMonogram size={34} />
 
           <div>
             <h3
               className={`text-[15px] sm:text-[16px] font-black tracking-wide leading-none ${theme.bankTitleClass}`}
-              style={{
-                fontFamily: "system-ui, -apple-system, sans-serif",
-              }}
+              style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
             >
               EKARAJ BANK
             </h3>
           </div>
         </div>
 
+        {/* Official 3D Crown Logo */}
         <div className="flex items-center gap-2">
-          {statusBadge}
           <EkarajCrown size={42} />
         </div>
       </div>
 
-      {/* MIDDLE: Available Balance with Eye Toggle */}
+      {/* 3. MIDDLE: Real-World Digital Bank Available Balance with Eye Toggle */}
       <div className="relative z-10 my-auto py-1 space-y-1">
         <div className="flex items-center justify-between">
           <span
@@ -333,27 +253,15 @@ export default function BankCard({
             Available Balance
           </span>
 
+          {/* Eye Toggle button for Balance */}
           <button
             type="button"
             onClick={handleToggleEye}
-            className={`rounded-lg p-1 transition-colors ${theme.actionBtnClass} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400`}
-            title={
-              isBalanceVisible
-                ? "Hide balance and account number"
-                : "Show balance and account number"
-            }
-            aria-label={
-              isBalanceVisible
-                ? "Hide balance and account number"
-                : "Show balance and account number"
-            }
-            aria-pressed={isBalanceVisible}
+            className={`rounded-lg p-1 transition-colors ${theme.actionBtnClass} focus:outline-none`}
+            title={isBalanceVisible ? "Hide balance" : "Show balance"}
+            aria-label={isBalanceVisible ? "Hide balance" : "Show balance"}
           >
-            {isBalanceVisible ? (
-              <EyeOff size={15} />
-            ) : (
-              <Eye size={15} />
-            )}
+            {isBalanceVisible ? <EyeOff size={15} /> : <Eye size={15} />}
           </button>
         </div>
 
@@ -368,7 +276,6 @@ export default function BankCard({
                 >
                   {account.currency || "MMK"}
                 </span>
-
                 {formatBalance(effectiveAvailableBalance)}
               </>
             ) : (
@@ -378,25 +285,23 @@ export default function BankCard({
         </div>
       </div>
 
-      {/* LOWER BODY: Account Number & Account Holder Name */}
+      {/* 4. LOWER BODY: Hashed Account Number & Account Holder Name */}
       <div className="relative z-10 pt-1 space-y-1">
         <div className="flex items-center justify-between">
+          {/* Hashed 10-digit DB Account Number */}
           <p
             className={`font-mono text-[15px] sm:text-[16.5px] font-black tracking-[0.2em] ${theme.embossedClass}`}
             style={{ letterSpacing: "0.2em" }}
           >
-            {isBalanceVisible
-              ? account.accountNumber
-              : hashedCardNumber}
+            {hashedCardNumber}
           </p>
 
-          {/* Copy Account Number */}
+          {/* 1-Click Copy Account Number */}
           <button
             type="button"
             onClick={handleCopy}
             className={`rounded-md p-1 opacity-0 transition-opacity group-hover:opacity-100 ${theme.actionBtnClass}`}
             title="Copy account number"
-            aria-label="Copy account number"
           >
             {copied ? (
               <Check size={13} className="text-emerald-500 font-bold" />
@@ -415,10 +320,8 @@ export default function BankCard({
         </p>
       </div>
 
-      {/* BOTTOM ROW: Account Type Badge */}
-      <div
-        className={`relative z-10 flex items-center justify-between pt-1 border-t ${theme.dividerClass}`}
-      >
+      {/* 5. BOTTOM ROW: Account Type Badge */}
+      <div className={`relative z-10 flex items-center justify-between pt-1 border-t ${theme.dividerClass}`}>
         <span
           className={`rounded-full px-2.5 py-0.5 text-[9px] font-black tracking-wider uppercase ${theme.badgeClass}`}
         >
@@ -428,12 +331,9 @@ export default function BankCard({
     </>
   );
 
-  // COMPACT CARD
   if (compact) {
     const compactClasses = `group relative flex h-[122px] sm:h-[130px] w-[196px] sm:w-[210px] shrink-0 flex-col justify-between overflow-hidden rounded-2xl p-3 select-none transition-all duration-300 shadow-md ${
-      isLink
-        ? "hover:-translate-y-1 hover:shadow-xl cursor-pointer"
-        : ""
+      isLink ? "hover:-translate-y-1 hover:shadow-xl cursor-pointer" : ""
     } ${theme.cardClass} ${className}`;
 
     const compactContent = (
@@ -441,63 +341,45 @@ export default function BankCard({
         {/* Card Geometric Lines */}
         <CardGeometricLines />
 
-        {/* TOP ROW: EB Monogram + Bank Title + Optional Status + Crown */}
-        <div className="relative z-10 flex items-center justify-between gap-1">
-          <div className="flex items-center gap-1.5 min-w-0">
+        {/* TOP ROW: EB Monogram + Bank Title + 3D Crown */}
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
             <EbMonogram size={18} />
-
             <span
               className={`text-[10px] font-black tracking-wide leading-none ${theme.bankTitleClass}`}
             >
               EKARAJ BANK
             </span>
           </div>
-
-          <div className="flex items-center gap-1 shrink-0">
-            {statusBadge}
-            <EkarajCrown size={20} />
-          </div>
+          <EkarajCrown size={20} />
         </div>
 
-        {/* MIDDLE: Balance & Account Number */}
+        {/* MIDDLE: Balance & Card Masked Number */}
         <div className="relative z-10 my-auto py-0.5 space-y-0.5">
           <div className="flex items-baseline gap-1">
-            <span
-              className={`text-[9px] font-bold ${theme.currencyClass}`}
-            >
+            <span className={`text-[9px] font-bold ${theme.currencyClass}`}>
               {account.currency || "MMK"}
             </span>
-
-            <span
-              className={`font-mono text-xs sm:text-[13px] font-black tracking-tight ${theme.balanceNumberClass}`}
-            >
-              {isBalanceVisible
-                ? formatBalance(effectiveAvailableBalance)
-                : "••••••"}
+            <span className={`font-mono text-xs sm:text-[13px] font-black tracking-tight ${theme.balanceNumberClass}`}>
+              {isBalanceVisible ? formatBalance(effectiveAvailableBalance) : "••••••"}
             </span>
           </div>
-
           <p
             className={`font-mono text-[11px] sm:text-xs font-black tracking-[0.14em] ${theme.embossedClass}`}
           >
-            {isBalanceVisible
-              ? account.accountNumber
-              : hashedCardNumber}
+            {hashedCardNumber}
           </p>
         </div>
 
         {/* BOTTOM ROW: Holder Name + Account Type Badge */}
-        <div
-          className={`relative z-10 flex items-center justify-between gap-1 border-t pt-1 ${theme.dividerClass}`}
-        >
+        <div className={`relative z-10 flex items-center justify-between border-t pt-1 ${theme.dividerClass}`}>
           <p
             className={`truncate font-mono text-[9px] font-bold uppercase tracking-wider ${theme.cardholderNameClass} max-w-[105px]`}
           >
             {customerDisplayName}
           </p>
-
           <span
-            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[8px] font-black tracking-wider uppercase ${theme.badgeClass}`}
+            className={`rounded-full px-1.5 py-0.5 text-[8px] font-black tracking-wider uppercase ${theme.badgeClass}`}
           >
             {accountTypeLabel}
           </span>
@@ -535,11 +417,8 @@ export default function BankCard({
     );
   }
 
-  // FULL CARD
-  const cardClasses = `group relative flex h-[225px] sm:h-[235px] w-full min-w-[320px] max-w-none flex-col justify-between overflow-hidden rounded-[26px] p-5 sm:p-6 select-none transition-all duration-300 ${
-    isLink
-      ? "hover:-translate-y-1.5 hover:shadow-2xl cursor-pointer"
-      : ""
+  const cardClasses = `group relative flex h-[225px] sm:h-[235px] w-full min-w-[320px] max-w-[400px] shrink-0 flex-col justify-between overflow-hidden rounded-[26px] p-5 sm:p-6 select-none transition-all duration-300 ${
+    isLink ? "hover:-translate-y-1.5 hover:shadow-2xl cursor-pointer" : ""
   } ${theme.cardClass} ${className}`;
 
   if (!isLink) {

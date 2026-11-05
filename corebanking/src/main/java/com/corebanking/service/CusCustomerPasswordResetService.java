@@ -24,7 +24,7 @@ import com.corebanking.exception.CusEmailException;
 import com.corebanking.exception.CusOtpException;
 import com.corebanking.exception.CusOtpResendLimitException;
 import com.corebanking.exception.CusValidationException;
-import com.corebanking.repository.AccountRepository;
+import com.corebanking.repository.CusAccountsRepository;
 import com.corebanking.repository.CusAuditLogsRepository;
 import com.corebanking.repository.CusCredentialsRepository;
 import com.corebanking.repository.CusCustomerRepository;
@@ -51,7 +51,7 @@ import java.util.UUID;
 public class CusCustomerPasswordResetService {
 
     private final CusCustomerRepository customerRepository;
-    private final AccountRepository accountsRepository;
+    private final CusAccountsRepository accountsRepository;
     private final CusCredentialsRepository credentialsRepository;
     private final CusOtpChallengesRepository otpChallengesRepository;
     private final PasswordEncoder passwordEncoder;

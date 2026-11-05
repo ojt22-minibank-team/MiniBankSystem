@@ -30,16 +30,10 @@ const assertConsumed = () => { assert.equal(sessionStorage.getItem('redirectUrl'
 
 function createLoader() {
   const cache = new Map();
-  const dispatch = action => action;
   return function load(relative) {
     const file = path.resolve(project, relative);
     if (cache.has(file)) return cache.get(file).exports;
     const module = { exports: {} }; cache.set(file, module);
-    if (file.endsWith('/lib/redux.ts')) {
-      // Redux reset behavior is covered by individual-logout-concurrency.test.cjs.
-      module.exports = { useAppDispatch: () => dispatch, resetCustomerState: () => ({ type: 'customer/resetState' }) };
-      return module.exports;
-    }
     if (file.endsWith('/PublicAuthLayout.tsx')) {
       module.exports = { __esModule: true, default: props => React.createElement('main', null, props.children) }; return module.exports;
     }

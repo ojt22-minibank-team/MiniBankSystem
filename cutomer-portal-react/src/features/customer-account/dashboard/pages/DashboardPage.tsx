@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ShieldCheck } from "lucide-react";
@@ -11,8 +10,6 @@ import RecentTransactions from "../components/RecentTransactions";
 import { fetchDashboard } from "../store/dashboardSlice";
 import { useAppDispatch, useAppSelector } from "../../../../lib/redux";
 
-const BALANCE_VISIBILITY_KEY = "customer-portal:balance-visible";
-
 export default function DashboardPage() {
   const dispatch = useAppDispatch();
 
@@ -22,30 +19,11 @@ export default function DashboardPage() {
 
   const { t } = useTranslation("dashboard");
 
-  // Restore the visibility preference for the current tab session.
-  const [showBalance, setShowBalance] = useState<boolean>(() => {
-    try {
-      return sessionStorage.getItem(BALANCE_VISIBILITY_KEY) === "true";
-    } catch {
-      return false;
-    }
-  });
+  // Balance visible by default, with toggle state shared across components
+  const [showBalance, setShowBalance] = useState(false);
 
   const handleToggleBalance = () => {
-    setShowBalance((currentVisibility) => {
-      const nextVisibility = !currentVisibility;
-
-      try {
-        sessionStorage.setItem(
-          BALANCE_VISIBILITY_KEY,
-          String(nextVisibility),
-        );
-      } catch {
-        // Keep the visibility toggle functional if storage is unavailable.
-      }
-
-      return nextVisibility;
-    });
+    setShowBalance((prev) => !prev);
   };
 
   useEffect(() => {
@@ -63,8 +41,9 @@ export default function DashboardPage() {
   const refreshing = status === "pending" && dashboard !== null;
   const hasError = status === "failed" && error !== null;
 
-  const accounts = dashboard?.accounts ?? [];
   const totalBalance = dashboard?.totalBalance ?? 0;
+  const accounts = dashboard?.accounts ?? [];
+  const primaryAccount = accounts.length > 0 ? accounts[0] : undefined;
 
   const handleRetry = () => {
     void dispatch(fetchDashboard());
@@ -72,12 +51,11 @@ export default function DashboardPage() {
 
   return (
     <div className="relative overflow-hidden bg-[#F4F6F9] dark:bg-[#060E1A] text-[#0A192F] dark:text-slate-100 pb-12 transition-colors duration-200">
-      {/* Background Soft Blobs */}
+      {/* Background Soft Blobs bounded by overflow-hidden */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-cyan-100/35 dark:bg-cyan-500/10 blur-3xl"
       />
-
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-slate-200/40 dark:bg-blue-600/10 blur-3xl"
@@ -105,14 +83,8 @@ export default function DashboardPage() {
               </div>
 
               <div className="min-w-0 flex-1">
-                <h2 className="font-bold text-red-700 dark:text-red-400">
-                  {t("loadError")}
-                </h2>
-
-                <p className="mt-1 break-words text-sm text-red-600 dark:text-red-300">
-                  {error}
-                </p>
-
+                <h2 className="font-bold text-red-700 dark:text-red-400">{t("loadError")}</h2>
+                <p className="mt-1 break-words text-sm text-red-600 dark:text-red-300">{error}</p>
                 <button
                   type="button"
                   onClick={handleRetry}
@@ -127,7 +99,6 @@ export default function DashboardPage() {
 
         {dashboard && (
           <div className="space-y-6">
-            {/* Dashboard Refreshing Indicator */}
             {refreshing && (
               <p
                 role="status"
@@ -138,28 +109,31 @@ export default function DashboardPage() {
               </p>
             )}
 
-            {/* Total Available Balance */}
+            {/* 1. TOP SECTION: Total Available Balance (Compact & User-Friendly with Scan & My QR) */}
             <TotalBalanceCard
               totalBalance={totalBalance}
               accountCount={accounts.length}
               showBalance={showBalance}
               onToggleBalance={handleToggleBalance}
-              customerName={dashboard.fullName}
+              customerName={dashboard?.fullName}
+              primaryAccountNumber={primaryAccount?.accountNumber}
               loading={refreshing}
             />
 
-            {/* Customer Bank Accounts */}
+            {/* 2. MIDDLE SECTION: My Accounts Cards Slider (Horizontal Scroll) */}
             <BankCardsSection
               accounts={accounts}
-              customerName={dashboard.fullName}
+              customerName={dashboard?.fullName}
               showBalance={showBalance}
               onToggleBalance={handleToggleBalance}
-              showStatus
             />
 
-            {/* Recent Transactions */}
+            {/* 3. BOTTOM SECTION: Recent Transactions (Full Width, without redundant bottom Statistic card) */}
             <div className="pt-2">
-              <RecentTransactions accounts={accounts} />
+              <RecentTransactions
+                accountNumber={primaryAccount?.accountNumber}
+                showBalance={showBalance}
+              />
             </div>
           </div>
         )}

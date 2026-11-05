@@ -17,17 +17,4 @@ public class OtcParametersDto {
     private BigDecimal minDepositAmount;
     private BigDecimal minWithdrawalAmount;
     private BigDecimal minimumBalance;
-    private BigDecimal maxOnetimeWithdrawal;
-    private BigDecimal maxDailyWithdrawal;
-
-    // Active OTC Fee Schedule parameters
-    private String depositFeeType;
-    private BigDecimal depositFeeValue;
-    private BigDecimal depositMinFee;
-    private BigDecimal depositMaxFee;
-
-    private String withdrawalFeeType;
-    private BigDecimal withdrawalFeeValue;
-    private BigDecimal withdrawalMinFee;
-    private BigDecimal withdrawalMaxFee;
 }

@@ -26,7 +26,7 @@ import com.corebanking.exception.CusOtpException;
 import com.corebanking.exception.CusOtpResendLimitException;
 import com.corebanking.exception.CusSessionExpiredException;
 import com.corebanking.exception.CusValidationException;
-import com.corebanking.repository.AccountRepository;
+import com.corebanking.repository.CusAccountsRepository;
 import com.corebanking.repository.CusAuditLogsRepository;
 import com.corebanking.repository.CusAuthSessionsRepository;
 import com.corebanking.repository.CusCredentialsRepository;
@@ -82,7 +82,7 @@ class CusCustomerLoginSecurityRegressionTest {
     private static final String GROUP_B = "55555555-5555-5555-5555-555555555555";
 
     @Mock private CusCustomerRepository customerRepository;
-    @Mock private AccountRepository accountsRepository;
+    @Mock private CusAccountsRepository accountsRepository;
     @Mock private CusCredentialsRepository credentialsRepository;
     @Mock private CusLoginAttemptsRepository loginAttemptsRepository;
     @Mock private CusOtpChallengesRepository otpChallengesRepository;

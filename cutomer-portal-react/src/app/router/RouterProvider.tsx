@@ -45,9 +45,7 @@ import AnnouncementsPage from "../../features/customer-account/announcements/pag
 import BeneficiariesPage from "../../features/beneficiaries/pages/BeneficiariesPage";
 import AccountStatementPage from "../../features/customer-account/statements/pages/AccountStatementPage";
 import TransactionHistoryPage from "../../features/customer-account/transactions/pages/TransactionHistoryPage";
-import TransactionDetailPage from "../../features/customer-account/transactions/pages/TransactionDetailPage";
 import TransactionReceiptPage from "../../features/transfer/pages/TransactionReceiptPage";
-import  HelpSupportPage  from "../../features/customer-account/help-support/pages/HelpSupportPage";
 
 // ======================================================
 // ROUTER
@@ -212,11 +210,6 @@ const router = createBrowserRouter([
           },
 
           {
-            path: "/transaction/:transactionRef",
-            element: <TransactionDetailPage />,
-          },
-
-          {
             path: "/profile",
             element: <ProfilePage />,
           },
@@ -262,11 +255,6 @@ const router = createBrowserRouter([
             path: "/receipt/:transactionRef",
             element: <TransactionReceiptPage />,
           },
-
-          {
-            path: "/support",
-            element: <HelpSupportPage />,
-          }
 
         ],
 

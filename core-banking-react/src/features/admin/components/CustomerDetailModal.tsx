@@ -2,12 +2,11 @@ import Modal from '../../../components/common/Modal';
 import Button from '../../../components/common/Button';
 import type { CustomerDetailResponse } from '../../../types/api.types';
 
-export interface CustomerDetailModalProps {
+interface CustomerDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   customer: CustomerDetailResponse | null;
   isLoading: boolean;
-  onEdit?: (customer: CustomerDetailResponse) => void;
 }
 
 export default function CustomerDetailModal({
@@ -15,7 +14,6 @@ export default function CustomerDetailModal({
   onClose,
   customer,
   isLoading,
-  onEdit,
 }: CustomerDetailModalProps) {
   if (!isOpen) return null;
 
@@ -26,20 +24,7 @@ export default function CustomerDetailModal({
       title={customer ? `Customer Details: ${customer.customerCode}` : 'Customer Details'}
       size="lg"
       footer={
-        <div className="flex items-center justify-between w-full">
-          {onEdit && customer ? (
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                onClose();
-                onEdit(customer);
-              }}
-              className="border-sky-300 text-sky-700 hover:bg-sky-50"
-            >
-              Edit Profile
-            </Button>
-          ) : <div />}
+        <div className="flex justify-end w-full">
           <Button variant="secondary" onClick={onClose}>
             Close
           </Button>

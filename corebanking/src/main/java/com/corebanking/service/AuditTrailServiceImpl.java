@@ -9,12 +9,10 @@ import com.corebanking.repository.AuditLogsRepository;
 import com.corebanking.repository.AuditSearchSpecification;
 import com.corebanking.repository.CustomerRepository;
 import com.corebanking.repository.StaffUsersRepository;
-import com.corebanking.security.JwtService;
 import com.corebanking.util.AuditContextUtil;
-import jakarta.servlet.http.HttpServletRequest;
 import tools.jackson.databind.json.JsonMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -36,56 +34,30 @@ import java.util.UUID;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class AuditTrailServiceImpl implements AuditTrailService {
 
     private final AuditLogsRepository auditLogsRepository;
     private final StaffUsersRepository staffUsersRepository;
     private final CustomerRepository customerRepository;
     private final JsonMapper objectMapper;
-    private final JwtService jwtService;
-
-    @Autowired
-    public AuditTrailServiceImpl(
-            AuditLogsRepository auditLogsRepository,
-            StaffUsersRepository staffUsersRepository,
-            CustomerRepository customerRepository,
-            JsonMapper objectMapper,
-            @Autowired(required = false) JwtService jwtService) {
-        this.auditLogsRepository = auditLogsRepository;
-        this.staffUsersRepository = staffUsersRepository;
-        this.customerRepository = customerRepository;
-        this.objectMapper = objectMapper;
-        this.jwtService = jwtService;
-    }
-
-    public AuditTrailServiceImpl(
-            AuditLogsRepository auditLogsRepository,
-            StaffUsersRepository staffUsersRepository,
-            CustomerRepository customerRepository,
-            JsonMapper objectMapper) {
-        this(auditLogsRepository, staffUsersRepository, customerRepository, objectMapper, null);
-    }
 
     /**
      * {@inheritDoc}
      */
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void logDataChange(String actionCategory, String actionType, String entityType, String entityId, Object oldEntity, Object newEntity, String description) {
+    public void logDataChange(String actionType, String entityType, String entityId, Object oldEntity, Object newEntity, String description) {
         try {
             ActorType actorType = AuditContextUtil.resolveActorType();
             StaffUsers staff = resolveStaffActor(actorType);
             Customers customer = resolveCustomerActor(actorType);
 
-            String resolvedCategory = (actionCategory != null && !actionCategory.isBlank())
-                    ? actionCategory
-                    : inferActionCategory(actionType, entityType);
-
             AuditLogs auditLog = AuditLogs.builder()
                     .actorType(actorType)
                     .actorStaff(staff)
                     .actorCustomer(customer)
-                    .actionCategory(resolvedCategory)
+                    .actionCategory(inferActionCategory(actionType, entityType))
                     .actionType(actionType != null ? actionType : "UNKNOWN_ACTION")
                     .entityType(entityType != null ? entityType : "UNKNOWN_ENTITY")
                     .entityId(entityId)
@@ -105,12 +77,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             log.error("DEFENSIVE AUDIT FAILURE: Could not persist data change audit log for entity [{}:{}]: {}",
                     entityType, entityId, t.getMessage(), t);
         }
-    }
-
-    @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void logDataChange(String actionType, String entityType, String entityId, Object oldEntity, Object newEntity, String description) {
-        logDataChange(null, actionType, entityType, entityId, oldEntity, newEntity, description);
     }
 
     /**
@@ -190,51 +156,8 @@ public class AuditTrailServiceImpl implements AuditTrailService {
         }
         try {
             Optional<String> usernameOpt = AuditContextUtil.getCurrentStaffUsername();
-            if (usernameOpt.isPresent() && !usernameOpt.get().isBlank()) {
-                Optional<StaffUsers> staffOpt = staffUsersRepository.findByUsername(usernameOpt.get());
-                if (staffOpt.isPresent()) {
-                    return staffOpt.get();
-                }
-                try {
-                    UUID uuid = UUID.fromString(usernameOpt.get());
-                    Optional<StaffUsers> staffById = staffUsersRepository.findById(uuid);
-                    if (staffById.isPresent()) {
-                        return staffById.get();
-                    }
-                } catch (Exception ignored) {
-                }
-            }
-
-            // Fallback: If not in SecurityContext, check the active HTTP request Authorization header
-            if (jwtService != null) {
-                Optional<HttpServletRequest> requestOpt = AuditContextUtil.getCurrentHttpRequest();
-                if (requestOpt.isPresent()) {
-                    HttpServletRequest req = requestOpt.get();
-                    String authHeader = req.getHeader("Authorization");
-                    if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                        String token = authHeader.substring(7).trim();
-                        if (!token.isBlank() && jwtService.isTokenValid(token)) {
-                            var claims = jwtService.extractAllClaims(token);
-                            String staffIdStr = claims.get("staff_id", String.class);
-                            if (staffIdStr != null && !staffIdStr.isBlank()) {
-                                try {
-                                    UUID staffId = UUID.fromString(staffIdStr);
-                                    Optional<StaffUsers> staffById = staffUsersRepository.findById(staffId);
-                                    if (staffById.isPresent()) {
-                                        return staffById.get();
-                                    }
-                                } catch (Exception ignored) {}
-                            }
-                            String sub = claims.getSubject();
-                            if (sub != null && !sub.isBlank()) {
-                                Optional<StaffUsers> staffBySub = staffUsersRepository.findByUsername(sub);
-                                if (staffBySub.isPresent()) {
-                                    return staffBySub.get();
-                                }
-                            }
-                        }
-                    }
-                }
+            if (usernameOpt.isPresent()) {
+                return staffUsersRepository.findByUsername(usernameOpt.get()).orElse(null);
             }
         } catch (Exception e) {
             log.trace("Error resolving StaffUsers actor: {}", e.getMessage());
@@ -275,7 +198,7 @@ public class AuditTrailServiceImpl implements AuditTrailService {
     private String inferActionCategory(String actionType, String entityType) {
         if (actionType != null) {
             String upper = actionType.toUpperCase();
-            if (upper.contains("LOGIN") || upper.contains("AUTH") || upper.contains("PASSWORD") || upper.contains("ROLE") || upper.contains("PERMISSION") || upper.contains("STAFF")) {
+            if (upper.contains("LOGIN") || upper.contains("AUTH") || upper.contains("PASSWORD") || upper.contains("ROLE") || upper.contains("PERMISSION")) {
                 return "SECURITY";
             }
             if (upper.contains("TRANSFER") || upper.contains("PAYMENT") || upper.contains("DEPOSIT") || upper.contains("WITHDRAW")) {
@@ -286,9 +209,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             }
             if (upper.contains("CUSTOMER") || upper.contains("PROFILE") || upper.contains("KYC")) {
                 return "CUSTOMER";
-            }
-            if (upper.contains("PARAM") || upper.contains("FEE") || upper.contains("RULE") || upper.contains("ANNOUNCEMENT")) {
-                return "SYSTEM";
             }
         }
         if (entityType != null) {
@@ -301,12 +221,6 @@ public class AuditTrailServiceImpl implements AuditTrailService {
             }
             if (upper.contains("TRANSACTION")) {
                 return "TRANSACTION";
-            }
-            if (upper.contains("CUSTOMER")) {
-                return "CUSTOMER";
-            }
-            if (upper.contains("ANNOUNCEMENT") || upper.contains("PARAM") || upper.contains("FEE") || upper.contains("SYSTEM")) {
-                return "SYSTEM";
             }
         }
         return "GENERAL";

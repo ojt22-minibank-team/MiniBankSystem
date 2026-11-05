@@ -1,9 +1,9 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   getAccessToken, getAuthenticationGeneration, hasTokens, isAuthenticationGenerationCurrent,
   subscribeToAuthenticationChanges,
 } from "../../../utils/tokenStorage";
-import { SESSION_TIMEOUT_EVENT, type SessionTimeoutDetail } from "../../../utils/sessionEvents";
+import { SESSION_TIMEOUT_EVENT } from "../../../utils/sessionEvents";
 import type { NotificationItem } from "../types/notificationTypes";
 
 interface UseNotificationWebSocketProps {
@@ -80,10 +80,8 @@ export const useNotificationWebSocket = ({
 
     const retry = (expected: Authentication) => {
       if (!stillCurrent(expected) || blockedToken === expected.token || reconnectTimer !== undefined) return;
-      // Resilient reconnection: after initial attempts, back off gracefully (25s) rather than terminating
-      const delay = attempts >= maximumAttempts
-        ? 25000
-        : Math.min(2000 * Math.pow(2, Math.max(0, attempts - 1)), 25000);
+      if (attempts >= maximumAttempts) { blockedToken = expected.token; return; }
+      const delay = Math.min(2000 * Math.pow(2, Math.max(0, attempts - 1)), 30000);
       reconnectTimer = window.setTimeout(() => {
         reconnectTimer = undefined;
         if (stillCurrent(expected)) connect(expected);
@@ -95,18 +93,9 @@ export const useNotificationWebSocket = ({
       attempts++;
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host = window.location.hostname || "localhost";
-      let wsUrl: string;
-      if (typeof import.meta !== "undefined" && import.meta.env?.VITE_WS_URL) {
-        wsUrl = import.meta.env.VITE_WS_URL.replace(/\/+$/, "") + "/ws/notifications?token=" + encodeURIComponent(expected.token);
-      } else if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) {
-        const wsBase = import.meta.env.VITE_API_BASE_URL.replace(/^http:/, "ws:").replace(/^https:/, "wss:").replace(/\/+$/, "");
-        wsUrl = wsBase + "/ws/notifications?token=" + encodeURIComponent(expected.token);
-      } else {
-        wsUrl = protocol + "//" + host + ":8080/ws/notifications?token=" + encodeURIComponent(expected.token);
-      }
       try {
         // Access token only; transport retained for existing browser/client compatibility.
-        const ws = new WebSocket(wsUrl);
+        const ws = new WebSocket(protocol + "//" + host + ":8080/ws/notifications?token=" + encodeURIComponent(expected.token));
         socket = ws;
         expiryTimer = window.setTimeout(() => synchronize(), Math.max(0, expected.expiresAt - Date.now()));
         ws.onopen = () => {
@@ -169,21 +158,8 @@ export const useNotificationWebSocket = ({
       }
     }
 
-    const sessionEnded = (event: Event) => {
-      const detail = (event as CustomEvent<SessionTimeoutDetail>).detail;
-      if (detail && Number.isSafeInteger(detail.sourceGeneration)) {
-        // Generation Ownership Check: Ignore stale timeout events belonging to a previous session
-        if (authentication && authentication.generation !== detail.sourceGeneration) {
-          return;
-        }
-        const currentGen = getAuthenticationGeneration();
-        if (currentGen > detail.sourceGeneration && hasTokens() && isAuthenticationGenerationCurrent(currentGen)) {
-          return;
-        }
-        endedGeneration = detail.sourceGeneration;
-      } else {
-        endedGeneration = getAuthenticationGeneration();
-      }
+    const sessionEnded = () => {
+      endedGeneration = getAuthenticationGeneration();
       authentication = null;
       closeSocket();
     };

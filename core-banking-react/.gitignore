@@ -71,5 +71,3 @@ lerna-debug.log*
 *.sw?
 .DS_Store
 Thumbs.db
-
-core-banking-react/.env

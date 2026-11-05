@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { Users, UserPlus, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Users, UserPlus, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
 import { getBeneficiaries, deleteBeneficiary } from "../services/beneficiaryService";
 import type { Beneficiary } from "../types/beneficiaryTypes";
 import { BeneficiaryList } from "../components/BeneficiaryList";
 import { AddBeneficiaryModal } from "../components/AddBeneficiaryModal";
 
 export default function BeneficiariesPage() {
+  const navigate = useNavigate();
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,22 +66,18 @@ export default function BeneficiariesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#00A3C4] to-[#0284C7] flex items-center justify-center shadow-lg shadow-cyan-500/25 shrink-0">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="p-2.5 rounded-2xl bg-white dark:bg-[#0f2445] border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-[#152b4e] hover:border-slate-300 dark:hover:border-slate-600 shadow-sm transition"
+            title="Back to previous page"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#00A3C4] to-[#0284C7] flex items-center justify-center shadow-lg shadow-cyan-500/25">
             <Users className="w-6 h-6 text-white" />
           </div>
-          <div className="min-w-0">
-            {/* Breadcrumb Navigation */}
-            <nav aria-label="Breadcrumb" className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold">
-              <Link
-                to="/dashboard"
-                className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
-              >
-                Dashboard
-              </Link>
-              <span className="text-slate-300" aria-hidden="true">/</span>
-              <span className="text-[#00A3C4]" aria-current="page">Beneficiaries</span>
-            </nav>
-
+          <div>
             <h1 className="text-2xl font-black text-[#0A192F] dark:text-white tracking-tight">
               Beneficiaries
             </h1>

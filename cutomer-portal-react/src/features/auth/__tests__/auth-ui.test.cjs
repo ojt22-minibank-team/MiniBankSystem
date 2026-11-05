@@ -195,7 +195,7 @@ test('PIN recovery OTP resends immediately and verifies the rotated challenge', 
   assert.equal(h.location(), '/pin-reset/new-pin');
 });
 
-test('PIN reset preserves validation, completion cleanup and settings navigation', async t => {
+test('PIN reset preserves validation, completion cleanup and profile navigation', async t => {
   const h = await setup(t, 'PinResetNewPinPage');
   await h.fill('individual-reset-pin', '123'); await h.fill('individual-reset-confirm-pin', '123'); await h.submit();
   assert.equal(h.calls.length, 0); assert.match(h.container.querySelector('[role="alert"]').textContent, /exactly 6 digits/);
@@ -203,7 +203,7 @@ test('PIN reset preserves validation, completion cleanup and settings navigation
   assert.deepEqual(h.calls[0].body, { verifiedChallengeGroupId: challenge, newPin: '123456', confirmPin: '123456' });
   assert.equal(sessionStorage.getItem('verifiedPinResetChallengeGroupId'), null);
   assert.match(h.container.textContent, /Transaction PIN reset successful/);
-  await h.click('Back to Settings'); assert.equal(h.location(), '/settings');
+  await h.click('Back to Profile'); assert.equal(h.location(), '/profile');
 });
 
 test('pending resend disables existing actions and resumes without a cooldown', async t => {
@@ -220,8 +220,8 @@ for (const [page, button, destination] of [
   ['ForgotPasswordPage', 'Back to Login', '/login'],
   ['PasswordResetOtpPage', 'Back to Password Recovery', '/forgot-password'],
   ['ResetPasswordPage', 'Cancel Password Reset', '/forgot-password'],
-  ['PinResetOtpPage', 'Back to Settings', '/settings'],
-  ['PinResetNewPinPage', 'Cancel and Back to Settings', '/settings'],
+  ['PinResetOtpPage', 'Back to Profile', '/profile'],
+  ['PinResetNewPinPage', 'Cancel and Back to Profile', '/profile'],
 ]) {
   test(page + ' preserves navigation after removing decorative arrows', async t => {
     const h = await setup(t, page);

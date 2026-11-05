@@ -153,8 +153,7 @@ BEGIN
       AND bt.completed_at <= CAST(CONCAT(p_end_date, ' 23:59:59') AS DATETIME)
       AND bt.amount >= COALESCE(p_min_amount, 10000000.0000)
       AND (p_tx_type IS NULL OR p_tx_type = '' OR bt.transaction_type = p_tx_type)
-    ORDER BY bt.amount DESC, bt.completed_at DESC
-    LIMIT 1000;
+    ORDER BY bt.amount DESC, bt.completed_at DESC;
 END //
 
 CREATE PROCEDURE sp_large_transactions_aml_report(
@@ -165,49 +164,6 @@ CREATE PROCEDURE sp_large_transactions_aml_report(
 )
 BEGIN
     CALL sp_large_transaction_aml_report(p_start_date, p_end_date, p_min_amount, p_tx_type);
-END //
-
-DELIMITER ;
-
--- =============================================
--- 5. SP: sp_get_transaction_detail_report
--- =============================================
-DELIMITER //
-
-DROP PROCEDURE IF EXISTS sp_get_transaction_detail_report //
-
-CREATE PROCEDURE sp_get_transaction_detail_report(
-    IN p_start_date DATE,
-    IN p_end_date   DATE,
-    IN p_status     VARCHAR(32),
-    IN p_type       VARCHAR(32),
-    IN p_channel    VARCHAR(32),
-    IN p_min_amount DECIMAL(18, 4),
-    IN p_max_amount DECIMAL(18, 4)
-)
-BEGIN
-    SELECT 
-        bt.transaction_ref                             AS ref,
-        COALESCE(bt.completed_at, bt.initiated_at)     AS tx_date,
-        bt.amount                                      AS amount,
-        bt.service_fee                                 AS fee,
-        COALESCE(src_acc.account_number, 'N/A')        AS source_account,
-        COALESCE(dest_acc.account_number, 'N/A')       AS dest_account,
-        bt.status                                      AS status,
-        bt.channel                                     AS channel,
-        bt.currency                                    AS currency
-    FROM bank_transactions bt
-    LEFT JOIN accounts src_acc  ON bt.source_account_id = src_acc.account_id
-    LEFT JOIN accounts dest_acc ON bt.destination_account_id = dest_acc.account_id
-    WHERE COALESCE(bt.completed_at, bt.initiated_at) >= CAST(CONCAT(p_start_date, ' 00:00:00') AS DATETIME)
-      AND COALESCE(bt.completed_at, bt.initiated_at) <= CAST(CONCAT(p_end_date, ' 23:59:59') AS DATETIME)
-      AND (p_status IS NULL OR p_status = '' OR bt.status = p_status)
-      AND (p_type IS NULL OR p_type = '' OR bt.transaction_type = p_type)
-      AND (p_channel IS NULL OR p_channel = '' OR bt.channel = p_channel)
-      AND (p_min_amount IS NULL OR bt.amount >= p_min_amount)
-      AND (p_max_amount IS NULL OR bt.amount <= p_max_amount)
-    ORDER BY COALESCE(bt.completed_at, bt.initiated_at) DESC
-    LIMIT 1000;
 END //
 
 DELIMITER ;
