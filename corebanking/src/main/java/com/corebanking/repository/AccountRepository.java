@@ -50,4 +50,6 @@ public interface AccountRepository extends JpaRepository<Accounts, UUID> {
     List<Accounts> findByCustomer(Customers customer);
 
     List<Accounts> findByStatus(com.corebanking.entity.enums.AccountStatus status);
+
+    long countByStatus(com.corebanking.entity.enums.AccountStatus status);
 }

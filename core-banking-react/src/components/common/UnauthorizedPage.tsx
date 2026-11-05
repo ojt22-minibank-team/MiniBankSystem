@@ -3,7 +3,7 @@ import { useAuth } from '../../features/auth/hooks/useAuth';
 import Button from './Button';
 
 export default function UnauthorizedPage() {
-  const { user, logout } = useAuth();
+  const { user, isTeller, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -13,6 +13,8 @@ export default function UnauthorizedPage() {
     channel.close();
     navigate('/login', { replace: true });
   };
+
+  const dashboardPath = isTeller ? '/teller/dashboard' : '/admin/dashboard';
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 text-center">
@@ -37,7 +39,7 @@ export default function UnauthorizedPage() {
       )}
 
       <div className="mt-8 flex items-center gap-4">
-        <Link to="/admin/dashboard">
+        <Link to={dashboardPath}>
           <Button variant="primary" size="md">
             Return to Dashboard
           </Button>

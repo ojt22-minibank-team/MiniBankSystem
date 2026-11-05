@@ -11,7 +11,7 @@ const LEGACY_REMEMBERED_KEY = 'hiroki_remembered_username';
 type LoginStep = 'CREDENTIALS' | 'OTP';
 
 export default function LoginPage() {
-  const { login, verifyOtp, isLoading, error, isAuthenticated, dismissError } = useAuth();
+  const { login, verifyOtp, isLoading, error, isAuthenticated, isTeller, dismissError } = useAuth();
   const navigate = useNavigate();
 
   // Step state
@@ -64,7 +64,7 @@ export default function LoginPage() {
   // If already authenticated, redirect to dashboard
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/admin/dashboard', { replace: true });
+      navigate(isTeller ? '/teller/dashboard' : '/admin/dashboard', { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -151,7 +151,8 @@ export default function LoginPage() {
           setSuccessInfo('A 6-digit verification code has been dispatched to your registered email.');
         } else {
           // Direct login (if MFA wasn't required)
-          navigate('/admin/dashboard', { replace: true });
+          const isTellerRole = payload?.roles?.some((r: string) => r === 'ROLE_TELLER' || r === 'TELLER');
+          navigate(isTellerRole ? '/teller/dashboard' : '/admin/dashboard', { replace: true });
         }
       } else if (loginThunk.rejected.match(result)) {
         const backendMessage =
@@ -243,7 +244,8 @@ export default function LoginPage() {
       const result = await verifyOtp(challengeGroupId, fullOtp);
 
       if (verifyOtpThunk.fulfilled.match(result)) {
-        navigate('/admin/dashboard', { replace: true });
+        const isTellerRole = result.payload?.roles?.some((r: string) => r === 'ROLE_TELLER' || r === 'TELLER');
+        navigate(isTellerRole ? '/teller/dashboard' : '/admin/dashboard', { replace: true });
       } else if (verifyOtpThunk.rejected.match(result)) {
         const backendMessage =
           (result.payload as string) ||

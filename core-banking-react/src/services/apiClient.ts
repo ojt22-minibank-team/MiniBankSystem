@@ -35,6 +35,7 @@ import type {
   DailyCashSummaryResponse,
   OtcParametersResponse,
   OtcAccountLimitResponse,
+  AdminDashboardSummaryResponse,
 } from '../types/api.types';
 
 // ============================================================
@@ -56,6 +57,16 @@ export const authApi = {
       API_ENDPOINTS.AUTH.STAFF_PASSWORD_SETUP_COMPLETE,
       data,
     ),
+};
+
+// ============================================================
+// ============================================================
+// Admin — Dashboard API
+// ============================================================
+
+export const adminDashboardApi = {
+  getSummary: () =>
+    axiosInstance.get<AdminDashboardSummaryResponse>(API_ENDPOINTS.ADMIN.DASHBOARD_SUMMARY),
 };
 
 // ============================================================

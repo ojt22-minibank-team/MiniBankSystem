@@ -13,6 +13,9 @@ export const API_ENDPOINTS = {
 
   // Admin — (requires ADMIN role)
   ADMIN: {
+    // Dashboard
+    DASHBOARD_SUMMARY: "/api/admin/dashboard/summary",
+
     // Staff Management
     STAFF: "/api/admin/staff",
     STAFF_ROLES: "/api/admin/staff/roles",
