@@ -2,6 +2,13 @@ package com.corebanking.service;
 
 import com.corebanking.dto.CustomerDTO;
 import com.corebanking.dto.CustomerResponseDTO;
+import com.corebanking.dto.CustomerUpdateDTO;
+import com.corebanking.entity.AuditLogs;
+import com.corebanking.entity.PersonalInfo;
+import com.corebanking.entity.enums.StaffUserStatus;
+import com.corebanking.repository.AuditLogsRepository;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import com.corebanking.entity.CustomerCredentials;
 import com.corebanking.entity.Customers;
 import com.corebanking.entity.StaffUsers;
@@ -55,6 +62,12 @@ class CustomerServiceTest {
 
 	@Mock
 	private CusEmailService cusEmailService;
+
+	@Mock
+	private AuditLogsRepository auditLogsRepository;
+
+	@Mock
+	private AuditTrailService auditTrailService;
 
 	@Spy
 	@InjectMocks
@@ -304,5 +317,138 @@ class CustomerServiceTest {
 		assertTrue(ex.getMessage().contains("A Personal customer with this NRC already exists"));
 		verify(customerRepository, never()).save(any(Customers.class));
 		verify(customerRepository, never()).saveAndFlush(any(Customers.class));
+	}
+
+	@Test
+	@DisplayName("testUpdateCustomerProfile_Success: Updates profile and records audit log with non-null acting staff")
+	void testUpdateCustomerProfile_Success() {
+		String customerCode = "CUST-20261102-1001";
+		PersonalInfo personalInfo = new PersonalInfo();
+		personalInfo.setPhone("09111111111");
+		personalInfo.setOccupation("Junior Developer");
+		personalInfo.setDateOfBirth(LocalDate.of(1995, 5, 20));
+
+		Customers existingCustomer = Customers.builder()
+				.customerId(UUID.randomUUID())
+				.customerCode(customerCode)
+				.customerType(CustomerType.PERSONAL)
+				.fullName("Ko Min")
+				.phone("09111111111")
+				.personalInfo(personalInfo)
+				.build();
+
+		when(customerRepository.findByCustomerCode(customerCode)).thenReturn(Optional.of(existingCustomer));
+		when(customerRepository.save(any(Customers.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		when(staffUsersRepository.findById(mockStaff.getStaffId())).thenReturn(Optional.of(mockStaff));
+
+		CustomerUpdateDTO updateDto = CustomerUpdateDTO.builder()
+				.phone("09222222222")
+				.occupation("Senior Solution Architect")
+				.dateOfBirth(LocalDate.of(1992, 8, 15))
+				.build();
+
+		customerService.setAuditLogsRepository(auditLogsRepository);
+		customerService.updateCustomerProfile(customerCode, updateDto, mockStaff);
+
+		assertEquals("09222222222", existingCustomer.getPhone());
+		assertEquals("09222222222", existingCustomer.getPersonalInfo().getPhone());
+		assertEquals("Senior Solution Architect", existingCustomer.getPersonalInfo().getOccupation());
+		assertEquals(LocalDate.of(1992, 8, 15), existingCustomer.getPersonalInfo().getDateOfBirth());
+
+		verify(customerRepository, times(1)).save(existingCustomer);
+		verify(auditLogsRepository, times(1)).save(argThat(auditLog -> {
+			assertNotNull(auditLog);
+			assertEquals("CUSTOMER", auditLog.getActionCategory());
+			assertEquals("CUSTOMER_PROFILE_UPDATE", auditLog.getActionType());
+			assertEquals("CUSTOMERS", auditLog.getEntityType());
+			assertEquals(customerCode, auditLog.getEntityId());
+			assertNotNull(auditLog.getActorStaff(), "actorStaff must NEVER be null");
+			assertEquals(mockStaff.getStaffId(), auditLog.getActorStaff().getStaffId());
+			return true;
+		}));
+	}
+
+	@Test
+	@DisplayName("testUpdateCustomerProfile_FallbackToActiveStaff_WhenCurrentStaffIsNull: Ensures actingStaff is never null")
+	void testUpdateCustomerProfile_FallbackToActiveStaff_WhenCurrentStaffIsNull() {
+		String customerCode = "CUST-20261102-1002";
+		PersonalInfo personalInfo = new PersonalInfo();
+		personalInfo.setPhone("09111111111");
+
+		Customers existingCustomer = Customers.builder()
+				.customerId(UUID.randomUUID())
+				.customerCode(customerCode)
+				.customerType(CustomerType.PERSONAL)
+				.fullName("Ma Hla")
+				.phone("09111111111")
+				.personalInfo(personalInfo)
+				.build();
+
+		when(customerRepository.findByCustomerCode(customerCode)).thenReturn(Optional.of(existingCustomer));
+		when(customerRepository.save(any(Customers.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		lenient().when(staffUsersRepository.findFirstByStatus(StaffUserStatus.ACTIVE)).thenReturn(Optional.of(mockStaff));
+		when(staffUsersRepository.findById(mockStaff.getStaffId())).thenReturn(Optional.of(mockStaff));
+
+		CustomerUpdateDTO updateDto = CustomerUpdateDTO.builder()
+				.phone("09888888888")
+				.build();
+
+		customerService.setAuditLogsRepository(auditLogsRepository);
+		// Pass null as currentStaff to trigger fallback
+		customerService.updateCustomerProfile(customerCode, updateDto, (StaffUsers) null);
+
+		assertEquals("09888888888", existingCustomer.getPhone());
+		verify(customerRepository, times(1)).save(existingCustomer);
+		verify(auditLogsRepository, times(1)).save(argThat(auditLog -> {
+			assertNotNull(auditLog.getActorStaff(), "actingStaff must never be null even when currentStaff is null");
+			assertEquals(mockStaff.getStaffId(), auditLog.getActorStaff().getStaffId());
+			return true;
+		}));
+	}
+
+	@Test
+	@DisplayName("testUpdateCustomerProfile_NoChanges_DoesNotSaveOrAudit: Skips save and audit if incoming values match existing")
+	void testUpdateCustomerProfile_NoChanges_DoesNotSaveOrAudit() {
+		String customerCode = "CUST-20261102-1003";
+		PersonalInfo personalInfo = new PersonalInfo();
+		personalInfo.setPhone("09111111111");
+		personalInfo.setOccupation("Merchant");
+
+		Customers existingCustomer = Customers.builder()
+				.customerId(UUID.randomUUID())
+				.customerCode(customerCode)
+				.customerType(CustomerType.PERSONAL)
+				.fullName("U Ba")
+				.phone("09111111111")
+				.personalInfo(personalInfo)
+				.build();
+
+		when(customerRepository.findByCustomerCode(customerCode)).thenReturn(Optional.of(existingCustomer));
+
+		// Update payload with identical phone and occupation
+		CustomerUpdateDTO updateDto = CustomerUpdateDTO.builder()
+				.phone("09111111111")
+				.occupation("Merchant")
+				.build();
+
+		customerService.setAuditLogsRepository(auditLogsRepository);
+		customerService.updateCustomerProfile(customerCode, updateDto, mockStaff);
+
+		verify(customerRepository, never()).save(any(Customers.class));
+		verify(auditLogsRepository, never()).save(any(AuditLogs.class));
+	}
+
+	@Test
+	@DisplayName("testUpdateCustomerProfile_CustomerNotFound_ThrowsException")
+	void testUpdateCustomerProfile_CustomerNotFound_ThrowsException() {
+		when(customerRepository.findByCustomerCode("NON_EXISTING")).thenReturn(Optional.empty());
+
+		CustomerUpdateDTO updateDto = CustomerUpdateDTO.builder().phone("09123456789").build();
+
+		assertThrows(RuntimeException.class,
+				() -> customerService.updateCustomerProfile("NON_EXISTING", updateDto, mockStaff));
+
+		verify(customerRepository, never()).save(any(Customers.class));
+		verify(auditLogsRepository, never()).save(any(AuditLogs.class));
 	}
 }

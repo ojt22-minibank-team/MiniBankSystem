@@ -620,7 +620,7 @@ public class AccountService {
    
     @Transactional(readOnly = true)
     public List<AccountResponseDTO> getAllAccounts() {
-        return accountRepository.findAll().stream()
+        return accountRepository.findAllWithCustomerAndPersonalInfo().stream()
                 .map(this::mapToResponseDTO)
                 .toList();
     }
@@ -749,16 +749,24 @@ public class AccountService {
     private AccountResponseDTO mapToResponseDTO(Accounts account) {
         Customers customer = account.getCustomer();
         PersonalInfo personalInfo = customer != null ? customer.getPersonalInfo() : null;
+        com.corebanking.entity.CompanyInfo companyInfo = customer != null ? customer.getCompanyInfo() : null;
         String phone = personalInfo != null && personalInfo.getPhone() != null
                 ? personalInfo.getPhone()
-                : (customer != null ? customer.getPhone() : null);
+                : (companyInfo != null && companyInfo.getCompanyPhone() != null
+                    ? companyInfo.getCompanyPhone()
+                    : (customer != null ? customer.getPhone() : null));
+        String customerName = customer != null
+                ? (customer.getFullName() != null && !customer.getFullName().isBlank()
+                    ? customer.getFullName()
+                    : (companyInfo != null ? companyInfo.getCompanyName() : null))
+                : null;
         return AccountResponseDTO.builder()
                 .accountNumber(account.getAccountNumber())
                 .accountType(account.getAccountType() != null ? account.getAccountType().name() : null)
                 .accountCategory(account.getAccountCategory() != null ? account.getAccountCategory().name() : null)
                 .isJointAccount(account.isJointAccount())
                 .customerCode(customer != null ? customer.getCustomerCode() : null)
-                .customerName(customer != null ? customer.getFullName() : null)
+                .customerName(customerName)
                 .nrc(personalInfo != null ? personalInfo.getNrc() : null)
                 .phone(phone)
                 .profileImageUrl(personalInfo != null ? personalInfo.getProfileImageUrl() : null)
