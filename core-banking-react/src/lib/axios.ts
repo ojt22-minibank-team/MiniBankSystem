@@ -38,7 +38,11 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = sessionStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-    if (token && config.headers) {
+    const isPublicAuth =
+      config.url?.includes('/api/auth/login') ||
+      config.url?.includes('/api/auth/verify-otp') ||
+      config.url?.includes('/api/auth/resend-otp');
+    if (token && config.headers && !isPublicAuth) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
     return config;
@@ -51,8 +55,8 @@ axiosInstance.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Do not intercept or refresh tokens for the login endpoint
-    if (!originalRequest || originalRequest.url?.includes(API_ENDPOINTS.AUTH.LOGIN)) {
+    // Do not intercept or refresh tokens for auth endpoints (login, verify-otp, resend-otp, etc.)
+    if (!originalRequest || originalRequest.url?.includes('/api/auth/')) {
       return Promise.reject(error);
     }
 

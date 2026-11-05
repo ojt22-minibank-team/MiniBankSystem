@@ -144,7 +144,23 @@ export default function ProfilePage() {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inlineForm.email.trim())) {
       errs.email = 'Please enter a valid email address.';
     }
-    if (!inlineForm.phone.trim()) errs.phone = 'Phone number is required.';
+    if (!inlineForm.phone.trim()) {
+      errs.phone = 'Phone number is required.';
+    } else {
+      const cleanPhone = inlineForm.phone.trim().replace(/[\s-]/g, '');
+      const normalized = cleanPhone.startsWith('+959')
+        ? '09' + cleanPhone.slice(4)
+        : cleanPhone.startsWith('959')
+        ? '09' + cleanPhone.slice(3)
+        : cleanPhone;
+
+      const digitsOnly = cleanPhone.replace(/\D/g, '');
+      if (digitsOnly.length < 9) {
+        errs.phone = 'Myanmar phone number must be at least 9 digits (e.g. 09xxxxxxxxx).';
+      } else if (!/^09\d{7,9}$/.test(normalized)) {
+        errs.phone = 'Please enter a valid Myanmar phone number starting with 09 (e.g. 09xxxxxxxxx).';
+      }
+    }
     setInlineErrors(errs);
     return Object.keys(errs).length === 0;
   };
