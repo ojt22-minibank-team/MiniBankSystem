@@ -103,11 +103,8 @@ const AccountStatusPanel: React.FC<Props> = ({
       label: 'Status',
       render: (r: AccountStatusSummary) => (
         <span
+          className="inline-block px-2 py-0.5 rounded-full text-[11px] font-bold"
           style={{
-            padding: '2px 8px',
-            borderRadius: '10px',
-            fontSize: '11px',
-            fontWeight: 600,
             backgroundColor: (STATUS_COLORS[r.accountStatus] ?? '#94a3b8') + '22',
             color: STATUS_COLORS[r.accountStatus] ?? '#64748b',
           }}
@@ -120,19 +117,19 @@ const AccountStatusPanel: React.FC<Props> = ({
     { key: 'newAccountsInRange', label: 'New in Range' },
     {
       key: 'avgBalance',
-      label: 'Avg Balance',
+      label: 'Avg Balance (MMK)',
       render: (r: AccountStatusSummary) =>
         r.avgBalance?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
     },
     {
       key: 'minBalance',
-      label: 'Min Balance',
+      label: 'Min Balance (MMK)',
       render: (r: AccountStatusSummary) =>
         r.minBalance?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
     },
     {
       key: 'maxBalance',
-      label: 'Max Balance',
+      label: 'Max Balance (MMK)',
       render: (r: AccountStatusSummary) =>
         r.maxBalance?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
     },
@@ -144,24 +141,25 @@ const AccountStatusPanel: React.FC<Props> = ({
     { key: 'bracketCount', label: 'Account Count' },
     {
       key: 'bracketTotalBalance',
-      label: 'Total Balance',
+      label: 'Total Balance (MMK)',
       render: (r: BalanceBracket) =>
         r.bracketTotalBalance?.toLocaleString('en-US', { minimumFractionDigits: 2 }),
     },
   ];
 
   return (
-    <div>
-      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '20px' }}>
+    <div className="w-full">
+      {/* Metric Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 mb-5">
         <MetricCard
-          icon="Accounts"
+          icon="👥"
           label="Total Accounts"
           value={totalAccounts.toLocaleString()}
           sub="All statuses"
           color="#1E40AF"
         />
         <MetricCard
-          icon="Active"
+          icon="✅"
           label="Active Accounts"
           value={(
             report.statusSummaries.find((s) => s.accountStatus === 'ACTIVE')?.accountCount ?? 0
@@ -170,7 +168,7 @@ const AccountStatusPanel: React.FC<Props> = ({
           color="#16a34a"
         />
         <MetricCard
-          icon="Restricted"
+          icon="🔒"
           label="Frozen / Suspended"
           value={(
             (report.statusSummaries.find((s) => s.accountStatus === 'FROZEN')?.accountCount ?? 0) +
@@ -180,7 +178,7 @@ const AccountStatusPanel: React.FC<Props> = ({
           color="#d97706"
         />
         <MetricCard
-          icon="New"
+          icon="✨"
           label="New in Range"
           value={totalNew.toLocaleString()}
           sub="Opened in date range"
@@ -188,34 +186,16 @@ const AccountStatusPanel: React.FC<Props> = ({
         />
       </div>
 
+      {/* Account Status Distribution Chart */}
       {fetched && report.statusSummaries.length > 0 && (
-        <div
-          style={{
-            backgroundColor: '#fff',
-            borderRadius: '10px',
-            border: '1px solid #e2e8f0',
-            padding: '20px 24px',
-            marginBottom: '20px',
-            display: 'flex',
-            gap: '32px',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-          }}
-        >
-          <div>
-            <div
-              style={{
-                fontSize: '13px',
-                fontWeight: 700,
-                color: '#1E40AF',
-                marginBottom: '12px',
-              }}
-            >
+        <div className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 mb-5 shadow-xs flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
+          <div className="shrink-0 flex flex-col items-center">
+            <div className="text-xs sm:text-sm font-bold text-blue-900 mb-3">
               Account Status Distribution
             </div>
-            <svg width="140" height="140" viewBox="0 0 140 140">
+            <svg width="140" height="140" viewBox="0 0 140 140" className="drop-shadow-xs">
               {donutSegments.map((seg, i) => (
-                <path key={i} d={seg.path} fill={seg.color} fillOpacity={0.85} />
+                <path key={i} d={seg.path} fill={seg.color} fillOpacity={0.88} />
               ))}
               <circle cx={CX} cy={CY} r={28} fill="#fff" />
               <text
@@ -230,24 +210,17 @@ const AccountStatusPanel: React.FC<Props> = ({
               </text>
             </svg>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+
+          <div className="flex flex-col gap-2 w-full sm:w-auto">
             {donutSegments.map((seg) => (
-              <div
-                key={seg.label}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}
-              >
+              <div key={seg.label} className="flex items-center gap-2 text-xs">
                 <span
-                  style={{
-                    width: '14px',
-                    height: '14px',
-                    borderRadius: '3px',
-                    backgroundColor: seg.color,
-                    display: 'inline-block',
-                  }}
+                  className="w-3.5 h-3.5 rounded-sm shrink-0"
+                  style={{ backgroundColor: seg.color }}
                 />
-                <span style={{ fontWeight: 600, color: '#334155' }}>{seg.label}</span>
-                <span style={{ color: '#64748b' }}>{seg.count.toLocaleString()}</span>
-                <span style={{ color: '#94a3b8' }}>
+                <span className="font-semibold text-slate-700 w-24 truncate">{seg.label}</span>
+                <span className="text-slate-600 font-medium">{seg.count.toLocaleString()}</span>
+                <span className="text-slate-400">
                   ({totalAccounts > 0 ? ((seg.count / totalAccounts) * 100).toFixed(1) : 0}%)
                 </span>
               </div>
@@ -256,28 +229,13 @@ const AccountStatusPanel: React.FC<Props> = ({
         </div>
       )}
 
-      <div
-        style={{
-          backgroundColor: '#fff',
-          borderRadius: '10px',
-          border: '1px solid #e2e8f0',
-          overflow: 'hidden',
-          marginBottom: '16px',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '16px 20px',
-            borderBottom: '1px solid #f1f5f9',
-          }}
-        >
-          <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+      {/* Main Table Card */}
+      <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden mb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 border-b border-slate-100">
+          <span className="text-xs sm:text-sm font-bold text-slate-900 truncate">
             Account Status Summary
           </span>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div className="flex items-center gap-2 flex-wrap">
             <ExportButtons
               onExportCsv={() => exportAccountStatus(params, 'csv')}
               onExportExcel={() => exportAccountStatus(params, 'excel')}
@@ -287,34 +245,20 @@ const AccountStatusPanel: React.FC<Props> = ({
             <button
               onClick={load}
               disabled={loading}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#2563EB',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
+              className="px-3 sm:px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {loading ? 'Loading...' : 'Load Data'}
+              {loading ? 'Loading...' : 'Refresh'}
             </button>
           </div>
         </div>
+
         {error && (
-          <div
-            style={{
-              padding: '12px 20px',
-              color: '#dc2626',
-              fontSize: '13px',
-              backgroundColor: '#fef2f2',
-            }}
-          >
+          <div className="p-3 sm:p-4 text-xs sm:text-sm text-red-600 bg-red-50 border-b border-red-100">
             Error: {error}
           </div>
         )}
-        <div style={{ padding: '16px 20px' }}>
+
+        <div className="p-4 sm:p-5">
           <DataTable
             columns={statusColumns}
             data={report.statusSummaries}
@@ -324,21 +268,15 @@ const AccountStatusPanel: React.FC<Props> = ({
         </div>
       </div>
 
+      {/* Balance Bracket Distribution */}
       {fetched && (
-        <div
-          style={{
-            backgroundColor: '#fff',
-            borderRadius: '10px',
-            border: '1px solid #e2e8f0',
-            overflow: 'hidden',
-          }}
-        >
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9' }}>
-            <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+        <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
+          <div className="p-4 sm:p-5 border-b border-slate-100">
+            <span className="text-xs sm:text-sm font-bold text-slate-900 truncate">
               Balance Bracket Distribution
             </span>
           </div>
-          <div style={{ padding: '16px 20px' }}>
+          <div className="p-4 sm:p-5">
             <DataTable
               columns={bracketColumns}
               data={report.bracketDistribution}

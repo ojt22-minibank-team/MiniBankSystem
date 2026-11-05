@@ -5,6 +5,7 @@ import com.corebanking.exception.AccountNotFoundException;
 import com.corebanking.exception.CusAuthenticationException;
 import com.corebanking.exception.CusValidationException;
 import com.corebanking.repository.CusAccountStatementRepository;
+import com.corebanking.util.DataMaskingUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -27,6 +29,7 @@ import java.util.UUID;
 public class CusAccountStatementService {
 
     private final CusAccountStatementRepository statementRepository;
+    private final AuditTrailService auditTrailService;
 
     /**
      * Retrieves the account statement for the currently authenticated customer.
@@ -70,12 +73,13 @@ public class CusAccountStatementService {
             );
 
             if (statement == null) {
+                auditUnauthorizedAccess(accountNumber);
                 throw new AccountNotFoundException("Account not found or access denied for this customer");
             }
 
             return statement;
         } catch (DataAccessException ex) {
-            handleDatabaseException(ex);
+            handleDatabaseException(ex, accountNumber);
             throw ex;
         }
     }
@@ -140,7 +144,7 @@ public class CusAccountStatementService {
     /**
      * Translates MySQL stored procedure errors (SQLSTATE '45000') into domain exceptions.
      */
-    private void handleDatabaseException(DataAccessException ex) {
+    private void handleDatabaseException(DataAccessException ex, String accountNumber) {
         Throwable root = ex.getRootCause();
         String message = root != null ? root.getMessage() : ex.getMessage();
 
@@ -151,6 +155,7 @@ public class CusAccountStatementService {
                     throw new CusValidationException("From Date cannot be earlier than the account opening date.");
                 }
                 if (message.contains("Account not found or access denied for this customer")) {
+                    auditUnauthorizedAccess(accountNumber);
                     throw new AccountNotFoundException("Account not found or access denied for this customer");
                 }
                 throw new CusValidationException(message);
@@ -162,8 +167,30 @@ public class CusAccountStatementService {
                 throw new CusValidationException("From Date cannot be earlier than the account opening date.");
             }
             if (message.contains("Account not found or access denied for this customer")) {
+                auditUnauthorizedAccess(accountNumber);
                 throw new AccountNotFoundException("Account not found or access denied for this customer");
             }
+        }
+    }
+
+    private void auditUnauthorizedAccess(String accountNumber) {
+        try {
+            String maskedAccount = DataMaskingUtil.maskAccountNumber(accountNumber);
+            Map<String, Object> metadata = Map.of(
+                    "result", "DENIED"
+            );
+            auditTrailService.logDataChange(
+                    "SECURITY",
+                    "UNAUTHORIZED_ACCOUNT_ACCESS",
+                    "ACCOUNT",
+                    maskedAccount,
+                    null,
+                    metadata,
+                    "Unauthorized account access denied for account: " + maskedAccount
+            );
+        } catch (Exception ex) {
+            log.error("Failed to log audit event UNAUTHORIZED_ACCOUNT_ACCESS for account: {}",
+                    DataMaskingUtil.maskAccountNumber(accountNumber), ex);
         }
     }
 }

@@ -4,8 +4,9 @@ import Button from '../../../components/common/Button';
 import Input from '../../../components/common/Input';
 import Modal from '../../../components/common/Modal';
 import { otcApi, accountsApi } from '../../../services/apiClient';
-import type { OtcTransactionResponseDto, AccountResponse, OtcParametersResponse } from '../../../types/api.types';
+import type { OtcTransactionResponseDto, AccountResponse, OtcParametersResponse, OtcAccountLimitResponse } from '../../../types/api.types';
 import { formatCurrency } from '../../../utils/formatCurrency';
+import { formatDate } from '../../../utils/formatDate';
 import type { AxiosError } from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
 import ekarajCrown from '../../../assets/ekaraj-crown-transparent.png';
@@ -51,7 +52,7 @@ function formatAmountToWords(amount: number, currency: string = 'MMK'): string {
  */
 function formatTransactionDateTime(dateInput?: string | Date | null): string {
   const d = dateInput ? (typeof dateInput === 'string' ? new Date(dateInput) : dateInput) : new Date();
-  if (isNaN(d.getTime())) return '—';
+  if (isNaN(d.getTime())) return 'â€”';
   return (
     d.toLocaleDateString('en-GB') +
     ', ' +
@@ -63,7 +64,7 @@ function formatTransactionDateTime(dateInput?: string | Date | null): string {
  * Masks account number for customer-facing documents to ensure data privacy (e.g. 1001****0014).
  */
 function maskAccountNumber(accountNumber?: string | null): string {
-  if (!accountNumber) return '—';
+  if (!accountNumber) return 'â€”';
   const clean = accountNumber.trim();
   if (clean.length <= 4) return clean;
   if (clean.length <= 8) {
@@ -91,11 +92,67 @@ function formatReceiptQrText(receipt: OtcTransactionResponseDto): string {
     `ACC: ${maskAccountNumber(receipt.accountNumber)}`,
     `NAME: ${receipt.customerName}`,
     `AMOUNT: ${formatCurrency(receipt.amount, curr)}`,
+    `SERVICE FEE: ${formatCurrency(receipt.serviceFee ?? 0, curr)}`,
     `BALANCE AFTER: ${formatCurrency(receipt.balanceAfter, curr)}`,
     `DATE: ${dateStr}`,
     `TELLER: ${receipt.tellerUsername}`,
     'STATUS: COMPLETED & SETTLED',
   ].join('\n');
+}
+
+/**
+ * Calculates estimated service fee for OTC operations based on active fee parameters.
+ */
+function computeEstimatedFee(
+  amount: number,
+  operationType: OtcOperationType,
+  params: OtcParametersResponse | null,
+): number {
+  if (!params || !amount || amount <= 0) return 0;
+  const isDeposit = operationType === 'DEPOSIT';
+  const feeType = isDeposit ? params.depositFeeType : params.withdrawalFeeType;
+  const feeVal = Number(isDeposit ? params.depositFeeValue : params.withdrawalFeeValue) || 0;
+  const minFee = isDeposit ? params.depositMinFee : params.withdrawalMinFee;
+  const maxFee = isDeposit ? params.depositMaxFee : params.withdrawalMaxFee;
+
+  let fee = 0;
+  if (feeType === 'PERCENTAGE') {
+    fee = (amount * feeVal) / 100;
+  } else {
+    fee = feeVal;
+  }
+  if (minFee != null && minFee > 0 && fee < minFee) {
+    fee = minFee;
+  }
+  if (maxFee != null && maxFee > 0 && fee > maxFee) {
+    fee = maxFee;
+  }
+  return Math.round(fee * 100) / 100;
+}
+
+function formatFeeScheduleDescription(
+  operationType: OtcOperationType,
+  params: OtcParametersResponse | null,
+  currency: string = 'MMK',
+): string {
+  if (!params) return 'Standard Bank Tariff';
+  const isDeposit = operationType === 'DEPOSIT';
+  const feeType = isDeposit ? params.depositFeeType : params.withdrawalFeeType;
+  const feeVal = Number(isDeposit ? params.depositFeeValue : params.withdrawalFeeValue) || 0;
+  const minFee = isDeposit ? params.depositMinFee : params.withdrawalMinFee;
+  const maxFee = isDeposit ? params.depositMaxFee : params.withdrawalMaxFee;
+
+  if (feeVal === 0) {
+    return '0 MMK (Fee-free)';
+  }
+  if (feeType === 'FLAT') {
+    return `${formatCurrency(feeVal, currency)} Flat Fee`;
+  }
+  const minMaxParts: string[] = [];
+  if (minFee != null && minFee > 0) minMaxParts.push(`Min: ${formatCurrency(minFee, currency)}`);
+  if (maxFee != null && maxFee > 0) minMaxParts.push(`Max: ${formatCurrency(maxFee, currency)}`);
+  const bounds = minMaxParts.length > 0 ? ` (${minMaxParts.join(', ')})` : '';
+  return `${feeVal}%${bounds}`;
 }
 
 export default function OtcTransactionPage() {
@@ -108,6 +165,7 @@ export default function OtcTransactionPage() {
 
   // Account verification state
   const [verifiedAccount, setVerifiedAccount] = useState<AccountResponse | null>(null);
+  const [accountLimits, setAccountLimits] = useState<OtcAccountLimitResponse | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [accountLookupError, setAccountLookupError] = useState<string | null>(null);
 
@@ -183,8 +241,18 @@ export default function OtcTransactionPage() {
       const res = await accountsApi.getByNumber(accountNumber.trim());
       setVerifiedAccount(res.data);
       setError(null);
+
+      // Fetch dynamic counter withdrawal limits and today's utilization
+      try {
+        const limitsRes = await otcApi.getAccountLimits(accountNumber.trim());
+        setAccountLimits(limitsRes.data);
+      } catch {
+        // Fallback: non-blocking if account limits endpoint encounters issue
+        setAccountLimits(null);
+      }
     } catch (err) {
       setVerifiedAccount(null);
+      setAccountLimits(null);
       const axErr = err as AxiosError<{ message?: string }>;
       setAccountLookupError(
         axErr.response?.data?.message || 'Account not found. Please verify the account number.',
@@ -214,6 +282,7 @@ export default function OtcTransactionPage() {
     }
 
     const numAmount = Number(amount);
+    const estimatedFee = computeEstimatedFee(numAmount, operationType, otcParams);
     if (!amount || isNaN(numAmount) || numAmount <= 0) {
       setError('Transaction amount must be a valid number greater than zero.');
       return;
@@ -222,6 +291,13 @@ export default function OtcTransactionPage() {
     // Dynamic DB Minimum Deposit Validation
     if (operationType === 'DEPOSIT' && otcParams?.minDepositAmount != null && numAmount < otcParams.minDepositAmount) {
       setError(`Deposit amount must be at least ${formatCurrency(otcParams.minDepositAmount, verifiedAccount.currency || 'MMK')}.`);
+      return;
+    }
+
+    if (operationType === 'DEPOSIT' && estimatedFee > 0 && numAmount <= estimatedFee) {
+      setError(
+        `Deposit amount (${formatCurrency(numAmount, verifiedAccount.currency || 'MMK')}) must be strictly greater than the service fee (${formatCurrency(estimatedFee, verifiedAccount.currency || 'MMK')}).`
+      );
       return;
     }
 
@@ -237,16 +313,47 @@ export default function OtcTransactionPage() {
       const minBalRequired = otcParams?.minimumBalance ?? 0;
       const netAvailable = availBal - minBalRequired;
 
-      if (netAvailable < numAmount) {
+      const totalRequired = numAmount + estimatedFee;
+      if (netAvailable < totalRequired) {
         if (minBalRequired > 0) {
           setError(
-            `Insufficient available funds. You must maintain a minimum balance of ${formatCurrency(minBalRequired, verifiedAccount.currency || 'MMK')}. Net available for withdrawal: ${formatCurrency(netAvailable > 0 ? netAvailable : 0, verifiedAccount.currency || 'MMK')}, Requested: ${formatCurrency(numAmount, verifiedAccount.currency || 'MMK')}.`
+            `Insufficient available funds. Required: ${formatCurrency(totalRequired, verifiedAccount.currency || 'MMK')} (${formatCurrency(numAmount, verifiedAccount.currency || 'MMK')} cash + ${formatCurrency(estimatedFee, verifiedAccount.currency || 'MMK')} fee) while maintaining minimum balance of ${formatCurrency(minBalRequired, verifiedAccount.currency || 'MMK')}. Net available: ${formatCurrency(netAvailable > 0 ? netAvailable : 0, verifiedAccount.currency || 'MMK')}.`
           );
         } else {
           setError(
             `Withdrawal amount (${formatCurrency(numAmount, verifiedAccount.currency || 'MMK')}) exceeds available balance (${formatCurrency(availBal, verifiedAccount.currency || 'MMK')}).`
           );
         }
+        return;
+      }
+    }
+
+    // Dynamic DB One-Time Maximum Withdrawal Limit Validation (1st Click)
+    const oneTimeLimit = accountLimits?.maxOnetimeWithdrawal ?? otcParams?.maxOnetimeWithdrawal;
+    if (
+      operationType === 'WITHDRAW' &&
+      oneTimeLimit != null &&
+      oneTimeLimit > 0 &&
+      numAmount > oneTimeLimit
+    ) {
+      setError(
+        `Withdrawal amount (${formatCurrency(numAmount, verifiedAccount.currency || 'MMK')}) exceeds the one-time counter limit of ${formatCurrency(oneTimeLimit, verifiedAccount.currency || 'MMK')}.`
+      );
+      return;
+    }
+
+    // Dynamic DB Cumulative Daily Withdrawal Limit Validation (1st Click)
+    if (
+      operationType === 'WITHDRAW' &&
+      accountLimits != null &&
+      accountLimits.maxDailyWithdrawal > 0
+    ) {
+      const todayWithdrawn = accountLimits.todayWithdrawnAmount ?? 0;
+      const remainingDaily = accountLimits.remainingDailyLimit ?? (accountLimits.maxDailyWithdrawal - todayWithdrawn);
+      if (numAmount > remainingDaily) {
+        setError(
+          `Daily withdrawal limit exceeded. Total withdrawn today: ${formatCurrency(todayWithdrawn, verifiedAccount.currency || 'MMK')}. Maximum remaining available to withdraw today is ${formatCurrency(remainingDaily > 0 ? remainingDaily : 0, verifiedAccount.currency || 'MMK')}.`
+        );
         return;
       }
     }
@@ -316,6 +423,15 @@ export default function OtcTransactionPage() {
           availableBalance: res.data.balanceAfter,
         });
       }
+      if (operationType === 'WITHDRAW' && accountLimits) {
+        const newTodayWithdrawn = (accountLimits.todayWithdrawnAmount ?? 0) + numAmount;
+        const newRemaining = Math.max(0, (accountLimits.maxDailyWithdrawal ?? 20000000) - newTodayWithdrawn);
+        setAccountLimits({
+          ...accountLimits,
+          todayWithdrawnAmount: newTodayWithdrawn,
+          remainingDailyLimit: newRemaining,
+        });
+      }
       setShowConfirmModal(false);
     } catch (err) {
       const axErr = err as AxiosError<{ message?: string }>;
@@ -341,6 +457,7 @@ export default function OtcTransactionPage() {
     setManualAuditNote('');
     setAccountNumber('');
     setVerifiedAccount(null);
+    setAccountLimits(null);
     setAccountLookupError(null);
   };
 
@@ -351,8 +468,11 @@ export default function OtcTransactionPage() {
   // Financial calculations for Before vs After breakdown
   const currentBal = verifiedAccount?.availableBalance ?? 0;
   const numAmount = Number(amount) || 0;
+  const estimatedFee = computeEstimatedFee(numAmount, operationType, otcParams);
+  const netDeposit = Math.max(0, numAmount - estimatedFee);
+  const totalWithdrawal = numAmount + estimatedFee;
   const projectedBal =
-    operationType === 'DEPOSIT' ? currentBal + numAmount : currentBal - numAmount;
+    operationType === 'DEPOSIT' ? currentBal + netDeposit : currentBal - totalWithdrawal;
 
   return (
     <AdminLayout pageTitle="OTC Operations (Teller Counter)">
@@ -413,7 +533,7 @@ export default function OtcTransactionPage() {
               <div>
                 <h3 className="font-bold text-gray-900 text-base">Transaction Completed Successfully</h3>
                 <p className="text-xs text-gray-600">
-                  Ref: <span className="font-mono font-semibold text-gray-900">{receipt.transactionRef}</span> • Official Bank Counter Voucher ready.
+                  Ref: <span className="font-mono font-semibold text-gray-900">{receipt.transactionRef}</span> â€¢ Official Bank Counter Voucher ready.
                 </p>
               </div>
             </div>
@@ -475,16 +595,16 @@ export default function OtcTransactionPage() {
                           EKARAJ BANK
                         </h1>
                         <span className="text-xs font-bold text-amber-700 font-sans tracking-wide">
-                          ( ဧကရာဇ် ဘဏ် )
+                          ( á€§á€€á€›á€¬á€‡á€º á€˜á€á€º )
                         </span>
                       </div>
                       <p className="mt-0.5 text-xs text-gray-600 font-medium">
-                        Ekaraj Commercial Bank PLC • Licensed Financial Institution
+                        Ekaraj Commercial Bank PLC â€¢ Licensed Financial Institution
                       </p>
                     </div>
                   </div>
                   <p className="text-xs text-gray-500 mt-2">
-                    <strong>Branch:</strong> Yangon Main Branch (Code: BR-001) • <strong>Station:</strong> Counter #02 (Teller Counter)
+                    <strong>Branch:</strong> Yangon Main Branch (Code: BR-001) â€¢ <strong>Station:</strong> Counter #02 (Teller Counter)
                   </p>
                 </div>
 
@@ -532,7 +652,7 @@ export default function OtcTransactionPage() {
               </div>
               <div className="sm:col-span-3 min-w-0">
                 <span className="text-gray-500 block text-[10px] uppercase font-bold tracking-wider">Counter Slip / Voucher No</span>
-                <span className="font-mono font-bold text-blue-800 text-xs sm:text-[13px] block break-all">{receipt.manualReferenceId || '—'}</span>
+                <span className="font-mono font-bold text-blue-800 text-xs sm:text-[13px] block break-all">{receipt.manualReferenceId || 'â€”'}</span>
               </div>
               <div className="sm:col-span-2 min-w-0">
                 <span className="text-gray-500 block text-[10px] uppercase font-bold tracking-wider">Channel</span>
@@ -566,9 +686,9 @@ export default function OtcTransactionPage() {
                 <div>
                   <span className="text-gray-500 block text-[11px]">Customer NRC / National ID</span>
                   <span className="font-semibold text-gray-800 font-mono block mt-0.5">
-                    {verifiedAccount?.nrc || '—'}
+                    {verifiedAccount?.nrc || 'â€”'}
                   </span>
-                  <span className="text-[11px] text-gray-500">Phone: {verifiedAccount?.phone || '—'}</span>
+                  <span className="text-[11px] text-gray-500">Phone: {verifiedAccount?.phone || 'â€”'}</span>
                 </div>
               </div>
             </div>
@@ -588,7 +708,7 @@ export default function OtcTransactionPage() {
                   Amount In Words:
                 </span>
                 <span className="font-serif italic font-bold text-gray-800 text-sm block mt-0.5">
-                  “ {formatAmountToWords(receipt.amount, receipt.currency)} ”
+                  â€œ {formatAmountToWords(receipt.amount, receipt.currency)} â€
                 </span>
               </div>
 
@@ -618,7 +738,7 @@ export default function OtcTransactionPage() {
             {/* Customer Statement Narration */}
             <div className="text-xs border border-gray-200 rounded-xl p-3.5 bg-white">
               <span className="text-gray-500 font-semibold block text-[11px] uppercase tracking-wider">Customer Statement Narration:</span>
-              <p className="font-medium text-gray-800 mt-0.5 text-xs sm:text-sm">{receipt.description || '—'}</p>
+              <p className="font-medium text-gray-800 mt-0.5 text-xs sm:text-sm">{receipt.description || 'â€”'}</p>
             </div>
 
             {/* Dual Signatures Section */}
@@ -639,7 +759,7 @@ export default function OtcTransactionPage() {
                   <div>
                     <span className="font-bold text-gray-900 block">Authorized Bank Teller & Official Stamp</span>
                     <span className="text-[11px] text-gray-500 block mt-0.5">
-                      Teller: {receipt.tellerUsername} • Date: {receipt.transactedAt ? new Date(receipt.transactedAt).toLocaleDateString() : '—'}
+                      Teller: {receipt.tellerUsername} â€¢ Date: {receipt.transactedAt ? formatDate(receipt.transactedAt) : 'â€”'}
                     </span>
                   </div>
                 </div>
@@ -808,7 +928,7 @@ export default function OtcTransactionPage() {
                         <svg className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
-                        <span>Account Identity Verified ✓</span>
+                        <span>Account Identity Verified âœ“</span>
                       </div>
                       <span
                         className={[
@@ -869,9 +989,9 @@ export default function OtcTransactionPage() {
                         <div className="min-w-0">
                           <span className="text-gray-500 block text-[11px] font-medium">NRC / National ID</span>
                           <span className="font-semibold text-gray-900 font-mono block text-xs mt-0.5">
-                            {verifiedAccount.nrc || '—'}
+                            {verifiedAccount.nrc || 'â€”'}
                           </span>
-                          <span className="text-[11px] text-gray-500 block mt-0.5">Phone: {verifiedAccount.phone || '—'}</span>
+                          <span className="text-[11px] text-gray-500 block mt-0.5">Phone: {verifiedAccount.phone || 'â€”'}</span>
                         </div>
 
                         <div className="min-w-0">
@@ -883,6 +1003,46 @@ export default function OtcTransactionPage() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Counter Withdrawal Limits & Daily Utilization (Withdrawal Only) */}
+                    {operationType === 'WITHDRAW' && (
+                      <div className="mt-3 pt-3 border-t border-blue-100">
+                        <div className="flex items-center justify-between pb-1.5 font-semibold text-gray-700 text-xs">
+                          <span className="flex items-center gap-1.5 text-blue-900 font-bold">
+                            <svg className="w-3.5 h-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Counter Withdrawal Limits & Daily Utilization
+                          </span>
+                          <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-mono font-medium">
+                            {verifiedAccount.currency || 'MMK'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-2">
+                          <div className="bg-white/80 rounded-lg border border-blue-100 p-2 shadow-xs">
+                            <span className="text-gray-500 block text-[10px] uppercase tracking-wider font-semibold">One-Time Limit</span>
+                            <span className="font-bold text-gray-900 font-mono text-xs block mt-0.5">
+                              {formatCurrency(accountLimits?.maxOnetimeWithdrawal ?? otcParams?.maxOnetimeWithdrawal ?? 5000000, verifiedAccount.currency || 'MMK')}
+                            </span>
+                          </div>
+                          <div className="bg-white/80 rounded-lg border border-blue-100 p-2 shadow-xs">
+                            <span className="text-gray-500 block text-[10px] uppercase tracking-wider font-semibold">Today's Withdrawn</span>
+                            <span className="font-bold text-gray-900 font-mono text-xs block mt-0.5">
+                              {formatCurrency(accountLimits?.todayWithdrawnAmount ?? 0, verifiedAccount.currency || 'MMK')}
+                            </span>
+                          </div>
+                          <div className="bg-white/80 rounded-lg border border-emerald-200 bg-emerald-50/50 p-2 shadow-xs">
+                            <span className="text-emerald-700 block text-[10px] uppercase tracking-wider font-semibold">Available Remaining Today</span>
+                            <span className="font-bold text-emerald-800 font-mono text-xs block mt-0.5">
+                              {formatCurrency(
+                                accountLimits?.remainingDailyLimit ?? (accountLimits?.maxDailyWithdrawal ?? otcParams?.maxDailyWithdrawal ?? 20000000),
+                                verifiedAccount.currency || 'MMK'
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -892,6 +1052,7 @@ export default function OtcTransactionPage() {
                     1. Transaction & Statement Details
                   </h3>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
                     <Input
                       label={`${operationType === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'} Amount (${verifiedAccount?.currency || 'MMK'})`}
                       type="number"
@@ -905,6 +1066,20 @@ export default function OtcTransactionPage() {
                       disabled={isLoading}
                       min={1}
                     />
+                    <div className="mt-1.5 flex items-center justify-between text-[11px] text-gray-500">
+                      <span>
+                        Tariff Rate:{' '}
+                        <span className="font-semibold text-gray-700">
+                          {formatFeeScheduleDescription(operationType, otcParams, verifiedAccount?.currency || 'MMK')}
+                        </span>
+                      </span>
+                      {numAmount > 0 && (
+                        <span className="font-mono font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/60">
+                          Est. Fee: {formatCurrency(estimatedFee, verifiedAccount?.currency || 'MMK')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                     <Input
                       label="Customer Statement Narration / Description"
                       placeholder="e.g. Counter Cash Deposit / Salary Cash Out"
@@ -1056,7 +1231,7 @@ export default function OtcTransactionPage() {
                 </span>
               </div>
               <div className="text-gray-600 font-mono text-[11px] mt-0.5">
-                Acc: <strong className="text-gray-900">{verifiedAccount?.accountNumber}</strong> • NRC: {verifiedAccount?.nrc || '—'}
+                Acc: <strong className="text-gray-900">{verifiedAccount?.accountNumber}</strong> â€¢ NRC: {verifiedAccount?.nrc || 'â€”'}
               </div>
             </div>
           </div>
@@ -1077,7 +1252,7 @@ export default function OtcTransactionPage() {
               </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 text-center divide-x divide-gray-200 bg-white p-3 rounded-lg border border-gray-200/70 shadow-2xs">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center divide-x divide-gray-200 bg-white p-3 rounded-lg border border-gray-200/70 shadow-2xs">
               <div className="px-1">
                 <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-tight">
                   Current Balance
@@ -1102,6 +1277,15 @@ export default function OtcTransactionPage() {
               </div>
 
               <div className="px-1">
+                <span className="block text-[10px] font-bold text-amber-700 uppercase tracking-tight">
+                  Service Fee
+                </span>
+                <span className="block text-xs sm:text-sm font-mono font-bold text-amber-700 mt-1">
+                  {estimatedFee > 0 ? `- ${formatCurrency(estimatedFee, verifiedAccount?.currency || 'MMK')}` : '0 MMK Free'}
+                </span>
+              </div>
+
+              <div className="px-1">
                 <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-tight">
                   Projected New Balance
                 </span>
@@ -1115,6 +1299,19 @@ export default function OtcTransactionPage() {
                 </span>
               </div>
             </div>
+
+            <div className="rounded-lg bg-blue-50/70 p-2.5 text-xs text-blue-900 border border-blue-200/60 flex items-center justify-between">
+              <span className="font-medium">
+                {operationType === 'DEPOSIT'
+                  ? `Net Credited to Customer Account: ${formatCurrency(netDeposit, verifiedAccount?.currency || 'MMK')} (${formatCurrency(numAmount, verifiedAccount?.currency || 'MMK')} cash - ${formatCurrency(estimatedFee, verifiedAccount?.currency || 'MMK')} fee)`
+                  : `Total Debited from Customer Account: ${formatCurrency(totalWithdrawal, verifiedAccount?.currency || 'MMK')} (${formatCurrency(numAmount, verifiedAccount?.currency || 'MMK')} cash + ${formatCurrency(estimatedFee, verifiedAccount?.currency || 'MMK')} fee)`}
+              </span>
+              <span className="text-[10px] font-mono text-blue-700 font-semibold hidden sm:inline">
+                Fee Schedule Applied
+              </span>
+            </div>
+
+
 
             {operationType === 'WITHDRAW' && projectedBal < 0 && (
               <div className="rounded-lg bg-red-50 p-2.5 text-xs text-red-700 font-semibold border border-red-200 flex items-center gap-2">

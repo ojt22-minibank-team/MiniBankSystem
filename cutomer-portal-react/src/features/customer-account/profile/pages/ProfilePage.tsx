@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 
 import {
   Camera,
@@ -18,8 +19,6 @@ import {
 } from "react";
 
 import Cropper, { type Area } from "react-easy-crop";
-
-// ပြင်ဆင်ချက်: Profile page ရှိ UI message များအတွက် ဘာသာပြန် hook ထည့်ထားသည်။
 import { useTranslation } from "react-i18next";
 
 import {
@@ -33,13 +32,17 @@ import type {
   CustomerProfileUpdate,
 } from "../types/profileTypes";
 
-
 import {
   useAppDispatch,
   useAppSelector,
 } from "../../../../lib/redux";
 
 import { setProfile } from "../store/ProfileSlice";
+
+import {
+  getAuthenticationGeneration,
+  isAuthenticationGenerationCurrent,
+} from "../../../../utils/tokenStorage";
 
 import PersonalInfo from "../components/PersonalInfo";
 import CompanyInfo from "../components/CompanyInfo";
@@ -144,7 +147,6 @@ async function createCroppedImage(
 /* -------------------------------------------------------------------------- */
 
 export default function ProfilePage() {
-  // ပြင်ဆင်ချက်: profile namespace မှ English/Myanmar စာသားများကို ယူသုံးသည်။
   const { t } = useTranslation("profile");
 
   /* ------------------------------------------------------------------------ */
@@ -188,6 +190,7 @@ export default function ProfilePage() {
 
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+
   const [croppedAreaPixels, setCroppedAreaPixels] =
     useState<Area | null>(null);
 
@@ -204,13 +207,12 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-
-
   /* ------------------------------------------------------------------------ */
   /* Messages                                                                 */
   /* ------------------------------------------------------------------------ */
 
   const [error, setError] = useState<string | null>(null);
+
   const [successMessage, setSuccessMessage] =
     useState<string | null>(null);
 
@@ -221,6 +223,16 @@ export default function ProfilePage() {
   const isCompany =
     profile?.customerType?.toUpperCase() === "COMPANY" ||
     profile?.customerType?.toUpperCase() === "CORPORATE";
+
+  /* ------------------------------------------------------------------------ */
+  /* Session guard                                                            */
+  /* ------------------------------------------------------------------------ */
+
+  const isCurrentSession = useCallback(
+    (generation: number) =>
+      isAuthenticationGenerationCurrent(generation),
+    []
+  );
 
   /* ------------------------------------------------------------------------ */
   /* Form helpers                                                             */
@@ -248,24 +260,40 @@ export default function ProfilePage() {
   /* ------------------------------------------------------------------------ */
 
   const loadProfile = useCallback(async () => {
+    const generation = getAuthenticationGeneration();
+
     try {
       setIsLoading(true);
       setError(null);
 
       const data = await getMyProfile();
 
+      // Ignore responses belonging to an old authentication session.
+      if (!isCurrentSession(generation)) {
+        return;
+      }
+
       dispatch(setProfile(data));
       setFormDataFromProfile(data);
       setPreviewImage(data.profileImageUrl ?? null);
     } catch (err) {
-      console.error("Failed to load profile:", err);
+      if (!isCurrentSession(generation)) {
+        return;
+      }
 
-      // ပြင်ဆင်ချက်: API error အတွက် ဘာသာပြန် key သုံးထားသည်။
+      console.error("Failed to load profile:", err);
       setError(t("profileLoadFailed"));
     } finally {
-      setIsLoading(false);
+      if (isCurrentSession(generation)) {
+        setIsLoading(false);
+      }
     }
-  }, [setFormDataFromProfile, dispatch, t]);
+  }, [
+    setFormDataFromProfile,
+    dispatch,
+    isCurrentSession,
+    t,
+  ]);
 
   useEffect(() => {
     void loadProfile();
@@ -307,7 +335,12 @@ export default function ProfilePage() {
     clearMessages();
     setFormDataFromProfile(profile);
     setIsEditing(false);
-  }, [profile, isSaving, clearMessages, setFormDataFromProfile]);
+  }, [
+    profile,
+    isSaving,
+    clearMessages,
+    setFormDataFromProfile,
+  ]);
 
   /* ------------------------------------------------------------------------ */
   /* Address input                                                            */
@@ -348,7 +381,6 @@ export default function ProfilePage() {
     (event: ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
 
-      // တူညီသောဓာတ်ပုံကို ထပ်ရွေးနိုင်ရန် input value ကို reset လုပ်ထားသည်။
       event.target.value = "";
 
       if (!file) {
@@ -367,7 +399,6 @@ export default function ProfilePage() {
         return;
       }
 
-      // ပြင်ဆင်ချက်: ယခင် crop image URL ကို memory leak မဖြစ်စေရန် ဖျက်ပေးသည်။
       revokeObjectUrl(cropSourceUrlRef.current);
 
       const sourceUrl = URL.createObjectURL(file);
@@ -431,6 +462,8 @@ export default function ProfilePage() {
       return;
     }
 
+    const generation = getAuthenticationGeneration();
+
     try {
       clearMessages();
       setIsPhotoSaving(true);
@@ -440,6 +473,11 @@ export default function ProfilePage() {
         croppedAreaPixels
       );
 
+      // Check again after the asynchronous image crop operation.
+      if (!isCurrentSession(generation)) {
+        return;
+      }
+
       const croppedFile = new File(
         [croppedBlob],
         `profile-${Date.now()}.jpg`,
@@ -448,22 +486,34 @@ export default function ProfilePage() {
 
       const updatedProfile = await uploadProfileImage(croppedFile);
 
+      // Do not apply an old customer's uploaded profile to a new session.
+      if (!isCurrentSession(generation)) {
+        return;
+      }
+
       dispatch(setProfile(updatedProfile));
 
       setPreviewImage(updatedProfile.profileImageUrl ?? null);
       closeCropModal();
 
-      // ပြင်ဆင်ချက်: Success message ကို translation key မှ ယူထားသည်။
       setSuccessMessage(t("profilePhotoUpdated"));
 
       window.setTimeout(() => {
-        setSuccessMessage(null);
+        if (isCurrentSession(generation)) {
+          setSuccessMessage(null);
+        }
       }, 3000);
     } catch (err) {
+      if (!isCurrentSession(generation)) {
+        return;
+      }
+
       console.error("Failed to update profile photo:", err);
       setError(t("profilePhotoUpdateFailed"));
     } finally {
-      setIsPhotoSaving(false);
+      if (isCurrentSession(generation)) {
+        setIsPhotoSaving(false);
+      }
     }
   }, [
     cropSourceUrl,
@@ -472,6 +522,7 @@ export default function ProfilePage() {
     clearMessages,
     dispatch,
     closeCropModal,
+    isCurrentSession,
     t,
   ]);
 
@@ -483,6 +534,8 @@ export default function ProfilePage() {
     if (!profile || isSaving) {
       return;
     }
+
+    const generation = getAuthenticationGeneration();
 
     clearMessages();
 
@@ -509,6 +562,11 @@ export default function ProfilePage() {
 
       const updatedProfile = await updateMyProfile(updateData);
 
+      // Prevent stale responses from updating the current customer's profile.
+      if (!isCurrentSession(generation)) {
+        return;
+      }
+
       dispatch(setProfile(updatedProfile));
       setFormDataFromProfile(updatedProfile);
       setIsEditing(false);
@@ -516,13 +574,21 @@ export default function ProfilePage() {
       setSuccessMessage(t("addressUpdated"));
 
       window.setTimeout(() => {
-        setSuccessMessage(null);
+        if (isCurrentSession(generation)) {
+          setSuccessMessage(null);
+        }
       }, 3000);
     } catch (err) {
+      if (!isCurrentSession(generation)) {
+        return;
+      }
+
       console.error("Failed to update address:", err);
       setError(t("addressUpdateFailed"));
     } finally {
-      setIsSaving(false);
+      if (isCurrentSession(generation)) {
+        setIsSaving(false);
+      }
     }
   }, [
     profile,
@@ -531,10 +597,9 @@ export default function ProfilePage() {
     clearMessages,
     setFormDataFromProfile,
     dispatch,
+    isCurrentSession,
     t,
   ]);
-
-
 
   /* ------------------------------------------------------------------------ */
   /* Full name                                                                */
@@ -579,6 +644,24 @@ export default function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
+      {/* Error message */}
+      {error && (
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+          <X size={18} className="mt-0.5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+      {/* Breadcrumb Navigation */}
+      <nav aria-label="Breadcrumb" className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold">
+        <Link
+          to="/dashboard"
+          className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
+        >
+          Dashboard
+        </Link>
+        <span className="text-slate-300" aria-hidden="true">/</span>
+        <span className="text-[#00A3C4]" aria-current="page">Profile</span>
+      </nav>
         {/* ပြင်ဆင်ချက်: Error / success message များသည် ဘာသာပြန်ပြီးသား string ကို ပြသသည်။ */}
         {error && (
           <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
@@ -587,124 +670,129 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {successMessage && (
-          <div className="mb-6 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
-            <CheckCircle2 size={18} className="mt-0.5 shrink-0" />
-            <span>{successMessage}</span>
-          </div>
-        )}
+      {/* Success message */}
+      {successMessage && (
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+          <CheckCircle2 size={18} className="mt-0.5 shrink-0" />
+          <span>{successMessage}</span>
+        </div>
+      )}
 
-        {/* PROFILE SUMMARY */}
-        <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="bg-gradient-to-r from-[#0A192F] to-[#00A3C4] px-6 py-8">
-            <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-              {/* Profile Photo */}
-              <div className="relative h-28 w-28 shrink-0">
-                <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-white bg-slate-100 shadow-lg">
-                  {previewImage ? (
-                    <img
-                      src={previewImage}
-                      alt={getFullName()}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-slate-100">
-                      {isCompany ? (
-                        <Building2 size={42} className="text-slate-400" />
-                      ) : (
-                        <User size={42} className="text-slate-400" />
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* ပြင်ဆင်ချက်: Camera button ၏ accessible label ကို translation key သုံးထားသည်။ */}
-                <button
-                  type="button"
-                  onClick={handleFileInputClick}
-                  disabled={isSaving || isPhotoSaving}
-                  aria-label={t("changeProfilePhoto")}
-                  title={t("changeProfilePhoto")}
-                  className="absolute bottom-0 right-0 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-[#00A3C4] text-white shadow-md transition hover:bg-[#0891B2] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <Camera size={17} />
-                </button>
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
+      {/* PROFILE SUMMARY */}
+      <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-[#0A192F] to-[#00A3C4] px-6 py-8">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+            {/* Profile Photo */}
+            <div className="relative h-28 w-28 shrink-0">
+              <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-white bg-slate-100 shadow-lg">
+                {previewImage ? (
+                  <img
+                    src={previewImage}
+                    alt={getFullName()}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-slate-100">
+                    {isCompany ? (
+                      <Building2
+                        size={42}
+                        className="text-slate-400"
+                      />
+                    ) : (
+                      <User
+                        size={42}
+                        className="text-slate-400"
+                      />
+                    )}
+                  </div>
+                )}
               </div>
 
-              {/* Profile Details */}
-              <div className="min-w-0 flex-1 text-white">
-                <h2 className="truncate text-2xl font-bold">
-                  {getFullName()}
-                </h2>
+              {/* Change profile photo */}
+              <button
+                type="button"
+                onClick={handleFileInputClick}
+                disabled={isSaving || isPhotoSaving}
+                aria-label={t("changeProfilePhoto")}
+                title={t("changeProfilePhoto")}
+                className="absolute bottom-0 right-0 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-[#00A3C4] text-white shadow-md transition hover:bg-[#0891B2] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Camera size={17} />
+              </button>
 
-                <p className="mt-1 text-sm text-white/80">
-                  {t("customerId")}: {profile.customerCode}
-                </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+            </div>
 
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white">
-                    <ShieldCheck size={14} />
-                    {profile.status}
-                  </span>
+            {/* Profile Details */}
+            <div className="min-w-0 flex-1 text-white">
+              <h2 className="truncate text-2xl font-bold">
+                {getFullName()}
+              </h2>
 
-                  <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white">
-                    {profile.customerType}
-                  </span>
-                </div>
+              <p className="mt-1 text-sm text-white/80">
+                {t("customerId")}: {profile.customerCode}
+              </p>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white">
+                  <ShieldCheck size={14} />
+                  {profile.status}
+                </span>
+
+                <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white">
+                  {profile.customerType}
+                </span>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* ပြင်ဆင်ချက်: Read-only notice ကို profile.json မှ ယူသုံးသည်။ */}
-          <div className="flex items-start gap-3 border-t border-slate-100 px-6 py-4">
-            <ShieldCheck
-              size={18}
-              className="mt-0.5 shrink-0 text-[#00A3C4]"
-            />
-
-            <p className="text-xs leading-relaxed text-slate-500">
-              <span className="font-semibold text-slate-700">
-                {t("notice")}
-              </span>{" "}
-              {t("readOnlyNotice")}
-            </p>
-          </div>
-        </section>
-
-        {/* PERSONAL / COMPANY INFORMATION */}
-        {isCompany ? (
-          <CompanyInfo
-            profile={profile}
-            formData={formData}
-            isEditing={isEditing}
-            onInputChange={handleInputChange}
-            onEdit={handleEdit}
-            onCancel={handleCancel}
-            onSave={handleSave}
-            isSaving={isSaving}
+        {/* Read-only notice */}
+        <div className="flex items-start gap-3 border-t border-slate-100 px-6 py-4">
+          <ShieldCheck
+            size={18}
+            className="mt-0.5 shrink-0 text-[#00A3C4]"
           />
-        ) : (
-          <PersonalInfo
-            profile={profile}
-            formData={formData}
-            isEditing={isEditing}
-            onInputChange={handleInputChange}
-            onEdit={handleEdit}
-            onCancel={handleCancel}
-            onSave={handleSave}
-            isSaving={isSaving}
-          />
-        )}
 
+          <p className="text-xs leading-relaxed text-slate-500">
+            <span className="font-semibold text-slate-700">
+              {t("notice")}
+            </span>{" "}
+            {t("readOnlyNotice")}
+          </p>
+        </div>
+      </section>
 
+      {/* PERSONAL / COMPANY INFORMATION */}
+      {isCompany ? (
+        <CompanyInfo
+          profile={profile}
+          formData={formData}
+          isEditing={isEditing}
+          onInputChange={handleInputChange}
+          onEdit={handleEdit}
+          onCancel={handleCancel}
+          onSave={handleSave}
+          isSaving={isSaving}
+        />
+      ) : (
+        <PersonalInfo
+          profile={profile}
+          formData={formData}
+          isEditing={isEditing}
+          onInputChange={handleInputChange}
+          onEdit={handleEdit}
+          onCancel={handleCancel}
+          onSave={handleSave}
+          isSaving={isSaving}
+        />
+      )}
 
       {/* CROP MODAL */}
       {isCropModalOpen && cropSourceUrl && (
@@ -793,7 +881,9 @@ export default function ProfilePage() {
                   <Loader2 size={16} className="animate-spin" />
                 )}
 
-                {isPhotoSaving ? t("saving") : t("save")}
+                {isPhotoSaving
+                  ? t("saving")
+                  : t("save")}
               </button>
             </div>
           </div>
@@ -802,5 +892,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-

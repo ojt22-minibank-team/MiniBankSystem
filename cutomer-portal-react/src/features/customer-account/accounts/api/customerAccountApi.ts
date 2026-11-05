@@ -5,27 +5,35 @@ import type {
   UpdateTransferLimitPayload,
 } from "../types/accountTypes";
 
-export async function getMyAccounts(): Promise<CustomerAccount[]> {
-  const response = await api.get<CustomerAccount[]>("/accounts");
+export async function getMyAccounts(
+  signal?: AbortSignal
+): Promise<CustomerAccount[]> {
+  const response = await api.get<CustomerAccount[]>("/accounts", {
+    signal,
+  });
 
   return response.data;
 }
 
 export async function getMyAccount(
-  accountNumber: string
+  accountNumber: string,
+  signal?: AbortSignal
 ): Promise<CustomerAccount> {
   const response = await api.get<CustomerAccount>(
-    `/accounts/${encodeURIComponent(accountNumber)}`
+    `/accounts/${encodeURIComponent(accountNumber)}`,
+    { signal }
   );
 
   return response.data;
 }
 
 export async function getAccountTransferLimits(
-  accountNumber: string
+  accountNumber: string,
+  signal?: AbortSignal
 ): Promise<TransferLimitInfo> {
   const response = await api.get<TransferLimitInfo>(
-    `/accounts/${encodeURIComponent(accountNumber)}/transfer-limits`
+    `/accounts/${encodeURIComponent(accountNumber)}/transfer-limits`,
+    { signal }
   );
 
   return response.data;

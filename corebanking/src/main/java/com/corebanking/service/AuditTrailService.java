@@ -28,6 +28,21 @@ public interface AuditTrailService {
     void logDataChange(String actionType, String entityType, String entityId, Object oldEntity, Object newEntity, String description);
 
     /**
+     * Records a transactional data mutation event with explicit functional category and JSON serialization of entity states.
+     *
+     * @param actionCategory functional domain category (e.g. SECURITY, ACCOUNT, CUSTOMER, SYSTEM)
+     * @param actionType     specific business action code
+     * @param entityType     affected domain entity type
+     * @param entityId       identifier of the affected domain entity
+     * @param oldEntity      previous state object before modification (serialized to JSON, nullable)
+     * @param newEntity      new state object after modification (serialized to JSON, nullable)
+     * @param description    human-readable summary of the modification
+     */
+    default void logDataChange(String actionCategory, String actionType, String entityType, String entityId, Object oldEntity, Object newEntity, String description) {
+        logDataChange(actionType, entityType, entityId, oldEntity, newEntity, description);
+    }
+
+    /**
      * Records a functional system or user activity event without entity state diffs.
      *
      * @param actionCategory high-level functional domain category (e.g. SECURITY, ACCOUNT, TRANSACTION, SYSTEM)

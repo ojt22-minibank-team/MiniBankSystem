@@ -1,0 +1,418 @@
+import { useState, useEffect } from 'react';
+import {
+  X,
+  Copy,
+  Check,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  Clock,
+  ShieldCheck,
+  CreditCard,
+} from 'lucide-react';
+import type { StaffTransactionDetail } from '../../../types/transactions.types';
+import { formatCurrency } from '../../../utils/formatCurrency';
+import { formatDateTime } from '../../../utils/formatDate';
+
+interface Props {
+  transaction: StaffTransactionDetail | null;
+  isOpen: boolean;
+  onClose: () => void;
+  isLoading?: boolean;
+}
+
+export default function TransactionDetailModal({
+  transaction,
+  isOpen,
+  onClose,
+  isLoading = false,
+}: Props) {
+  const [copiedRef, setCopiedRef] = useState(false);
+  const [copiedId, setCopiedId] = useState(false);
+
+  // Close on ESC
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  const handleCopy = (text: string, type: 'ref' | 'id') => {
+    navigator.clipboard.writeText(text);
+    if (type === 'ref') {
+      setCopiedRef(true);
+      setTimeout(() => setCopiedRef(false), 2000);
+    } else {
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 2000);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'COMPLETED':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            COMPLETED
+          </span>
+        );
+      case 'PENDING_AUTHORIZATION':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
+            <Clock className="w-3.5 h-3.5 text-blue-600" />
+            PENDING AUTHORIZATION
+          </span>
+        );
+      case 'FAILED':
+      case 'REJECTED':
+      case 'CANCELLED':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200">
+            <XCircle className="w-3.5 h-3.5 text-rose-600" />
+            {status}
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">
+            {status}
+          </span>
+        );
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+      <div
+        className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-fadeIn"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-6 py-4.5 bg-gradient-to-r from-slate-900 to-slate-800 text-white">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-white/10 backdrop-blur-md">
+              <ShieldCheck className="w-5 h-5 text-sky-400" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold tracking-tight text-white flex items-center gap-2">
+                Transaction Detail
+              </h3>
+              <p className="text-xs text-slate-300">
+                Core Banking Immutable Ledger Audit Record
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Modal Body */}
+        {isLoading || !transaction ? (
+          <div className="p-12 flex flex-col items-center justify-center text-slate-400 gap-3">
+            <div className="h-10 w-10 rounded-full border-2 border-sky-500/20 border-t-sky-600 animate-spin" />
+            <span className="text-xs font-semibold text-slate-500">
+              Loading transaction audit data...
+            </span>
+          </div>
+        ) : (
+          <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+            {/* Top Overview Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <div>
+                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-0.5">
+                  Transaction Reference
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-mono font-bold text-slate-900">
+                    {transaction.transactionRef}
+                  </span>
+                  <button
+                    onClick={() => handleCopy(transaction.transactionRef, 'ref')}
+                    className="p-1 text-slate-400 hover:text-blue-600 rounded transition-colors"
+                    title="Copy reference"
+                  >
+                    {copiedRef ? (
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-200/80 text-slate-700 font-semibold uppercase tracking-wider">
+                  {transaction.channel}
+                </span>
+                {getStatusBadge(transaction.status)}
+              </div>
+            </div>
+
+            {/* Amount & Fee Banner */}
+            <div className="p-4.5 rounded-2xl bg-gradient-to-br from-blue-50/80 via-white to-sky-50/50 border border-blue-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  Transaction Amount ({transaction.transactionType})
+                </span>
+                <div className="text-2xl font-black text-slate-900 tracking-tight mt-0.5">
+                  {formatCurrency(transaction.amount, transaction.currency)}
+                </div>
+                {transaction.serviceFee > 0 && (
+                  <div className="text-xs text-slate-500 mt-1">
+                    Service Fee: +{formatCurrency(transaction.serviceFee, transaction.currency)}
+                  </div>
+                )}
+              </div>
+
+              <div className="text-right sm:border-l sm:border-blue-100 sm:pl-6 w-full sm:w-auto">
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  Total Settled
+                </span>
+                <div className="text-lg font-bold text-blue-700">
+                  {formatCurrency(transaction.totalDebited, transaction.currency)}
+                </div>
+              </div>
+            </div>
+
+            {/* Source & Destination Accounts */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {/* Source Account */}
+              <div className="p-4 rounded-2xl border border-slate-200/90 bg-white shadow-2xs">
+                <div className="flex items-center gap-2 mb-2 text-slate-500">
+                  <CreditCard className="w-4 h-4 text-blue-600" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Source Account (Debit)
+                  </span>
+                </div>
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Account No:</span>
+                    <span className="font-mono font-bold text-slate-900">
+                      {transaction.sourceAccountNo || 'N/A (Cash / External)'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Holder:</span>
+                    <span className="font-medium text-slate-800">
+                      {transaction.sourceCustomerName || 'Over-The-Counter Cash'}
+                    </span>
+                  </div>
+                  {transaction.sourceCustomerCode && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Customer Code:</span>
+                      <span className="font-mono text-slate-600">
+                        {transaction.sourceCustomerCode}
+                      </span>
+                    </div>
+                  )}
+                  {transaction.sourceAccountType && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Account Type:</span>
+                      <span className="text-slate-600 font-medium">
+                        {transaction.sourceAccountType}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Destination Account */}
+              <div className="p-4 rounded-2xl border border-slate-200/90 bg-white shadow-2xs">
+                <div className="flex items-center gap-2 mb-2 text-slate-500">
+                  <CreditCard className="w-4 h-4 text-emerald-600" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Destination Account (Credit)
+                  </span>
+                </div>
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Account No:</span>
+                    <span className="font-mono font-bold text-slate-900">
+                      {transaction.destAccountNo || 'N/A (Cash / External)'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Holder:</span>
+                    <span className="font-medium text-slate-800">
+                      {transaction.destCustomerName || 'Over-The-Counter Cash'}
+                    </span>
+                  </div>
+                  {transaction.destCustomerCode && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Customer Code:</span>
+                      <span className="font-mono text-slate-600">
+                        {transaction.destCustomerCode}
+                      </span>
+                    </div>
+                  )}
+                  {transaction.destAccountType && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Account Type:</span>
+                      <span className="text-slate-600 font-medium">
+                        {transaction.destAccountType}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Execution Timeline & Actor */}
+            <div className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/70">
+              <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block mb-2.5">
+                Processing Timeline & Actor Trace
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div>
+                  <span className="text-slate-400 block text-[11px]">Initiated At</span>
+                  <span className="font-medium text-slate-800">
+                    {formatDateTime(transaction.initiatedAt)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[11px]">Completed At</span>
+                  <span className="font-medium text-slate-800">
+                    {formatDateTime(transaction.completedAt)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[11px]">Initiated By</span>
+                  <span className="font-medium text-slate-800">
+                    {transaction.initiatedByName} ({transaction.initiatedByType})
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[11px]">Last Updated</span>
+                  <span className="font-medium text-slate-800">
+                    {formatDateTime(transaction.updatedAt)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Failure Box (if any) */}
+            {(transaction.failureCode || transaction.failureMessage) && (
+              <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs">
+                <div className="flex items-center gap-2 text-rose-800 font-bold mb-1">
+                  <XCircle className="w-4 h-4 text-rose-600" />
+                  <span>Transaction Failure Notice</span>
+                </div>
+                <div className="text-rose-700 space-y-0.5">
+                  {transaction.failureCode && (
+                    <div>
+                      <span className="font-semibold">Code:</span> {transaction.failureCode}
+                    </div>
+                  )}
+                  {transaction.failureMessage && (
+                    <div>
+                      <span className="font-semibold">Message:</span> {transaction.failureMessage}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Review / Managerial Overrides History */}
+            {transaction.reviewHistory && transaction.reviewHistory.length > 0 && (
+              <div className="p-4 rounded-2xl border border-amber-200/90 bg-amber-50/50">
+                <div className="flex items-center gap-2 text-amber-900 font-bold text-xs mb-2.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-600" />
+                  <span>Managerial Review & Override Audit Trail</span>
+                </div>
+                <div className="space-y-2">
+                  {transaction.reviewHistory.map((rev, idx) => (
+                    <div
+                      key={idx}
+                      className="p-2.5 rounded-xl bg-white/80 border border-amber-200 text-xs text-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                    >
+                      <div>
+                        <span className="font-bold text-amber-800 mr-2">
+                          {rev.action}
+                        </span>
+                        <span>{rev.reason || rev.resolutionNote || 'Administrative Action'}</span>
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        {rev.performedByStaff} â€¢ {formatDateTime(rev.performedAt)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* System Technical Identifiers */}
+            <div className="p-4 rounded-2xl bg-slate-100/70 border border-slate-200 text-xs space-y-2">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                Technical Audit Trace
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                <div className="flex items-center justify-between font-mono bg-white p-2 rounded-lg border border-slate-200/60">
+                  <span className="text-slate-400">UUID:</span>
+                  <span className="truncate max-w-[200px] text-slate-700">
+                    {transaction.transactionId}
+                  </span>
+                  <button
+                    onClick={() => handleCopy(transaction.transactionId, 'id')}
+                    className="p-1 text-slate-400 hover:text-blue-600 cursor-pointer"
+                  >
+                    {copiedId ? (
+                      <Check className="w-3 h-3 text-emerald-600" />
+                    ) : (
+                      <Copy className="w-3 h-3" />
+                    )}
+                  </button>
+                </div>
+                {transaction.idempotencyKey && (
+                  <div className="flex items-center justify-between font-mono bg-white p-2 rounded-lg border border-slate-200/60">
+                    <span className="text-slate-400">Idempotency:</span>
+                    <span className="truncate max-w-[200px] text-slate-700">
+                      {transaction.idempotencyKey}
+                    </span>
+                  </div>
+                )}
+                {transaction.externalReference && (
+                  <div className="flex items-center justify-between font-mono bg-white p-2 rounded-lg border border-slate-200/60">
+                    <span className="text-slate-400">Ext Ref:</span>
+                    <span className="truncate max-w-[200px] text-slate-700">
+                      {transaction.externalReference}
+                    </span>
+                  </div>
+                )}
+                {transaction.description && (
+                  <div className="sm:col-span-2 flex items-center justify-between bg-white p-2 rounded-lg border border-slate-200/60">
+                    <span className="text-slate-400">Remarks:</span>
+                    <span className="text-slate-700">{transaction.description}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Footer */}
+        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 transition-colors cursor-pointer"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

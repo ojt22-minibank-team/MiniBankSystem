@@ -5,25 +5,21 @@ import AccountStatusPanel from './components/AccountStatusPanel';
 import AuditTrailPanel from './components/AuditTrailPanel';
 import FeeRevenuePanel from './components/FeeRevenuePanel';
 import LargeTransactionPanel from './components/LargeTransactionPanel';
+import TransactionDetailPanel from './components/TransactionDetailPanel';
 
 const today = new Date().toISOString().slice(0, 10);
 const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
 const todayDt = today + 'T23:59';
 const monthAgoDt = monthAgo + 'T00:00';
 
-function tabStyle(active: boolean): React.CSSProperties {
-  return {
-    padding: '9px 18px',
-    borderRadius: '8px',
-    border: 'none',
-    fontSize: '13px',
-    fontWeight: active ? 700 : 500,
-    cursor: 'pointer',
-    backgroundColor: active ? '#2563EB' : '#f1f5f9',
-    color: active ? '#ffffff' : '#475569',
-    transition: 'all 0.15s',
-  };
-}
+const tabs: { key: ReportTab; label: string }[] = [
+  { key: 'ledger', label: 'Daily Ledger Summary' },
+  { key: 'account', label: 'Account Status' },
+  { key: 'audit', label: 'Audit Trail Logs' },
+  { key: 'fee', label: 'Fee & Revenue Breakdown' },
+  { key: 'aml', label: 'Large Transactions (AML)' },
+  { key: 'transactionDetail', label: 'Transaction Detail' },
+];
 
 const ReportingView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ReportTab>('ledger');
@@ -34,7 +30,7 @@ const ReportingView: React.FC = () => {
   const [ledgerStatus, setLedgerStatus] = useState('');
   const [ledgerTransactionType, setLedgerTransactionType] = useState('');
   const [accountStatus, setAccountStatus] = useState('');
-  
+
   const [auditStartDate, setAuditStartDate] = useState(monthAgoDt);
   const [auditEndDate, setAuditEndDate] = useState(todayDt);
   const [staffId, setStaffId] = useState('');
@@ -68,6 +64,7 @@ const ReportingView: React.FC = () => {
     audit: false,
     fee: false,
     aml: false,
+    transactionDetail: false,
   });
 
   const [searchKeys, setSearchKeys] = useState<Record<ReportTab, number>>({
@@ -76,6 +73,7 @@ const ReportingView: React.FC = () => {
     audit: 0,
     fee: 0,
     aml: 0,
+    transactionDetail: 0,
   });
 
   const [isSearching, setIsSearching] = useState(false);
@@ -143,6 +141,17 @@ const ReportingView: React.FC = () => {
       setAppliedEndDate(today);
       setAppliedAmlThreshold(10000000);
       setAppliedAmlTransactionType('');
+    } else if (activeTab === 'transactionDetail') {
+      setStartDate(monthAgo);
+      setEndDate(today);
+      setLedgerStatus('');
+      setLedgerTransactionType('');
+      setFeeChannel('');
+      setAppliedStartDate(monthAgo);
+      setAppliedEndDate(today);
+      setAppliedLedgerStatus('');
+      setAppliedLedgerTransactionType('');
+      setAppliedFeeChannel('');
     }
 
     setHasSearched((prev) => ({ ...prev, [activeTab]: false }));
@@ -176,62 +185,47 @@ const ReportingView: React.FC = () => {
       description:
         'Define the threshold amount and transaction filters above, then click the "Search" button to flag high-value AML compliance records.',
     },
+    transactionDetail: {
+      title: 'Ready to Generate Transaction Detail Report',
+      description:
+        'Select your date range, status, type, and channel filters above, then click the "Search" button to inspect individual transaction ledger records.',
+    },
   };
 
   return (
-    <div>
-      <div style={{ marginBottom: '24px' }}>
-        <h2
-          style={{
-            fontSize: '18px',
-            fontWeight: 700,
-            color: '#1E40AF',
-            margin: '0 0 4px 0',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}
-        >
+    <div className="w-full max-w-full overflow-hidden">
+      {/* Page Header */}
+      <div className="mb-4 sm:mb-5">
+        <h2 className="text-lg sm:text-xl font-bold text-blue-900 tracking-tight flex items-center gap-2">
           Reporting & Analytics
         </h2>
-        <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
+        <p className="text-xs text-slate-500 mt-0.5">
           Staff Operations Portal — Group 2 Reporting Subsystem
         </p>
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
-        <button
-          style={tabStyle(activeTab === 'ledger')}
-          onClick={() => setActiveTab('ledger')}
-        >
-          Daily Ledger Summary
-        </button>
-        <button
-          style={tabStyle(activeTab === 'account')}
-          onClick={() => setActiveTab('account')}
-        >
-          Account Status
-        </button>
-        <button
-          style={tabStyle(activeTab === 'audit')}
-          onClick={() => setActiveTab('audit')}
-        >
-          Audit Trail Logs
-        </button>
-        <button
-          style={tabStyle(activeTab === 'fee')}
-          onClick={() => setActiveTab('fee')}
-        >
-          Fee & Revenue Breakdown
-        </button>
-        <button
-          style={tabStyle(activeTab === 'aml')}
-          onClick={() => setActiveTab('aml')}
-        >
-          Large Transactions (AML)
-        </button>
+      {/* Responsive Horizontal Tab Bar */}
+      <div className="flex gap-1.5 sm:gap-2 mb-5 overflow-x-auto pb-2 scrollbar-thin no-scrollbar sm:flex-wrap">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+                isActive
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+              }`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
+      {/* Filter Bar */}
       <ReportFilterBar
         activeTab={activeTab}
         startDate={startDate}
@@ -265,6 +259,7 @@ const ReportingView: React.FC = () => {
         loading={isSearching}
       />
 
+      {/* Tab Panels */}
       {hasSearched.ledger && (
         <div style={{ display: activeTab === 'ledger' ? 'block' : 'none' }}>
           <DailyLedgerPanel
@@ -339,69 +334,39 @@ const ReportingView: React.FC = () => {
         </div>
       )}
 
-      {!hasSearched[activeTab] && (
-        <div
-          style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '10px',
-            border: '1px dashed #cbd5e1',
-            padding: '56px 24px',
-            textAlign: 'center',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-          }}
-        >
-          <div
-            style={{
-              width: '52px',
-              height: '52px',
-              borderRadius: '50%',
-              backgroundColor: '#eff6ff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 16px',
-              fontSize: '22px',
+      {hasSearched.transactionDetail && (
+        <div style={{ display: activeTab === 'transactionDetail' ? 'block' : 'none' }}>
+          <TransactionDetailPanel
+            startDate={appliedStartDate}
+            endDate={appliedEndDate}
+            status={appliedLedgerStatus}
+            transactionType={appliedLedgerTransactionType}
+            channel={appliedFeeChannel}
+            searchKey={searchKeys.transactionDetail}
+            onLoadingChange={(l) => {
+              if (activeTab === 'transactionDetail') setIsSearching(l);
             }}
-          >
+          />
+        </div>
+      )}
+
+      {/* Empty Search Prompt */}
+      {!hasSearched[activeTab] && (
+        <div className="bg-white rounded-xl border border-dashed border-slate-300 p-8 sm:p-14 text-center shadow-xs">
+          <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-4 text-xl">
             🔍
           </div>
-          <h3
-            style={{
-              fontSize: '15px',
-              fontWeight: 700,
-              color: '#1e293b',
-              margin: '0 0 8px 0',
-            }}
-          >
+          <h3 className="text-sm sm:text-base font-bold text-slate-800 mb-2">
             {tabInfo[activeTab].title}
           </h3>
-          <p
-            style={{
-              fontSize: '13px',
-              color: '#64748b',
-              maxWidth: '460px',
-              margin: '0 auto 20px',
-              lineHeight: '1.5',
-            }}
-          >
+          <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mb-5 leading-relaxed">
             {tabInfo[activeTab].description}
           </p>
           <button
             type="button"
             onClick={handleSearch}
             disabled={isSearching}
-            style={{
-              padding: '9px 24px',
-              backgroundColor: '#2563EB',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              fontWeight: 600,
-              fontSize: '13px',
-              cursor: isSearching ? 'not-allowed' : 'pointer',
-              opacity: isSearching ? 0.7 : 1,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-            }}
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {isSearching ? 'Searching...' : 'Search Report'}
           </button>

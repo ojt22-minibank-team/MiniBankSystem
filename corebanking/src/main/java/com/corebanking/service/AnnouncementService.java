@@ -11,7 +11,7 @@ import com.corebanking.repository.AnnouncementsRepository;
 import com.corebanking.repository.StaffUsersRepository;
 
 import lombok.RequiredArgsConstructor;
-
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -24,6 +24,7 @@ public class AnnouncementService {
 
     private final AnnouncementsRepository announcementsRepository;
     private final StaffUsersRepository staffUsersRepository;
+    private final AuditTrailService auditTrailService;
     
     // Define Myanmar Timezone
     private static final ZoneId MYANMAR_ZONE = ZoneId.of("Asia/Rangoon");
@@ -53,12 +54,31 @@ public class AnnouncementService {
         announcement.setUpdatedById(admin.getStaffId());
 
         Announcements savedAnnouncement = announcementsRepository.save(announcement);
+
+        java.util.Map<String, Object> newAnnouncementSnapshot = new java.util.LinkedHashMap<>();
+        newAnnouncementSnapshot.put("announcementId", savedAnnouncement.getAnnouncementId());
+        newAnnouncementSnapshot.put("title", savedAnnouncement.getTitle());
+        newAnnouncementSnapshot.put("audience", savedAnnouncement.getAudience().name());
+        newAnnouncementSnapshot.put("active", savedAnnouncement.isActive());
+        newAnnouncementSnapshot.put("startsAt", savedAnnouncement.getStartsAt());
+        newAnnouncementSnapshot.put("endsAt", savedAnnouncement.getEndsAt());
+
+        if (auditTrailService != null) auditTrailService.logDataChange(
+                "SYSTEM",
+                "CREATE_ANNOUNCEMENT",
+                "ANNOUNCEMENT",
+                savedAnnouncement.getAnnouncementId().toString(),
+                null,
+                newAnnouncementSnapshot,
+                "Created announcement: " + savedAnnouncement.getTitle()
+        );
+
         return toResponse(savedAnnouncement);
     }
 
-    // 2. GET ALL ANNOUNCEMENTS
+    // 2. GET ALL ANNOUNCEMENTS (Sorted chronologically by newest first)
     public List<AnnouncementResponse> getAllAnnouncements() {
-        return announcementsRepository.findAll()
+        return announcementsRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"))
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -93,6 +113,23 @@ public class AnnouncementService {
         announcement.setUpdatedById(admin.getStaffId());
 
         Announcements updatedAnnouncement = announcementsRepository.save(announcement);
+
+        java.util.Map<String, Object> newAnnouncementSnapshot = new java.util.LinkedHashMap<>();
+        newAnnouncementSnapshot.put("title", updatedAnnouncement.getTitle());
+        newAnnouncementSnapshot.put("audience", updatedAnnouncement.getAudience().name());
+        newAnnouncementSnapshot.put("startsAt", updatedAnnouncement.getStartsAt());
+        newAnnouncementSnapshot.put("endsAt", updatedAnnouncement.getEndsAt());
+
+        if (auditTrailService != null) auditTrailService.logDataChange(
+                "SYSTEM",
+                "UPDATE_ANNOUNCEMENT",
+                "ANNOUNCEMENT",
+                updatedAnnouncement.getAnnouncementId().toString(),
+                null,
+                newAnnouncementSnapshot,
+                "Updated announcement: " + updatedAnnouncement.getTitle()
+        );
+
         return toResponse(updatedAnnouncement);
     }
 
@@ -101,6 +138,16 @@ public class AnnouncementService {
         Announcements announcement = announcementsRepository.findById(announcementId)
                 .orElseThrow(() -> new RuntimeException("Announcement not found"));
         announcementsRepository.delete(announcement);
+
+        if (auditTrailService != null) auditTrailService.logDataChange(
+                "SYSTEM",
+                "DELETE_ANNOUNCEMENT",
+                "ANNOUNCEMENT",
+                announcementId.toString(),
+                java.util.Map.of("title", announcement.getTitle(), "id", announcementId),
+                null,
+                "Deleted announcement: " + announcement.getTitle()
+        );
     }
 
     // 6. DEACTIVATE ANNOUNCEMENT
@@ -121,6 +168,23 @@ public class AnnouncementService {
         announcement.setUpdatedById(admin.getStaffId());
 
         Announcements updatedAnnouncement = announcementsRepository.save(announcement);
+
+        java.util.Map<String, Object> newAnnouncementSnapshot = new java.util.LinkedHashMap<>();
+        newAnnouncementSnapshot.put("title", updatedAnnouncement.getTitle());
+        newAnnouncementSnapshot.put("audience", updatedAnnouncement.getAudience().name());
+        newAnnouncementSnapshot.put("startsAt", updatedAnnouncement.getStartsAt());
+        newAnnouncementSnapshot.put("endsAt", updatedAnnouncement.getEndsAt());
+
+        if (auditTrailService != null) auditTrailService.logDataChange(
+                "SYSTEM",
+                "UPDATE_ANNOUNCEMENT",
+                "ANNOUNCEMENT",
+                updatedAnnouncement.getAnnouncementId().toString(),
+                null,
+                newAnnouncementSnapshot,
+                "Updated announcement: " + updatedAnnouncement.getTitle()
+        );
+
         return toResponse(updatedAnnouncement);
     }
 

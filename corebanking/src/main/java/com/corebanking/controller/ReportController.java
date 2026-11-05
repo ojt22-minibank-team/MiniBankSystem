@@ -5,6 +5,7 @@ import com.corebanking.dto.AuditTrailPageDTO;
 import com.corebanking.dto.DailyLedgerSummaryDTO;
 import com.corebanking.dto.FeeRevenueReportDTO;
 import com.corebanking.dto.LargeTransactionReportDTO;
+import com.corebanking.dto.TransactionDetailReportDTO;
 import com.corebanking.service.ReportService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ContentDisposition;
@@ -236,6 +237,56 @@ public class ReportController {
             default -> buildResponse(
                     reportService.exportFeeRevenueCsv(startDate, endDate, channel),
                     "Fee_Revenue_Report.csv",
+                    "text/csv");
+        };
+    }
+
+    // -------------------------------------------------------
+    // Private helper
+    // -------------------------------------------------------
+
+    // -------------------------------------------------------
+    // 6. Transaction Detail Report
+    // -------------------------------------------------------
+
+    @GetMapping("/transaction-detail")
+    public ResponseEntity<List<TransactionDetailReportDTO>> getTransactionDetails(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String transactionType,
+            @RequestParam(required = false) String channel,
+            @RequestParam(required = false) BigDecimal minAmount,
+            @RequestParam(required = false) BigDecimal maxAmount) {
+
+        List<TransactionDetailReportDTO> data = reportService.getTransactionDetails(
+                startDate, endDate, status, transactionType, channel, minAmount, maxAmount);
+        return ResponseEntity.ok(data);
+    }
+
+    @GetMapping("/transaction-detail/export")
+    public ResponseEntity<byte[]> exportTransactionDetails(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String transactionType,
+            @RequestParam(required = false) String channel,
+            @RequestParam(required = false) BigDecimal minAmount,
+            @RequestParam(required = false) BigDecimal maxAmount,
+            @RequestParam(defaultValue = "csv") String format) throws IOException {
+
+        return switch (format.toLowerCase()) {
+            case "excel", "xlsx" -> buildResponse(
+                    reportService.exportTransactionDetailsExcel(startDate, endDate, status, transactionType, channel, minAmount, maxAmount),
+                    "Transaction_Detail_Report.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            case "pdf" -> buildResponse(
+                    reportService.exportTransactionDetailsPdf(startDate, endDate, status, transactionType, channel, minAmount, maxAmount),
+                    "Transaction_Detail_Report.pdf",
+                    "application/pdf");
+            default -> buildResponse(
+                    reportService.exportTransactionDetailsCsv(startDate, endDate, status, transactionType, channel, minAmount, maxAmount),
+                    "Transaction_Detail_Report.csv",
                     "text/csv");
         };
     }

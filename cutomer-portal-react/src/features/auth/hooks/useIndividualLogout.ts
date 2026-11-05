@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { resetCustomerState, useAppDispatch, type AppDispatch } from "../../../lib/redux";
 import { logoutCustomer } from "../../../services/authService";
 import { clearPendingPaymentRedirect } from "../utils/pendingPaymentRedirect";
 import {
@@ -15,7 +16,7 @@ let logoutLock: { generation: number; promise: Promise<number | null> } | null =
 export const isIndividualLogoutInProgress = () =>
   logoutLock?.generation === getAuthenticationGeneration();
 
-function logoutIndividualCustomer(): Promise<number | null> {
+function logoutIndividualCustomer(dispatch: AppDispatch): Promise<number | null> {
   if (logoutLock?.generation === getAuthenticationGeneration()) return logoutLock.promise;
 
   const accessToken = getAccessToken();
@@ -23,6 +24,11 @@ function logoutIndividualCustomer(): Promise<number | null> {
   clearPendingPaymentRedirect();
   // Invalidate synchronously, while retaining credentials for backend revocation.
   const generation = invalidateAuthenticationGeneration();
+  // Clear customer data once, before awaiting revocation of the captured session.
+  dispatch(resetCustomerState());
+
+  // Reset balance visibility for the next login session.
+sessionStorage.removeItem("customer-portal:balance-visible");
 
   const promise = (async () => {
     try {
@@ -64,12 +70,13 @@ function logoutIndividualCustomer(): Promise<number | null> {
 
 export function useIndividualLogout() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
 
   return useCallback(async () => {
-    const completedGeneration = await logoutIndividualCustomer();
+    const completedGeneration = await logoutIndividualCustomer(dispatch);
     // A login can finish between cleanup and this caller's continuation.
     if (completedGeneration !== null && getAuthenticationGeneration() === completedGeneration) {
       await navigate("/login", { replace: true });
     }
-  }, [navigate]);
+  }, [dispatch, navigate]);
 }
