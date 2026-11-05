@@ -170,7 +170,6 @@ public class TransferNotificationVerificationTest {
         assertEquals("2001111111", receiverWsDto.getCounterpartyAccountNumber());
     }
 
-    /*
     @Test
     @DisplayName("Verify Merchant Payment notifications are saved and pushed via WebSocket to both Payer and Merchant")
     void testMerchantPaymentNotificationsCreated() {
@@ -227,7 +226,6 @@ public class TransferNotificationVerificationTest {
         assertEquals("Merchant Payment Received", merchantWs.getTitle());
         assertEquals("U Ba", merchantWs.getCounterpartyName());
     }
-    */
 
     @Test
     @DisplayName("Verify that CusNotificationService HTTP mapping retains all details for payment notifications")
