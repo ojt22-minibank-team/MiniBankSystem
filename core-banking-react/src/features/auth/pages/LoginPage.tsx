@@ -133,7 +133,7 @@ export default function LoginPage() {
 
   const validateCredentials = (): boolean => {
     const errors: { username?: string; password?: string } = {};
-    if (!username.trim()) errors.username = 'User ID or Phone Number is required.';
+    if (!username.trim()) errors.username = 'User Name is required.';
     if (!password) errors.password = 'Password is required.';
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -441,7 +441,7 @@ export default function LoginPage() {
                     htmlFor="username"
                     className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5"
                   >
-                    User ID or Phone Number
+                    User Name
                   </label>
                   <div className="relative">
                     <input
@@ -449,7 +449,7 @@ export default function LoginPage() {
                       type="text"
                       value={username}
                       onChange={(e) => handleUsernameChange(e.target.value)}
-                      placeholder="e.g. 09123456789 or Staff ID"
+                      placeholder="e.g. staff"
                       disabled={isLoading}
                       autoComplete="username"
                       autoFocus

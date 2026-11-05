@@ -161,11 +161,11 @@ class StaffManagementServiceTest {
             request.setRoleId(2);
 
             when(staffUsersRepository.existsByEmailIgnoreCase("teller@minibank.com")).thenReturn(false);
+            when(staffUsersRepository.existsByPhoneMatching(anyString(), anyString())).thenReturn(false);
             when(staffUsersRepository.existsByUsernameCustom("teller_jane")).thenReturn(false);
             when(rolesRepository.findById(2)).thenReturn(Optional.of(tellerRole));
-            when(staffUsersRepository.findAll()).thenReturn(Collections.emptyList());
+            when(staffUsersRepository.findStaffNosByPrefix("STF-TLR")).thenReturn(Collections.emptyList());
             when(staffUsersRepository.existsByStaffNo(anyString())).thenReturn(false);
-            when(passwordEncoder.encode(anyString())).thenReturn("hashed-initial-password");
 
             when(staffUsersRepository.save(any(StaffUsers.class))).thenAnswer(invocation -> {
                 StaffUsers saved = invocation.getArgument(0);
@@ -193,14 +193,15 @@ class StaffManagementServiceTest {
             request.setUsername("auditor_bob");
             request.setFullName("Bob Auditor");
             request.setEmail("bob@minibank.com");
+            request.setPhone("09987654321");
             request.setRoleId(3);
 
             when(staffUsersRepository.existsByEmailIgnoreCase("bob@minibank.com")).thenReturn(false);
+            when(staffUsersRepository.existsByPhoneMatching(anyString(), anyString())).thenReturn(false);
             when(staffUsersRepository.existsByUsernameCustom("auditor_bob")).thenReturn(false);
             when(rolesRepository.findById(3)).thenReturn(Optional.of(auditorRole));
-            when(staffUsersRepository.findAll()).thenReturn(Collections.emptyList());
+            when(staffUsersRepository.findStaffNosByPrefix("STF-AUD")).thenReturn(Collections.emptyList());
             when(staffUsersRepository.existsByStaffNo(anyString())).thenReturn(false);
-            when(passwordEncoder.encode(anyString())).thenReturn("hashed-pwd");
 
             when(staffUsersRepository.save(any(StaffUsers.class))).thenAnswer(inv -> {
                 StaffUsers s = inv.getArgument(0);
@@ -213,6 +214,67 @@ class StaffManagementServiceTest {
             assertNotNull(response);
             assertEquals("STF-AUD-0001", response.getStaffNo());
             assertEquals("AUDITOR", response.getRoleCode());
+        }
+
+        @Test
+        @DisplayName("Should throw IllegalArgumentException if phone number already exists")
+        void createStaff_ThrowsException_WhenPhoneExists() {
+            StaffCreateRequest request = new StaffCreateRequest();
+            request.setUsername("teller_phone_dup");
+            request.setFullName("Duplicate Phone Teller");
+            request.setEmail("newemail@minibank.com");
+            request.setPhone("09123456789");
+            request.setRoleId(2);
+
+            when(staffUsersRepository.existsByEmailIgnoreCase("newemail@minibank.com")).thenReturn(false);
+            when(rolesRepository.findById(2)).thenReturn(Optional.of(tellerRole));
+            when(staffUsersRepository.existsByPhoneMatching(anyString(), anyString())).thenReturn(true);
+
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                    () -> staffManagementService.createStaff(request));
+
+            assertTrue(ex.getMessage().contains("Phone number is already registered"));
+            verify(staffUsersRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Should throw IllegalArgumentException if Myanmar phone number is less than 9 digits")
+        void createStaff_ThrowsException_WhenPhoneLessThan9Digits() {
+            StaffCreateRequest request = new StaffCreateRequest();
+            request.setUsername("teller_short_phone");
+            request.setFullName("Short Phone Teller");
+            request.setEmail("shortphone@minibank.com");
+            request.setPhone("0912345"); // 7 digits
+            request.setRoleId(2);
+
+            when(staffUsersRepository.existsByEmailIgnoreCase("shortphone@minibank.com")).thenReturn(false);
+            when(rolesRepository.findById(2)).thenReturn(Optional.of(tellerRole));
+
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                    () -> staffManagementService.createStaff(request));
+
+            assertTrue(ex.getMessage().contains("at least 9 digits"));
+            verify(staffUsersRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Should throw IllegalArgumentException if phone number is not Myanmar format")
+        void createStaff_ThrowsException_WhenPhoneInvalidMyanmarFormat() {
+            StaffCreateRequest request = new StaffCreateRequest();
+            request.setUsername("teller_invalid_phone");
+            request.setFullName("Invalid Phone Teller");
+            request.setEmail("invalidphone@minibank.com");
+            request.setPhone("08123456789"); // Does not start with 09
+            request.setRoleId(2);
+
+            when(staffUsersRepository.existsByEmailIgnoreCase("invalidphone@minibank.com")).thenReturn(false);
+            when(rolesRepository.findById(2)).thenReturn(Optional.of(tellerRole));
+
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                    () -> staffManagementService.createStaff(request));
+
+            assertTrue(ex.getMessage().contains("Myanmar phone number"));
+            verify(staffUsersRepository, never()).save(any());
         }
 
         @Test

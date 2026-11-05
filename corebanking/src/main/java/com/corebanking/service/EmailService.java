@@ -26,6 +26,13 @@ public class EmailService {
             String setupLink,
             int expirationMinutes
     ) {
+        System.out.println("========================================");
+        System.out.println("[DEV ONLY] STAFF PASSWORD SETUP LINK");
+        System.out.println("Email       : " + recipientEmail);
+        System.out.println("Setup Link  : " + setupLink);
+        System.out.println("Expires in  : " + expirationMinutes + " minutes");
+        System.out.println("========================================");
+
         SimpleMailMessage message = new SimpleMailMessage();
 
         message.setFrom(fromEmail);

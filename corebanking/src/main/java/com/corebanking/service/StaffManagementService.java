@@ -35,6 +35,50 @@ public class StaffManagementService {
 
     private static final String INITIAL_LOCKED_PASSWORD_HASH = "$2a$10$7EqJtq98hPqEX7fNZaFWoOhi5sP6.n1E2Gk0W9uU4t7U6YQZ6s2rS";
 
+    public static String normalizeMyanmarPhone(String phone) {
+        if (phone == null) return null;
+        String cleaned = phone.trim().replaceAll("[\\s\\-\\(\\)]", "");
+        if (cleaned.startsWith("+959")) {
+            cleaned = "09" + cleaned.substring(4);
+        } else if (cleaned.startsWith("959")) {
+            cleaned = "09" + cleaned.substring(3);
+        }
+        return cleaned;
+    }
+
+    public static boolean isValidMyanmarPhone(String phone) {
+        if (phone == null || phone.isBlank()) return false;
+        String cleaned = normalizeMyanmarPhone(phone);
+        return cleaned.matches("^09\\d{7,9}$");
+    }
+
+    private void validateStaffPhone(String phone, UUID excludeStaffId) {
+        if (phone == null || phone.trim().isBlank()) {
+            throw new IllegalArgumentException("Phone number is required");
+        }
+        String rawPhone = phone.trim();
+        String cleanedDigits = rawPhone.replaceAll("[^0-9]", "");
+
+        // Myanmar phone numbers must have at least 9 digits and match Myanmar format
+        if (cleanedDigits.length() < 9 || !isValidMyanmarPhone(rawPhone)) {
+            throw new IllegalArgumentException(
+                    "Phone number must be a valid Myanmar phone number with at least 9 digits (e.g. 09xxxxxxxxx)"
+            );
+        }
+
+        String normalizedPhone = normalizeMyanmarPhone(rawPhone);
+        boolean exists;
+        if (excludeStaffId == null) {
+            exists = staffUsersRepository.existsByPhoneMatching(rawPhone, normalizedPhone);
+        } else {
+            exists = staffUsersRepository.existsByPhoneMatchingAndStaffIdNot(rawPhone, normalizedPhone, excludeStaffId);
+        }
+
+        if (exists) {
+            throw new IllegalArgumentException("Phone number is already registered: " + rawPhone);
+        }
+    }
+
     private final StaffUsersRepository staffUsersRepository;
     private final StaffUserRolesRepository staffUserRolesRepository;
     private final RolesRepository rolesRepository;
@@ -81,6 +125,9 @@ public class StaffManagementService {
             );
         }
 
+        // Check phone validation & duplicate in database
+        validateStaffPhone(request.getPhone(), null);
+
         // =================================================
         // Auto-generated Staff Number
         // =================================================
@@ -96,7 +143,7 @@ public class StaffManagementService {
         staff.setUsername(request.getUsername());
         staff.setFullName(request.getFullName());
         staff.setEmail(request.getEmail());
-        staff.setPhone(request.getPhone());
+        staff.setPhone(normalizeMyanmarPhone(request.getPhone()));
 
         staff.setPasswordHash(INITIAL_LOCKED_PASSWORD_HASH);
 
@@ -240,9 +287,10 @@ public class StaffManagementService {
                 request.getEmail()
         );
 
-        staff.setPhone(
-                request.getPhone()
-        );
+        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+            validateStaffPhone(request.getPhone(), staffId);
+            staff.setPhone(normalizeMyanmarPhone(request.getPhone()));
+        }
 
         staff.setUpdatedAt(
                 LocalDateTime.now()
