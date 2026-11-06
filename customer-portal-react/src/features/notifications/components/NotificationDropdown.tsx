@@ -14,6 +14,7 @@ import {
   User,
   Store,
   CreditCard,
+  Landmark,
 } from "lucide-react";
 import {
   getMyNotifications,
@@ -26,6 +27,7 @@ import { useNotificationWebSocket } from "../hooks/useNotificationWebSocket";
 import {
   maskAccountNumber,
   formatNotificationMessage,
+  resolveNotificationMeta,
 } from "../utils/notificationFormatters";
 import {
   getAccessToken,
@@ -432,17 +434,9 @@ export const NotificationDropdown: React.FC = () => {
 
   // Choose icon based on notification content
   const renderIcon = (item: NotificationItem) => {
-    const titleLower = item.title.toLowerCase();
-    const isFailed = titleLower.includes("fail") || titleLower.includes("reject");
-    const isReceived =
-      item.transferDirection === "RECEIVED" ||
-      titleLower.includes("received") ||
-      titleLower.includes("funds received");
-    const isPayment =
-      item.notificationType === "PAYMENT" ||
-      titleLower.includes("payment");
+    const meta = resolveNotificationMeta(item);
 
-    if (isFailed) {
+    if (meta.isFailed) {
       return (
         <div className="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0 border border-red-100">
           <AlertCircle className="w-5 h-5" />
@@ -450,7 +444,23 @@ export const NotificationDropdown: React.FC = () => {
       );
     }
 
-    if (isPayment && isReceived) {
+    if (meta.isDeposit) {
+      return (
+        <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100 shadow-xs">
+          <Landmark className="w-5 h-5" />
+        </div>
+      );
+    }
+
+    if (meta.isWithdrawal) {
+      return (
+        <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-100 shadow-xs">
+          <Landmark className="w-5 h-5" />
+        </div>
+      );
+    }
+
+    if (meta.isPayment && meta.isItemReceived) {
       return (
         <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100 shadow-xs">
           <Store className="w-5 h-5" />
@@ -458,7 +468,7 @@ export const NotificationDropdown: React.FC = () => {
       );
     }
 
-    if (isPayment && !isReceived) {
+    if (meta.isPayment && !meta.isItemReceived) {
       return (
         <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100 shadow-xs">
           <CreditCard className="w-5 h-5" />
@@ -466,7 +476,7 @@ export const NotificationDropdown: React.FC = () => {
       );
     }
 
-    if (isReceived) {
+    if (meta.isItemReceived) {
       return (
         <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
           <ArrowDownLeft className="w-5 h-5" />
@@ -640,80 +650,88 @@ export const NotificationDropdown: React.FC = () => {
                     {renderIcon(item)}
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-1">
-                        <p
-                          className={`text-xs tracking-tight truncate ${
-                            unread
-                              ? "font-black text-slate-900"
-                              : "font-semibold text-slate-700"
-                          }`}
-                        >
-                          {item.title}
-                        </p>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <Clock className="w-3 h-3 text-slate-300" />
-                          <span className="text-[10px] font-medium text-slate-400">
-                            {formatTimeAgo(item.createdAt)}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Prominent Account Holder Name + Account Number */}
                       {(() => {
-                        const itemTitleLower = (item.title || "").toLowerCase();
-                        const isItemReceived =
-                          item.transferDirection === "RECEIVED" ||
-                          itemTitleLower.includes("received") ||
-                          itemTitleLower.includes("funds received");
+                        const meta = resolveNotificationMeta(item);
 
                         return (
                           <>
-                            {item.counterpartyName && (
+                            <div className="flex items-center justify-between gap-1">
+                              <p
+                                className={`text-xs tracking-tight truncate ${
+                                  unread
+                                    ? "font-black text-slate-900"
+                                    : "font-semibold text-slate-700"
+                                }`}
+                              >
+                                {meta.displayTitle}
+                              </p>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <Clock className="w-3 h-3 text-slate-300" />
+                                <span className="text-[10px] font-medium text-slate-400">
+                                  {formatTimeAgo(item.createdAt)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Sub-line: Counterparty or Account Details */}
+                            {meta.isDeposit ? (
+                              <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                                <Landmark className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                <span className="truncate">
+                                  Credited to: {meta.targetAccount ? maskAccountNumber(meta.targetAccount) : "My Account"}
+                                </span>
+                                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.2 rounded-md shrink-0">
+                                  Bank Counter
+                                </span>
+                              </div>
+                            ) : meta.isWithdrawal ? (
+                              <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                                <Landmark className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                <span className="truncate">
+                                  Debited from: {meta.targetAccount ? maskAccountNumber(meta.targetAccount) : "My Account"}
+                                </span>
+                                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-1.5 py-0.2 rounded-md shrink-0">
+                                  Bank Counter
+                                </span>
+                              </div>
+                            ) : item.counterpartyName && !item.counterpartyName.toLowerCase().startsWith("account ") ? (
                               <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-800">
                                 <User className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                                 <span className="truncate">
-                                  {isItemReceived ? "From: " : "To: "}
+                                  {meta.isItemReceived ? "From: " : "To: "}
                                   {item.counterpartyName}
-                                  {item.counterpartyAccountNumber
+                                  {item.counterpartyAccountNumber && item.counterpartyAccountNumber !== "BANK-OTC"
                                     ? ` (${maskAccountNumber(item.counterpartyAccountNumber)})`
                                     : ""}
                                 </span>
                               </div>
-                            )}
+                            ) : null}
 
                             <p className="text-[11px] text-slate-600 mt-1 leading-relaxed line-clamp-2">
                               {formatNotificationMessage(item)}
                             </p>
 
                             <div className="mt-1.5 flex items-center justify-end gap-2">
-                              {(() => {
-                                const isItemFailed = itemTitleLower.includes("fail") || itemTitleLower.includes("reject");
-
-                                return (
-                                  <>
-                                    {isItemFailed && (
-                                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
-                                        Failed
-                                      </span>
-                                    )}
-                                    {item.amount !== undefined && item.amount !== null && (
-                                      <span
-                                        className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                                          isItemFailed
-                                            ? "bg-red-50 text-red-700 border border-red-200"
-                                            : isItemReceived
-                                            ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                                            : "bg-rose-50 text-rose-700 border border-rose-100"
-                                        }`}
-                                      >
-                                        {isItemFailed
-                                          ? `- ${formatAmount(item.amount)} ${item.currency || "MMK"} (Failed)`
-                                          : `${isItemReceived ? "+ " : "- "}${formatAmount(item.amount)} ${item.currency || "MMK"}`}
-                                      </span>
-                                    )}
-                                  </>
-                                );
-                              })()}
+                              {meta.isFailed && (
+                                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
+                                  Failed
+                                </span>
+                              )}
+                              {item.amount !== undefined && item.amount !== null && (
+                                <span
+                                  className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                                    meta.isFailed
+                                      ? "bg-red-50 text-red-700 border border-red-200"
+                                      : meta.isItemReceived
+                                      ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                                      : "bg-rose-50 text-rose-700 border border-rose-100"
+                                  }`}
+                                >
+                                  {meta.isFailed
+                                    ? `- ${formatAmount(item.amount)} ${item.currency || "MMK"} (Failed)`
+                                    : `${meta.isItemReceived ? "+ " : "- "}${formatAmount(item.amount)} ${item.currency || "MMK"}`}
+                                </span>
+                              )}
                             </div>
                           </>
                         );
