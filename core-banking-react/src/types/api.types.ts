@@ -105,6 +105,12 @@ export interface PasswordResetRequest {
   newPassword?: string;
 }
 
+export interface StaffChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
 // --- System Rules DTOs ---
 
 export interface SystemParameterResponse {

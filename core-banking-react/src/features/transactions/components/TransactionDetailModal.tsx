@@ -346,7 +346,7 @@ export default function TransactionDetailModal({
                         <span>{rev.reason || rev.resolutionNote || 'Administrative Action'}</span>
                       </div>
                       <div className="text-[11px] text-slate-500">
-                        {rev.performedByStaff} â€¢ {formatDateTime(rev.performedAt)}
+                        {rev.performedByStaff} • {formatDateTime(rev.performedAt)}
                       </div>
                     </div>
                   ))}

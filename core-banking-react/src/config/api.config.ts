@@ -64,6 +64,12 @@ export const API_ENDPOINTS = {
   // Transfers
   TRANSFER_P2P: "/api/transfers/p2p",
 
+  // Staff Profile
+  STAFF_PROFILE: {
+    ME: "/api/staff/profile",
+    CHANGE_PASSWORD: "/api/staff/profile/change-password",
+  },
+
   // Over-the-Counter (OTC) Transactions
   OTC: {
     DEPOSIT: "/api/transactions/otc/deposit",
