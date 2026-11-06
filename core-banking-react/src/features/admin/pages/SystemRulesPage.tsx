@@ -259,7 +259,7 @@ export default function SystemRulesPage() {
           {(row.minimumFee != null || row.maximumFee != null) && (
             <p className="text-[10px] text-zinc-400 mt-0.5 font-mono">
               {row.minimumFee != null ? `Min: ${row.minimumFee}` : ''}
-              {row.minimumFee != null && row.maximumFee != null ? ' Â· ' : ''}
+              {row.minimumFee != null && row.maximumFee != null ? ' · ' : ''}
               {row.maximumFee != null ? `Max: ${row.maximumFee}` : ''}
             </p>
           )}
@@ -452,7 +452,7 @@ export default function SystemRulesPage() {
           <div className="rounded-2xl border border-emerald-500/30 bg-emerald-50/80 backdrop-blur-md px-5 py-3 text-xs font-semibold text-emerald-800 flex items-center justify-between">
             <span>{successMessage}</span>
             <button onClick={() => setSuccessMessage(null)} className="text-emerald-700 hover:text-emerald-950 font-bold">
-              âœ•
+              ✕
             </button>
           </div>
         )}
@@ -464,7 +464,7 @@ export default function SystemRulesPage() {
               <p className="mt-0.5">{error}</p>
             </div>
             <button onClick={() => setError(null)} className="text-red-700 hover:text-red-950 font-bold">
-              âœ•
+              ✕
             </button>
           </div>
         )}
@@ -530,7 +530,7 @@ export default function SystemRulesPage() {
                     onClick={() => setParamSearch('')}
                     className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-zinc-400 hover:text-zinc-600"
                   >
-                    âœ•
+                    ✕
                   </button>
                 )}
               </div>
@@ -575,7 +575,7 @@ export default function SystemRulesPage() {
                     onClick={() => setFeeSearch('')}
                     className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-zinc-400 hover:text-zinc-600"
                   >
-                    âœ•
+                    ✕
                   </button>
                 )}
               </div>

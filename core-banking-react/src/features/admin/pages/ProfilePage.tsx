@@ -2,7 +2,8 @@ import { useEffect, useState, useMemo } from 'react';
 import AdminLayout from '../../../components/layout/AdminLayout';
 import StaffEditModal from '../components/StaffEditModal';
 import StaffResetPasswordModal from '../components/StaffResetPasswordModal';
-import { staffApi } from '../../../services/apiClient';
+import StaffChangePasswordModal from '../components/StaffChangePasswordModal';
+import { staffProfileApi } from '../../../services/apiClient';
 import type { StaffResponse } from '../../../types/api.types';
 import type { AxiosError } from 'axios';
 import { useAuth } from '../../auth/hooks/useAuth';
@@ -28,6 +29,7 @@ export default function ProfilePage() {
   // Modals state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
 
   // Inline Quick Edit state
   const [isInlineEditing, setIsInlineEditing] = useState(false);
@@ -58,42 +60,23 @@ export default function ProfilePage() {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await staffApi.getAll();
-      const targetUsername = (
-        user?.username ||
-        sessionStorage.getItem(STORAGE_KEYS.USERNAME) ||
-        ''
-      ).trim().toLowerCase();
-
-      // Match current authenticated user
-      let matched = res.data.find(
-        (s) => s.username?.trim().toLowerCase() === targetUsername,
-      );
-
-      // Fallback: if username not matched directly, find by admin role
-      if (!matched && res.data.length > 0) {
-        matched = res.data.find(
-          (s) =>
-            (s.roleCode || (s.staffNo?.includes('ADM') ? 'ADMIN' : '')).toUpperCase() === 'ADMIN',
-        ) || res.data[0];
-      }
-
-      if (matched) {
-        setStaff(matched);
-        sessionStorage.setItem(STORAGE_KEYS.STAFF_PROFILE, JSON.stringify(matched));
+      const res = await staffProfileApi.getMe();
+      if (res.data) {
+        setStaff(res.data);
+        sessionStorage.setItem(STORAGE_KEYS.STAFF_PROFILE, JSON.stringify(res.data));
         window.dispatchEvent(new Event('staff_profile_updated'));
         setInlineForm({
-          fullName: matched.fullName || '',
-          email: matched.email || '',
-          phone: matched.phone || '',
+          fullName: res.data.fullName || '',
+          email: res.data.email || '',
+          phone: res.data.phone || '',
         });
       } else {
-        setError('No staff profile record found for the current user.');
+        setError('No staff profile record found.');
       }
     } catch (err) {
       const axErr = err as AxiosError<{ message?: string }>;
-      if (axErr.response?.status === 403) {
-        setError('Access denied. You do not have permission to view staff records.');
+      if (axErr.response?.status === 401 || axErr.response?.status === 403) {
+        setError('Session expired or access denied. Please re-authenticate.');
       } else {
         setError(axErr.response?.data?.message || 'Failed to load profile details.');
       }
@@ -173,7 +156,7 @@ export default function ProfilePage() {
     setIsSubmitting(true);
     setError(null);
     try {
-      const res = await staffApi.update(staff.staffId, {
+      const res = await staffProfileApi.updateMe({
         fullName: inlineForm.fullName.trim(),
         email: inlineForm.email.trim(),
         phone: inlineForm.phone.trim(),
@@ -362,7 +345,7 @@ export default function ProfilePage() {
 
               <button
                 type="button"
-                onClick={() => setIsResetPasswordModalOpen(true)}
+                onClick={() => setIsChangePasswordModalOpen(true)}
                 className="flex-1 md:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-all cursor-pointer"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -782,6 +765,11 @@ export default function ProfilePage() {
           loadProfile();
           handleShowSuccess('Password reset link issued successfully.');
         }}
+      />
+      <StaffChangePasswordModal
+        isOpen={isChangePasswordModalOpen}
+        onClose={() => setIsChangePasswordModalOpen(false)}
+        onSuccess={(msg) => handleShowSuccess(msg)}
       />
     </AdminLayout>
   );

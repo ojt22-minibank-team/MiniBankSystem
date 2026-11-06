@@ -60,7 +60,6 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
     : 'Staff');
 
   const userRole = user?.roles?.[0]?.replace('ROLE_', '') || 'ADMIN';
-  const userEmail = `${displayName.toLowerCase().replace(/\s+/g, '.')}@ekarajbank.com.mm`;
 
   // Role-Aware Navigation Links
   const navItems: NavItem[] = isTeller
@@ -116,15 +115,6 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
           icon: (
             <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
-            </svg>
-          ),
-        },
-        {
-          to: '/teller/profile',
-          label: 'Profile',
-          icon: (
-            <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
             </svg>
           ),
         },
@@ -235,8 +225,6 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
         },
       ];
 
-  const profilePath = isTeller ? '/teller/profile' : '/admin/profile';
-
   return (
     <aside
       className={[
@@ -269,36 +257,50 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
           </div>
         </div>
 
-        {/* Profile Card (Liquid Glass Badge) */}
+        {/* User Badge: Div for Teller (no profile page), NavLink for Admin */}
         <div className="px-4 py-3 shrink-0">
-          <NavLink
-            to={profilePath}
-            className="flex items-center gap-3 p-2.5 rounded-2xl bg-white/70 backdrop-blur-md border border-white/90 shadow-[0_4px_15px_-3px_rgba(15,23,42,0.04)] hover:bg-white/95 hover:shadow-md transition-all group cursor-pointer"
-          >
-            <div className="relative">
-              <div className={`flex h-9 w-9 items-center justify-center rounded-xl font-bold text-xs shadow-md ${
-                isTeller 
-                  ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/20' 
-                  : 'bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-sky-500/20'
-              }`}>
-                {displayName.charAt(0).toUpperCase()}
+          {isTeller ? (
+            <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-white/70 backdrop-blur-md border border-white/90 shadow-[0_4px_15px_-3px_rgba(15,23,42,0.04)] select-none">
+              <div className="relative">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl font-bold text-xs shadow-md bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/20">
+                  {displayName.charAt(0).toUpperCase()}
+                </div>
+                <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white animate-pulse" />
               </div>
-              <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white animate-pulse" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-1">
-                <h3 className="text-xs font-bold text-slate-900 truncate">
-                  {displayName}
-                </h3>
-                <span className={`${isTeller ? 'status-pill-emerald' : 'status-pill-sky'} text-[9px] py-0 px-1.5 font-bold uppercase`}>
-                  {userRole}
-                </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-1">
+                  <h3 className="text-xs font-bold text-slate-900 truncate">
+                    {displayName}
+                  </h3>
+                  <span className="status-pill-emerald text-[9px] py-0 px-1.5 font-bold uppercase">
+                    {userRole}
+                  </span>
+                </div>
               </div>
-              <p className="text-[11px] text-slate-400 truncate mt-0.5 font-medium">
-                {userEmail}
-              </p>
             </div>
-          </NavLink>
+          ) : (
+            <NavLink
+              to="/admin/profile"
+              className="flex items-center gap-3 p-2.5 rounded-2xl bg-white/70 backdrop-blur-md border border-white/90 shadow-[0_4px_15px_-3px_rgba(15,23,42,0.04)] hover:bg-white/95 hover:shadow-md transition-all group cursor-pointer"
+            >
+              <div className="relative">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl font-bold text-xs shadow-md bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-sky-500/20">
+                  {displayName.charAt(0).toUpperCase()}
+                </div>
+                <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white animate-pulse" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-1">
+                  <h3 className="text-xs font-bold text-slate-900 truncate">
+                    {displayName}
+                  </h3>
+                  <span className="status-pill-sky text-[9px] py-0 px-1.5 font-bold uppercase">
+                    {userRole}
+                  </span>
+                </div>
+              </div>
+            </NavLink>
+          )}
         </div>
 
         {/* Navigation Links */}
@@ -334,7 +336,7 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
             className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-600 hover:text-rose-600 hover:bg-rose-50/80 transition-all duration-200 ease-in-out focus:outline-none cursor-pointer"
           >
             <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
             </svg>
             <span>Log out</span>
           </button>
