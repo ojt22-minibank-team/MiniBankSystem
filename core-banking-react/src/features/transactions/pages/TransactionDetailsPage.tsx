@@ -537,15 +537,11 @@ export default function TransactionDetailsPage() {
           </div>
         </div>
 
-        {/* Transaction Detail & Overrides Modal */}
+        {/* Transaction Detail Modal */}
         <TransactionDetailModal
           transaction={selectedTransaction}
           isOpen={isDetailOpen}
           isLoading={isDetailLoading}
-          onActionComplete={() => {
-            loadStats();
-            loadTransactions(page, size, appliedFilters, sortField, sortDir);
-          }}
           onClose={() => {
             setIsDetailOpen(false);
             setSelectedTransaction(null);
