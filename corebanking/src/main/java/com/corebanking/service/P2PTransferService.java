@@ -258,14 +258,15 @@ public class P2PTransferService {
      * Calculates transfer fee solely from active FeeSchedules in the database.
      * Returns BigDecimal.ZERO if no active schedule exists.
      */
-    private BigDecimal calculateTransferFee(BigDecimal amount) {
+    public BigDecimal calculateTransferFee(BigDecimal amount) {
         return feeScheduleRepository.findFirstByTransactionTypeAndIsActiveTrueOrderByCreatedAtDesc(TransactionType.INTERNAL_TRANSFER)
                 .map(schedule -> {
                     BigDecimal fee = BigDecimal.ZERO;
                     if (schedule.getFeeType() == FeeType.FLAT) {
                         fee = schedule.getFeeValue();
                     } else if (schedule.getFeeType() == FeeType.PERCENTAGE) {
-                        fee = amount.multiply(schedule.getFeeValue()).divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
+                        BigDecimal pct = schedule.getFeeValue().divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
+                        fee = amount.multiply(pct).setScale(2, RoundingMode.HALF_UP);
                     }
                     if (schedule.getMinimumFee() != null && fee.compareTo(schedule.getMinimumFee()) < 0) {
                         fee = schedule.getMinimumFee();
@@ -276,6 +277,22 @@ public class P2PTransferService {
                     return fee;
                 })
                 .orElse(BigDecimal.ZERO); 
+    }
+
+    public Map<String, Object> getTransferFeeEstimate(BigDecimal amount) {
+        BigDecimal fee = calculateTransferFee(amount);
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("fee", fee);
+        map.put("amount", amount);
+        map.put("totalDebitedAmount", amount.add(fee));
+        feeScheduleRepository.findFirstByTransactionTypeAndIsActiveTrueOrderByCreatedAtDesc(TransactionType.INTERNAL_TRANSFER)
+                .ifPresent(schedule -> {
+                    map.put("feeType", schedule.getFeeType().name());
+                    map.put("feeValue", schedule.getFeeValue());
+                    map.put("feeCode", schedule.getFeeCode());
+                    map.put("currency", schedule.getCurrency() != null ? schedule.getCurrency() : "MMK");
+                });
+        return map;
     }
 
     private void createLedgerEntries(BankTransactions txn, Accounts source, Accounts dest, BigDecimal amount, BigDecimal fee, BigDecimal sourceBalBefore, BigDecimal destBalBefore) {
