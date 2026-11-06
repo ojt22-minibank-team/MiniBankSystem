@@ -273,21 +273,46 @@ function FormStep({
   onContinue,
   onCancel,
 }: FormStepProps) {
-  const [recipientTab, setRecipientTab] = useState<"beneficiaries" | "manual">(
-    beneficiaries.length > 0 && !destinationAccount ? "beneficiaries" : "manual"
+  // Filter own accounts excluding currently selected source account
+  const ownDestinationAccounts = accounts.filter(
+    (a) => a.accountNumber !== sourceAccount && (a.status === "ACTIVE" || a.status === undefined)
   );
+
+  const [recipientTab, setRecipientTab] = useState<"own" | "beneficiaries" | "manual">(() => {
+    if (ownDestinationAccounts.length > 0 && !destinationAccount) {
+      return "own";
+    }
+    return beneficiaries.length > 0 && !destinationAccount ? "beneficiaries" : "manual";
+  });
+
+  // Reset destination if user selects the same account as source
+  useEffect(() => {
+    if (sourceAccount && destinationAccount && sourceAccount === destinationAccount) {
+      setDestinationAccount("");
+      setRecipientName("");
+    }
+  }, [sourceAccount, destinationAccount, setDestinationAccount, setRecipientName]);
 
   const selectedAcc = accounts.find((a) => a.accountNumber === sourceAccount);
   const quickAmounts = [10000, 50000, 100000, 500000];
 
   const cleanDest = destinationAccount?.trim();
-  const isBeneficiary = Boolean(
+  const isOwnAccount = Boolean(
     cleanDest &&
+      accounts.some(
+        (a) => a.accountNumber?.trim() === cleanDest && a.accountNumber?.trim() !== sourceAccount
+      )
+  );
+  const isBeneficiary = Boolean(
+    !isOwnAccount &&
+      cleanDest &&
       beneficiaries.some(
         (b) => b.beneficiaryAccountNumber?.trim() === cleanDest
       )
   );
-  const effectiveOneTimeLimit = transferLimits
+  const effectiveOneTimeLimit = isOwnAccount
+    ? null // No transfer limit for own account transfer
+    : transferLimits
     ? isBeneficiary
       ? transferLimits.effectiveOneTimeLimitBeneficiary
       : transferLimits.effectiveOneTimeLimitStranger
@@ -303,10 +328,10 @@ function FormStep({
     : 0;
 
   const isOverOneTimeLimit = Boolean(
-    transferLimits && effectiveOneTimeLimit && amountNum > effectiveOneTimeLimit
+    !isOwnAccount && transferLimits && effectiveOneTimeLimit && amountNum > effectiveOneTimeLimit
   );
   const isOverDailyLimit = Boolean(
-    transferLimits && amountNum > transferLimits.remainingDailyLimit
+    !isOwnAccount && transferLimits && amountNum > transferLimits.remainingDailyLimit
   );
   const isInsufficientBalance = Boolean(
     selectedAcc && amountNum > netAvailable
@@ -383,14 +408,27 @@ function FormStep({
         )}
       </div>
 
-      {/* 2. Recipient Selector (2-Tab Experience: Saved Contacts vs Direct Number) */}
+      {/* 2. Recipient Selector (3-Tab Experience: Own Accounts vs Saved Contacts vs Direct Number) */}
       <div>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
             Transfer To
           </label>
-          {beneficiaries.length > 0 && (
-            <div className="inline-flex rounded-xl bg-slate-100 dark:bg-[#0f2445] p-1 text-xs font-semibold border border-slate-200/70 dark:border-slate-700/80 shadow-xs">
+          <div className="inline-flex rounded-xl bg-slate-100 dark:bg-[#0f2445] p-1 text-xs font-semibold border border-slate-200/70 dark:border-slate-700/80 shadow-xs flex-wrap gap-1">
+            {ownDestinationAccounts.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setRecipientTab("own")}
+                className={`px-3 py-1.5 rounded-lg transition font-bold ${
+                  recipientTab === "own"
+                    ? "bg-white dark:bg-[#00A3C4] text-[#00A3C4] dark:text-white shadow-xs"
+                    : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                My Accounts ({ownDestinationAccounts.length})
+              </button>
+            )}
+            {beneficiaries.length > 0 && (
               <button
                 type="button"
                 onClick={() => setRecipientTab("beneficiaries")}
@@ -402,22 +440,60 @@ function FormStep({
               >
                 Saved Contacts ({beneficiaries.length})
               </button>
-              <button
-                type="button"
-                onClick={() => setRecipientTab("manual")}
-                className={`px-3 py-1.5 rounded-lg transition font-bold ${
-                  recipientTab === "manual"
-                    ? "bg-white dark:bg-[#00A3C4] text-[#00A3C4] dark:text-white shadow-xs"
-                    : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                Enter Account No
-              </button>
-            </div>
-          )}
+            )}
+            <button
+              type="button"
+              onClick={() => setRecipientTab("manual")}
+              className={`px-3 py-1.5 rounded-lg transition font-bold ${
+                recipientTab === "manual"
+                  ? "bg-white dark:bg-[#00A3C4] text-[#00A3C4] dark:text-white shadow-xs"
+                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              Enter Account No
+            </button>
+          </div>
         </div>
 
-        {/* Tab A: Saved Contacts (Beneficiaries Grid / Chips) */}
+        {/* Tab 1: My Accounts (Dropdown selector directly from DB accounts) */}
+        {recipientTab === "own" && (
+          <div className="space-y-2">
+            <select
+              value={destinationAccount}
+              onChange={(e) => {
+                const accNo = e.target.value;
+                setDestinationAccount(accNo);
+                const matched = ownDestinationAccounts.find((a) => a.accountNumber === accNo);
+                if (matched) {
+                  setRecipientName(`${matched.accountType || "Own Account"} (My Account)`);
+                } else {
+                  setRecipientName("");
+                }
+              }}
+              className="w-full px-4 py-3.5 bg-slate-50 dark:bg-[#0f2445] border border-slate-200 dark:border-slate-700/80 rounded-2xl text-sm font-extrabold text-slate-900 dark:text-white focus:border-[#00A3C4] focus:bg-white dark:focus:bg-[#0f2445] focus:ring-2 focus:ring-cyan-500/20 outline-none transition cursor-pointer shadow-xs"
+            >
+              <option value="">-- Select Your Destination Account --</option>
+              {ownDestinationAccounts.map((acc) => {
+                const bal = acc.currentBalance ?? acc.availableBalance;
+                const formattedBal = bal !== undefined && bal !== null
+                  ? Number(bal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                  : "0.00";
+                return (
+                  <option key={acc.accountNumber} value={acc.accountNumber}>
+                    {acc.accountNumber} • {acc.accountType || "Account"} ({formattedBal} {acc.currency || "MMK"})
+                  </option>
+                );
+              })}
+            </select>
+            {ownDestinationAccounts.length === 0 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                You do not have any other active accounts to transfer to.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Tab 2: Saved Contacts (Beneficiaries Grid / Chips) */}
         {recipientTab === "beneficiaries" && beneficiaries.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
             {beneficiaries.map((b) => {
@@ -461,26 +537,28 @@ function FormStep({
           </div>
         )}
 
-        {/* Account Number Input */}
-        <div className="relative">
-          <input
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            list="recent-destinations"
-            value={destinationAccount}
-            onChange={(e) => setDestinationAccount(e.target.value.replace(/\D/g, ""))}
-            placeholder="Enter 10 to 16 digit recipient account number"
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder-slate-400 focus:border-[#00A3C4] focus:bg-white focus:ring-2 focus:ring-cyan-100 outline-none transition"
-            maxLength={34}
-            required
-          />
-          <datalist id="recent-destinations">
-            {recentAccounts.map((acc, i) => (
-              <option key={i} value={acc} />
-            ))}
-          </datalist>
-        </div>
+        {/* Tab 3: Manual Account Number Input (Shown for 'manual' or when typing for 'beneficiaries') */}
+        {recipientTab !== "own" && (
+          <div className="relative">
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              list="recent-destinations"
+              value={destinationAccount}
+              onChange={(e) => setDestinationAccount(e.target.value.replace(/\D/g, ""))}
+              placeholder="Enter 10 to 16 digit recipient account number"
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder-slate-400 focus:border-[#00A3C4] focus:bg-white focus:ring-2 focus:ring-cyan-100 outline-none transition"
+              maxLength={34}
+              required
+            />
+            <datalist id="recent-destinations">
+              {recentAccounts.map((acc, i) => (
+                <option key={i} value={acc} />
+              ))}
+            </datalist>
+          </div>
+        )}
 
         {/* Recipient Verification Status Badge */}
         {lookupLoading && (
@@ -496,16 +574,16 @@ function FormStep({
               <div className="flex items-center gap-2 font-medium text-emerald-950">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span>
-                  Recipient: <strong className="font-bold text-sm text-emerald-950">{recipientName}</strong>
+                  Recipient: <strong className="font-bold text-sm text-emerald-950">{isOwnAccount ? "My Account" : recipientName}</strong>
                 </span>
               </div>
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                Verified Account
+                {isOwnAccount ? "Own Account" : "Verified Account"}
               </span>
             </div>
 
-            {/* Anti-Scam / Limit Classification Badge */}
-            {transferLimits && (
+            {/* Anti-Scam / Limit Classification Badge (Only for external recipients) */}
+            {transferLimits && !isOwnAccount && (
               <div
                 className={`px-3 py-1.5 rounded-xl border text-[11px] flex items-center justify-between transition-all ${
                   isBeneficiary
@@ -590,6 +668,13 @@ function FormStep({
         </div>
 
         {/* Real-time Amount Limit Warnings & Guidance */}
+        {amountNum > 0 && isOwnAccount && !isInsufficientBalance && (
+          <div className="mt-3 p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs flex items-center gap-2 text-emerald-800 font-bold">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Own Account Transfer: No transfer limit applies. Available balance can be transferred freely.</span>
+          </div>
+        )}
+
         {amountNum > 0 && (isOverOneTimeLimit || isOverDailyLimit || isInsufficientBalance) && (
           <div className="mt-3 p-3.5 rounded-2xl bg-red-50 border border-red-200 text-xs space-y-2 transition-all">
             {isOverOneTimeLimit && (
@@ -741,6 +826,7 @@ interface ReviewStepProps {
   recipientName: string;
   amount: number;
   description: string;
+  isOwnAccount?: boolean;
   onConfirm: () => void;
   onBack: () => void;
 }
@@ -751,6 +837,7 @@ function ReviewStep({
   recipientName,
   amount,
   description,
+  isOwnAccount = false,
   onConfirm,
   onBack,
 }: ReviewStepProps) {
@@ -779,13 +866,13 @@ function ReviewStep({
             {/* Sender Box Card */}
             <div className="flex-1 bg-white dark:bg-[#0A192F] p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
               <span className="text-[10px] font-extrabold uppercase text-slate-600 dark:text-slate-400 tracking-wider block">
-                From (Sender)
+                {isOwnAccount ? "From (My Account)" : "From (Sender)"}
               </span>
-              <p className="text-sm font-mono font-black text-slate-900 dark:text-white truncate">
-                {sourceAccount}
+              <p className="text-sm font-black text-slate-900 dark:text-white truncate">
+                {isOwnAccount ? "My Account" : maskAccount(sourceAccount)}
               </p>
-              <span className="inline-block text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                Primary Account
+              <span className="inline-block text-[11px] font-mono font-medium text-emerald-600 dark:text-emerald-400">
+                {maskAccount(sourceAccount)}
               </span>
             </div>
 
@@ -799,13 +886,13 @@ function ReviewStep({
             {/* Recipient Box Card */}
             <div className="flex-1 bg-white dark:bg-[#0A192F] p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
               <span className="text-[10px] font-extrabold uppercase text-slate-600 dark:text-slate-400 tracking-wider block">
-                To (Recipient)
+                {isOwnAccount ? "To (My Account)" : "To (Recipient)"}
               </span>
               <p className="text-sm font-black text-slate-900 dark:text-white truncate">
-                {recipientName || "Verified Account"}
+                {isOwnAccount ? "My Account" : (recipientName || "Verified Account")}
               </p>
               <p className="text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 truncate">
-                {destinationAccount}
+                {maskAccount(destinationAccount)}
               </p>
             </div>
           </div>
@@ -945,6 +1032,7 @@ interface ReceiptStepProps {
   onSaveBeneficiary: () => Promise<void>;
   savingBeneficiary: boolean;
   beneficiarySaved: boolean;
+  isOwnAccount?: boolean;
 }
 
 function ReceiptStep({
@@ -956,6 +1044,7 @@ function ReceiptStep({
   onSaveBeneficiary,
   savingBeneficiary,
   beneficiarySaved,
+  isOwnAccount = false,
 }: ReceiptStepProps) {
   const [copied, setCopied] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
@@ -966,8 +1055,8 @@ function ReceiptStep({
   const [imageSaved, setImageSaved] = useState(false);
 
   const receiptData = React.useMemo(
-    () => mapP2PResponseToReceiptData(result, recipientName),
-    [result, recipientName]
+    () => mapP2PResponseToReceiptData(result, recipientName, isOwnAccount),
+    [result, recipientName, isOwnAccount]
   );
 
   const handlePrint = () => {
@@ -1150,8 +1239,8 @@ function ReceiptStep({
         showQr={true}
         actions={
           <>
-            {/* Quick Add to Beneficiary */}
-            {!isSavedBeneficiary && (
+            {/* Quick Add to Beneficiary (Hidden for Own Account Transfer) */}
+            {!isSavedBeneficiary && !isOwnAccount && (
               <button
                 type="button"
                 onClick={onSaveBeneficiary}
@@ -1172,7 +1261,7 @@ function ReceiptStep({
               </button>
             )}
 
-            {beneficiarySaved && (
+            {!isOwnAccount && beneficiarySaved && (
               <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 <span>Added to Beneficiaries successfully!</span>
@@ -1534,6 +1623,19 @@ export const P2PTransferForm = () => {
     }
   }, [amount, destinationAccount, sourceAccount]);
 
+  const isOwnAccountTransfer = Boolean(
+    (destinationAccount &&
+      accounts.some(
+        (a) => a.accountNumber === destinationAccount && a.accountNumber !== sourceAccount
+      )) ||
+      (transactionResult?.destinationAccountNumber &&
+        accounts.some(
+          (a) =>
+            a.accountNumber === transactionResult.destinationAccountNumber &&
+            a.accountNumber !== (transactionResult.sourceAccountNumber || sourceAccount)
+        ))
+  );
+
   const isSavedBeneficiary = Boolean(
     beneficiarySaved ||
       (transactionResult &&
@@ -1689,7 +1791,13 @@ export const P2PTransferForm = () => {
         `Insufficient available funds. You must maintain a minimum balance of ${minReserve.toLocaleString()} MMK. Net available for transfer is ${maxTransferable.toLocaleString()} MMK.`
       );
     }
-    if (transferLimits) {
+    const isOwnAccount = Boolean(
+      destinationAccount &&
+        accounts.some(
+          (a) => a.accountNumber === destinationAccount && a.accountNumber !== sourceAccount
+        )
+    );
+    if (transferLimits && !isOwnAccount) {
       const isBeneficiary = beneficiaries.some(
         (b) => b.beneficiaryAccountNumber === destinationAccount
       );
@@ -1944,6 +2052,7 @@ export const P2PTransferForm = () => {
           onSaveBeneficiary={handleSaveBeneficiary}
           savingBeneficiary={savingBeneficiary}
           beneficiarySaved={beneficiarySaved}
+          isOwnAccount={isOwnAccountTransfer}
         />
       ) : (
         /* 2-Column Responsive Layout for Step 1 & Step 2 */
@@ -2045,6 +2154,7 @@ export const P2PTransferForm = () => {
                 recipientName={recipientName}
                 amount={Number(amount)}
                 description={description}
+                isOwnAccount={isOwnAccountTransfer}
                 onConfirm={() => {
                   dispatch(clearTransferError());
                   setShowPinModal(true);
@@ -2096,7 +2206,17 @@ export const P2PTransferForm = () => {
               </div>
 
               {/* Multi-Tier Transfer Limit Monitor */}
-              {transferLimits && (
+              {destinationAccount && accounts.some((a) => a.accountNumber === destinationAccount && a.accountNumber !== sourceAccount) ? (
+                <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>Own Account Transfer</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-700 leading-relaxed font-medium">
+                    Transfer limits do not apply when moving funds between your own accounts.
+                  </p>
+                </div>
+              ) : transferLimits && (
                 <div className="p-3.5 rounded-2xl bg-cyan-50/70/50 border border-cyan-100 space-y-2.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-slate-700 flex items-center gap-1.5">

@@ -122,6 +122,11 @@ export interface LargeTransactionReport {
   transactionType: string;
   totalFlaggedCount: number;
   totalFlaggedVolume: number;
+  highRiskCount?: number;
+  medRiskCount?: number;
+  page?: number;
+  pageSize?: number;
+  totalPages?: number;
   items: LargeTransactionItem[];
 }
 
@@ -133,6 +138,8 @@ export interface TransactionDetailFilterParams {
   channel?: string;
   minAmount?: number;
   maxAmount?: number;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface TransactionDetail {
@@ -147,9 +154,34 @@ export interface TransactionDetail {
   currency: string;
 }
 
+export interface TransactionDetailPage {
+  rows: TransactionDetail[];
+  totalCount: number;
+  totalVolume: number;
+  totalFees: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export interface LargeTxFilterParams {
   startDate: string;
   endDate: string;
   threshold?: number;
   transactionType?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface ExportJobResponse {
+  jobId: string;
+  reportType: string;
+  format: string;
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  progress: number;
+  fileName: string;
+  downloadUrl?: string;
+  errorMessage?: string;
+  createdAt?: string;
+  completedAt?: string;
 }

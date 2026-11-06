@@ -2,20 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
 import AdminLayout from '../../../components/layout/AdminLayout';
-import {
-  staffApi,
-  announcementsApi,
-  systemRulesApi,
-  customersApi,
-  accountsApi,
-} from '../../../services/apiClient';
-import type {
-  StaffResponse,
-  AnnouncementResponse,
-  SystemParameterResponse,
-  CustomerResponse,
-  AccountResponse,
-} from '../../../types/api.types';
+import { adminDashboardApi } from '../../../services/apiClient';
+import type { AdminDashboardSummaryResponse } from '../../../types/api.types';
 import type { AxiosError } from 'axios';
 import { formatDate } from '../../../utils/formatDate';
 import ekarajCrown from '../../../assets/ekaraj-crown-transparent.png';
@@ -116,86 +104,34 @@ export default function AdminDashboardPage() {
   const { user, isAdmin, isAuditor, isTeller } = useAuth();
   const navigate = useNavigate();
 
-  const [staff, setStaff] = useState<StaffResponse[]>([]);
-  const [announcements, setAnnouncements] = useState<AnnouncementResponse[]>([]);
-  const [parameters, setParameters] = useState<SystemParameterResponse[]>([]);
-  const [customers, setCustomers] = useState<CustomerResponse[]>([]);
-  const [accounts, setAccounts] = useState<AccountResponse[]>([]);
-
-  const [staffLoading, setStaffLoading] = useState(!isTeller);
-  const [announcementsLoading, setAnnouncementsLoading] = useState(true);
-  const [rulesLoading, setRulesLoading] = useState(!isTeller);
-  const [customersLoading, setCustomersLoading] = useState(true);
-  const [accountsLoading, setAccountsLoading] = useState(true);
-
-  const [staffError, setStaffError] = useState<string | null>(null);
-  const [announcementsError, setAnnouncementsError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<AdminDashboardSummaryResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // 1. Staff List (ADMIN / AUDITOR)
-    if (!isTeller) {
-      setStaffLoading(true);
-      staffApi
-        .getAll()
-        .then((res) => setStaff(res.data))
-        .catch((err: AxiosError) => {
-          setStaffError(
-            err.response?.status === 403
-              ? 'Access denied.'
-              : 'Failed to load staff records.',
-          );
-        })
-        .finally(() => setStaffLoading(false));
-    }
+    setLoading(true);
+    setError(null);
 
-    // 2. Announcements
-    setAnnouncementsLoading(true);
-    const announcementFetch = isTeller
-      ? announcementsApi.getActive()
-      : announcementsApi.getAll();
-    announcementFetch
-      .then((res) => setAnnouncements(res.data))
+    adminDashboardApi
+      .getSummary()
+      .then((res) => {
+        setSummary(res.data);
+      })
       .catch((err: AxiosError) => {
-        setAnnouncementsError(
+        setError(
           err.response?.status === 403
-            ? 'Access denied.'
-            : 'Failed to load announcements.',
+            ? 'Access denied to dashboard metrics.'
+            : 'Failed to load dashboard summary.',
         );
       })
-      .finally(() => setAnnouncementsLoading(false));
-
-    // 3. System Rules (ADMIN / AUDITOR)
-    if (!isTeller) {
-      setRulesLoading(true);
-      systemRulesApi
-        .getAllParameters()
-        .then((res) => setParameters(res.data))
-        .catch(() => {})
-        .finally(() => setRulesLoading(false));
-    }
-
-    // 4. Customers
-    setCustomersLoading(true);
-    customersApi
-      .getAll()
-      .then((res) => setCustomers(res.data ?? []))
-      .catch(() => {})
-      .finally(() => setCustomersLoading(false));
-
-    // 5. Accounts
-    setAccountsLoading(true);
-    accountsApi
-      .getAll()
-      .then((res) => setAccounts(res.data ?? []))
-      .catch(() => {})
-      .finally(() => setAccountsLoading(false));
-  }, [isTeller]);
-
-  const activeStaff = staff.filter((s) => s.status === 'ACTIVE').length;
-  const activeAnnouncements = announcements.filter((a) => a.isActive).length;
-  const activeAccounts = accounts.filter((a) => a.status === 'ACTIVE').length;
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
 
   const currentRole = user?.roles?.[0]?.replace('ROLE_', '') ?? 'ADMIN';
+  const recentStaff = summary?.recentStaff ?? [];
+  const recentAnnouncements = summary?.recentAnnouncements ?? [];
 
   return (
     <AdminLayout pageTitle="Dashboard">
@@ -218,7 +154,7 @@ export default function AdminDashboardPage() {
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-white/15 backdrop-blur-md border border-white/20 text-white shadow-xs">
                   <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  System Operational Â· Node 01
+                  System Operational · Node 01
                 </span>
                 <span className="text-xs text-sky-200/90 font-medium">
                   {formatDate(new Date())}
@@ -226,7 +162,7 @@ export default function AdminDashboardPage() {
               </div>
 
               <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-tight">
-                Welcome back, {user?.username ?? 'Administrator'}! ðŸ‘‹
+                Welcome back, {user?.username ?? 'Administrator'}! 👋
               </h2>
 
               <p className="text-xs sm:text-sm text-sky-100/90 font-medium leading-relaxed">
@@ -250,6 +186,13 @@ export default function AdminDashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Global Error Banner */}
+        {error && (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50/90 p-4 text-xs font-semibold text-rose-700 backdrop-blur-md shadow-xs">
+            {error}
+          </div>
+        )}
 
         {/* ========================================================
             2. Clean & Sweet Quick Launch Action Chips
@@ -331,13 +274,19 @@ export default function AdminDashboardPage() {
           {/* Card 1: Staff Workforce */}
           <LiquidStatCard
             title="Staff Workforce"
-            value={staffLoading ? 'â€”' : staff.length}
-            subtitle={staffLoading ? 'Syncing staffâ€¦' : `${activeStaff} Active Officers`}
+            value={loading ? '—' : isTeller ? 'Directory' : (summary?.totalStaff ?? 0)}
+            subtitle={
+              loading
+                ? 'Syncing staff…'
+                : isTeller
+                ? 'Bank Personnel'
+                : `${summary?.activeStaff ?? 0} Active Officers`
+            }
             badge="Team"
             badgeColor="sky"
             gradient="bg-sky-400"
             iconBg="bg-gradient-to-br from-sky-400 to-blue-600 text-white"
-            onClick={() => navigate('/admin/staff')}
+            onClick={() => (!isTeller ? navigate('/admin/staff') : undefined)}
             icon={
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
@@ -348,8 +297,8 @@ export default function AdminDashboardPage() {
           {/* Card 2: Customers & Portfolios */}
           <LiquidStatCard
             title="Total Customers"
-            value={customersLoading ? 'â€”' : customers.length}
-            subtitle={customersLoading ? 'Loading recordsâ€¦' : 'Active Client Accounts'}
+            value={loading ? '—' : (summary?.totalCustomers ?? 0)}
+            subtitle={loading ? 'Loading records…' : 'Active Client Accounts'}
             badge="Verified"
             badgeColor="emerald"
             gradient="bg-emerald-400"
@@ -365,8 +314,8 @@ export default function AdminDashboardPage() {
           {/* Card 3: Bank Accounts */}
           <LiquidStatCard
             title="Bank Accounts"
-            value={accountsLoading ? 'â€”' : accounts.length}
-            subtitle={accountsLoading ? 'Syncing ledgerâ€¦' : `${activeAccounts} Normal Standing`}
+            value={loading ? '—' : (summary?.totalAccounts ?? 0)}
+            subtitle={loading ? 'Syncing ledger…' : `${summary?.activeAccounts ?? 0} Normal Standing`}
             badge="Accounts"
             badgeColor="purple"
             gradient="bg-indigo-400"
@@ -382,8 +331,8 @@ export default function AdminDashboardPage() {
           {/* Card 4: System Parameters */}
           <LiquidStatCard
             title="System Parameters"
-            value={rulesLoading ? 'â€”' : parameters.length}
-            subtitle={rulesLoading ? 'Loading rulesâ€¦' : 'Dynamic Business Rules'}
+            value={loading ? '—' : (summary?.totalParameters ?? 0)}
+            subtitle={loading ? 'Loading rules…' : 'Dynamic Business Rules'}
             badge="Rules"
             badgeColor="amber"
             gradient="bg-amber-400"
@@ -442,22 +391,24 @@ export default function AdminDashboardPage() {
                     className="text-xs font-bold text-sky-600 hover:text-sky-700 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <span>Manage Staff</span>
-                    <span>â†’</span>
+                    <span>→</span>
                   </button>
                 )}
               </div>
 
               <div className="divide-y divide-slate-100/70 pt-2">
-                {staffLoading ? (
+                {loading ? (
                   <div className="flex items-center justify-center py-12">
                     <div className="h-7 w-7 rounded-full border-2 border-sky-600/30 border-t-sky-600 animate-spin" />
                   </div>
-                ) : staffError ? (
-                  <div className="py-8 text-center text-xs font-semibold text-rose-500">{staffError}</div>
-                ) : staff.length === 0 ? (
+                ) : isTeller ? (
+                  <div className="py-8 text-center text-xs font-medium text-slate-400">
+                    Workforce management is restricted to Administrators & Auditors.
+                  </div>
+                ) : recentStaff.length === 0 ? (
                   <div className="py-8 text-center text-xs font-medium text-slate-400">No staff found.</div>
                 ) : (
-                  staff.slice(0, 5).map((s) => (
+                  recentStaff.slice(0, 5).map((s) => (
                     <div key={s.staffId} className="flex items-center gap-3 py-3 px-1 hover:bg-white/60 rounded-xl transition-colors">
                       <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-100 to-blue-100 text-sky-700 font-bold text-xs shrink-0 border border-sky-200/60 shadow-xs">
                         {s.username?.charAt(0).toUpperCase()}
@@ -467,7 +418,7 @@ export default function AdminDashboardPage() {
                           <p className="truncate text-xs font-bold text-slate-900">{s.fullName || s.username}</p>
                           <span className="text-[10px] font-mono text-slate-400">({s.staffNo})</span>
                         </div>
-                        <p className="truncate text-[11px] text-slate-400 font-medium">{s.email ?? 'â€”'}</p>
+                        <p className="truncate text-[11px] text-slate-400 font-medium">{s.email ?? '—'}</p>
                       </div>
                       <span
                         className={
@@ -486,7 +437,9 @@ export default function AdminDashboardPage() {
 
             <div className="pt-3 border-t border-slate-100 text-[11px] text-slate-400 flex items-center justify-between">
               <span>Showing up to 5 recent officers</span>
-              <span className="font-semibold text-slate-600">{activeStaff} active</span>
+              <span className="font-semibold text-slate-600">
+                {loading ? '—' : isTeller ? 'Restricted' : `${summary?.activeStaff ?? 0} active`}
+              </span>
             </div>
           </div>
 
@@ -511,25 +464,20 @@ export default function AdminDashboardPage() {
                     className="text-xs font-bold text-purple-600 hover:text-purple-700 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <span>Manage</span>
-                    <span>â†’</span>
+                    <span>→</span>
                   </button>
                 )}
               </div>
 
               <div className="divide-y divide-slate-100/70 pt-2">
-                {announcementsLoading ? (
+                {loading ? (
                   <div className="flex items-center justify-center py-12">
                     <div className="h-7 w-7 rounded-full border-2 border-purple-600/30 border-t-purple-600 animate-spin" />
                   </div>
-                ) : announcementsError ? (
-                  <div className="py-8 text-center text-xs font-semibold text-rose-500">{announcementsError}</div>
-                ) : announcements.length === 0 ? (
+                ) : recentAnnouncements.length === 0 ? (
                   <div className="py-8 text-center text-xs font-medium text-slate-400">No active notices broadcasted.</div>
                 ) : (
-                  [...announcements]
-                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                    .slice(0, 4)
-                    .map((a) => (
+                  recentAnnouncements.map((a) => (
                     <div key={a.announcementId} className="py-3 px-1 hover:bg-white/60 rounded-xl transition-colors">
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-xs font-bold text-slate-900 leading-snug">{a.title}</p>
@@ -548,7 +496,7 @@ export default function AdminDashboardPage() {
                         <span className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 font-bold">
                           {a.audience}
                         </span>
-                        <span>Â·</span>
+                        <span>·</span>
                         <span>{formatDate(a.createdAt)}</span>
                       </div>
                     </div>
@@ -558,7 +506,7 @@ export default function AdminDashboardPage() {
             </div>
 
             <div className="pt-3 border-t border-slate-100 text-[11px] text-slate-400 flex items-center justify-between">
-              <span>{activeAnnouncements} Active bulletins</span>
+              <span>{loading ? '—' : `${summary?.activeAnnouncements ?? 0} Active bulletins`}</span>
               <span className="font-semibold text-slate-600">Broadcast Channel 01</span>
             </div>
           </div>
@@ -578,7 +526,7 @@ export default function AdminDashboardPage() {
               <div>
                 <h4 className="text-xs font-bold text-slate-900 tracking-tight">Security & System Sentinel</h4>
                 <p className="text-[11px] text-slate-400 font-medium">
-                  Audit Logging Active Â· MySQL 8.0 Primary Replica Connected Â· Zero Detected Anomalies
+                  Audit Logging Active · MySQL 8.0 Primary Replica Connected · Zero Detected Anomalies
                 </p>
               </div>
             </div>
@@ -590,7 +538,7 @@ export default function AdminDashboardPage() {
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
               >
                 <span>Audit Logs</span>
-                <span>â†’</span>
+                <span>→</span>
               </button>
             </div>
           </div>

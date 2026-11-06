@@ -4,22 +4,26 @@ import com.corebanking.dto.CustomerDTO;
 import com.corebanking.dto.CustomerDetailResponseDTO;
 import com.corebanking.dto.CustomerResponseDTO;
 import com.corebanking.dto.CustomerUpdateDTO;
+import com.corebanking.entity.AuditLogs;
 import com.corebanking.entity.CompanyInfo;
 import com.corebanking.entity.CustomerCredentials;
 import com.corebanking.entity.Customers;
 import com.corebanking.entity.PersonalInfo;
 import com.corebanking.entity.StaffUsers;
+import com.corebanking.entity.enums.ActorType;
 import com.corebanking.entity.enums.CustomerStatus;
 import com.corebanking.entity.enums.CustomerType;
+import com.corebanking.entity.enums.StaffUserStatus;
 import com.corebanking.entity.enums.GenderType;
 import com.corebanking.entity.enums.MfaMethod;
 import com.corebanking.entity.enums.UpdatedByType;
+import com.corebanking.repository.AuditLogsRepository;
 import com.corebanking.repository.CompanyInfoRepository;
 import com.corebanking.repository.CustomerCredentialsRepository;
 import com.corebanking.repository.CustomerRepository;
 import com.corebanking.repository.PersonalInfoRepository;
 import com.corebanking.repository.StaffUsersRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -30,13 +34,12 @@ import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
@@ -45,29 +48,69 @@ public class CustomerService {
     private final CustomerCredentialsRepository customerCredentialsRepository;
     private final StaffUsersRepository staffUsersRepository;
     private final PasswordEncoder passwordEncoder;
-    private final CusEmailService cusEmailService; // Email Service ကို ထည့်သွင်းခြင်း
+    private final CusEmailService cusEmailService;
     private final AuditTrailService auditTrailService;
+    private AuditLogsRepository auditLogsRepository;
+
+    @Autowired
+    public CustomerService(
+            CustomerRepository customerRepository,
+            PersonalInfoRepository personalInfoRepository,
+            CompanyInfoRepository companyInfoRepository,
+            CustomerCredentialsRepository customerCredentialsRepository,
+            StaffUsersRepository staffUsersRepository,
+            PasswordEncoder passwordEncoder,
+            CusEmailService cusEmailService,
+            @Autowired(required = false) AuditTrailService auditTrailService,
+            @Autowired(required = false) AuditLogsRepository auditLogsRepository) {
+        this.customerRepository = customerRepository;
+        this.personalInfoRepository = personalInfoRepository;
+        this.companyInfoRepository = companyInfoRepository;
+        this.customerCredentialsRepository = customerCredentialsRepository;
+        this.staffUsersRepository = staffUsersRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.cusEmailService = cusEmailService;
+        this.auditTrailService = auditTrailService;
+        this.auditLogsRepository = auditLogsRepository;
+    }
+
+    public CustomerService(
+            CustomerRepository customerRepository,
+            PersonalInfoRepository personalInfoRepository,
+            CompanyInfoRepository companyInfoRepository,
+            CustomerCredentialsRepository customerCredentialsRepository,
+            StaffUsersRepository staffUsersRepository,
+            PasswordEncoder passwordEncoder,
+            CusEmailService cusEmailService,
+            AuditTrailService auditTrailService) {
+        this(customerRepository, personalInfoRepository, companyInfoRepository, customerCredentialsRepository,
+                staffUsersRepository, passwordEncoder, cusEmailService, auditTrailService, null);
+    }
+
+    public CustomerService(
+            CustomerRepository customerRepository,
+            PersonalInfoRepository personalInfoRepository,
+            CompanyInfoRepository companyInfoRepository,
+            CustomerCredentialsRepository customerCredentialsRepository,
+            StaffUsersRepository staffUsersRepository,
+            PasswordEncoder passwordEncoder,
+            CusEmailService cusEmailService) {
+        this(customerRepository, personalInfoRepository, companyInfoRepository, customerCredentialsRepository,
+                staffUsersRepository, passwordEncoder, cusEmailService, null, null);
+    }
+
+    public void setAuditLogsRepository(AuditLogsRepository auditLogsRepository) {
+        this.auditLogsRepository = auditLogsRepository;
+    }
 
     /**
      * ၁။ Customer Profile (Personal/Company Info) နှင့် CustomerCredentials ကို တစ်ပြိုင်နက် ဖန်တီးသိမ်းဆည်းပြီး Email ပေးပို့ခြင်း
      */
     @Transactional
     public CustomerResponseDTO createCustomer(CustomerDTO dto) {
-        // Authenticated Staff Record ကို ရယူခြင်း
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String currentStaffUsername = (auth != null && auth.getName() != null && !auth.getName().equalsIgnoreCase("anonymousUser"))
-                ? auth.getName() : null;
-
-        StaffUsers staff = null;
-        if (currentStaffUsername != null) {
-            staff = staffUsersRepository.findByUsername(currentStaffUsername).orElse(null);
-        }
+        StaffUsers staff = resolveCurrentStaffUser();
         if (staff == null) {
-            staff = staffUsersRepository.findByUsername("admin.nay")
-                    .or(() -> staffUsersRepository.findByUsername("teller.zin"))
-                    .or(() -> staffUsersRepository.findByUsername("admin"))
-                    .or(() -> staffUsersRepository.findFirstByStatus(com.corebanking.entity.enums.StaffUserStatus.ACTIVE))
-                    .orElseThrow(() -> new RuntimeException("Authenticated staff record not found"));
+            throw new RuntimeException("Authenticated staff record not found");
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -285,7 +328,7 @@ public class CustomerService {
                 .phone(savedCustomer.getPhone())
                 .status(savedCustomer.getStatus().name())
                 .createdAt(savedCustomer.getCreatedAt())
-                .temporaryPassword(autoGeneratedPassword)
+                .temporaryPassword(null)
                 .build();
     }
 
@@ -294,7 +337,7 @@ public class CustomerService {
      */
     @Transactional(readOnly = true)
     public List<CustomerResponseDTO> getAllCustomers() {
-        return customerRepository.findAll().stream()
+        return customerRepository.findAllWithPersonalInfo().stream()
                 .map(cust -> CustomerResponseDTO.builder()
                         .customerCode(cust.getCustomerCode())
                         .customerType(cust.getCustomerType().name())
@@ -309,54 +352,131 @@ public class CustomerService {
     }
 
     /**
-     * ၃။ Customer အချက်အလက် ပြင်ဆင်မွမ်းမံသော Method
+     * ၃။ Customer Profile Update Method
+     * Updates specific customer details (Phone Number, Occupation, Date of Birth).
+     * Strictly protects core identifiers (customerCode, nrc, email, account numbers).
+     * Compares incoming values against existing customer entity values.
+     * Only persists and records an audit log into the existing audit mechanism if actual changes occurred.
      */
     @Transactional
-    public void updateCustomer(String customerCode, CustomerUpdateDTO dto, Long staffId) {
+    public void updateCustomerProfile(String customerCode, CustomerUpdateDTO dto, StaffUsers currentStaff) {
         Customers customer = customerRepository.findByCustomerCode(customerCode)
                 .orElseThrow(() -> new RuntimeException("Customer not found with code: " + customerCode));
 
-        LocalDateTime now = LocalDateTime.now();
+        List<String> changeDescriptions = new ArrayList<>();
+        boolean changed = false;
 
-        if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
-            customer.setEmail(dto.getEmail());
-        }
-        if (dto.getPhone() != null && !dto.getPhone().isBlank()) {
-            customer.setPhone(dto.getPhone());
-        }
-        customer.setUpdatedAt(now);
-
-        if (customer.getCustomerType() == CustomerType.PERSONAL && customer.getPersonalInfo() != null) {
-            PersonalInfo personalInfo = customer.getPersonalInfo();
-            if (dto.getPhone() != null) personalInfo.setPhone(dto.getPhone());
-            if (dto.getEmail() != null) personalInfo.setEmail(dto.getEmail());
-            if (dto.getAddress() != null) personalInfo.setAddress(dto.getAddress());
-            if (dto.getOccupation() != null) personalInfo.setOccupation(dto.getOccupation());
-
-        } else if (customer.getCustomerType() == CustomerType.COMPANY && customer.getCompanyInfo() != null) {
-            CompanyInfo companyInfo = customer.getCompanyInfo();
-            if (dto.getPhone() != null) companyInfo.setCompanyPhone(dto.getPhone());
-            if (dto.getEmail() != null) companyInfo.setCompanyEmail(dto.getEmail());
-            if (dto.getAddress() != null) companyInfo.setAddress(dto.getAddress());
-            if (dto.getBusinessType() != null) companyInfo.setBusinessType(dto.getBusinessType());
+        // 1. Phone Number update
+        if (dto.getPhone() != null && !dto.getPhone().trim().isEmpty()) {
+            String newPhone = dto.getPhone().trim();
+            String oldPhone = customer.getPhone();
+            if (!newPhone.equals(oldPhone)) {
+                changeDescriptions.add(String.format("Phone: '%s' -> '%s'", oldPhone != null ? oldPhone : "", newPhone));
+                customer.setPhone(newPhone);
+                if (customer.getPersonalInfo() != null) {
+                    customer.getPersonalInfo().setPhone(newPhone);
+                }
+                if (customer.getCompanyInfo() != null) {
+                    customer.getCompanyInfo().setCompanyPhone(newPhone);
+                }
+                changed = true;
+            }
         }
 
-        Customers updatedCustomer = customerRepository.save(customer);
+        // 2. Occupation update
+        PersonalInfo personalInfo = customer.getPersonalInfo();
+        if (personalInfo == null && customer.getCustomerType() == CustomerType.PERSONAL) {
+            personalInfo = new PersonalInfo();
+            customer.setPersonalInfo(personalInfo);
+        }
 
-        java.util.Map<String, Object> newCustUpdateSnapshot = new java.util.LinkedHashMap<>();
-        newCustUpdateSnapshot.put("customerCode", updatedCustomer.getCustomerCode());
-        newCustUpdateSnapshot.put("email", updatedCustomer.getEmail());
-        newCustUpdateSnapshot.put("phone", updatedCustomer.getPhone());
+        if (dto.getOccupation() != null && !dto.getOccupation().trim().isEmpty()) {
+            String newOccupation = dto.getOccupation().trim();
+            String oldOccupation = personalInfo != null ? personalInfo.getOccupation() : null;
+            if (!newOccupation.equals(oldOccupation)) {
+                changeDescriptions.add(String.format("Occupation: '%s' -> '%s'", oldOccupation != null ? oldOccupation : "", newOccupation));
+                if (personalInfo != null) {
+                    personalInfo.setOccupation(newOccupation);
+                }
+                changed = true;
+            }
+        }
 
-        if (auditTrailService != null) auditTrailService.logDataChange(
-                "CUSTOMER",
-                "UPDATE_CUSTOMER",
-                "CUSTOMER",
-                updatedCustomer.getCustomerCode(),
-                null,
-                newCustUpdateSnapshot,
-                "Updated customer details: " + updatedCustomer.getCustomerCode()
-        );
+        // 3. Date of Birth update
+        if (dto.getDateOfBirth() != null) {
+            LocalDate newDob = dto.getDateOfBirth();
+            LocalDate oldDob = personalInfo != null ? personalInfo.getDateOfBirth() : null;
+            if (!newDob.equals(oldDob)) {
+                changeDescriptions.add(String.format("DateOfBirth: '%s' -> '%s'", oldDob != null ? oldDob.toString() : "", newDob.toString()));
+                if (personalInfo != null) {
+                    personalInfo.setDateOfBirth(newDob);
+                }
+                changed = true;
+            }
+        }
+
+        // Only persist and audit if actual changes occurred
+        if (changed) {
+            customer.setUpdatedAt(LocalDateTime.now());
+            Customers savedCustomer = customerRepository.save(customer);
+
+            // Resolve acting staff member ensuring it is NEVER null
+            StaffUsers actingStaff = currentStaff != null ? currentStaff : resolveCurrentStaffUser();
+            if (actingStaff == null && staffUsersRepository != null) {
+                actingStaff = staffUsersRepository.findFirstByStatus(StaffUserStatus.ACTIVE)
+                        .orElseGet(() -> staffUsersRepository.findAll().stream().findFirst().orElse(null));
+            }
+            if (actingStaff != null && actingStaff.getStaffId() != null && staffUsersRepository != null) {
+                actingStaff = staffUsersRepository.findById(actingStaff.getStaffId()).orElse(actingStaff);
+            }
+
+            String details = String.join("; ", changeDescriptions);
+            String safeDescription = details.length() > 255 ? details.substring(0, 255) : details;
+
+            AuditLogs.AuditLogsBuilder auditLogBuilder = AuditLogs.builder()
+                    .actorType(actingStaff != null ? ActorType.STAFF : ActorType.SYSTEM)
+                    .actionCategory("CUSTOMER")
+                    .actionType("CUSTOMER_PROFILE_UPDATE")
+                    .entityType("CUSTOMERS")
+                    .entityId(savedCustomer.getCustomerCode())
+                    .description(safeDescription)
+                    .createdAt(LocalDateTime.now());
+
+            if (actingStaff != null) {
+                auditLogBuilder.actorStaff(actingStaff);
+            }
+
+            AuditLogs auditLog = auditLogBuilder.build();
+
+            try {
+                if (auditLogsRepository != null) {
+                    auditLogsRepository.save(auditLog);
+                } else if (auditTrailService != null) {
+                    auditTrailService.logDirect(auditLog);
+                }
+            } catch (Exception ex) {
+                if (auditTrailService != null) {
+                    auditTrailService.logDirect(auditLog);
+                }
+            }
+        }
+    }
+
+    /**
+     * Overloaded method accepting acting staff ID (Long) for backward compatibility.
+     */
+    @Transactional
+    public void updateCustomerProfile(String customerCode, CustomerUpdateDTO dto, Long currentStaffId) {
+        StaffUsers staff = resolveCurrentStaffUser();
+        updateCustomerProfile(customerCode, dto, staff);
+    }
+
+    /**
+     * Backward-compatible delegation method.
+     */
+    @Transactional
+    public void updateCustomer(String customerCode, CustomerUpdateDTO dto, Long staffId) {
+        updateCustomerProfile(customerCode, dto, staffId);
     }
 
     /**
@@ -453,6 +573,7 @@ public class CustomerService {
 
         return new String(array);
     }
+
     /**
      * Customer KYC Status ကို Database ထဲတွင် Update လုပ်ခြင်း
      */
@@ -481,5 +602,37 @@ public class CustomerService {
                 java.util.Map.of("status", resolvedStatus.name()),
                 "Updated customer KYC status from " + oldStatus + " to " + resolvedStatus + " for " + customer.getCustomerCode()
         );
+    }
+
+    /**
+     * Resolves currently authenticated staff user from SecurityContextHolder or falls back to active staff.
+     */
+    /**
+     * Authenticated Staff ကို ရှာဖွေပြီး မတွေ့ပါက Database ထဲရှိ Active Staff ကို Fallback အဖြစ် ရယူခြင်း
+     * (null object pass ဖြစ်ပြီး Exception မတက်စေရန် ကာကွယ်ပေးပါသည်)
+     */
+    private StaffUsers resolveCurrentStaffUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String currentStaffUsername = (auth != null && auth.getName() != null && !auth.getName().equalsIgnoreCase("anonymousUser"))
+                ? auth.getName() : null;
+
+        StaffUsers staff = null;
+        if (currentStaffUsername != null && staffUsersRepository != null) {
+            staff = staffUsersRepository.findByUsername(currentStaffUsername).orElse(null);
+            if (staff == null) {
+                try {
+                    UUID uuid = UUID.fromString(currentStaffUsername);
+                    staff = staffUsersRepository.findById(uuid).orElse(null);
+                } catch (Exception ignored) {}
+            }
+        }
+        if (staff == null) {
+            staff = staffUsersRepository.findByUsername("admin.nay")
+                    .or(() -> staffUsersRepository.findByUsername("teller.zin"))
+                    .or(() -> staffUsersRepository.findByUsername("admin"))
+                    .or(() -> staffUsersRepository.findFirstByStatus(com.corebanking.entity.enums.StaffUserStatus.ACTIVE))
+                    .orElseGet(() -> staffUsersRepository.findAll().stream().findFirst().orElse(null));
+        }
+        return staff;
     }
 }

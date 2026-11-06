@@ -4,6 +4,9 @@ import com.corebanking.dto.CustomerDTO;
 import com.corebanking.dto.CustomerResponseDTO;
 import com.corebanking.exception.GlobalExceptionHandler;
 import com.corebanking.service.CustomerService;
+import com.corebanking.repository.StaffUsersRepository;
+import com.corebanking.entity.StaffUsers;
+import com.corebanking.dto.CustomerUpdateDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,7 +21,11 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -28,6 +35,9 @@ class CustomerControllerTest {
 
     @Mock
     private CustomerService customerService;
+
+    @Mock
+    private StaffUsersRepository staffUsersRepository;
 
     @InjectMocks
     private CustomerController customerController;
@@ -161,5 +171,47 @@ class CustomerControllerTest {
                 .andExpect(status().is4xxClientError())
                 .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
                 .andExpect(jsonPath("$.message", containsString("Email address is already registered")));
+    }
+
+    @Test
+    @DisplayName("testUpdateCustomerProfile_Success: PUT /api/customers/{code} updates profile and returns 200 OK")
+    void testUpdateCustomerProfile_Success() throws Exception {
+        String customerCode = "CUST-20261102-1001";
+        doNothing().when(customerService).updateCustomerProfile(eq(customerCode), any(CustomerUpdateDTO.class), nullable(StaffUsers.class));
+
+        String jsonPayload = """
+                {
+                    "phone": "09123456789",
+                    "occupation": "Software Architect",
+                    "dateOfBirth": "1990-01-01"
+                }
+                """;
+
+        mockMvc.perform(put("/api/customers/" + customerCode)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SUCCESS"))
+                .andExpect(jsonPath("$.customerCode").value(customerCode))
+                .andExpect(jsonPath("$.message").value("Customer updated successfully"));
+    }
+
+    @Test
+    @DisplayName("testUpdateCustomerProfile_InvalidPhone_Returns400: PUT with invalid phone format returns 400 Bad Request")
+    void testUpdateCustomerProfile_InvalidPhone_Returns400() throws Exception {
+        String customerCode = "CUST-20261102-1001";
+
+        // Invalid phone with letters
+        String jsonPayload = """
+                {
+                    "phone": "invalid-phone-123"
+                }
+                """;
+
+        mockMvc.perform(put("/api/customers/" + customerCode)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 }

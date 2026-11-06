@@ -16,6 +16,43 @@ interface DataTableProps<T extends object> {
   onPageChange?: (p: number) => void;
 }
 
+type PaginationItem = number | 'ellipsis-left' | 'ellipsis-right';
+
+function getPaginationItems(currentPage: number, totalPages: number): PaginationItem[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+
+  // Near the start (e.g. pages 1, 2, 3, 4)
+  if (currentPage <= 4) {
+    return [1, 2, 3, 4, 5, 'ellipsis-right', totalPages];
+  }
+
+  // Near the end (e.g. currentPage in [totalPages - 3, totalPages])
+  if (currentPage >= totalPages - 3) {
+    return [
+      1,
+      'ellipsis-left',
+      totalPages - 4,
+      totalPages - 3,
+      totalPages - 2,
+      totalPages - 1,
+      totalPages,
+    ];
+  }
+
+  // In the middle
+  return [
+    1,
+    'ellipsis-left',
+    currentPage - 1,
+    currentPage,
+    currentPage + 1,
+    'ellipsis-right',
+    totalPages,
+  ];
+}
+
 function DataTable<T extends object>({
   columns,
   data,
@@ -93,61 +130,119 @@ function DataTable<T extends object>({
       </div>
 
       {/* Responsive Pagination */}
-      {totalPages !== undefined && totalPages > 1 && onPageChange && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 px-1">
-          <div className="text-xs text-slate-500 font-medium">
-            Showing page <span className="font-semibold text-slate-800">{page ?? 1}</span> of{' '}
-            <span className="font-semibold text-slate-800">{totalPages}</span>
-          </div>
+      {totalPages !== undefined && totalPages > 1 && onPageChange && (() => {
+        const currentPage = Math.max(1, Math.min(page ?? 1, totalPages));
+        const paginationItems = getPaginationItems(currentPage, totalPages);
 
-          <div className="flex items-center gap-1.5 flex-wrap justify-center">
-            <button
-              type="button"
-              className="px-2.5 py-1.5 rounded-md border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-              onClick={() => onPageChange(Math.max(1, (page ?? 1) - 1))}
-              disabled={(page ?? 1) <= 1}
-            >
-              Prev
-            </button>
-
-            {/* Mobile simplified page indicator vs desktop number pills */}
-            <div className="hidden sm:flex items-center gap-1">
-              {Array.from({ length: Math.min(totalPages, 7) }, (_, idx) => {
-                const pg = idx + 1;
-                const isActive = pg === page;
-                return (
-                  <button
-                    key={pg}
-                    type="button"
-                    className={`min-w-[28px] h-7 px-2 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
-                      isActive
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                    }`}
-                    onClick={() => onPageChange(pg)}
-                  >
-                    {pg}
-                  </button>
-                );
-              })}
-              {totalPages > 7 && (
-                <span className="px-1 text-slate-400 text-xs font-medium select-none">
-                  ... {totalPages}
-                </span>
-              )}
+        return (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 px-1">
+            <div className="text-xs text-slate-500 font-medium">
+              Showing page <span className="font-semibold text-slate-800">{currentPage}</span> of{' '}
+              <span className="font-semibold text-slate-800">{totalPages}</span>
             </div>
 
-            <button
-              type="button"
-              className="px-2.5 py-1.5 rounded-md border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-              onClick={() => onPageChange(Math.min(totalPages, (page ?? 1) + 1))}
-              disabled={(page ?? 1) >= totalPages}
-            >
-              Next
-            </button>
+            <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap justify-center">
+              {/* First Page button */}
+              <button
+                type="button"
+                className="hidden md:inline-flex px-2 py-1.5 rounded-md border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                onClick={() => onPageChange(1)}
+                disabled={currentPage <= 1}
+                title="First Page"
+              >
+                First
+              </button>
+
+              {/* Prev Page button */}
+              <button
+                type="button"
+                className="px-2.5 py-1.5 rounded-md border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+                disabled={currentPage <= 1}
+                title="Previous Page"
+              >
+                Prev
+              </button>
+
+              {/* Mobile simplified page indicator */}
+              <span className="sm:hidden text-xs font-medium text-slate-600 px-1">
+                {currentPage} / {totalPages}
+              </span>
+
+              {/* Desktop number pills */}
+              <div className="hidden sm:flex items-center gap-1">
+                {paginationItems.map((item, idx) => {
+                  if (item === 'ellipsis-left') {
+                    return (
+                      <button
+                        key={`ellipsis-left-${idx}`}
+                        type="button"
+                        title="Jump back 5 pages"
+                        className="min-w-[28px] h-7 px-1.5 rounded-md text-xs font-semibold text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                        onClick={() => onPageChange(Math.max(1, currentPage - 5))}
+                      >
+                        ...
+                      </button>
+                    );
+                  }
+
+                  if (item === 'ellipsis-right') {
+                    return (
+                      <button
+                        key={`ellipsis-right-${idx}`}
+                        type="button"
+                        title="Jump forward 5 pages"
+                        className="min-w-[28px] h-7 px-1.5 rounded-md text-xs font-semibold text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                        onClick={() => onPageChange(Math.min(totalPages, currentPage + 5))}
+                      >
+                        ...
+                      </button>
+                    );
+                  }
+
+                  const isActive = item === currentPage;
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      className={`min-w-[28px] h-7 px-2 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                        isActive
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                      }`}
+                      onClick={() => onPageChange(item)}
+                    >
+                      {item}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Next Page button */}
+              <button
+                type="button"
+                className="px-2.5 py-1.5 rounded-md border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage >= totalPages}
+                title="Next Page"
+              >
+                Next
+              </button>
+
+              {/* Last Page button */}
+              <button
+                type="button"
+                className="hidden md:inline-flex px-2 py-1.5 rounded-md border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                onClick={() => onPageChange(totalPages)}
+                disabled={currentPage >= totalPages}
+                title="Last Page"
+              >
+                Last
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

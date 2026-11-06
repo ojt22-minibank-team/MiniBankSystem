@@ -283,6 +283,18 @@ export interface CustomerCreateResponse extends CustomerResponse {
   temporaryPassword?: string;
 }
 
+export interface CustomerUpdateDTO {
+  phone?: string;
+  occupation?: string;
+  dateOfBirth?: string;
+}
+
+export interface CustomerUpdateResponse {
+  status: string;
+  message: string;
+  customerCode: string;
+}
+
 // --- Account DTOs ---
 
 export interface AccountResponse {
@@ -419,4 +431,17 @@ export interface OtcAccountLimitResponse {
   maxDailyWithdrawal: number;
   todayWithdrawnAmount: number;
   remainingDailyLimit: number;
+}
+
+
+export interface AdminDashboardSummaryResponse {
+  totalStaff: number;
+  activeStaff: number;
+  totalCustomers: number;
+  totalAccounts: number;
+  activeAccounts: number;
+  totalParameters: number;
+  activeAnnouncements: number;
+  recentStaff: StaffResponse[];
+  recentAnnouncements: AnnouncementResponse[];
 }
