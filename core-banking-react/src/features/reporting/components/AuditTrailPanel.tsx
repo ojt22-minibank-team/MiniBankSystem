@@ -4,13 +4,12 @@ import type {
   AuditTrailPage,
   AuditFilterParams,
 } from '../../../types/reports/reporting.types';
-import {
-  fetchAuditTrailLogs,
-  exportAuditTrail,
-} from '../../../services/reportingService';
+import { fetchAuditTrailLogs } from '../../../services/reportingService';
 import DataTable, { type Column } from './DataTable';
 import ExportButtons from './ExportButtons';
 import MetricCard from './MetricCard';
+import { ExportNotificationBanner } from './ExportNotificationBanner';
+import { useAsyncExport } from '../hooks/useAsyncExport';
 
 interface Props {
   staffId: string;
@@ -55,6 +54,15 @@ const AuditTrailPanel: React.FC<Props> = ({
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const {
+    exportLoading,
+    exportNotice,
+    activeJob,
+    exportError,
+    triggerExport,
+    clearNotice,
+  } = useAsyncExport('AUDIT_TRAIL');
 
   const params: AuditFilterParams = {
     staffId,
@@ -212,10 +220,10 @@ const AuditTrailPanel: React.FC<Props> = ({
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <ExportButtons
-              onExportCsv={() => exportAuditTrail({ ...params, pageSize: 1000 }, 'csv')}
-              onExportExcel={() => exportAuditTrail({ ...params, pageSize: 1000 }, 'excel')}
-              onExportPdf={() => exportAuditTrail({ ...params, pageSize: 1000 }, 'pdf')}
-              loading={loading}
+              onExportCsv={() => triggerExport(params, 'csv')}
+              onExportExcel={() => triggerExport(params, 'excel')}
+              onExportPdf={() => triggerExport(params, 'pdf')}
+              loading={exportLoading}
             />
             <button
               onClick={() => load(1)}
@@ -226,6 +234,15 @@ const AuditTrailPanel: React.FC<Props> = ({
             </button>
           </div>
         </div>
+
+        {/* Enterprise Async background export banner */}
+        <ExportNotificationBanner
+          exportNotice={exportNotice}
+          exportLoading={exportLoading}
+          activeJob={activeJob}
+          exportError={exportError}
+          onDismiss={clearNotice}
+        />
 
         {error && (
           <div className="p-3 sm:p-4 text-xs sm:text-sm text-red-600 bg-red-50 border-b border-red-100">

@@ -58,37 +58,43 @@
     <columnHeader>
         <band height="22">
             <staticText>
-                <reportElement mode="Opaque" backcolor="#E2E8F0" x="0" y="0" width="110" height="22"/>
+                <reportElement mode="Opaque" backcolor="#E2E8F0" x="0" y="0" width="30" height="22"/>
+                <box><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font size="8" isBold="true"/></textElement>
+                <text><![CDATA[No]]></text>
+            </staticText>
+            <staticText>
+                <reportElement mode="Opaque" backcolor="#E2E8F0" x="30" y="0" width="105" height="22"/>
                 <box leftPadding="3"><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
                 <textElement verticalAlignment="Middle"><font size="8" isBold="true"/></textElement>
                 <text><![CDATA[Reference]]></text>
             </staticText>
             <staticText>
-                <reportElement mode="Opaque" backcolor="#E2E8F0" x="110" y="0" width="95" height="22"/>
+                <reportElement mode="Opaque" backcolor="#E2E8F0" x="135" y="0" width="90" height="22"/>
                 <box leftPadding="3"><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
                 <textElement verticalAlignment="Middle"><font size="8" isBold="true"/></textElement>
                 <text><![CDATA[Date & Time]]></text>
             </staticText>
             <staticText>
-                <reportElement mode="Opaque" backcolor="#E2E8F0" x="205" y="0" width="90" height="22"/>
+                <reportElement mode="Opaque" backcolor="#E2E8F0" x="225" y="0" width="85" height="22"/>
                 <box rightPadding="4"><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
                 <textElement textAlignment="Right" verticalAlignment="Middle"><font size="8" isBold="true"/></textElement>
                 <text><![CDATA[Amount]]></text>
             </staticText>
             <staticText>
-                <reportElement mode="Opaque" backcolor="#E2E8F0" x="295" y="0" width="70" height="22"/>
+                <reportElement mode="Opaque" backcolor="#E2E8F0" x="310" y="0" width="65" height="22"/>
                 <box rightPadding="4"><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
                 <textElement textAlignment="Right" verticalAlignment="Middle"><font size="8" isBold="true"/></textElement>
                 <text><![CDATA[Fee]]></text>
             </staticText>
             <staticText>
-                <reportElement mode="Opaque" backcolor="#E2E8F0" x="365" y="0" width="95" height="22"/>
+                <reportElement mode="Opaque" backcolor="#E2E8F0" x="375" y="0" width="90" height="22"/>
                 <box leftPadding="3"><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
                 <textElement verticalAlignment="Middle"><font size="8" isBold="true"/></textElement>
                 <text><![CDATA[Source Account]]></text>
             </staticText>
             <staticText>
-                <reportElement mode="Opaque" backcolor="#E2E8F0" x="460" y="0" width="95" height="22"/>
+                <reportElement mode="Opaque" backcolor="#E2E8F0" x="465" y="0" width="90" height="22"/>
                 <box leftPadding="3"><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
                 <textElement verticalAlignment="Middle"><font size="8" isBold="true"/></textElement>
                 <text><![CDATA[Dest Account]]></text>
@@ -100,13 +106,13 @@
                 <text><![CDATA[Status]]></text>
             </staticText>
             <staticText>
-                <reportElement mode="Opaque" backcolor="#E2E8F0" x="630" y="0" width="100" height="22"/>
+                <reportElement mode="Opaque" backcolor="#E2E8F0" x="630" y="0" width="95" height="22"/>
                 <box leftPadding="3"><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
                 <textElement verticalAlignment="Middle"><font size="8" isBold="true"/></textElement>
                 <text><![CDATA[Channel]]></text>
             </staticText>
             <staticText>
-                <reportElement mode="Opaque" backcolor="#E2E8F0" x="730" y="0" width="72" height="22"/>
+                <reportElement mode="Opaque" backcolor="#E2E8F0" x="725" y="0" width="77" height="22"/>
                 <box leftPadding="3"><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
                 <textElement verticalAlignment="Middle"><font size="8" isBold="true"/></textElement>
                 <text><![CDATA[Currency]]></text>
@@ -117,37 +123,43 @@
     <detail>
         <band height="18">
             <textField>
-                <reportElement x="0" y="0" width="110" height="18"/>
+                <reportElement x="0" y="0" width="30" height="18"/>
+                <box><pen lineWidth="0.5" lineColor="#E2E8F0"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font size="7"/></textElement>
+                <textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="30" y="0" width="105" height="18"/>
                 <box leftPadding="3"><pen lineWidth="0.5" lineColor="#E2E8F0"/></box>
                 <textElement verticalAlignment="Middle"><font size="7"/></textElement>
                 <textFieldExpression><![CDATA[$F{ref}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="110" y="0" width="95" height="18"/>
+                <reportElement x="135" y="0" width="90" height="18"/>
                 <box leftPadding="3"><pen lineWidth="0.5" lineColor="#E2E8F0"/></box>
                 <textElement verticalAlignment="Middle"><font size="7"/></textElement>
                 <textFieldExpression><![CDATA[$F{date} != null ? $F{date}.toString() : ""]]></textFieldExpression>
             </textField>
             <textField pattern="#,##0.00">
-                <reportElement x="205" y="0" width="90" height="18"/>
+                <reportElement x="225" y="0" width="85" height="18"/>
                 <box rightPadding="4"><pen lineWidth="0.5" lineColor="#E2E8F0"/></box>
                 <textElement textAlignment="Right" verticalAlignment="Middle"><font size="7" isBold="true"/></textElement>
                 <textFieldExpression><![CDATA[$F{amount}]]></textFieldExpression>
             </textField>
             <textField pattern="#,##0.00">
-                <reportElement x="295" y="0" width="70" height="18"/>
+                <reportElement x="310" y="0" width="65" height="18"/>
                 <box rightPadding="4"><pen lineWidth="0.5" lineColor="#E2E8F0"/></box>
                 <textElement textAlignment="Right" verticalAlignment="Middle"><font size="7"/></textElement>
                 <textFieldExpression><![CDATA[$F{fee}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="365" y="0" width="95" height="18"/>
+                <reportElement x="375" y="0" width="90" height="18"/>
                 <box leftPadding="3"><pen lineWidth="0.5" lineColor="#E2E8F0"/></box>
                 <textElement verticalAlignment="Middle"><font size="7"/></textElement>
                 <textFieldExpression><![CDATA[$F{sourceAccount}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="460" y="0" width="95" height="18"/>
+                <reportElement x="465" y="0" width="90" height="18"/>
                 <box leftPadding="3"><pen lineWidth="0.5" lineColor="#E2E8F0"/></box>
                 <textElement verticalAlignment="Middle"><font size="7"/></textElement>
                 <textFieldExpression><![CDATA[$F{destAccount}]]></textFieldExpression>
@@ -159,13 +171,13 @@
                 <textFieldExpression><![CDATA[$F{status}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="630" y="0" width="100" height="18"/>
+                <reportElement x="630" y="0" width="95" height="18"/>
                 <box leftPadding="3"><pen lineWidth="0.5" lineColor="#E2E8F0"/></box>
                 <textElement verticalAlignment="Middle"><font size="7"/></textElement>
                 <textFieldExpression><![CDATA[$F{channel}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="730" y="0" width="72" height="18"/>
+                <reportElement x="725" y="0" width="77" height="18"/>
                 <box leftPadding="3"><pen lineWidth="0.5" lineColor="#E2E8F0"/></box>
                 <textElement verticalAlignment="Middle"><font size="7"/></textElement>
                 <textFieldExpression><![CDATA[$F{currency}]]></textFieldExpression>
@@ -176,14 +188,14 @@
     <summary>
         <band height="25">
             <staticText>
-                <reportElement x="0" y="5" width="205" height="20"/>
+                <reportElement x="0" y="5" width="225" height="20"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
                     <font size="8" isBold="true"/>
                 </textElement>
                 <text><![CDATA[Grand Total:]]></text>
             </staticText>
             <textField pattern="#,##0.00">
-                <reportElement x="205" y="5" width="90" height="20"/>
+                <reportElement x="225" y="5" width="85" height="20"/>
                 <box rightPadding="4"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
                     <font size="8" isBold="true"/>
@@ -191,7 +203,7 @@
                 <textFieldExpression><![CDATA[$V{V_TOTAL_AMOUNT} != null ? $V{V_TOTAL_AMOUNT} : BigDecimal.ZERO]]></textFieldExpression>
             </textField>
             <textField pattern="#,##0.00">
-                <reportElement x="295" y="5" width="70" height="20"/>
+                <reportElement x="310" y="5" width="65" height="20"/>
                 <box rightPadding="4"/>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
                     <font size="8" isBold="true"/>

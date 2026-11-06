@@ -7,7 +7,7 @@ import { z } from 'zod';
 import api from '../../../config/api';
 import { hasTokens, getAccessToken } from '../../../utils/tokenStorage';
 import { clearPendingPaymentRedirect } from '../../auth/utils/pendingPaymentRedirect';
-import { fetchPaymentDetails, fetchCustomerAccounts, authorizePayment } from '../api/merchantPaymentService';
+import { fetchPaymentDetails, fetchCustomerAccounts, authorizePayment, cancelPayment } from '../api/merchantPaymentService';
 import type { PaymentDetails, CustomerAccount, PaymentReceipt as ReceiptType } from '../types/merchantPayment';
 
 import { EkarajCrown } from '../../../components/common/EkarajLogo';
@@ -38,6 +38,7 @@ export const MerchantPaymentAuthorize: React.FC = () => {
   const [errorCode, setErrorCode] = useState('');
   const [loading, setLoading] = useState(true);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const { register, handleSubmit, formState: { errors, isSubmitting }, reset, setValue } = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -117,30 +118,32 @@ export const MerchantPaymentAuthorize: React.FC = () => {
   }, [token, reset]);
 
   const handleCancel = async () => {
+    setIsCancelling(true);
+    const activeToken = getAccessToken();
     try {
       await axios.post('/api/customer/merchant-payment/cancel', {
         paymentToken: token,
         accountId: selectedAccountId || "UNKNOWN"
       }, {
-        headers: { Authorization: `Bearer ${getAccessToken()}` }
+        headers: activeToken ? { Authorization: `Bearer ${activeToken}` } : undefined
       });
-    } catch {
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 409) {
+        setErrorMessage(err.response.data?.message || 'Payment is currently being processed and cannot be cancelled.');
+        setErrorCode('TRANSACTION_IN_FLIGHT');
+        setIsCancelling(false);
+        setShowCancelConfirm(false);
+        return;
+      }
       try {
-        await api.post('/merchant-payment/cancel', {
-          paymentToken: token,
-          accountId: selectedAccountId || "UNKNOWN"
-        });
+        await cancelPayment(token as string, selectedAccountId || "UNKNOWN");
       } catch (err) {
         console.error('Cancel payment notification error:', err);
       }
     }
 
     clearPendingPaymentRedirect();
-    if (details && details.returnUrl) {
-      window.location.href = details.returnUrl;
-    } else {
-      navigate('/dashboard');
-    }
+    navigate('/dashboard');
   };
 
   const onSubmit = async (data: CheckoutFormData) => {
@@ -307,14 +310,16 @@ export const MerchantPaymentAuthorize: React.FC = () => {
               <button
                 type="button"
                 onClick={handleCancel}
-                className="flex-1 rounded-xl border border-red-200 bg-red-50 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-900/50"
+                disabled={isCancelling}
+                className="flex-1 rounded-xl border border-red-200 bg-red-50 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-900/50"
               >
-                Yes, Cancel
+                {isCancelling ? 'Cancelling...' : 'Yes, Cancel'}
               </button>
               <button
                 type="button"
                 onClick={() => setShowCancelConfirm(false)}
-                className="flex-1 rounded-xl bg-gradient-to-r from-[#00A3C4] to-[#0284C7] py-3 text-sm font-bold text-white shadow-md shadow-cyan-500/25 transition-all hover:from-[#0891B2] hover:to-[#0369A1] active:scale-[0.98]"
+                disabled={isCancelling}
+                className="flex-1 rounded-xl bg-gradient-to-r from-[#00A3C4] to-[#0284C7] py-3 text-sm font-bold text-white shadow-md shadow-cyan-500/25 transition-all hover:from-[#0891B2] hover:to-[#0369A1] active:scale-[0.98] disabled:opacity-50"
               >
                 No, Go Back
               </button>

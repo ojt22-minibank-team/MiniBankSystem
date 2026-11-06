@@ -289,8 +289,6 @@ public class AsyncNotificationService {
             BigDecimal amount,
             String currency,
             String transactionRef) {
-        // Merchant payment notification is disabled
-        /*
         try {
             Customers payerManaged = (customerId != null && customerRepository != null)
                     ? customerRepository.findById(customerId).orElse(null)
@@ -417,7 +415,6 @@ public class AsyncNotificationService {
         } catch (Exception e) {
             log.error("Failed to dispatch merchant payment notifications for Ref: {}", transactionRef, e);
         }
-        */
     }
     @Async
     @Transactional

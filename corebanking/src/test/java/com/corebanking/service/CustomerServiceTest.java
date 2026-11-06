@@ -137,7 +137,7 @@ class CustomerServiceTest {
 		assertEquals("09123456789", response.getPhone());
 		assertEquals("ACTIVE", response.getStatus());
 		assertEquals("PERSONAL", response.getCustomerType());
-		assertNotNull(response.getTemporaryPassword());
+		assertNull(response.getTemporaryPassword());
 
 		verify(customerRepository, times(1)).saveAndFlush(any(Customers.class));
 		verify(customerCredentialsRepository, times(1)).saveAndFlush(any(CustomerCredentials.class));

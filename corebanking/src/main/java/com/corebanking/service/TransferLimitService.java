@@ -282,6 +282,18 @@ public class TransferLimitService {
 
         String currency = sourceAccount.getCurrency() != null ? sourceAccount.getCurrency() : "MMK";
 
+        // Step 0: Own Account Transfer Check (No transfer limits between customer's own accounts)
+        boolean isOwnAccount = sourceAccount.getCustomer() != null
+                && destAccount.getCustomer() != null
+                && sourceAccount.getCustomer().getCustomerId() != null
+                && sourceAccount.getCustomer().getCustomerId().equals(destAccount.getCustomer().getCustomerId());
+
+        if (isOwnAccount) {
+            log.info("Own account transfer detected between source {} and destination {}. Transfer limits bypassed.",
+                    sourceAccount.getAccountNumber(), destAccount.getAccountNumber());
+            return;
+        }
+
         // Step 1: Beneficiary Relationship Check
         boolean isBeneficiary = beneficiaryRepository.findByOwnerAccountAndBeneficiaryAccount(sourceAccount, destAccount).isPresent();
 

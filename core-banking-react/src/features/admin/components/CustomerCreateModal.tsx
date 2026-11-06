@@ -5,7 +5,7 @@ import Button from '../../../components/common/Button';
 import { customersApi } from '../../../services/apiClient';
 import type { CustomerCreateDTO, CustomerCreateResponse } from '../../../types/api.types';
 import type { AxiosError } from 'axios';
-import { useAuth } from '../../auth/hooks/useAuth';
+
 
 interface CustomerCreateModalProps {
   isOpen: boolean;
@@ -22,7 +22,7 @@ export default function CustomerCreateModal({
   onClose,
   onSuccess,
 }: CustomerCreateModalProps) {
-  const { isTeller } = useAuth();
+
   const [customerType, setCustomerType] = useState<'PERSONAL' | 'COMPANY'>('PERSONAL');
 
   // Personal Fields
@@ -271,27 +271,27 @@ export default function CustomerCreateModal({
               <span className="text-sm text-gray-700">{createdCustomer.email}</span>
             </div>
 
-            {createdCustomer.temporaryPassword && !isTeller ? (
-              <div className="flex items-center justify-between pt-3">
-                <span className="text-sm font-medium text-amber-700">Temporary Password</span>
-                <div className="flex items-center gap-2">
-                  <code className="rounded bg-amber-50 px-2.5 py-1 text-sm font-mono font-bold text-amber-900 border border-amber-200">
-                    {createdCustomer.temporaryPassword}
-                  </code>
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(createdCustomer.temporaryPassword!, 'pass')}
-                    className="rounded border border-amber-300 bg-white px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-50 cursor-pointer"
-                  >
-                    {copiedKey === 'pass' ? 'Copied!' : 'Copy'}
-                  </button>
-                </div>
+            {/* Temporary Password Banking Security Notice */}
+            <div className="pt-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-500">Temporary Password</span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200/80 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                  <svg className="h-3.5 w-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  Confidential • Sent via Registered Email
+                </span>
               </div>
-            ) : (
-              <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-700">
-                <span className="font-semibold">Security Note:</span> Temporary credentials have been securely emailed directly to the customer. For security and privacy, passwords are not displayed to teller staff.
+              <div className="mt-2.5 rounded-lg bg-blue-50/80 border border-blue-200/70 p-3 text-xs leading-relaxed text-blue-800 flex items-start gap-2">
+                <svg className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p>
+                  <span className="font-semibold text-blue-900">Security & Privacy Note: </span>
+                  For data privacy and banking security regulations, temporary credentials are never disclosed to staff members and are dispatched directly to the customer's registered email address.
+                </p>
               </div>
-            )}
+            </div>
           </div>
 
           <div className="flex justify-end pt-2">

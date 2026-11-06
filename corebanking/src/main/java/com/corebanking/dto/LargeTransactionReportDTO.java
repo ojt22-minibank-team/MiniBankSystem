@@ -22,5 +22,10 @@ public class LargeTransactionReportDTO {
 	private String transactionType;
 	private Long totalFlaggedCount;
 	private BigDecimal totalFlaggedVolume;
+	private Long highRiskCount;
+	private Long medRiskCount;
+	private Integer page;
+	private Integer pageSize;
+	private Integer totalPages;
 	private List<LargeTransactionItemDTO> items;
 }

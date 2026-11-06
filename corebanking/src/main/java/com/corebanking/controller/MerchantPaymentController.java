@@ -115,6 +115,18 @@ public class MerchantPaymentController {
         return ResponseEntity.status(status).body(errorBody);
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalStateExceptionLocally(IllegalStateException ex) {
+        Map<String, Object> errorBody = new LinkedHashMap<>();
+        errorBody.put("success", false);
+        errorBody.put("timestamp", LocalDateTime.now());
+        errorBody.put("status", HttpStatus.CONFLICT.value());
+        errorBody.put("code", "TRANSACTION_IN_FLIGHT");
+        errorBody.put("error", HttpStatus.CONFLICT.getReasonPhrase());
+        errorBody.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorBody);
+    }
+
     @ExceptionHandler(ResourceAccessException.class)
     public ResponseEntity<Map<String, Object>> handleResourceAccessExceptionLocally(ResourceAccessException ex) {
         Map<String, Object> errorBody = new LinkedHashMap<>();

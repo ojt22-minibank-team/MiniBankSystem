@@ -39,6 +39,10 @@ public class MerchantAuthorizationEngine {
     }
 
     public void cancelPayment(String token, String accountId) {
+        if (inFlightTokens.contains(token)) {
+            log.warn("Cannot cancel payment for token {} - transaction is currently in-flight", token);
+            throw new IllegalStateException("Payment is currently being processed and cannot be cancelled.");
+        }
         String effectiveAccountId = (accountId != null && !accountId.trim().isEmpty()) ? accountId : "UNKNOWN";
         log.info("Cancelling payment for token {} (Account: {})", token, effectiveAccountId);
 
@@ -96,8 +100,8 @@ public class MerchantAuthorizationEngine {
             safeAuditLog("TRANSACTION", "MERCHANT_PAYMENT_AUTHORIZED", token,
                     "Authorized merchant payment of " + realAmount + " MMK from account " + request.getAccountId());
 
-            // 4. Asynchronous real-time notification dispatch to both Payer and Merchant - COMMENTED OUT
-            /*
+            // 4. Asynchronous real-time notification dispatch to both Payer and Merchant
+
             try {
                 if (asyncNotificationService != null) {
                     asyncNotificationService.sendMerchantPaymentNotificationAsync(
@@ -114,7 +118,7 @@ public class MerchantAuthorizationEngine {
             } catch (Exception notiEx) {
                 log.warn("Could not dispatch merchant payment notification for token {}: {}", token, notiEx.getMessage());
             }
-            */
+
 
             return PaymentReceiptResponse.builder()
                     .success(true)
