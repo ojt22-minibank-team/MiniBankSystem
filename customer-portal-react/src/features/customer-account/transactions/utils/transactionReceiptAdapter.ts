@@ -22,7 +22,7 @@ export function mapHistoryItemToTransferReceiptData(
   const isOutgoing = transaction.direction === "OUT";
   const isIncoming = transaction.direction === "IN";
   const amount = Number(transaction.amount);
-  const serviceFee = Number(transaction.serviceFee ?? 0);
+  const serviceFee = isIncoming ? 0 : Number(transaction.serviceFee ?? 0);
 
   // Total Debited: strictly for outgoing transfers; suppressed (null) for incoming credits
   const totalDebitedAmount = isOutgoing ? amount + serviceFee : null;

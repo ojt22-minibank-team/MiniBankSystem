@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -86,6 +87,9 @@ public class CusNotificationService {
                     if (txn.getDescription() != null && !txn.getDescription().isBlank()) {
                         builder.description(txn.getDescription().trim());
                     }
+                    if (txn.getServiceFee() != null) {
+                        builder.serviceFee(txn.getServiceFee());
+                    }
 
                     // Populate counterparty details
                     UUID currentCustomerId = n.getCustomer() != null ? n.getCustomer().getCustomerId() : null;
@@ -144,6 +148,11 @@ public class CusNotificationService {
                                 builder.transferDirection("RECEIVED");
                             }
                         }
+                    }
+                    // For received notifications, service fee is strictly zero for recipient
+                    NotificationResponseDto intermediate = builder.build();
+                    if ("RECEIVED".equalsIgnoreCase(intermediate.getTransferDirection())) {
+                        builder.serviceFee(BigDecimal.ZERO);
                     }
                 }
             } catch (Exception e) {

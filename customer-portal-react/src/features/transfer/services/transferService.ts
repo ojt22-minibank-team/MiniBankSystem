@@ -26,11 +26,19 @@ export const lookupDestinationAccount = async (
 };
 
 export const calculateTransferFee = async (
-  amount: number
+  amount: number,
+  sourceAccount?: string,
+  destinationAccount?: string
 ): Promise<FeeCalculationResponse> => {
   const response = await api.get<FeeCalculationResponse>(
     `/transfers/calculate-fee`,
-    { params: { amount } }
+    {
+      params: {
+        amount,
+        ...(sourceAccount ? { sourceAccount } : {}),
+        ...(destinationAccount ? { destinationAccount } : {}),
+      },
+    }
   );
   return response.data;
 };

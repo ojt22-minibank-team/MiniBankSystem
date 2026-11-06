@@ -822,6 +822,7 @@ function FormStep({
 
 interface ReviewStepProps {
   sourceAccount: string;
+  senderName?: string;
   destinationAccount: string;
   recipientName: string;
   amount: number;
@@ -835,6 +836,7 @@ interface ReviewStepProps {
 
 function ReviewStep({
   sourceAccount,
+  senderName,
   destinationAccount,
   recipientName,
   amount,
@@ -873,7 +875,7 @@ function ReviewStep({
                 {isOwnAccount ? "From (My Account)" : "From (Sender)"}
               </span>
               <p className="text-sm font-black text-slate-900 dark:text-white truncate">
-                {isOwnAccount ? "My Account" : maskAccount(sourceAccount)}
+                {senderName || "Sender"}
               </p>
               <span className="inline-block text-[11px] font-mono font-medium text-emerald-600 dark:text-emerald-400">
                 {maskAccount(sourceAccount)}
@@ -911,9 +913,9 @@ function ReviewStep({
 
           <div className="flex justify-between items-center py-2.5">
             <span className="text-slate-700 dark:text-slate-300 font-semibold">Service Fee</span>
-            {isCalculatingFee ? (
+            {isCalculatingFee && !isOwnAccount ? (
               <span className="text-slate-400 font-medium animate-pulse">Calculating...</span>
-            ) : serviceFee > 0 ? (
+            ) : (!isOwnAccount && serviceFee > 0) ? (
               <span className="font-bold text-slate-900 dark:text-white">
                 {serviceFee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MMK
               </span>
@@ -934,7 +936,7 @@ function ReviewStep({
               Total Debited Amount
             </span>
             <span className="font-black text-[#00A3C4] dark:text-cyan-400 text-lg sm:text-xl tracking-tight">
-              {(amount + (serviceFee || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\.00$/, "")} MMK
+              {(amount + (!isOwnAccount ? (serviceFee || 0) : 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\.00$/, "")} MMK
             </span>
           </div>
         </div>
@@ -1588,8 +1590,37 @@ export const P2PTransferForm = () => {
   const [serviceFee, setServiceFee] = useState<number>(0);
   const [isCalculatingFee, setIsCalculatingFee] = useState<boolean>(false);
 
+  const isOwnAccountTransfer = Boolean(
+    (destinationAccount &&
+      accounts.some(
+        (a) => a.accountNumber === destinationAccount && a.accountNumber !== sourceAccount
+      )) ||
+      (transactionResult?.destinationAccountNumber &&
+        accounts.some(
+          (a) =>
+            a.accountNumber === transactionResult.destinationAccountNumber &&
+            a.accountNumber !== (transactionResult.sourceAccountNumber || sourceAccount)
+        ))
+  );
+
+  const customerType = profile?.customerType?.toUpperCase();
+  const isCompany = customerType === "COMPANY" || customerType === "CORPORATE";
+  const senderDisplayName =
+    (isCompany
+      ? profile?.companyName
+      : `${profile?.firstName || ""} ${profile?.lastName || ""}`.trim()) ||
+    (accounts.find((a) => a.accountNumber === sourceAccount) as any)?.accountName ||
+    "Sender";
+
   // Dynamic Service Fee Calculation from database
   useEffect(() => {
+    // For own account transfers, fee is strictly 0 without database lookup
+    if (isOwnAccountTransfer) {
+      setServiceFee(0);
+      setIsCalculatingFee(false);
+      return;
+    }
+
     const amt = Number(amount);
     if (!amt || amt <= 0 || isNaN(amt)) {
       setServiceFee(0);
@@ -1602,7 +1633,7 @@ export const P2PTransferForm = () => {
 
     const timer = setTimeout(async () => {
       try {
-        const res = await calculateTransferFee(amt);
+        const res = await calculateTransferFee(amt, sourceAccount, destinationAccount);
         if (isMounted) {
           setServiceFee(res && typeof res.fee === "number" ? res.fee : 0);
         }
@@ -1622,7 +1653,7 @@ export const P2PTransferForm = () => {
       isMounted = false;
       clearTimeout(timer);
     };
-  }, [amount]);
+  }, [amount, isOwnAccountTransfer, sourceAccount, destinationAccount]);
 
   // Function to load and sync beneficiaries
   const loadBeneficiaries = () => {
@@ -1672,19 +1703,6 @@ export const P2PTransferForm = () => {
       setValidationError("");
     }
   }, [amount, destinationAccount, sourceAccount]);
-
-  const isOwnAccountTransfer = Boolean(
-    (destinationAccount &&
-      accounts.some(
-        (a) => a.accountNumber === destinationAccount && a.accountNumber !== sourceAccount
-      )) ||
-      (transactionResult?.destinationAccountNumber &&
-        accounts.some(
-          (a) =>
-            a.accountNumber === transactionResult.destinationAccountNumber &&
-            a.accountNumber !== (transactionResult.sourceAccountNumber || sourceAccount)
-        ))
-  );
 
   const isSavedBeneficiary = Boolean(
     beneficiarySaved ||
@@ -1828,15 +1846,27 @@ export const P2PTransferForm = () => {
     if (!amount || Number(amount) < 1) return setValidationError("Minimum transfer amount is 1 MMK.");
 
     const transferNum = Number(amount);
-    let feeNum = serviceFee;
-    try {
-      const feeRes = await calculateTransferFee(transferNum);
-      if (feeRes && typeof feeRes.fee === "number") {
-        feeNum = feeRes.fee;
-        setServiceFee(feeNum);
+    const isOwnAccount = Boolean(
+      destinationAccount &&
+        accounts.some(
+          (a) => a.accountNumber === destinationAccount && a.accountNumber !== sourceAccount
+        )
+    );
+
+    let feeNum = 0;
+    if (!isOwnAccount) {
+      feeNum = serviceFee;
+      try {
+        const feeRes = await calculateTransferFee(transferNum, sourceAccount, destinationAccount);
+        if (feeRes && typeof feeRes.fee === "number") {
+          feeNum = feeRes.fee;
+          setServiceFee(feeNum);
+        }
+      } catch {
+        // fallback to existing feeNum
       }
-    } catch {
-      // fallback to existing feeNum
+    } else {
+      setServiceFee(0);
     }
 
     const totalRequired = transferNum + feeNum;
@@ -1853,12 +1883,6 @@ export const P2PTransferForm = () => {
         `Insufficient available funds. You must maintain a minimum balance of ${minReserve.toLocaleString()} MMK. Total required (transfer + fee) is ${totalRequired.toLocaleString()} MMK, but net available is ${maxTransferable.toLocaleString()} MMK.`
       );
     }
-    const isOwnAccount = Boolean(
-      destinationAccount &&
-        accounts.some(
-          (a) => a.accountNumber === destinationAccount && a.accountNumber !== sourceAccount
-        )
-    );
     if (transferLimits && !isOwnAccount) {
       const isBeneficiary = beneficiaries.some(
         (b) => b.beneficiaryAccountNumber === destinationAccount
@@ -2043,8 +2067,9 @@ export const P2PTransferForm = () => {
         ? Number(selectedAcc.availableBalance)
         : Math.max(0, currentBalance - minBalance))
     : 0;
+  const effectiveFee = isOwnAccountTransfer ? 0 : (serviceFee || 0);
   const transferAmountNum = Number(amount) || 0;
-  const newBalancePreview = Math.max(0, availBalance - (transferAmountNum + (serviceFee || 0)));
+  const newBalancePreview = Math.max(0, availBalance - (transferAmountNum + effectiveFee));
 
   const isBeneficiarySelected = Boolean(
     destinationAccount?.trim() &&
@@ -2212,6 +2237,7 @@ export const P2PTransferForm = () => {
             {step === "review" && (
               <ReviewStep
                 sourceAccount={sourceAccount}
+                senderName={senderDisplayName}
                 destinationAccount={destinationAccount}
                 recipientName={recipientName}
                 amount={Number(amount)}
@@ -2261,11 +2287,11 @@ export const P2PTransferForm = () => {
                     -{formatMMK(transferAmountNum)}
                   </span>
                 </div>
-                {serviceFee > 0 && (
+                {!isOwnAccountTransfer && effectiveFee > 0 && (
                   <div className="flex justify-between items-center text-xs pt-1">
                     <span className="text-slate-500 font-medium">Service Fee</span>
                     <span className="font-semibold text-slate-700">
-                      -{formatMMK(serviceFee)}
+                      -{formatMMK(effectiveFee)}
                     </span>
                   </div>
                 )}

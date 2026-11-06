@@ -41,8 +41,10 @@ public class P2PTransferController {
 
     @GetMapping("/calculate-fee")
     public ResponseEntity<Map<String, Object>> calculateFee(
-            @RequestParam("amount") BigDecimal amount) {
-        Map<String, Object> response = p2pTransferService.getTransferFeeEstimate(amount);
+            @RequestParam("amount") BigDecimal amount,
+            @RequestParam(value = "sourceAccount", required = false) String sourceAccount,
+            @RequestParam(value = "destinationAccount", required = false) String destinationAccount) {
+        Map<String, Object> response = p2pTransferService.getTransferFeeEstimate(amount, sourceAccount, destinationAccount);
         return ResponseEntity.ok(response);
     }
 

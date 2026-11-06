@@ -992,13 +992,15 @@ export default function TransactionDetailContent({
               </span>
             </div>
 
-            {/* Service Fee: Always shown, visually neutral */}
-            <div className="flex justify-between items-center py-1 border-b border-slate-100">
-              <span className="text-slate-500 font-medium">Service Fee</span>
-              <span className="font-medium text-slate-800 tabular-nums">
-                {formatTransactionAmount(transaction.serviceFee, transaction.currency, "NONE")}
-              </span>
-            </div>
+            {/* Service Fee: Only shown for sender / outgoing transactions, hidden for recipient */}
+            {transaction.direction !== "IN" && (
+              <div className="flex justify-between items-center py-1 border-b border-slate-100">
+                <span className="text-slate-500 font-medium">Service Fee</span>
+                <span className="font-medium text-slate-800 tabular-nums">
+                  {formatTransactionAmount(transaction.serviceFee, transaction.currency, "NONE")}
+                </span>
+              </div>
+            )}
 
             {/* Total Debited: For outgoing completed only */}
             {totalDebitedNum !== null && (
