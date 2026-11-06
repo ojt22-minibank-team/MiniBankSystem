@@ -94,7 +94,7 @@ export default function AuditLogDetailModal({ log, onClose }: AuditLogDetailModa
               onClick={onClose}
               className="h-8 w-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 flex items-center justify-center transition-colors"
             >
-              âœ•
+              ✕
             </button>
           </div>
         </div>

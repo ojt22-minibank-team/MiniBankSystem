@@ -23,6 +23,11 @@ export interface TransferReceiptData {
 
   badgeLabel?: string;
   transactionType?: string;
+
+  previousBalance?: number | null;
+  availableBalance?: number | null;
+  accountType?: string | null;
+  accountHolderName?: string | null;
 }
 
 export interface TransferReceiptViewProps {

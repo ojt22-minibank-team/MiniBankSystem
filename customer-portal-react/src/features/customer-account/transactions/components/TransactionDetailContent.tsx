@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toBlob } from "html-to-image";
 import {
@@ -28,6 +28,8 @@ import TransactionStatusBadge from "./TransactionStatusBadge";
 import TransferReceiptView from "../../../transfer/components/TransferReceiptView";
 import { EkarajCrown } from "../../../../components/common/EkarajLogo";
 import { mapHistoryItemToTransferReceiptData } from "../utils/transactionReceiptAdapter";
+import { useAppDispatch, useAppSelector } from "../../../../lib/redux";
+import { fetchMyAccounts } from "../../accounts/stores/accountsSlice";
 
 interface TransactionDetailContentProps {
   transaction: CusTransactionHistoryItemDTO;
@@ -139,6 +141,16 @@ export default function TransactionDetailContent({
   onBack,
 }: TransactionDetailContentProps) {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const profile = useAppSelector((state) => state.profile?.profile);
+  const userAccounts = useAppSelector((state) => state.accounts?.accounts);
+
+  useEffect(() => {
+    if (!userAccounts || userAccounts.length === 0) {
+      dispatch(fetchMyAccounts());
+    }
+  }, [dispatch, userAccounts]);
+
   const [copied, setCopied] = useState<boolean>(false);
   const [isSharing, setIsSharing] = useState<boolean>(false);
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
@@ -403,8 +415,37 @@ export default function TransactionDetailContent({
   const totalDebitedNum = isOutgoing && isCompleted ? Number(transaction.amount || 0) + serviceFeeNum : null;
 
   // For COMPLETED INTERNAL_TRANSFER, reuse the official TransferReceiptView
-  if (isCompleted && isInternalTransfer) {
-    const receiptData = mapHistoryItemToTransferReceiptData(transaction);
+  if (isCompleted && (isInternalTransfer || isDeposit || isWithdrawal)) {
+    const isCompany =
+      profile?.customerType?.toUpperCase() === "COMPANY" ||
+      profile?.customerType?.toUpperCase() === "CORPORATE";
+    const customerName = isCompany
+      ? profile?.companyName || "Company Customer"
+      : `${profile?.firstName || ""} ${profile?.lastName || ""}`.trim() || "Customer";
+
+    const targetAccNo = isDeposit
+      ? (transaction.destinationAccountNumber || transaction.sourceAccountNumber || "")
+      : (transaction.sourceAccountNumber || transaction.destinationAccountNumber || "");
+
+    const matchedAccount = userAccounts?.find((a) => a.accountNumber === targetAccNo);
+    const accountType = matchedAccount?.accountType
+      ? `${matchedAccount.accountType.charAt(0).toUpperCase() + matchedAccount.accountType.slice(1).toLowerCase()} Account`
+      : "Savings Account";
+
+    const availBal = matchedAccount?.availableBalance;
+    const prevBal =
+      availBal != null
+        ? isDeposit
+          ? Math.max(0, availBal - Number(transaction.amount || 0))
+          : availBal + Number(transaction.amount || 0) + Number(transaction.serviceFee || 0)
+        : null;
+
+    const receiptData = mapHistoryItemToTransferReceiptData(transaction, {
+      accountHolderName: customerName,
+      accountType,
+      previousBalance: prevBal,
+      availableBalance: availBal,
+    });
 
     return (
       <div className="w-full max-w-xl mx-auto print:max-w-none print:m-0">

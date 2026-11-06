@@ -11,7 +11,13 @@ import type { TransferReceiptData } from "../../../transfer/types/transferReceip
  * - Total debited: calculated for OUT (amount + fee), null for IN
  */
 export function mapHistoryItemToTransferReceiptData(
-  transaction: CusTransactionHistoryItemDTO
+  transaction: CusTransactionHistoryItemDTO,
+  context?: {
+    accountHolderName?: string;
+    accountType?: string;
+    previousBalance?: number | null;
+    availableBalance?: number | null;
+  }
 ): TransferReceiptData {
   const isOutgoing = transaction.direction === "OUT";
   const isIncoming = transaction.direction === "IN";
@@ -57,7 +63,20 @@ export function mapHistoryItemToTransferReceiptData(
     isOwnAccount: Boolean(transaction.isOwnAccount),
     description: transaction.description || null,
     status: transaction.status,
-    badgeLabel: "INTERNAL TRANSFER",
+    badgeLabel:
+      transaction.transactionType === "OTC_DEPOSIT"
+        ? "CASH DEPOSIT"
+        : transaction.transactionType === "OTC_WITHDRAWAL"
+        ? "CASH WITHDRAWAL"
+        : transaction.isOwnAccount
+        ? "OWN ACCOUNT TRANSFER"
+        : isIncoming
+        ? "FUNDS RECEIVED"
+        : "TRANSFER SENT",
     transactionType: transaction.transactionType,
+    accountHolderName: context?.accountHolderName,
+    accountType: context?.accountType,
+    previousBalance: context?.previousBalance,
+    availableBalance: context?.availableBalance,
   };
 }

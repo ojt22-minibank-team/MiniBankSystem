@@ -4,7 +4,6 @@ import {
   RotateCcw,
   SlidersHorizontal,
   ChevronDown,
-  AlertTriangle,
 } from 'lucide-react';
 import type { StaffTransactionSearchParams } from '../../../types/transactions.types';
 
@@ -200,7 +199,7 @@ export default React.memo(function TransactionFilterBar({
     maxAmount !== '';
 
   return (
-    <div className="bg-white/80 liquid-glass rounded-2xl border border-slate-200/70 p-4 mb-6 shadow-xs backdrop-blur-md space-y-3">
+    <div className="bg-white/80 liquid-glass rounded-2xl border border-slate-200/70 p-4 mb-6 shadow-xs backdrop-blur-md">
       {/* Top Filter Row: Search & Core Selectors */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
         {/* Search Input */}
@@ -323,43 +322,6 @@ export default React.memo(function TransactionFilterBar({
             </button>
           )}
         </div>
-      </div>
-
-      {/* Quick Queue Filters Bar */}
-      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100 text-xs">
-        <span className="text-[11px] font-semibold text-slate-400 mr-1">Quick Filter:</span>
-        <button
-          type="button"
-          onClick={() => {
-            const next = status === 'HELD' ? 'ALL' : 'HELD';
-            setStatus(next);
-            emitFilterChange({ status: next });
-          }}
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-            status === 'HELD'
-              ? 'bg-amber-500 text-white shadow-xs'
-              : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
-          }`}
-        >
-          <AlertTriangle className="w-3.5 h-3.5" />
-          <span>Review Queue (Held)</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            const next = status === 'PENDING_AUTHORIZATION' ? 'ALL' : 'PENDING_AUTHORIZATION';
-            setStatus(next);
-            emitFilterChange({ status: next });
-          }}
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-            status === 'PENDING_AUTHORIZATION'
-              ? 'bg-blue-600 text-white shadow-xs'
-              : 'bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200'
-          }`}
-        >
-          <span>Pending Authorization</span>
-        </button>
       </div>
 
       {/* Advanced Filter Row (Expandable) */}

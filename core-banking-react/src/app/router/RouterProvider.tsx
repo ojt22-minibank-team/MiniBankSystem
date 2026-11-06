@@ -232,14 +232,9 @@ export default function RouterProvider() {
           }
         />
 
-        {/* Teller Profile */}
         <Route
           path="/teller/profile"
-          element={
-            <ProtectedRoute requiredRole="TELLER">
-              <ProfilePage />
-            </ProtectedRoute>
-          }
+          element={<Navigate to="/teller/dashboard" replace />}
         />
 
         <Route
