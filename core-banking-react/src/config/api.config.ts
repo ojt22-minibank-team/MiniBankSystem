@@ -93,6 +93,10 @@ export const API_ENDPOINTS = {
     BASE: "/api/v1/staff/transactions",
     BY_IDENTIFIER: (id: string) => `/api/v1/staff/transactions/detail/${encodeURIComponent(id)}`,
     STATS: "/api/v1/staff/transactions/stats",
+    FLAG: (transactionId: string) => `/api/v1/staff/transactions/${transactionId}/flag`,
+    OVERRIDE: (transactionId: string) => `/api/v1/staff/transactions/${transactionId}/override`,
+    REVIEW_QUEUE: "/api/v1/staff/transactions/review-queue",
+    REVIEW_HISTORY: (transactionId: string) => `/api/v1/staff/transactions/${transactionId}/review-history`,
   },
 } as const;
 

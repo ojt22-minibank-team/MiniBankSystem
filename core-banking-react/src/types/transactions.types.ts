@@ -136,3 +136,31 @@ export interface SpringPage<T> {
   last: boolean;
   empty: boolean;
 }
+
+export interface TransactionFlagRequest {
+  reason: string;
+  riskLevel?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | string;
+  resolutionNote?: string;
+}
+
+export interface TransactionOverrideRequest {
+  action: 'RELEASE' | 'REJECT';
+  reason: string;
+  resolutionNote?: string;
+  riskLevel?: string;
+}
+
+export interface TransactionOverrideResponse {
+  transactionId: string;
+  transactionRef: string;
+  amount: number;
+  currency: string;
+  previousStatus: string;
+  currentStatus: string;
+  action: string;
+  reason: string;
+  riskLevel: string;
+  resolutionNote: string;
+  performedByStaff: string;
+  performedAt: string;
+}

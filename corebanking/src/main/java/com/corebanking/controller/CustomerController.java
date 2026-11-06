@@ -18,11 +18,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/customers")
 @CrossOrigin(origins = {"${app.frontend.base-url:http://localhost:5173}", "http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174"})
-
+@RequiredArgsConstructor
 public class CustomerController {
 
     private final CustomerService customerService;
