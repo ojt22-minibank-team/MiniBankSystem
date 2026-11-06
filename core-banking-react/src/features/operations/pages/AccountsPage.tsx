@@ -28,7 +28,6 @@ export default function AccountsPage() {
     isLoading: isBankingLoading,
     isRevalidating,
     error: bankingError,
-    loadDurationMs,
     refresh: refreshBanking,
   } = useBankingData({
     autoFetch: true,
@@ -350,22 +349,6 @@ export default function AccountsPage() {
               <h2 className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight">
                 Customer Accounts
               </h2>
-              {/* SLA Performance Indicator */}
-              {loadDurationMs !== null && (
-                <span
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-mono font-bold ${
-                    loadDurationMs <= 3000
-                      ? 'bg-emerald-100/80 text-emerald-800 border border-emerald-300/60'
-                      : 'bg-amber-100/80 text-amber-800 border border-amber-300/60'
-                  }`}
-                  title="Database and network response time on browser screen"
-                >
-                  <svg className="h-3 w-3 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  {loadDurationMs}ms (Sub-3s SLA)
-                </span>
-              )}
               {isRevalidating && (
                 <span className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-600 animate-pulse">
                   <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
