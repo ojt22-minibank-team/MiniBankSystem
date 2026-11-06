@@ -14,7 +14,6 @@ import OtcTransactionPage from '../../features/operations/pages/OtcTransactionPa
 import ReportingPage from '../../features/reporting/pages/ReportingPage';
 import AuditLogsPage from '../../features/audit-logs/pages/AuditLogsPage';
 import TransactionDetailsPage from '../../features/transactions/pages/TransactionDetailsPage';
-import UnauthorizedPage from '../../components/common/UnauthorizedPage';
 import ProtectedRoute from './ProtectedRoute';
 
 export default function RouterProvider() {
@@ -30,7 +29,7 @@ export default function RouterProvider() {
         <Route path="/setup-password" element={<SignupPage />} />
         <Route path="/set-password" element={<SignupPage />} />
         <Route path="/staff-setup" element={<StaffPasswordSetupPage />} />
-        <Route path="/unauthorized" element={<UnauthorizedPage />} />
+        <Route path="/unauthorized" element={<Navigate to="/login" replace />} />
 
         {/* ========================================================
             Admin & Auditor Routes (/admin/*)
