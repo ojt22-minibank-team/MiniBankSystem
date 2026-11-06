@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 630" width="100%" height="100%" fill="none" preserveAspectRatio="none">
+  <title>EKARAJ BANK Card Geometric Lines (Flat 2D Card 1000x630)</title>
+  <defs>
+    <linearGradient id="tealGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3898B8" />
+      <stop offset="50%" stop-color="#1E6F8E" />
+      <stop offset="100%" stop-color="#0E4F68" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E6C77B" />
+      <stop offset="50%" stop-color="#C59B47" />
+      <stop offset="100%" stop-color="#9A7228" />
+    </linearGradient>
+    <clipPath id="cardClip">
+      <rect x="0" y="0" width="1000" height="630" rx="42" ry="42" />
+    </clipPath>
+  </defs>
+  <g clip-path="url(#cardClip)" stroke-linecap="round" stroke-linejoin="miter" stroke-miterlimit="10">
+    <polyline id="line-1" points="568.71,447.52 420.23,269.9 747.82,269.74 988.42,541.0" stroke="url(#tealGrad)" stroke-width="1.65" />
+    <polyline id="line-2" points="553.08,644.01 672.02,523.77 478.25,284.69 732.22,284.34 815.83,365.52" stroke="url(#tealGrad)" stroke-width="1.65" />
+    <polyline id="line-3" points="482.65,284.69 603.0,432.02" stroke="url(#goldGrad)" stroke-width="1.5" />
+    <polyline id="line-4" points="620.1,452.95 676.34,521.8 557.06,641.64" stroke="url(#tealGrad)" stroke-width="1.5" />
+    <polyline id="line-5" points="694.8,485.73 528.89,294.0 723.13,294.66 846.06,414.61 618.0,644.91" stroke="url(#tealGrad)" stroke-width="1.65" />
+    <polyline id="line-6" points="702.08,478.49 552.24,304.19 736.78,306.6 835.09,406.2 600.71,640.63" stroke="url(#tealGrad)" stroke-width="1.5" />
+    <polyline id="line-7" points="1007.59,172.53 790.21,390.08 737.46,442.16 636.92,542.92" stroke="url(#tealGrad)" stroke-width="1.65" />
+    <polyline id="line-8" points="737.46,442.16 623.34,323.11 728.15,323.91 790.21,390.08" stroke="url(#tealGrad)" stroke-width="1.65" />
+    <polyline id="line-9" points="793.99,423.12 581.55,639.62" stroke="url(#goldGrad)" stroke-width="1.65" />
+    <polyline id="line-10" points="1005.7,187.37 835.12,361.75 996.66,516.94" stroke="url(#tealGrad)" stroke-width="1.65" />
+    <polyline id="line-11" points="1004.11,251.99 876.93,381.09" stroke="url(#goldGrad)" stroke-width="1.88" />
+    <polyline id="line-12" points="876.93,381.09 996.92,493.99" stroke="url(#tealGrad)" stroke-width="1.65" />
+    <polyline id="line-13" points="999.89,290.36 907.44,385.71 993.13,467.61" stroke="url(#tealGrad)" stroke-width="1.65" />
+    <polyline id="line-14" points="628.12,641.95 861.77,408.93 1002.1,547.03" stroke="url(#tealGrad)" stroke-width="1.65" />
+    <polyline id="line-15" points="859.28,411.41 999.8,549.23" stroke="url(#tealGrad)" stroke-width="1.35" />
+    <polyline id="line-16" points="661.77,640.51 834.26,466.02 986.29,613.44" stroke="url(#goldGrad)" stroke-width="1.8" />
+    <polyline id="line-17" points="701.4,639.94 837.63,501.82 976.64,633.64" stroke="url(#goldGrad)" stroke-width="1.8" />
+    <polyline id="line-18" points="757.07,618.34 832.64,543.2 891.32,601.98" stroke="url(#tealGrad)" stroke-width="1.5" />
+  </g>
+</svg>
