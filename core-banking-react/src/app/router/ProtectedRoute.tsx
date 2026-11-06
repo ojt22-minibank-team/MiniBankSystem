@@ -4,7 +4,6 @@ import { useDispatch } from 'react-redux';
 import { forceLogout } from '../../features/auth/authSlice';
 import type { AppDispatch } from '../../lib/redux';
 import { useAuth } from '../../features/auth/hooks/useAuth';
-import UnauthorizedPage from '../../components/common/UnauthorizedPage';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -43,13 +42,9 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
     };
   }, [dispatch, navigate]);
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (requiredRole) {
+  const hasRole = !requiredRole || (() => {
     const rolesToCheck = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
-    const hasRole = rolesToCheck.some((reqRole) => {
+    return rolesToCheck.some((reqRole) => {
       const cleanReq = reqRole.replace(/^ROLE_/, '');
       return user?.roles?.some((r) => {
         const cleanRole = r.replace(/^ROLE_/, '');
@@ -60,10 +55,21 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
         );
       });
     });
+  })();
 
-    if (!hasRole) {
-      return <UnauthorizedPage />;
+  useEffect(() => {
+    if (isAuthenticated && !hasRole) {
+      dispatch(forceLogout());
+      navigate('/login', { replace: true });
     }
+  }, [isAuthenticated, hasRole, dispatch, navigate]);
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!hasRole) {
+    return null;
   }
 
   return <>{children}</>;
