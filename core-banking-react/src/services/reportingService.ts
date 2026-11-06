@@ -11,7 +11,8 @@ import type {
   FeeFilterParams,
   LargeTransactionReport,
   LargeTxFilterParams,
-  TransactionDetail,
+  TransactionDetailPage,
+  ExportJobResponse,
   TransactionDetailFilterParams,
 } from '../types/reports/reporting.types';
 
@@ -19,7 +20,9 @@ const BASE = '/api/v1/reports';
 
 function authHeaders(): Record<string, string> {
   const token =
+    sessionStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN) ||
     localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN) ||
+    sessionStorage.getItem('token') ||
     localStorage.getItem('token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
@@ -103,6 +106,8 @@ export async function fetchLargeTransactions(
       endDate: params.endDate,
       threshold: params.threshold || undefined,
       transactionType: params.transactionType || undefined,
+      page: params.page || 1,
+      pageSize: params.pageSize || 30,
     },
   });
   return res.data;
@@ -115,8 +120,10 @@ function triggerDownload(blob: Blob, filename: string): void {
   a.download = filename;
   document.body.appendChild(a);
   a.click();
-  a.parentNode?.removeChild(a);
-  window.URL.revokeObjectURL(url);
+  setTimeout(() => {
+    a.parentNode?.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  }, 1000);
 }
 
 export async function exportDailyLedger(
@@ -217,8 +224,8 @@ export async function exportLargeTransactions(
 // Transaction Detail Report endpoints
 export async function fetchTransactionDetails(
   params: TransactionDetailFilterParams
-): Promise<TransactionDetail[]> {
-  const res = await axiosInstance.get<TransactionDetail[]>(
+): Promise<TransactionDetailPage> {
+  const res = await axiosInstance.get<TransactionDetailPage>(
     `${BASE}/transaction-detail`,
     {
       headers: authHeaders(),
@@ -230,6 +237,8 @@ export async function fetchTransactionDetails(
         channel: params.channel || undefined,
         minAmount: params.minAmount,
         maxAmount: params.maxAmount,
+        page: params.page ?? 1,
+        pageSize: params.pageSize ?? 30,
       },
     }
   );
@@ -256,4 +265,60 @@ export async function exportTransactionDetails(
   });
   const ext = format === 'excel' ? 'xlsx' : format === 'pdf' ? 'pdf' : 'csv';
   triggerDownload(res.data as Blob, `Transaction_Detail_Report.${ext}`);
+}
+
+// -------------------------------------------------------------
+// Enterprise Async Background Export Methods
+// -------------------------------------------------------------
+
+export async function startAsyncExport(
+  params: Record<string, any>,
+  format: 'csv' | 'excel' | 'pdf',
+  reportType = 'TRANSACTION_DETAIL'
+): Promise<ExportJobResponse> {
+  const res = await axiosInstance.post<ExportJobResponse>(
+    `${BASE}/export-async`,
+    null,
+    {
+      headers: authHeaders(),
+      params: {
+        ...params,
+        reportType,
+        format,
+      },
+    }
+  );
+  return res.data;
+}
+
+export const startAsyncReportExport = (
+  reportType: string,
+  params: Record<string, any>,
+  format: 'csv' | 'excel' | 'pdf'
+): Promise<ExportJobResponse> => startAsyncExport(params, format, reportType);
+
+export async function checkExportJobStatus(
+  jobId: string
+): Promise<ExportJobResponse> {
+  const res = await axiosInstance.get<ExportJobResponse>(
+    `${BASE}/export-jobs/${encodeURIComponent(jobId)}`,
+    {
+      headers: authHeaders(),
+    }
+  );
+  return res.data;
+}
+
+export async function downloadExportJobFile(
+  jobId: string,
+  fileName: string
+): Promise<void> {
+  const res = await axiosInstance.get(
+    `${BASE}/export-jobs/${encodeURIComponent(jobId)}/download`,
+    {
+      headers: authHeaders(),
+      responseType: 'blob',
+    }
+  );
+  triggerDownload(res.data as Blob, fileName);
 }

@@ -55,13 +55,19 @@
     <columnHeader>
         <band height="22">
             <staticText>
-                <reportElement mode="Opaque" backcolor="#E2E8F0" x="0" y="0" width="130" height="22"/>
+                <reportElement mode="Opaque" backcolor="#E2E8F0" x="0" y="0" width="25" height="22"/>
+                <box leftPadding="2"><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font size="9" isBold="true"/></textElement>
+                <text><![CDATA[No]]></text>
+            </staticText>
+            <staticText>
+                <reportElement mode="Opaque" backcolor="#E2E8F0" x="25" y="0" width="115" height="22"/>
                 <box leftPadding="4"><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
                 <textElement verticalAlignment="Middle"><font size="9" isBold="true"/></textElement>
                 <text><![CDATA[Transaction Type]]></text>
             </staticText>
             <staticText>
-                <reportElement mode="Opaque" backcolor="#E2E8F0" x="130" y="0" width="90" height="22"/>
+                <reportElement mode="Opaque" backcolor="#E2E8F0" x="140" y="0" width="80" height="22"/>
                 <box leftPadding="4"><pen lineWidth="0.5" lineColor="#CBD5E1"/></box>
                 <textElement verticalAlignment="Middle"><font size="9" isBold="true"/></textElement>
                 <text><![CDATA[Channel]]></text>
@@ -95,14 +101,20 @@
 
     <detail>
         <band height="18">
+            <textField>
+                <reportElement x="0" y="0" width="25" height="18"/>
+                <box leftPadding="2"><pen lineWidth="0.5" lineColor="#E2E8F0"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font size="8"/></textElement>
+                <textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+            </textField>
             <textField textAdjust="StretchHeight">
-                <reportElement x="0" y="0" width="130" height="18"/>
+                <reportElement x="25" y="0" width="115" height="18"/>
                 <box leftPadding="4"><pen lineWidth="0.5" lineColor="#E2E8F0"/></box>
                 <textElement verticalAlignment="Middle"><font size="8"/></textElement>
                 <textFieldExpression><![CDATA[$F{transactionType}]]></textFieldExpression>
             </textField>
             <textField>
-                <reportElement x="130" y="0" width="90" height="18"/>
+                <reportElement x="140" y="0" width="80" height="18"/>
                 <box leftPadding="4"><pen lineWidth="0.5" lineColor="#E2E8F0"/></box>
                 <textElement verticalAlignment="Middle"><font size="8"/></textElement>
                 <textFieldExpression><![CDATA[$F{channel}]]></textFieldExpression>

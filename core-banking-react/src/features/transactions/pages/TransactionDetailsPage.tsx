@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../auth/hooks/useAuth';
 import AdminLayout from '../../../components/layout/AdminLayout';
 import { transactionApi } from '../../../services/transactionService';
 import type {
@@ -24,9 +25,11 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  AlertTriangle,
 } from 'lucide-react';
 
 export default function TransactionDetailsPage() {
+  const { isTeller } = useAuth();
   const { refOrId } = useParams<{ refOrId?: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -176,6 +179,13 @@ export default function TransactionDetailsPage() {
             COMPLETED
           </span>
         );
+      case 'HELD':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+            <AlertTriangle className="w-3 h-3 text-amber-600" />
+            HELD (REVIEW)
+          </span>
+        );
       case 'PENDING_AUTHORIZATION':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800">
@@ -202,16 +212,16 @@ export default function TransactionDetailsPage() {
   };
 
   return (
-    <AdminLayout pageTitle="Transaction Explorer & Details">
+    <AdminLayout pageTitle="Transaction Explorer & Overrides">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header Title & Refresh */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-black tracking-tight text-slate-900">
-              Transaction Explorer & Details
+              Transaction Explorer & Overrides
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              Query, filter, and inspect real-time transaction ledger entries across all channels.
+              Search, inspect, review suspicious activity, and execute managerial overrides across all ledger transactions.
             </p>
           </div>
 
@@ -230,11 +240,24 @@ export default function TransactionDetailsPage() {
           </div>
         </div>
 
-        {/* Overview Stats Cards */}
-        <TransactionStatsCards stats={stats} isLoading={isStatsLoading} />
+        {/* Overview Stats Cards with click-to-filter support */}
+        <TransactionStatsCards
+          stats={stats}
+          isLoading={isStatsLoading}
+          onFilterStatus={(st) => {
+            handleFilterChange({
+              ...appliedFilters,
+              status: st === 'ALL' ? undefined : st,
+            });
+          }}
+        />
 
         {/* Filter Bar */}
-        <TransactionFilterBar onFilterChange={handleFilterChange} isLoading={isLoading} />
+        <TransactionFilterBar
+          onFilterChange={handleFilterChange}
+          isLoading={isLoading}
+          selectedStatus={appliedFilters.status || 'ALL'}
+        />
 
         {/* Error Alert */}
         {error && (
@@ -329,13 +352,26 @@ export default function TransactionDetailsPage() {
                     <tr
                       key={tx.transactionId}
                       onClick={() => handleOpenDetail(tx.transactionRef)}
-                      className="hover:bg-blue-50/40 transition-colors cursor-pointer group"
+                      className={`transition-colors cursor-pointer group ${
+                        tx.status === 'HELD'
+                          ? 'bg-amber-50/30 hover:bg-amber-100/40'
+                          : tx.status === 'PENDING_AUTHORIZATION'
+                          ? 'bg-blue-50/20 hover:bg-blue-100/30'
+                          : 'hover:bg-blue-50/40'
+                      }`}
                     >
                       {/* Ref */}
                       <td className="px-4 py-3.5">
-                        <span className="font-mono font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                          {tx.transactionRef}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                            {tx.transactionRef}
+                          </span>
+                          {tx.status === 'HELD' && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900">
+                              HELD
+                            </span>
+                          )}
+                        </div>
                         {tx.description && (
                           <span className="block text-[11px] text-slate-400 truncate max-w-[150px]">
                             {tx.description}
@@ -414,7 +450,7 @@ export default function TransactionDetailsPage() {
                           className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-transparent hover:border-blue-200 transition-all cursor-pointer"
                         >
                           <Eye className="w-3.5 h-3.5" />
-                          <span>View</span>
+                          <span>Inspect</span>
                         </button>
                       </td>
                     </tr>
@@ -448,7 +484,7 @@ export default function TransactionDetailsPage() {
                     setSize(Number(e.target.value));
                     setPage(0);
                   }}
-                  className="px-2 py-1 text-xs rounded-lg border border-slate-200 bg-white text-slate-800 font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                  className="px-2 py-1 text-xs rounded-lg border border-slate-200 bg-white font-medium cursor-pointer"
                 >
                   <option value={10}>10</option>
                   <option value={20}>20</option>
@@ -458,42 +494,42 @@ export default function TransactionDetailsPage() {
               </div>
             </div>
 
-            {/* Right: Page Navigation Buttons */}
-            <div className="flex items-center gap-1.5">
+            {/* Right: Pagination Navigation Buttons */}
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => setPage(0)}
                 disabled={page === 0 || isLoading}
+                className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all"
                 title="First Page"
-                className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
               >
                 <ChevronsLeft className="w-4 h-4" />
               </button>
               <button
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                onClick={() => setPage((prev) => Math.max(0, prev - 1))}
                 disabled={page === 0 || isLoading}
+                className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all"
                 title="Previous Page"
-                className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
 
-              <span className="px-3 py-1 text-xs font-semibold text-slate-700">
+              <span className="px-3 text-xs font-semibold text-slate-700">
                 Page {totalPages === 0 ? 0 : page + 1} of {totalPages}
               </span>
 
               <button
-                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                onClick={() => setPage((prev) => Math.min(totalPages - 1, prev + 1))}
                 disabled={page >= totalPages - 1 || isLoading}
+                className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all"
                 title="Next Page"
-                className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setPage(totalPages - 1)}
                 disabled={page >= totalPages - 1 || isLoading}
+                className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all"
                 title="Last Page"
-                className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
               >
                 <ChevronsRight className="w-4 h-4" />
               </button>
@@ -501,17 +537,21 @@ export default function TransactionDetailsPage() {
           </div>
         </div>
 
-        {/* Transaction Detail Modal */}
+        {/* Transaction Detail & Overrides Modal */}
         <TransactionDetailModal
           transaction={selectedTransaction}
           isOpen={isDetailOpen}
           isLoading={isDetailLoading}
+          onActionComplete={() => {
+            loadStats();
+            loadTransactions(page, size, appliedFilters, sortField, sortDir);
+          }}
           onClose={() => {
             setIsDetailOpen(false);
             setSelectedTransaction(null);
             // If refOrId or query param was set, clear it smoothly
             if (refOrId || searchParams.has('ref') || searchParams.has('id')) {
-              navigate('/admin/transactions', { replace: true });
+              navigate(isTeller ? '/teller/transactions' : '/admin/transactions', { replace: true });
             }
           }}
         />

@@ -432,3 +432,16 @@ export interface OtcAccountLimitResponse {
   todayWithdrawnAmount: number;
   remainingDailyLimit: number;
 }
+
+
+export interface AdminDashboardSummaryResponse {
+  totalStaff: number;
+  activeStaff: number;
+  totalCustomers: number;
+  totalAccounts: number;
+  activeAccounts: number;
+  totalParameters: number;
+  activeAnnouncements: number;
+  recentStaff: StaffResponse[];
+  recentAnnouncements: AnnouncementResponse[];
+}

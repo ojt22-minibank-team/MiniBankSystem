@@ -4,13 +4,12 @@ import type {
   FeeRevenueReport,
   FeeFilterParams,
 } from '../../../types/reports/reporting.types';
-import {
-  fetchFeeRevenueSummary,
-  exportFeeRevenue,
-} from '../../../services/reportingService';
+import { fetchFeeRevenueSummary } from '../../../services/reportingService';
 import MetricCard from './MetricCard';
 import DataTable, { type Column } from './DataTable';
 import ExportButtons from './ExportButtons';
+import { ExportNotificationBanner } from './ExportNotificationBanner';
+import { useAsyncExport } from '../hooks/useAsyncExport';
 
 interface Props {
   startDate: string;
@@ -41,6 +40,15 @@ const FeeRevenuePanel: React.FC<Props> = ({
   const [fetched, setFetched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadDuration, setLoadDuration] = useState<number | null>(null);
+
+  const {
+    exportLoading,
+    exportNotice,
+    activeJob,
+    exportError,
+    triggerExport,
+    clearNotice,
+  } = useAsyncExport('FEE_REVENUE');
 
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 30;
@@ -204,10 +212,10 @@ const FeeRevenuePanel: React.FC<Props> = ({
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <ExportButtons
-              onExportCsv={() => exportFeeRevenue(params, 'csv')}
-              onExportExcel={() => exportFeeRevenue(params, 'excel')}
-              onExportPdf={() => exportFeeRevenue(params, 'pdf')}
-              loading={loading}
+              onExportCsv={() => triggerExport(params, 'csv')}
+              onExportExcel={() => triggerExport(params, 'excel')}
+              onExportPdf={() => triggerExport(params, 'pdf')}
+              loading={exportLoading}
             />
             <button
               onClick={load}
@@ -218,6 +226,15 @@ const FeeRevenuePanel: React.FC<Props> = ({
             </button>
           </div>
         </div>
+
+        {/* Enterprise Async background export banner */}
+        <ExportNotificationBanner
+          exportNotice={exportNotice}
+          exportLoading={exportLoading}
+          activeJob={activeJob}
+          exportError={exportError}
+          onDismiss={clearNotice}
+        />
 
         {error && (
           <div className="p-3 sm:p-4 text-xs sm:text-sm text-red-600 bg-red-50 border-b border-red-100">

@@ -67,4 +67,8 @@ public interface StaffUsersRepository extends JpaRepository<StaffUsers, UUID> {
     java.util.List<String> findStaffNosByPrefix(@Param("prefix") String prefix);
 
     Optional<StaffUsers> findFirstByStatus(com.corebanking.entity.enums.StaffUserStatus status);
+
+    long countByStatus(com.corebanking.entity.enums.StaffUserStatus status);
+
+    java.util.List<StaffUsers> findTop5ByOrderByCreatedAtDesc();
 }
