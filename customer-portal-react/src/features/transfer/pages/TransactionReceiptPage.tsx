@@ -139,8 +139,20 @@ function mapNotificationItemToReceipt(
     isOwnAccount: false,
     description: effectiveMemo,
     status: "COMPLETED",
-    badgeLabel: isSent ? "TRANSFER SENT" : "FUNDS RECEIVED",
-    transactionType: "TRANSFER",
+    badgeLabel:
+      (typeof noti.title === "string" && noti.title.toLowerCase().includes("deposit")) || ref.includes("OTC-DEP")
+        ? "CASH DEPOSIT"
+        : (typeof noti.title === "string" && noti.title.toLowerCase().includes("withdraw")) || ref.includes("OTC-WDL")
+        ? "CASH WITHDRAWAL"
+        : isSent
+        ? "TRANSFER SENT"
+        : "FUNDS RECEIVED",
+    transactionType:
+      (typeof noti.title === "string" && noti.title.toLowerCase().includes("deposit")) || ref.includes("OTC-DEP")
+        ? "OTC_DEPOSIT"
+        : (typeof noti.title === "string" && noti.title.toLowerCase().includes("withdraw")) || ref.includes("OTC-WDL")
+        ? "OTC_WITHDRAWAL"
+        : "TRANSFER",
   };
 }
 

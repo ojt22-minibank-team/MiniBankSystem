@@ -30,35 +30,174 @@ export const formatAmountValue = (num: number | string | null | undefined): stri
   }).format(val);
 };
 
+export interface NotificationMetaInput {
+  title?: string | null;
+  message?: string | null;
+  transactionRef?: string | null;
+  counterpartyName?: string | null;
+  counterpartyAccountNumber?: string | null;
+  transferDirection?: "SENT" | "RECEIVED" | string | null;
+  destinationAccountNumber?: string | null;
+  sourceAccountNumber?: string | null;
+  notificationType?: string | null;
+}
+
+export interface NotificationMetaOutput {
+  isDeposit: boolean;
+  isWithdrawal: boolean;
+  isPayment: boolean;
+  isFailed: boolean;
+  isItemReceived: boolean;
+  displayTitle: string;
+  targetAccount: string;
+}
+
+export const resolveNotificationMeta = (item: NotificationMetaInput): NotificationMetaOutput => {
+  const itemTitle = item.title || "";
+  const itemTitleLower = itemTitle.toLowerCase();
+  const msgLower = (item.message || "").toLowerCase();
+  const refLower = (item.transactionRef || "").toLowerCase();
+  const counterpartyAcc = item.counterpartyAccountNumber || "";
+  const counterpartyNameLower = (item.counterpartyName || "").toLowerCase();
+
+  const isDeposit =
+    itemTitleLower.includes("deposit") ||
+    msgLower.includes("bank counter deposit") ||
+    msgLower.includes("cash deposit") ||
+    refLower.includes("otc-dep") ||
+    (counterpartyAcc === "BANK-OTC" && item.transferDirection === "RECEIVED") ||
+    (counterpartyNameLower.includes("bank counter") && item.transferDirection === "RECEIVED");
+
+  const isWithdrawal =
+    itemTitleLower.includes("withdraw") ||
+    (msgLower.includes("bank counter") && msgLower.includes("withdrawn")) ||
+    refLower.includes("otc-wdl") ||
+    (counterpartyAcc === "BANK-OTC" && item.transferDirection === "SENT") ||
+    (counterpartyNameLower.includes("bank counter") && item.transferDirection === "SENT");
+
+  const isPayment =
+    item.notificationType === "PAYMENT" ||
+    itemTitleLower.includes("payment");
+
+  const isFailed =
+    itemTitleLower.includes("fail") ||
+    itemTitleLower.includes("reject") ||
+    itemTitleLower.includes("decline");
+
+  const isItemReceived =
+    item.transferDirection === "RECEIVED" ||
+    itemTitleLower.includes("received") ||
+    itemTitleLower.includes("funds received") ||
+    isDeposit;
+
+  // Real-world Customer-facing Display Title
+  let displayTitle = itemTitle;
+  if (isDeposit) {
+    displayTitle = "Deposit Successful";
+  } else if (isWithdrawal) {
+    displayTitle = "Withdrawal Successful";
+  } else if (isItemReceived) {
+    displayTitle = "Money Received";
+  } else if (item.transferDirection === "SENT" || itemTitleLower.includes("sent")) {
+    displayTitle = "Transfer Successful";
+  }
+
+  // Account resolution for deposit/withdrawal
+  let targetAccount = "";
+  if (isDeposit) {
+    targetAccount = item.destinationAccountNumber || "";
+    if (!targetAccount || targetAccount === "BANK-OTC") {
+      const match = item.message?.match(/(?:to\s+account\s+|account\s+)(\d+)/i);
+      if (match) targetAccount = match[1];
+    }
+    if (!targetAccount && item.counterpartyName?.toLowerCase().startsWith("account ")) {
+      targetAccount = item.counterpartyName.replace(/\D/g, "");
+    }
+  } else if (isWithdrawal) {
+    targetAccount = item.sourceAccountNumber || "";
+    if (!targetAccount || targetAccount === "BANK-OTC") {
+      const match = item.message?.match(/(?:from\s+account\s+|account\s+)(\d+)/i);
+      if (match) targetAccount = match[1];
+    }
+    if (!targetAccount && item.counterpartyName?.toLowerCase().startsWith("account ")) {
+      targetAccount = item.counterpartyName.replace(/\D/g, "");
+    }
+  }
+
+  return {
+    isDeposit,
+    isWithdrawal,
+    isPayment,
+    isFailed,
+    isItemReceived,
+    displayTitle,
+    targetAccount,
+  };
+};
+
 export interface NotificationMessageTarget {
   message?: string | null;
   amount?: number | string | null;
   currency?: string | null;
   transferDirection?: "SENT" | "RECEIVED" | string | null;
   title?: string | null;
+  destinationAccountNumber?: string | null;
+  sourceAccountNumber?: string | null;
+  transactionRef?: string | null;
+  counterpartyName?: string | null;
+  counterpartyAccountNumber?: string | null;
+  notificationType?: string | null;
 }
 
 export const formatNotificationMessage = (item: NotificationMessageTarget): string => {
   const original = (item.message || "").trim();
-  const titleLower = (item.title || "").toLowerCase();
-  const originalLower = original.toLowerCase();
+  const meta = resolveNotificationMeta(item);
+  const currency = item.currency || "MMK";
 
-  const isReceived =
-    item.transferDirection === "RECEIVED" ||
-    titleLower.includes("received") ||
-    titleLower.includes("funds received") ||
-    originalLower.startsWith("you received") ||
-    originalLower.startsWith("you have successfully received");
+  // Case 0: Cash Deposit via Bank Counter
+  if (meta.isDeposit) {
+    let amtStr = "";
+    if (item.amount !== null && item.amount !== undefined && item.amount !== "") {
+      amtStr = formatAmountValue(item.amount);
+    } else {
+      const match = original.match(/(?:deposit|received)\s+([\d,.]+)/i);
+      if (match) amtStr = formatAmountValue(match[1]);
+    }
 
+    const accStr = meta.targetAccount ? ` to account ${maskAccountNumber(meta.targetAccount)}` : "";
+
+    if (amtStr) {
+      return `Your cash deposit of ${amtStr} ${currency}${accStr} was successful.`;
+    }
+    return "Your cash deposit was successful.";
+  }
+
+  // Case 0.1: Cash Withdrawal via Bank Counter
+  if (meta.isWithdrawal) {
+    let amtStr = "";
+    if (item.amount !== null && item.amount !== undefined && item.amount !== "") {
+      amtStr = formatAmountValue(item.amount);
+    } else {
+      const match = original.match(/(?:withdrawn|withdrew)\s+([\d,.]+)/i);
+      if (match) amtStr = formatAmountValue(match[1]);
+    }
+
+    const accStr = meta.targetAccount ? ` from account ${maskAccountNumber(meta.targetAccount)}` : "";
+
+    if (amtStr) {
+      return `Your cash withdrawal of ${amtStr} ${currency}${accStr} was successful.`;
+    }
+    return "Your cash withdrawal was successful.";
+  }
+
+  const isReceived = meta.isItemReceived;
   const isSent = !isReceived && (
     item.transferDirection === "SENT" ||
-    titleLower.includes("transfer sent") ||
-    titleLower.includes("sent") ||
-    originalLower.startsWith("you have transferred") ||
-    originalLower.startsWith("you have successfully transferred")
+    (item.title || "").toLowerCase().includes("transfer sent") ||
+    (item.title || "").toLowerCase().includes("sent") ||
+    original.toLowerCase().startsWith("you have transferred") ||
+    original.toLowerCase().startsWith("you have successfully transferred")
   );
-
-  const currency = item.currency || "MMK";
 
   // Case 1: Transfer Sent - eliminate redundancy and format amount cleanly
   if (isSent) {
