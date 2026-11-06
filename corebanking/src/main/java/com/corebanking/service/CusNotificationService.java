@@ -89,7 +89,21 @@ public class CusNotificationService {
 
                     // Populate counterparty details
                     UUID currentCustomerId = n.getCustomer() != null ? n.getCustomer().getCustomerId() : null;
-                    if (txn.getSourceAccount() != null && txn.getDestinationAccount() != null && currentCustomerId != null) {
+                    if (txn.getTransactionType() == com.corebanking.entity.enums.TransactionType.OTC_DEPOSIT) {
+                        builder.counterpartyName("Bank Counter");
+                        builder.counterpartyAccountNumber("BANK-OTC");
+                        builder.transferDirection("RECEIVED");
+                        if (txn.getDestinationAccount() != null) {
+                            builder.destinationAccountNumber(txn.getDestinationAccount().getAccountNumber());
+                        }
+                    } else if (txn.getTransactionType() == com.corebanking.entity.enums.TransactionType.OTC_WITHDRAWAL) {
+                        builder.counterpartyName("Bank Counter");
+                        builder.counterpartyAccountNumber("BANK-OTC");
+                        builder.transferDirection("SENT");
+                        if (txn.getSourceAccount() != null) {
+                            builder.sourceAccountNumber(txn.getSourceAccount().getAccountNumber());
+                        }
+                    } else if (txn.getSourceAccount() != null && txn.getDestinationAccount() != null && currentCustomerId != null) {
                         UUID sourceCustId = (txn.getSourceAccount().getCustomer() != null) ? txn.getSourceAccount().getCustomer().getCustomerId() : null;
                         UUID destCustId = (txn.getDestinationAccount().getCustomer() != null) ? txn.getDestinationAccount().getCustomer().getCustomerId() : null;
 
@@ -194,18 +208,32 @@ public class CusNotificationService {
 
         // 4. Counterparty Name & Account Number fallback
         if (current.getCounterpartyName() == null || current.getCounterpartyName().isBlank()) {
-            java.util.regex.Matcher toMatcher = java.util.regex.Pattern.compile("\\bto\\s+([^.(]+?)(?:\\s*\\(([^)]+)\\)|\\s+for Order|\\.\\s*Ref:|$)").matcher(msg);
-            if (toMatcher.find()) {
-                builder.counterpartyName(toMatcher.group(1).trim());
-                if (toMatcher.group(2) != null && !toMatcher.group(2).isBlank() && (current.getCounterpartyAccountNumber() == null || current.getCounterpartyAccountNumber().isBlank())) {
-                    builder.counterpartyAccountNumber(toMatcher.group(2).trim());
+            String msgLower = msg.toLowerCase();
+            if (msgLower.contains("bank counter") || msgLower.contains("cash deposit") || msgLower.contains("deposit to account") || msgLower.contains("cash withdrawal")) {
+                builder.counterpartyName("Bank Counter");
+                builder.counterpartyAccountNumber("BANK-OTC");
+                java.util.regex.Matcher accMatcher = java.util.regex.Pattern.compile("(?:to|from)\\s+account\\s+([0-9]+)").matcher(msg);
+                if (accMatcher.find()) {
+                    if (msgLower.contains("deposit")) {
+                        builder.destinationAccountNumber(accMatcher.group(1).trim());
+                    } else {
+                        builder.sourceAccountNumber(accMatcher.group(1).trim());
+                    }
                 }
             } else {
-                java.util.regex.Matcher fromMatcher = java.util.regex.Pattern.compile("\\bfrom\\s+([^.(]+?)(?:\\s*\\(([^)]+)\\)|\\s+for Order|\\.\\s*Ref:|$)").matcher(msg);
-                if (fromMatcher.find()) {
-                    builder.counterpartyName(fromMatcher.group(1).trim());
-                    if (fromMatcher.group(2) != null && !fromMatcher.group(2).isBlank() && (current.getCounterpartyAccountNumber() == null || current.getCounterpartyAccountNumber().isBlank())) {
-                        builder.counterpartyAccountNumber(fromMatcher.group(2).trim());
+                java.util.regex.Matcher toMatcher = java.util.regex.Pattern.compile("\\bto\\s+([^.(]+?)(?:\\s*\\(([^)]+)\\)|\\s+for Order|\\.\\s*Ref:|$)").matcher(msg);
+                if (toMatcher.find() && !toMatcher.group(1).trim().toLowerCase().startsWith("account ")) {
+                    builder.counterpartyName(toMatcher.group(1).trim());
+                    if (toMatcher.group(2) != null && !toMatcher.group(2).isBlank() && (current.getCounterpartyAccountNumber() == null || current.getCounterpartyAccountNumber().isBlank())) {
+                        builder.counterpartyAccountNumber(toMatcher.group(2).trim());
+                    }
+                } else {
+                    java.util.regex.Matcher fromMatcher = java.util.regex.Pattern.compile("\\bfrom\\s+([^.(]+?)(?:\\s*\\(([^)]+)\\)|\\s+for Order|\\.\\s*Ref:|$)").matcher(msg);
+                    if (fromMatcher.find() && !fromMatcher.group(1).trim().toLowerCase().startsWith("account ")) {
+                        builder.counterpartyName(fromMatcher.group(1).trim());
+                        if (fromMatcher.group(2) != null && !fromMatcher.group(2).isBlank() && (current.getCounterpartyAccountNumber() == null || current.getCounterpartyAccountNumber().isBlank())) {
+                            builder.counterpartyAccountNumber(fromMatcher.group(2).trim());
+                        }
                     }
                 }
             }
