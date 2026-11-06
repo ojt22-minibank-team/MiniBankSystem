@@ -158,7 +158,16 @@ public class CusTransactionHistoryRepository {
         String sql = "SELECT bt.transaction_ref, bt.initiated_at AS transaction_date, bt.transaction_type, bt.status, " +
                      "CASE WHEN bt.source_account_id = ? THEN 'SOURCE' ELSE 'DESTINATION' END AS account_side, " +
                      "bt.amount, bt.currency, bt.service_fee, bt.description, " +
-                     "sa.account_number AS source_account_number, da.account_number AS destination_account_number, " +
+                     "COALESCE(sa.account_number, CASE " +
+                     "  WHEN le_src.narration LIKE 'P2P Transfer Debit from Acc: %' THEN TRIM(SUBSTRING(le_src.narration, LENGTH('P2P Transfer Debit from Acc: ') + 1)) " +
+                     "  WHEN le_src.narration LIKE '%Acc: %' THEN TRIM(SUBSTRING_INDEX(le_src.narration, 'Acc: ', -1)) " +
+                     "  ELSE NULL " +
+                     "END) AS source_account_number, " +
+                     "COALESCE(da.account_number, CASE " +
+                     "  WHEN le_dst.narration LIKE 'P2P Transfer Credit to Acc: %' THEN TRIM(SUBSTRING(le_dst.narration, LENGTH('P2P Transfer Credit to Acc: ') + 1)) " +
+                     "  WHEN le_dst.narration LIKE '%Acc: %' THEN TRIM(SUBSTRING_INDEX(le_dst.narration, 'Acc: ', -1)) " +
+                     "  ELSE NULL " +
+                     "END) AS destination_account_number, " +
                      "bt.failure_code, bt.failure_message, bt.initiated_at, bt.completed_at, " +
                      "CASE " +
                      "  WHEN bt.transaction_type IN ('INTERNAL_TRANSFER', 'EXTERNAL_PAYMENT') THEN " +
@@ -171,6 +180,8 @@ public class CusTransactionHistoryRepository {
                      "LEFT JOIN accounts da ON bt.destination_account_id = da.account_id " +
                      "LEFT JOIN customers sc ON sa.customer_id = sc.customer_id " +
                      "LEFT JOIN customers dc ON da.customer_id = dc.customer_id " +
+                     "LEFT JOIN ledger_entries le_src ON bt.transaction_id = le_src.transaction_id AND le_src.line_no = 1 " +
+                     "LEFT JOIN ledger_entries le_dst ON bt.transaction_id = le_dst.transaction_id AND le_dst.line_no = 2 " +
                      "WHERE bt.transaction_ref = ? AND (bt.source_account_id = ? OR bt.destination_account_id = ?)";
 
         List<CusTransactionHistoryItemDTO> list = jdbcTemplate.query(
@@ -296,6 +307,9 @@ public class CusTransactionHistoryRepository {
         boolean hasCounterparty = counterpartyName != null && !counterpartyName.trim().isEmpty();
         String counterparty = hasCounterparty ? counterpartyName.trim() : null;
 
+        boolean hasDestAcc = !normDst.isEmpty();
+        boolean hasSrcAcc = !normSrc.isEmpty();
+
         if (transactionType == null) {
             return fallbackTitle(description, null);
         }
@@ -307,6 +321,8 @@ public class CusTransactionHistoryRepository {
                         return "Transfer to Own Account";
                     } else if (hasCounterparty) {
                         return "Transfer to " + counterparty;
+                    } else if (hasDestAcc) {
+                        return "Transfer to " + normDst;
                     } else {
                         return "Outgoing Transfer";
                     }
@@ -315,6 +331,8 @@ public class CusTransactionHistoryRepository {
                         return "Transfer from Own Account";
                     } else if (hasCounterparty) {
                         return "Transfer from " + counterparty;
+                    } else if (hasSrcAcc) {
+                        return "Transfer from " + normSrc;
                     } else {
                         return "Incoming Transfer";
                     }
@@ -323,6 +341,8 @@ public class CusTransactionHistoryRepository {
                         return "Transfer to Own Account";
                     } else if (hasCounterparty) {
                         return "Transfer to " + counterparty;
+                    } else if (hasDestAcc) {
+                        return "Transfer to " + normDst;
                     } else {
                         return "Internal Transfer";
                     }
@@ -332,18 +352,24 @@ public class CusTransactionHistoryRepository {
                 if (isSource) {
                     if (hasCounterparty) {
                         return "Payment to " + counterparty;
+                    } else if (hasDestAcc) {
+                        return "Payment to " + normDst;
                     } else {
                         return "Payment";
                     }
                 } else if (isDestination) {
                     if (hasCounterparty) {
                         return "Payment from " + counterparty;
+                    } else if (hasSrcAcc) {
+                        return "Payment from " + normSrc;
                     } else {
                         return "Payment Received";
                     }
                 } else {
                     if (hasCounterparty) {
                         return "Payment to " + counterparty;
+                    } else if (hasDestAcc) {
+                        return "Payment to " + normDst;
                     } else {
                         return "Payment";
                     }
