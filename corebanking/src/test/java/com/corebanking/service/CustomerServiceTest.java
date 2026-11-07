@@ -64,6 +64,9 @@ class CustomerServiceTest {
 	private CusEmailService cusEmailService;
 
 	@Mock
+	private EmailVerificationService emailVerificationService;
+
+	@Mock
 	private AuditLogsRepository auditLogsRepository;
 
 	@Mock
@@ -228,6 +231,42 @@ class CustomerServiceTest {
 				() -> customerService.createCustomer(duplicateEmailDto));
 
 		assertTrue(ex.getMessage().contains("A Personal customer with this email already exists"));
+		verify(customerRepository, never()).save(any(Customers.class));
+		verify(customerRepository, never()).saveAndFlush(any(Customers.class));
+	}
+
+	@Test
+	@DisplayName("testRegisterCustomer_ExistsByEmailDuplicate_ThrowsException: When existsByEmail returns true, throws duplicate exception")
+	void testRegisterCustomer_ExistsByEmailDuplicate_ThrowsException() {
+		CustomerDTO duplicateEmailDto = CustomerDTO.builder().fullName("Daw Yoon").nrc("12/DAGANA(N)123456")
+				.email("duplicate@gmail.com").phone("09123456789").customerType("PERSONAL").build();
+
+		when(customerRepository.existsByPhoneAndCustomerType("09123456789", CustomerType.PERSONAL)).thenReturn(false);
+		when(customerRepository.existsByEmail("duplicate@gmail.com")).thenReturn(true);
+
+		IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+				() -> customerService.createCustomer(duplicateEmailDto));
+
+		assertTrue(ex.getMessage().contains("already exists") || ex.getMessage().contains("already registered"));
+		verify(emailVerificationService, times(1)).verifyEmailHost("duplicate@gmail.com");
+		verify(customerRepository, never()).save(any(Customers.class));
+	}
+
+	@Test
+	@DisplayName("testRegisterCustomer_EmailHostVerificationFails_ThrowsException: When verifyEmailHost fails, customer is not saved")
+	void testRegisterCustomer_EmailHostVerificationFails_ThrowsException() {
+		CustomerDTO invalidHostDto = CustomerDTO.builder().fullName("Daw Yoon").nrc("12/DAGANA(N)123456")
+				.email("fakeuser@gmail.com").phone("09123456789").customerType("PERSONAL").build();
+
+		when(customerRepository.existsByPhoneAndCustomerType("09123456789", CustomerType.PERSONAL)).thenReturn(false);
+		org.mockito.Mockito.doThrow(new com.corebanking.exception.InvalidEmailException("The provided email address does not have a reachable mail server."))
+				.when(emailVerificationService).verifyEmailHost("fakeuser@gmail.com");
+
+		com.corebanking.exception.InvalidEmailException ex = assertThrows(
+				com.corebanking.exception.InvalidEmailException.class,
+				() -> customerService.createCustomer(invalidHostDto));
+
+		assertEquals("The provided email address does not have a reachable mail server.", ex.getMessage());
 		verify(customerRepository, never()).save(any(Customers.class));
 		verify(customerRepository, never()).saveAndFlush(any(Customers.class));
 	}
