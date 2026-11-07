@@ -1,26 +1,25 @@
-
 {
-"hero": {
-  "title": "Frequently Asked Questions",
-  "description": "Find answers to common questions about your account, security, and banking services.",
-  "searchPlaceholder": "Search"
-},
+  "hero": {
+    "title": "Frequently Asked Questions",
+    "description": "Find answers to common questions about your account, security, and banking services.",
+    "searchPlaceholder": "Search"
+  },
   "faq": {
     "noResults": "No Result",
     "topics": {
       "accountProfile": "Account & Profile",
       "loginSecurity": "Login & Security",
-      "settingsPreferences": "Settings & Preferences",
-      "transfersPayments": "Transfers & Payments"
+      "transfersPayments": "Fund Transfer & Fees",
+      "settingsPreferences": "Settings & Preferences"
     },
     "login": {
       "question": "How do I log in to my account?",
       "answer": "Enter your Customer ID or Account Number and password on the login page. Complete the required verification to access your account."
     },
-"transactionPin": {
-  "question": "How can I change my Transaction PIN?",
-  "answer": "Go to Settings and select Forgot Transaction PIN to reset or change your Transaction PIN. Follow the instructions to complete the process."
-},
+    "transactionPin": {
+      "question": "How can I change my Transaction PIN?",
+      "answer": "Go to Settings and select Forgot Transaction PIN to reset or change your Transaction PIN. Follow the instructions to complete the process."
+    },
     "account": {
       "question": "How can I view my account details?",
       "answer": "Go to My Accounts from the sidebar to view your accounts and select an account to see its details."
@@ -34,20 +33,48 @@
       "answer": "Navigate to Transfer & Payments and follow the instructions. Transfer availability depends on your account type and permissions."
     },
     "accountTransfer": {
-  "question": "How can I transfer money to another EKARAJ user?",
-  "answer": "You can easily and quickly transfer money to other EKARAJ users through the Transfer feature using their Customer Code or Account Number."
-},
-"pin": {
-  "question": "What is a Transaction PIN?",
-  "answer": "A Transaction PIN is a confidential 6-digit numeric code used to verify banking transactions. You must enter your Transaction PIN when making a money transfer to authorize the transaction."
-},
-"profile": {
-  "question": "How can I update my profile information?",
-  "answer": "You can access your Profile from either the sidebar or the navbar. From the Profile page, you can view and update the information that is available for editing on your account."
-},
+      "question": "How can I transfer money to another EKARAJ user?",
+      "answer": "You can easily and quickly transfer money to other EKARAJ users through the Transfer feature using their Customer Code or Account Number."
+    },
+    "pin": {
+      "question": "What is a Transaction PIN?",
+      "answer": "A Transaction PIN is a confidential 6-digit numeric code used to verify banking transactions. You must enter your Transaction PIN when making a money transfer to authorize the transaction."
+    },
+    "profile": {
+      "question": "How can I update my profile information?",
+      "answer": "You can access your Profile from either the sidebar or the navbar. From the Profile page, you can view and update the information that is available for editing on your account."
+    },
     "language": {
       "question": "How can I change the language or theme?",
       "answer": "Open Settings to change your preferred language and theme."
+    },
+    "ownAccountFee": {
+      "question": "Is there a service fee for transferring money between my own accounts?",
+      "answer": "No. Transfers between your own accounts (Own Account Transfer) are completely free of charge. The service fee is set to 0.00 MMK (Free)."
+    },
+    "otherPersonFee": {
+      "question": "How much is the service fee for transferring money to another person?",
+      "answer": "When transferring money to another person, a small service fee will be deducted based on the transfer amount, according to the bank's predefined Fee Schedule. The applicable fee will be displayed in advance on the Review Step before you confirm the transaction."
+    },
+    "customizeTransferLimits": {
+      "question": "How can I customize my transfer limits?",
+      "answer": "Navigate to My Accounts > Transfer Limits & Safety. Under Customize Transfer Limits, you can adjust your Per-Transaction Limit and Daily Transfer Limit according to your preferences, within the bank's maximum permitted limits. You must verify the changes using your Transaction PIN."
+    },
+    "beneficiaries": {
+      "question": "What are the benefits of adding Beneficiaries?",
+      "answer": "Saving beneficiaries helps prevent errors caused by entering incorrect account numbers. You can also transfer money conveniently with just one click on the Send Money button. Additionally, higher transfer limits may be available for Saved Beneficiaries compared to unsaved accounts."
+    },
+    "transactionPinAttempts": {
+      "question": "What happens if I enter my Transaction PIN incorrectly multiple times?",
+      "answer": "To protect against unauthorized access and PIN-guessing attempts, your account will be temporarily locked if you enter your Transaction PIN incorrectly five consecutive times. You can request a PIN reset through Settings > Reset/Forgot Transaction PIN."
+    },
+    "balanceDifference": {
+      "question": "What is the difference between Total Balance and Available Balance?",
+      "answer": "Total Balance represents the entire amount of money held in your account, while Available Balance is the amount you can actually transfer or withdraw after deducting the minimum reserve balance that must be maintained in your account according to bank policies (e.g., 10,000 MMK or 50,000 MMK)."
+    },
+    "receiptQR": {
+      "question": "What is the QR Code on the transfer receipt used for?",
+      "answer": "The QR Code helps prevent receipt forgery and verify transaction authenticity. It contains encrypted transaction details that can be scanned using a mobile phone camera to verify whether the transfer is genuine."
     }
   },
   "about": {

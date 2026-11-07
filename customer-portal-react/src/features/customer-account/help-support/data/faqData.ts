@@ -1,3 +1,4 @@
+
 import type { FAQTopic } from "../types/helpTypes";
 
 export const FAQ_DATA: FAQTopic[] = [
@@ -44,17 +45,6 @@ export const FAQ_DATA: FAQTopic[] = [
     ],
   },
   {
-    id: "settings-preferences",
-    titleKey: "faq.topics.settingsPreferences",
-    items: [
-      {
-        id: "language",
-        questionKey: "faq.language.question",
-        answerKey: "faq.language.answer",
-      },
-    ],
-  },
-  {
     id: "transfers-payments",
     titleKey: "faq.topics.transfersPayments",
     items: [
@@ -67,6 +57,52 @@ export const FAQ_DATA: FAQTopic[] = [
         id: "accountTransfer",
         questionKey: "faq.accountTransfer.question",
         answerKey: "faq.accountTransfer.answer",
+      },
+      {
+        id: "ownAccountFee",
+        questionKey: "faq.ownAccountFee.question",
+        answerKey: "faq.ownAccountFee.answer",
+      },
+      {
+        id: "otherPersonFee",
+        questionKey: "faq.otherPersonFee.question",
+        answerKey: "faq.otherPersonFee.answer",
+      },
+      {
+        id: "customizeTransferLimits",
+        questionKey: "faq.customizeTransferLimits.question",
+        answerKey: "faq.customizeTransferLimits.answer",
+      },
+      {
+        id: "beneficiaries",
+        questionKey: "faq.beneficiaries.question",
+        answerKey: "faq.beneficiaries.answer",
+      },
+      {
+        id: "transactionPinAttempts",
+        questionKey: "faq.transactionPinAttempts.question",
+        answerKey: "faq.transactionPinAttempts.answer",
+      },
+      {
+        id: "balanceDifference",
+        questionKey: "faq.balanceDifference.question",
+        answerKey: "faq.balanceDifference.answer",
+      },
+      {
+        id: "receiptQR",
+        questionKey: "faq.receiptQR.question",
+        answerKey: "faq.receiptQR.answer",
+      },
+    ],
+  },
+  {
+    id: "settings-preferences",
+    titleKey: "faq.topics.settingsPreferences",
+    items: [
+      {
+        id: "language",
+        questionKey: "faq.language.question",
+        answerKey: "faq.language.answer",
       },
     ],
   },
