@@ -746,15 +746,17 @@ export default function TransferReceiptView({
                 </span>
               </div>
 
-              {/* 6. Service Fee */}
-              <div className="flex items-center justify-between py-2 sm:py-2.5 print:py-2 gap-3">
-                <span className="text-slate-600 font-semibold shrink-0 print:text-[13px]">Service Fee</span>
-                <span className="font-bold text-emerald-600 text-right truncate print:text-[13px]">
-                  {Number(data.serviceFee || 0) === 0
-                    ? "0.00 MMK"
-                    : `${Number(data.serviceFee).toLocaleString()} ${data.currency || "MMK"}`}
-                </span>
-              </div>
+              {/* 6. Service Fee: Only shown for sender, completely hidden for recipient */}
+              {data.direction !== "IN" && !data.badgeLabel?.toUpperCase().includes("RECEIVED") && (
+                <div className="flex items-center justify-between py-2 sm:py-2.5 print:py-2 gap-3">
+                  <span className="text-slate-600 font-semibold shrink-0 print:text-[13px]">Service Fee</span>
+                  <span className="font-bold text-emerald-600 text-right truncate print:text-[13px]">
+                    {Number(data.serviceFee || 0) === 0
+                      ? "0.00 MMK"
+                      : `${Number(data.serviceFee).toLocaleString()} ${data.currency || "MMK"}`}
+                  </span>
+                </div>
+              )}
 
               {/* 7. Total Debited / Credited */}
               <div className="flex items-center justify-between py-2 sm:py-2.5 print:py-2 gap-3">

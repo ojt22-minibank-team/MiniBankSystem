@@ -19,6 +19,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import com.corebanking.security.CusJwtAuthenticationFilter;
 
 import lombok.RequiredArgsConstructor;
+
 @Configuration
 @RequiredArgsConstructor
 public class CusSecurityConfig {
@@ -171,7 +172,18 @@ public class CusSecurityConfig {
         }
         List<String> origins = (envOrigins != null && !envOrigins.isBlank())
                 ? java.util.Arrays.stream(envOrigins.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList()
-                : List.of("http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174");
+                : List.of(
+                        "http://localhost:8001",
+                        "http://127.0.0.1:8001",
+                        "http://localhost:8002",
+                        "http://127.0.0.1:8002",
+                        "http://localhost:8006",
+                        "http://127.0.0.1:8006",
+                        "http://localhost:5173",
+                        "http://127.0.0.1:5173",
+                        "http://localhost:5174",
+                        "http://127.0.0.1:5174"
+                );
 
         configuration.setAllowedOrigins(origins);
 

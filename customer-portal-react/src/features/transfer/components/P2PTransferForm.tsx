@@ -4,7 +4,7 @@ import { useAppDispatch, useAppSelector } from "../../../lib/redux";
 import { submitP2PTransfer, resetTransferState, clearTransferError } from "../store/transferSlice";
 import { fetchMyAccounts } from "../../customer-account/accounts/stores/accountsSlice";
 import { fetchDashboard } from "../../customer-account/dashboard/store/dashboardSlice";
-import { lookupDestinationAccount } from "../services/transferService";
+import { lookupDestinationAccount, calculateTransferFee } from "../services/transferService";
 import { getBeneficiaries, addBeneficiary } from "../../beneficiaries/services/beneficiaryService";
 import type { Beneficiary } from "../../beneficiaries/types/beneficiaryTypes";
 import type { P2PTransferRequest } from "../types/transferTypes";
@@ -822,9 +822,12 @@ function FormStep({
 
 interface ReviewStepProps {
   sourceAccount: string;
+  senderName?: string;
   destinationAccount: string;
   recipientName: string;
   amount: number;
+  serviceFee?: number;
+  isCalculatingFee?: boolean;
   description: string;
   isOwnAccount?: boolean;
   onConfirm: () => void;
@@ -833,9 +836,12 @@ interface ReviewStepProps {
 
 function ReviewStep({
   sourceAccount,
+  senderName,
   destinationAccount,
   recipientName,
   amount,
+  serviceFee = 0,
+  isCalculatingFee = false,
   description,
   isOwnAccount = false,
   onConfirm,
@@ -869,7 +875,7 @@ function ReviewStep({
                 {isOwnAccount ? "From (My Account)" : "From (Sender)"}
               </span>
               <p className="text-sm font-black text-slate-900 dark:text-white truncate">
-                {isOwnAccount ? "My Account" : maskAccount(sourceAccount)}
+                {senderName || "Sender"}
               </p>
               <span className="inline-block text-[11px] font-mono font-medium text-emerald-600 dark:text-emerald-400">
                 {maskAccount(sourceAccount)}
@@ -907,7 +913,15 @@ function ReviewStep({
 
           <div className="flex justify-between items-center py-2.5">
             <span className="text-slate-700 dark:text-slate-300 font-semibold">Service Fee</span>
-            <span className="font-bold text-emerald-600 dark:text-emerald-400">0.00 MMK (Free)</span>
+            {isCalculatingFee && !isOwnAccount ? (
+              <span className="text-slate-400 font-medium animate-pulse">Calculating...</span>
+            ) : (!isOwnAccount && serviceFee > 0) ? (
+              <span className="font-bold text-slate-900 dark:text-white">
+                {serviceFee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MMK
+              </span>
+            ) : (
+              <span className="font-bold text-emerald-600 dark:text-emerald-400">0.00 MMK (Free)</span>
+            )}
           </div>
 
           {description && (
@@ -922,7 +936,7 @@ function ReviewStep({
               Total Debited Amount
             </span>
             <span className="font-black text-[#00A3C4] dark:text-cyan-400 text-lg sm:text-xl tracking-tight">
-              {amount.toLocaleString()} MMK
+              {(amount + (!isOwnAccount ? (serviceFee || 0) : 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\.00$/, "")} MMK
             </span>
           </div>
         </div>
@@ -1573,6 +1587,73 @@ export const P2PTransferForm = () => {
   const [savingBeneficiary, setSavingBeneficiary] = useState(false);
   const [beneficiarySaved, setBeneficiarySaved] = useState(false);
   const [transferLimits, setTransferLimits] = useState<TransferLimitInfo | null>(null);
+  const [serviceFee, setServiceFee] = useState<number>(0);
+  const [isCalculatingFee, setIsCalculatingFee] = useState<boolean>(false);
+
+  const isOwnAccountTransfer = Boolean(
+    (destinationAccount &&
+      accounts.some(
+        (a) => a.accountNumber === destinationAccount && a.accountNumber !== sourceAccount
+      )) ||
+      (transactionResult?.destinationAccountNumber &&
+        accounts.some(
+          (a) =>
+            a.accountNumber === transactionResult.destinationAccountNumber &&
+            a.accountNumber !== (transactionResult.sourceAccountNumber || sourceAccount)
+        ))
+  );
+
+  const customerType = profile?.customerType?.toUpperCase();
+  const isCompany = customerType === "COMPANY" || customerType === "CORPORATE";
+  const senderDisplayName =
+    (isCompany
+      ? profile?.companyName
+      : `${profile?.firstName || ""} ${profile?.lastName || ""}`.trim()) ||
+    (accounts.find((a) => a.accountNumber === sourceAccount) as any)?.accountName ||
+    "Sender";
+
+  // Dynamic Service Fee Calculation from database
+  useEffect(() => {
+    // For own account transfers, fee is strictly 0 without database lookup
+    if (isOwnAccountTransfer) {
+      setServiceFee(0);
+      setIsCalculatingFee(false);
+      return;
+    }
+
+    const amt = Number(amount);
+    if (!amt || amt <= 0 || isNaN(amt)) {
+      setServiceFee(0);
+      setIsCalculatingFee(false);
+      return;
+    }
+
+    let isMounted = true;
+    setIsCalculatingFee(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await calculateTransferFee(amt, sourceAccount, destinationAccount);
+        if (isMounted) {
+          setServiceFee(res && typeof res.fee === "number" ? res.fee : 0);
+        }
+      } catch (err) {
+        console.error("Failed to fetch transfer fee from db:", err);
+        if (isMounted) {
+          setServiceFee(0);
+        }
+      } finally {
+        if (isMounted) {
+          setIsCalculatingFee(false);
+        }
+      }
+    }, 300);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [amount, isOwnAccountTransfer, sourceAccount, destinationAccount]);
 
   // Function to load and sync beneficiaries
   const loadBeneficiaries = () => {
@@ -1622,19 +1703,6 @@ export const P2PTransferForm = () => {
       setValidationError("");
     }
   }, [amount, destinationAccount, sourceAccount]);
-
-  const isOwnAccountTransfer = Boolean(
-    (destinationAccount &&
-      accounts.some(
-        (a) => a.accountNumber === destinationAccount && a.accountNumber !== sourceAccount
-      )) ||
-      (transactionResult?.destinationAccountNumber &&
-        accounts.some(
-          (a) =>
-            a.accountNumber === transactionResult.destinationAccountNumber &&
-            a.accountNumber !== (transactionResult.sourceAccountNumber || sourceAccount)
-        ))
-  );
 
   const isSavedBeneficiary = Boolean(
     beneficiarySaved ||
@@ -1766,7 +1834,7 @@ export const P2PTransferForm = () => {
   };
 
   /* Validation */
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setValidationError("");
     if (!sourceAccount) return setValidationError("Please select a source account.");
     if (!destinationAccount.trim()) return setValidationError("Please enter a destination account number.");
@@ -1778,6 +1846,30 @@ export const P2PTransferForm = () => {
     if (!amount || Number(amount) < 1) return setValidationError("Minimum transfer amount is 1 MMK.");
 
     const transferNum = Number(amount);
+    const isOwnAccount = Boolean(
+      destinationAccount &&
+        accounts.some(
+          (a) => a.accountNumber === destinationAccount && a.accountNumber !== sourceAccount
+        )
+    );
+
+    let feeNum = 0;
+    if (!isOwnAccount) {
+      feeNum = serviceFee;
+      try {
+        const feeRes = await calculateTransferFee(transferNum, sourceAccount, destinationAccount);
+        if (feeRes && typeof feeRes.fee === "number") {
+          feeNum = feeRes.fee;
+          setServiceFee(feeNum);
+        }
+      } catch {
+        // fallback to existing feeNum
+      }
+    } else {
+      setServiceFee(0);
+    }
+
+    const totalRequired = transferNum + feeNum;
     const selected = accounts.find((a) => a.accountNumber === sourceAccount);
     const currentBal = selected ? Number(selected.currentBalance ?? selected.availableBalance) : 0;
     const minReserve = transferLimits?.minimumBalance ?? (selected ? Number(selected.minimumBalance || 10000) : 10000);
@@ -1786,17 +1878,11 @@ export const P2PTransferForm = () => {
           ? Number(selected.availableBalance)
           : Math.max(0, currentBal - minReserve))
       : 0;
-    if (selected && transferNum > maxTransferable) {
+    if (selected && totalRequired > maxTransferable) {
       return setValidationError(
-        `Insufficient available funds. You must maintain a minimum balance of ${minReserve.toLocaleString()} MMK. Net available for transfer is ${maxTransferable.toLocaleString()} MMK.`
+        `Insufficient available funds. You must maintain a minimum balance of ${minReserve.toLocaleString()} MMK. Total required (transfer + fee) is ${totalRequired.toLocaleString()} MMK, but net available is ${maxTransferable.toLocaleString()} MMK.`
       );
     }
-    const isOwnAccount = Boolean(
-      destinationAccount &&
-        accounts.some(
-          (a) => a.accountNumber === destinationAccount && a.accountNumber !== sourceAccount
-        )
-    );
     if (transferLimits && !isOwnAccount) {
       const isBeneficiary = beneficiaries.some(
         (b) => b.beneficiaryAccountNumber === destinationAccount
@@ -1981,8 +2067,9 @@ export const P2PTransferForm = () => {
         ? Number(selectedAcc.availableBalance)
         : Math.max(0, currentBalance - minBalance))
     : 0;
+  const effectiveFee = isOwnAccountTransfer ? 0 : (serviceFee || 0);
   const transferAmountNum = Number(amount) || 0;
-  const newBalancePreview = Math.max(0, availBalance - transferAmountNum);
+  const newBalancePreview = Math.max(0, availBalance - (transferAmountNum + effectiveFee));
 
   const isBeneficiarySelected = Boolean(
     destinationAccount?.trim() &&
@@ -2150,9 +2237,12 @@ export const P2PTransferForm = () => {
             {step === "review" && (
               <ReviewStep
                 sourceAccount={sourceAccount}
+                senderName={senderDisplayName}
                 destinationAccount={destinationAccount}
                 recipientName={recipientName}
                 amount={Number(amount)}
+                serviceFee={serviceFee}
+                isCalculatingFee={isCalculatingFee}
                 description={description}
                 isOwnAccount={isOwnAccountTransfer}
                 onConfirm={() => {
@@ -2197,6 +2287,14 @@ export const P2PTransferForm = () => {
                     -{formatMMK(transferAmountNum)}
                   </span>
                 </div>
+                {!isOwnAccountTransfer && effectiveFee > 0 && (
+                  <div className="flex justify-between items-center text-xs pt-1">
+                    <span className="text-slate-500 font-medium">Service Fee</span>
+                    <span className="font-semibold text-slate-700">
+                      -{formatMMK(effectiveFee)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center text-xs border-t border-slate-200/60 pt-2">
                   <span className="text-slate-700 font-bold">Available After Transfer</span>
                   <span className="font-black text-slate-900">

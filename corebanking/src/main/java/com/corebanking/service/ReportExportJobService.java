@@ -22,6 +22,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -246,21 +248,59 @@ public class ReportExportJobService {
         return record != null ? record.getContentType() : "application/octet-stream";
     }
 
+    /**
+     * Periodic background auto-cleanup task running every hour.
+     * Purges temporary export files on disk and evicts jobs from memory older than 2 hours.
+     * Also scans physical storage to clean up any orphaned files across server restarts.
+     */
     @Scheduled(fixedRate = 3600000)
     public void cleanupOldExports() {
+        log.info("Starting scheduled auto-cleanup for expired export jobs and files...");
         LocalDateTime cutoff = LocalDateTime.now().minusHours(2);
+        long cutoffEpochMillis = System.currentTimeMillis() - (2L * 3600 * 1000);
+        AtomicInteger memoryCleaned = new AtomicInteger(0);
+        AtomicInteger diskCleaned = new AtomicInteger(0);
+
+        // 1. Evict from in-memory jobStore and delete tracked files
         jobStore.entrySet().removeIf(entry -> {
             JobRecord job = entry.getValue();
             if (job.getCreatedAt() != null && job.getCreatedAt().isBefore(cutoff)) {
                 if (job.getFilePath() != null) {
                     try {
-                        Files.deleteIfExists(job.getFilePath());
-                    } catch (IOException ignored) {}
+                        if (Files.deleteIfExists(job.getFilePath())) {
+                            diskCleaned.incrementAndGet();
+                        }
+                    } catch (IOException e) {
+                        log.warn("Failed to delete expired export file: {}", job.getFilePath(), e);
+                    }
                 }
+                memoryCleaned.incrementAndGet();
                 return true;
             }
             return false;
         });
+
+        // 2. Scan physical disk directory to purge orphaned files (e.g. across server restarts)
+        if (Files.exists(exportStorageDir)) {
+            try (Stream<Path> stream = Files.list(exportStorageDir)) {
+                stream.forEach(file -> {
+                    try {
+                        if (Files.isRegularFile(file) && Files.getLastModifiedTime(file).toMillis() < cutoffEpochMillis) {
+                            if (Files.deleteIfExists(file)) {
+                                diskCleaned.incrementAndGet();
+                            }
+                        }
+                    } catch (IOException e) {
+                        log.warn("Failed to check/delete orphan export file: {}", file, e);
+                    }
+                });
+            } catch (IOException e) {
+                log.warn("Failed to scan export storage directory for cleanup: {}", exportStorageDir, e);
+            }
+        }
+
+        log.info("Auto-cleanup completed: evicted {} memory records, removed {} expired files on disk.",
+                memoryCleaned.get(), diskCleaned.get());
     }
 
     private LocalDate parseDate(String val) {

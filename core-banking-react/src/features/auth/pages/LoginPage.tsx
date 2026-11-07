@@ -44,8 +44,8 @@ export default function LoginPage() {
   const [challengeGroupId, setChallengeGroupId] = useState('');
   const [destinationMasked, setDestinationMasked] = useState('');
   const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
-  const [resendCooldown, setResendCooldown] = useState(60);
-  const [expiryCountdown, setExpiryCountdown] = useState(300); // 5 minutes
+  const [resendCooldown, setResendCooldown] = useState(30); // 30 seconds
+  const [expiryCountdown, setExpiryCountdown] = useState(60); // 1 minute
   const [resending, setResending] = useState(false);
   const [successInfo, setSuccessInfo] = useState<string | null>(null);
 
@@ -145,8 +145,8 @@ export default function LoginPage() {
           setChallengeGroupId(payload.challengeGroupId || '');
           setDestinationMasked(payload.destinationMasked || '');
           setOtpDigits(['', '', '', '', '', '']);
-          setResendCooldown(60);
-          setExpiryCountdown(300);
+          setResendCooldown(30);
+          setExpiryCountdown(60);
           setStep('OTP');
           setSuccessInfo('A 6-digit verification code has been dispatched to your registered email.');
         } else {
@@ -288,8 +288,8 @@ export default function LoginPage() {
         setChallengeGroupId(res.challengeGroupId);
       }
       setOtpDigits(['', '', '', '', '', '']);
-      setResendCooldown(60);
-      setExpiryCountdown(300);
+      setResendCooldown(30);
+      setExpiryCountdown(60);
       setSuccessInfo('A new verification code has been dispatched to your email.');
       otpInputRefs.current[0]?.focus();
     } catch (err: any) {

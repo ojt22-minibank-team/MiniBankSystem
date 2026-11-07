@@ -12,6 +12,9 @@ import com.corebanking.entity.enums.AccountStatus;
 import com.corebanking.entity.enums.AccountType;
 import com.corebanking.entity.enums.TransactionStatus;
 import com.corebanking.entity.enums.TransactionType;
+import com.corebanking.entity.FeeSchedules;
+import com.corebanking.entity.enums.FeeType;
+import java.util.Map;
 import com.corebanking.exception.AccountNotFoundException;
 import com.corebanking.exception.InsufficientFundsException;
 import com.corebanking.exception.InvalidPinException;
@@ -347,6 +350,57 @@ class P2PTransferServiceTest {
         verify(bankTransactionRepository, times(1)).save(any(BankTransactions.class));
         verify(ledgerEntryRepository, atLeastOnce()).save(any());
         verify(asyncNotificationService, times(1)).sendTransferNotificationsAsync(eq(sender), eq(receiver), any(BankTransactions.class));
+    }
+
+    @Test
+    @DisplayName("processP2PTransfer - Own account transfer strictly sets service fee to 0 even if fee schedule exists")
+    void testProcessP2PTransfer_OwnAccountTransfer_ZeroFee() {
+        Accounts mySecondAccount = Accounts.builder()
+                .accountId(UUID.randomUUID())
+                .accountNumber("2003333333")
+                .customer(sender)
+                .currency("MMK")
+                .currentBalance(new BigDecimal("200000.00"))
+                .availableBalance(new BigDecimal("200000.00"))
+                .status(AccountStatus.ACTIVE)
+                .build();
+
+        when(accountRepository.findByAccountNumberForUpdate("2001111111")).thenReturn(Optional.of(sourceAccount));
+        when(accountRepository.findByAccountNumberForUpdate("2003333333")).thenReturn(Optional.of(mySecondAccount));
+        when(accountRepository.findByAccountNumber("2001111111")).thenReturn(Optional.of(sourceAccount));
+        when(accountRepository.findByAccountNumber("2003333333")).thenReturn(Optional.of(mySecondAccount));
+
+        FeeSchedules schedule = FeeSchedules.builder()
+                .feeCode("FEE-ITR")
+                .feeType(FeeType.FLAT)
+                .feeValue(new BigDecimal("200.00"))
+                .currency("MMK")
+                .isActive(true)
+                .build();
+        lenient().when(feeScheduleRepository.findFirstByTransactionTypeAndIsActiveTrueOrderByCreatedAtDesc(TransactionType.INTERNAL_TRANSFER))
+                .thenReturn(Optional.of(schedule));
+
+        P2PTransferRequestDto request = P2PTransferRequestDto.builder()
+                .sourceAccountNumber("2001111111")
+                .destinationAccountNumber("2003333333")
+                .amount(new BigDecimal("10000.00"))
+                .currency("MMK")
+                .idempotencyKey("IDEMP-OWN-ACC")
+                .transactionPin("123456")
+                .description("Own account transfer")
+                .build();
+
+        P2PTransferResponseDto response = p2pTransferService.processP2PTransfer(senderId.toString(), request, "IDEMP-OWN-ACC");
+
+        assertNotNull(response);
+        assertEquals(TransactionStatus.COMPLETED, response.getStatus());
+        assertEquals(new BigDecimal("10000.00"), response.getAmount());
+        assertEquals(BigDecimal.ZERO, response.getServiceFee());
+        assertEquals(new BigDecimal("10000.00"), response.getTotalDebitedAmount());
+
+        Map<String, Object> estimate = p2pTransferService.getTransferFeeEstimate(new BigDecimal("10000.00"), "2001111111", "2003333333");
+        assertEquals(BigDecimal.ZERO, estimate.get("fee"));
+        assertEquals(Boolean.TRUE, estimate.get("isOwnAccount"));
     }
 
     @Test

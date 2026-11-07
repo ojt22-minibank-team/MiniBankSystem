@@ -28,7 +28,6 @@ export default function TransactionDetailModal({
   isLoading = false,
 }: Props) {
   const [copiedRef, setCopiedRef] = useState(false);
-  const [copiedId, setCopiedId] = useState(false);
 
   // Close on ESC
   useEffect(() => {
@@ -43,15 +42,10 @@ export default function TransactionDetailModal({
 
   if (!isOpen) return null;
 
-  const handleCopy = (text: string, type: 'ref' | 'id') => {
+  const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
-    if (type === 'ref') {
-      setCopiedRef(true);
-      setTimeout(() => setCopiedRef(false), 2000);
-    } else {
-      setCopiedId(true);
-      setTimeout(() => setCopiedId(false), 2000);
-    }
+    setCopiedRef(true);
+    setTimeout(() => setCopiedRef(false), 2000);
   };
 
   const getStatusBadge = (status: string) => {
@@ -148,7 +142,7 @@ export default function TransactionDetailModal({
                     {transaction.transactionRef}
                   </span>
                   <button
-                    onClick={() => handleCopy(transaction.transactionRef, 'ref')}
+                    onClick={() => handleCopy(transaction.transactionRef)}
                     className="p-1 text-slate-400 hover:text-blue-600 rounded transition-colors cursor-pointer"
                     title="Copy reference"
                   >
@@ -330,52 +324,7 @@ export default function TransactionDetailModal({
               </div>
             )}
 
-            {/* System Technical Identifiers */}
-            <div className="p-4 rounded-2xl bg-slate-100/70 border border-slate-200 text-xs space-y-2">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-                Technical Audit Trace
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-                <div className="flex items-center justify-between font-mono bg-white p-2 rounded-lg border border-slate-200/60">
-                  <span className="text-slate-400">UUID:</span>
-                  <span className="truncate max-w-[200px] text-slate-700">
-                    {transaction.transactionId}
-                  </span>
-                  <button
-                    onClick={() => handleCopy(transaction.transactionId, 'id')}
-                    className="p-1 text-slate-400 hover:text-blue-600 cursor-pointer"
-                  >
-                    {copiedId ? (
-                      <Check className="w-3 h-3 text-emerald-600" />
-                    ) : (
-                      <Copy className="w-3 h-3" />
-                    )}
-                  </button>
-                </div>
-                {transaction.idempotencyKey && (
-                  <div className="flex items-center justify-between font-mono bg-white p-2 rounded-lg border border-slate-200/60">
-                    <span className="text-slate-400">Idempotency:</span>
-                    <span className="truncate max-w-[200px] text-slate-700">
-                      {transaction.idempotencyKey}
-                    </span>
-                  </div>
-                )}
-                {transaction.externalReference && (
-                  <div className="flex items-center justify-between font-mono bg-white p-2 rounded-lg border border-slate-200/60">
-                    <span className="text-slate-400">Ext Ref:</span>
-                    <span className="truncate max-w-[200px] text-slate-700">
-                      {transaction.externalReference}
-                    </span>
-                  </div>
-                )}
-                {transaction.description && (
-                  <div className="sm:col-span-2 flex items-center justify-between bg-white p-2 rounded-lg border border-slate-200/60">
-                    <span className="text-slate-400">Remarks:</span>
-                    <span className="text-slate-700">{transaction.description}</span>
-                  </div>
-                )}
-              </div>
-            </div>
+
           </div>
         )}
 

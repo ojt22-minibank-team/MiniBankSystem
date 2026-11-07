@@ -36,6 +36,7 @@ import DashboardPage from "../../features/customer-account/dashboard/pages/Dashb
 import MainLayout from "../../components/layout/MainLayout";
 import MyAccountsPage from "../../features/customer-account/accounts/pages/MyaccountPage";
 import { MerchantPaymentAuthorize } from "../../features/merchant-payment/pages/MerchantPaymentAuthorize";
+import { MerchantPaymentReceiptPage } from "../../features/merchant-payment/pages/MerchantPaymentReceiptPage";
 import { MerchantPaymentRouteGuard } from "../../features/merchant-payment/components/MerchantPaymentRouteGuard";
 import ProfilePage from "../../features/customer-account/profile/pages/ProfilePage";
 import { P2PTransferForm } from "../../features/transfer/components/P2PTransferForm";
@@ -261,6 +262,16 @@ const router = createBrowserRouter([
           {
             path: "/receipt/:transactionRef",
             element: <TransactionReceiptPage />,
+          },
+
+          {
+            path: "/merchant-payment/receipt/:transactionRef",
+            element: <MerchantPaymentReceiptPage />,
+          },
+
+          {
+            path: "/merchant-payment/receipt",
+            element: <MerchantPaymentReceiptPage />,
           },
 
           {
