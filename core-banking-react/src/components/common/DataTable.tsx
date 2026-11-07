@@ -19,6 +19,27 @@ interface DataTableProps {
   keyExtractor: (row: any) => string;
 }
 
+function getColumnAlignClass(col: Column): string {
+  if (col.align) {
+    if (col.align === 'center') return 'text-center';
+    if (col.align === 'right') return 'text-right';
+    return 'text-left';
+  }
+
+  const h = col.header.toLowerCase();
+  if (h.includes('status')) return 'text-center';
+  if (
+    h.includes('amount') ||
+    h.includes('balance') ||
+    h.includes('total') ||
+    (h.includes('fee') && !h.includes('code') && !h.includes('operation') && !h.includes('schedule'))
+  ) {
+    return 'text-right';
+  }
+
+  return 'text-left';
+}
+
 export default function DataTable({
   columns,
   data,
@@ -47,22 +68,7 @@ export default function DataTable({
           <thead className="bg-white/50 backdrop-blur-md">
             <tr>
               {columns.map((col) => {
-                const isAmount =
-                  col.header.toLowerCase().includes('amount') ||
-                  col.header.toLowerCase().includes('balance') ||
-                  col.header.toLowerCase().includes('total') ||
-                  col.header.toLowerCase().includes('fee') ||
-                  col.align === 'right';
-
-                const isStatus =
-                  col.header.toLowerCase().includes('status') ||
-                  col.align === 'center';
-
-                const alignClass = isStatus
-                  ? 'text-center'
-                  : isAmount
-                  ? 'text-right'
-                  : 'text-left';
+                const alignClass = getColumnAlignClass(col);
 
                 return (
                   <th
@@ -102,22 +108,7 @@ export default function DataTable({
                   className="hover:bg-white/80 transition-colors duration-150"
                 >
                   {columns.map((col) => {
-                    const isAmount =
-                      col.header.toLowerCase().includes('amount') ||
-                      col.header.toLowerCase().includes('balance') ||
-                      col.header.toLowerCase().includes('total') ||
-                      col.header.toLowerCase().includes('fee') ||
-                      col.align === 'right';
-
-                    const isStatus =
-                      col.header.toLowerCase().includes('status') ||
-                      col.align === 'center';
-
-                    const alignClass = isStatus
-                      ? 'text-center'
-                      : isAmount
-                      ? 'text-right'
-                      : 'text-left';
+                    const alignClass = getColumnAlignClass(col);
 
                     return (
                       <td

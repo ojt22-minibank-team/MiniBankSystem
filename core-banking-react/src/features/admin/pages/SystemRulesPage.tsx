@@ -171,6 +171,7 @@ export default function SystemRulesPage() {
     {
       key: 'parameterKey',
       header: 'Parameter Key & Scope',
+      className: 'w-[36%]',
       render: (row: SystemParameterResponse) => (
         <div>
           <span className="font-mono text-xs font-bold text-[#1E1B4B] block">
@@ -185,6 +186,7 @@ export default function SystemRulesPage() {
     {
       key: 'parameterValue',
       header: 'Configured Value',
+      className: 'w-[28%]',
       render: (row: SystemParameterResponse) => (
         <span className="rounded-xl bg-purple-900/5 border border-purple-900/10 px-3 py-1 text-xs font-mono font-bold text-[#1E1B4B]">
           {row.parameterValue}
@@ -194,6 +196,7 @@ export default function SystemRulesPage() {
     {
       key: 'updatedAt',
       header: 'Last Updated',
+      className: 'w-[22%]',
       render: (row: SystemParameterResponse) => (
         <div className="text-xs text-zinc-500 font-medium">
           <p>{formatDateTime(row.updatedAt)}</p>
@@ -207,6 +210,7 @@ export default function SystemRulesPage() {
       key: 'actions',
       header: 'Actions',
       align: 'right' as const,
+      className: 'w-[14%]',
       render: (row: SystemParameterResponse) => (
         <div className="flex justify-end">
           <button
@@ -232,6 +236,8 @@ export default function SystemRulesPage() {
     {
       key: 'feeCode',
       header: 'Fee Code / Operation',
+      align: 'left' as const,
+      className: 'w-[28%]',
       render: (row: FeeScheduleResponse) => (
         <div>
           <span className="font-mono text-xs font-bold text-[#1E1B4B] block">
@@ -246,6 +252,8 @@ export default function SystemRulesPage() {
     {
       key: 'feeValue',
       header: 'Fee Rate / Formula',
+      align: 'left' as const,
+      className: 'w-[24%]',
       render: (row: FeeScheduleResponse) => (
         <div>
           <span className="font-bold text-[#1E1B4B] text-xs font-mono">
@@ -269,6 +277,8 @@ export default function SystemRulesPage() {
     {
       key: 'activePeriod',
       header: 'Active Schedule',
+      align: 'left' as const,
+      className: 'w-[24%]',
       render: (row: FeeScheduleResponse) => (
         <div className="text-xs text-zinc-500 font-medium">
           <p>From: {formatDate(row.activeFrom)}</p>
@@ -282,6 +292,7 @@ export default function SystemRulesPage() {
       key: 'active',
       header: 'Status',
       align: 'center' as const,
+      className: 'w-[12%]',
       render: (row: FeeScheduleResponse) => (
         <span
           className={

@@ -76,7 +76,7 @@ public class AuthService {
     private static final String DUMMY_HASH = "$2a$12$MpBOjLk9yUNq/JNmUSFSg.1SvrEtcDQGCt3puJz7Q2aSMoilMHr.m";
     private final int idleTimeoutMinutes = 30;
 
-    private static final int OTP_EXPIRY_MINUTES = 5;
+    private static final int OTP_EXPIRY_MINUTES = 1;
     private static final int MAX_OTP_ATTEMPTS = 5;
     private static final int MAX_OTP_RESENDS = 5;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
