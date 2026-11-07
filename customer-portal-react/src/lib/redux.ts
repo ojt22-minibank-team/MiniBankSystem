@@ -1,3 +1,4 @@
+
 import {
   combineReducers,
   configureStore,
@@ -37,7 +38,14 @@ const rootReducer = (
   action: Parameters<typeof appReducer>[1],
 ) => {
   if (resetCustomerState.match(action)) {
-    return appReducer(undefined, action);
+    const resetState = appReducer(undefined, action);
+
+    return {
+      ...resetState,
+
+      // Preserve user preferences after logout.
+      settings: state?.settings ?? resetState.settings,
+    };
   }
 
   return appReducer(state, action);

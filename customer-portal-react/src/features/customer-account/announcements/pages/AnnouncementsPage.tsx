@@ -1,6 +1,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   AlertCircle,
   CheckCheck,
@@ -33,14 +34,15 @@ let lastAutoFetchGeneration: number | null = null;
 
 const filters: {
   value: AnnouncementFilter;
-  label: string;
 }[] = [
-  { value: "ALL", label: "All" },
-  { value: "UNREAD", label: "Unread" },
-  { value: "READ", label: "Read" },
+  { value: "ALL" },
+  { value: "UNREAD" },
+  { value: "READ" },
 ];
 
 export default function AnnouncementsPage() {
+  const { t } = useTranslation("announcement");
+
   const dispatch = useAppDispatch();
 
   const {
@@ -182,14 +184,14 @@ export default function AnnouncementsPage() {
             <div className="min-w-0">
               {/* Breadcrumb Navigation */}
               <nav
-                aria-label="Breadcrumb"
+                aria-label={t("breadcrumb")}
                 className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold"
               >
                 <Link
                   to="/dashboard"
                   className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
                 >
-                  Dashboard
+                  {t("dashboard")}
                 </Link>
 
                 <span className="text-slate-300" aria-hidden="true">
@@ -200,16 +202,16 @@ export default function AnnouncementsPage() {
                   className="text-[#00A3C4]"
                   aria-current="page"
                 >
-                  Announcements
+                  {t("title")}
                 </span>
               </nav>
 
               <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-                Announcements
+                {t("title")}
               </h1>
 
               <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-                Important bank updates and service notices.
+                {t("description")}
               </p>
             </div>
           </div>
@@ -219,8 +221,8 @@ export default function AnnouncementsPage() {
             type="button"
             onClick={handleRefresh}
             disabled={loading}
-            aria-label="Refresh announcements"
-            title="Refresh announcements"
+            aria-label={t("refreshAnnouncements")}
+            title={t("refreshAnnouncements")}
             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-[#00A3C4] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <RefreshCw
@@ -249,7 +251,7 @@ export default function AnnouncementsPage() {
 
       {/* Announcement Filters */}
       <section
-        aria-label="Announcement filters"
+        aria-label={t("announcementFilters")}
         className="mb-4"
       >
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
@@ -269,7 +271,7 @@ export default function AnnouncementsPage() {
                       : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
                   }`}
                 >
-                  {item.label}
+                  {t(item.value.toLowerCase())}
 
                   {item.value !== "ALL" && (
                     <span
@@ -305,7 +307,9 @@ export default function AnnouncementsPage() {
               <CheckCheck size={15} />
             )}
 
-            {isMarkingAllRead ? "Updating..." : "Mark all as read"}
+            {isMarkingAllRead
+              ? t("updating")
+              : t("markAllAsRead")}
           </button>
         </div>
       </section>
@@ -314,7 +318,7 @@ export default function AnnouncementsPage() {
       {loading && announcements.length === 0 ? (
         <div
           className="space-y-3"
-          aria-label="Loading announcements"
+          aria-label={t("loadingAnnouncements")}
         >
           {[1, 2, 3].map((item) => (
             <div
@@ -349,7 +353,7 @@ export default function AnnouncementsPage() {
 
             <div>
               <h2 className="text-sm font-semibold text-slate-900">
-                Unable to load announcements
+                {t("unableToLoadAnnouncements")}
               </h2>
 
               <p className="mt-1 text-sm text-slate-500">
@@ -363,7 +367,7 @@ export default function AnnouncementsPage() {
                 className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#00A3C4] px-3 py-2 text-sm font-medium text-white transition hover:bg-[#0891B2] disabled:opacity-50"
               >
                 <RefreshCw size={14} />
-                Try again
+                {t("tryAgain")}
               </button>
             </div>
           </div>
@@ -382,8 +386,10 @@ export default function AnnouncementsPage() {
       {/* Footer */}
       {!loading && !error && announcements.length > 0 && (
         <p className="mt-4 text-center text-xs text-slate-400">
-          Showing {filteredAnnouncements.length} of{" "}
-          {announcements.length} announcements
+          {t("showingAnnouncements", {
+            filtered: filteredAnnouncements.length,
+            total: announcements.length,
+          })}
         </p>
       )}
     </main>

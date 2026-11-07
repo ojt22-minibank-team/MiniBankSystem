@@ -181,7 +181,6 @@ export function EkarajAuthCard({
         {/* Security Highlights */}
 
         <div className="relative space-y-2.5 px-6 pb-4 pt-2 lg:px-7">
-
           {variant === "otp" ? (
             <>
               <p className="flex items-center gap-3 text-xs font-medium leading-4">
@@ -243,7 +242,6 @@ export function EkarajAuthCard({
               )
             )
           )}
-
         </div>
       </aside>
 
@@ -261,7 +259,6 @@ export function EkarajAuthCard({
           {children}
         </div>
       </section>
-
     </section>
   );
 }
