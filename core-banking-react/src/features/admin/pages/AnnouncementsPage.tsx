@@ -46,10 +46,30 @@ function getCurrentMMLocalDateTime(): string {
 }
 
 function isAnnouncementActive(a: AnnouncementResponse): boolean {
+  const isExplicitlyActive = a.isActive !== undefined ? a.isActive : a.active !== undefined ? a.active : true;
+  if (!isExplicitlyActive) return false;
+
   const now = nowMs();
   const start = a.startsAt ? new Date(a.startsAt).getTime() : -Infinity;
   const end = a.endsAt ? new Date(a.endsAt).getTime() : Infinity;
   return now >= start && now <= end;
+}
+
+function getAnnouncementStatus(a: AnnouncementResponse): { label: string; className: string } {
+  const isExplicitlyActive = a.isActive !== undefined ? a.isActive : a.active !== undefined ? a.active : true;
+  if (!isExplicitlyActive) {
+    return { label: 'Inactive', className: 'status-pill-crimson' };
+  }
+  const now = nowMs();
+  const start = a.startsAt ? new Date(a.startsAt).getTime() : -Infinity;
+  const end = a.endsAt ? new Date(a.endsAt).getTime() : Infinity;
+  if (now > end) {
+    return { label: 'Expired', className: 'status-pill-amber' };
+  }
+  if (now < start) {
+    return { label: 'Scheduled', className: 'status-pill-purple' };
+  }
+  return { label: 'Active', className: 'status-pill-emerald' };
 }
 
 export default function AnnouncementsPage() {
@@ -373,6 +393,7 @@ export default function AnnouncementsPage() {
             <div className="space-y-4">
               {pageData.map((a) => {
                 const active = isAnnouncementActive(a);
+                const statusInfo = getAnnouncementStatus(a);
                 return (
                   <div
                     key={a.announcementId}
@@ -382,8 +403,8 @@ export default function AnnouncementsPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="text-base font-black text-[#1E1B4B] tracking-tight">{a.title}</h3>
-                          <span className={active ? 'status-pill-emerald' : 'status-pill-amber'}>
-                            {active ? 'Active' : 'Expired'}
+                          <span className={statusInfo.className}>
+                            {statusInfo.label}
                           </span>
                           <span className="status-pill-purple">
                             Audience: {a.audience}
