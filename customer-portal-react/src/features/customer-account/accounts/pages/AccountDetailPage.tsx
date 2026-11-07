@@ -286,18 +286,21 @@ export default function AccountDetailPage({
   if (error || !account) {
     return (
       <main className="mx-auto max-w-4xl p-4 md:p-8">
-        
-
         <section
           className="mt-6 rounded-3xl border border-red-200 bg-white p-8 text-center shadow-sm"
           role="alert"
         >
           <CreditCard size={32} className="mx-auto text-red-500" />
           <h1 className="mt-3 text-lg font-bold text-slate-900">
-            Unable to Load Account
+            {t("unableToLoadAccount", {
+              defaultValue: "Unable to Load Account",
+            })}
           </h1>
           <p className="mt-2 text-sm text-slate-500">
-            {error ?? "Account details could not be found."}
+            {error ??
+              t("accountNotFound", {
+                defaultValue: "Account details could not be found.",
+              })}
           </p>
           <button
             type="button"
@@ -305,7 +308,7 @@ export default function AccountDetailPage({
             className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#00A3C4] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0891B2]"
           >
             <RefreshCw size={15} />
-            <span>Try Again</span>
+            <span>{t("tryAgain", { defaultValue: "Try Again" })}</span>
           </button>
         </section>
       </main>
@@ -323,12 +326,15 @@ export default function AccountDetailPage({
 
   return (
     <main className="mx-auto max-w-6xl space-y-3.5 px-4 py-2.5 sm:px-6 sm:py-3.5 md:px-8">
-      <nav aria-label="Breadcrumb" className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold">
+      <nav
+        aria-label={t("breadcrumb", { defaultValue: "Breadcrumb" })}
+        className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold"
+      >
         <Link
           to="/dashboard"
           className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
         >
-          Dashboard
+          {t("dashboard", { defaultValue: "Dashboard" })}
         </Link>
         <span className="text-slate-300" aria-hidden="true">/</span>
         <button
@@ -336,19 +342,23 @@ export default function AccountDetailPage({
           onClick={handleBack}
           className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
         >
-          My Accounts
+          {t("title", { defaultValue: "My Accounts" })}
         </button>
         <span className="text-slate-300" aria-hidden="true">/</span>
-        <span className="text-[#00A3C4]" aria-current="page">Account Details</span>
+        <span className="text-[#00A3C4]" aria-current="page">
+          {t("accountDetails", { defaultValue: "Account Details" })}
+        </span>
       </nav>
+
       {/* Account Switcher Tabs (when customer has 2 or more accounts) */}
       {allAccounts && allAccounts.length > 1 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
           {allAccounts.map((acc) => {
             const isSelected = acc.accountNumber === targetAccountNumber;
             const typeShort = acc.accountType.toUpperCase().includes("SAVING")
-              ? "Savings"
-              : "Current";
+              ? t("accountTypeSavings", { defaultValue: "Savings" })
+              : t("accountTypeCurrent", { defaultValue: "Current" });
+
             return (
               <button
                 key={acc.accountNumber}
@@ -411,7 +421,7 @@ export default function AccountDetailPage({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Account Number:
+                  {t("accountNumber", { defaultValue: "Account Number" })}:
                 </span>
                 <span className="font-mono text-sm font-bold text-[#0A192F]">
                   {showAccountNumber
@@ -423,7 +433,11 @@ export default function AccountDetailPage({
                   type="button"
                   onClick={() => setShowAccountNumber((prev) => !prev)}
                   className="p-1 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-                  title={showAccountNumber ? "Hide number" : "Show number"}
+                  title={
+                    showAccountNumber
+                      ? t("hideAccountNumber", { defaultValue: "Hide number" })
+                      : t("showAccountNumber", { defaultValue: "Show number" })
+                  }
                 >
                   {showAccountNumber ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
@@ -432,7 +446,9 @@ export default function AccountDetailPage({
                   type="button"
                   onClick={handleCopyAccountNumber}
                   className="p-1 text-slate-400 hover:text-[#00A3C4] transition-colors cursor-pointer"
-                  title="Copy account number"
+                  title={t("copyAccountNumber", {
+                    defaultValue: "Copy account number",
+                  })}
                 >
                   {copied ? (
                     <Check size={15} className="text-emerald-600 font-bold" />
@@ -448,9 +464,9 @@ export default function AccountDetailPage({
               >
                 <span
                   className={`h-2 w-2 rounded-full ${
-                    account.status === "ACTIVE"
+                    displayedStatus === "ACTIVE"
                       ? "bg-emerald-500"
-                      : account.status === "CLOSED"
+                      : displayedStatus === "CLOSED"
                       ? "bg-red-500"
                       : "bg-amber-500"
                   }`}
@@ -463,25 +479,29 @@ export default function AccountDetailPage({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="rounded-2xl bg-slate-50/80 p-4 border border-slate-100">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                  Current Balance
+                  {t("currentBalance", { defaultValue: "Current Balance" })}
                 </p>
                 <p className="mt-1.5 text-xl font-extrabold text-[#0A192F] tracking-tight">
                   {formatMoney(account.currentBalance, account.currency)}
                 </p>
                 <p className="mt-1 text-[11px] text-slate-400">
-                  Total ledger balance
+                  {t("totalLedgerBalance", {
+                    defaultValue: "Total ledger balance",
+                  })}
                 </p>
               </div>
 
               <div className="rounded-2xl bg-slate-50/80 p-4 border border-slate-100">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                  Minimum Reserve
+                  {t("minimumReserve", { defaultValue: "Minimum Reserve" })}
                 </p>
                 <p className="mt-1.5 text-xl font-extrabold text-slate-700 tracking-tight">
                   {formatMoney(account.minimumBalance, account.currency)}
                 </p>
                 <p className="mt-1 text-[11px] text-slate-400">
-                  Locked reserve amount
+                  {t("lockedReserveAmount", {
+                    defaultValue: "Locked reserve amount",
+                  })}
                 </p>
               </div>
             </div>
@@ -493,7 +513,9 @@ export default function AccountDetailPage({
                 className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 shadow-2xs transition-all duration-200 hover:border-[#00A3C4] hover:bg-[#00A3C4] hover:text-white hover:shadow-md hover:shadow-cyan-500/20"
               >
                 <Send size={15} />
-                <span>Make a Transfer</span>
+                <span>
+                  {t("makeTransfer", { defaultValue: "Make a Transfer" })}
+                </span>
               </Link>
 
               <Link
@@ -501,7 +523,11 @@ export default function AccountDetailPage({
                 className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 shadow-2xs transition-all duration-200 hover:border-[#00A3C4] hover:bg-[#00A3C4] hover:text-white hover:shadow-md hover:shadow-cyan-500/20"
               >
                 <FileText size={15} />
-                <span>Account Statement</span>
+                <span>
+                  {t("accountStatement", {
+                    defaultValue: "Account Statement",
+                  })}
+                </span>
               </Link>
             </div>
           </div>
@@ -518,10 +544,14 @@ export default function AccountDetailPage({
             </div>
             <div>
               <h2 className="text-base font-extrabold text-[#0A192F]">
-                Account Information
+                {t("accountInformation", {
+                  defaultValue: "Account Information",
+                })}
               </h2>
               <p className="text-xs text-slate-400">
-                Specifications and attributes
+                {t("specificationsAndAttributes", {
+                  defaultValue: "Specifications and attributes",
+                })}
               </p>
             </div>
           </div>
@@ -529,32 +559,38 @@ export default function AccountDetailPage({
           <div className="divide-y divide-slate-100 pt-1">
             <InfoItem
               icon={CreditCard}
-              label="Account Type"
+              label={t("accountType", { defaultValue: "Account Type" })}
               value={accountTypeLabel}
             />
             <InfoItem
               icon={Wallet}
-              label="Account Category"
+              label={t("accountCategory", { defaultValue: "Account Category" })}
               value={formatLabel(account.accountCategory)}
             />
             <InfoItem
               icon={Wallet}
-              label="Currency"
+              label={t("currency", { defaultValue: "Currency" })}
               value={account.currency}
             />
             <InfoItem
               icon={CalendarDays}
-              label="Opened Date"
+              label={t("openedDate", { defaultValue: "Opened Date" })}
               value={formatDate(account.openedAt)}
             />
             <InfoItem
               icon={CreditCard}
-              label="Joint Account"
-              value={account.jointAccount ? "Yes" : "No"}
+              label={t("jointAccount", { defaultValue: "Joint Account" })}
+              value={
+                account.jointAccount
+                  ? t("yes", { defaultValue: "Yes" })
+                  : t("no", { defaultValue: "No" })
+              }
             />
             <InfoItem
               icon={ShieldCheck}
-              label="Required Approvals"
+              label={t("requiredApprovals", {
+                defaultValue: "Required Approvals",
+              })}
               value={String(account.requiredApprovals)}
             />
 
@@ -562,7 +598,9 @@ export default function AccountDetailPage({
               <>
                 <InfoItem
                   icon={CreditCard}
-                  label="One-Time Limit (Beneficiary)"
+                  label={t("oneTimeTransferLimitBeneficiary", {
+                    defaultValue: "One-Time Limit (Beneficiary)",
+                  })}
                   value={formatMoney(
                     transferLimits.effectiveOneTimeLimitBeneficiary,
                     account.currency,
@@ -570,7 +608,9 @@ export default function AccountDetailPage({
                 />
                 <InfoItem
                   icon={CreditCard}
-                  label="One-Time Limit (Stranger)"
+                  label={t("oneTimeTransferLimitStranger", {
+                    defaultValue: "One-Time Limit (Stranger)",
+                  })}
                   value={formatMoney(
                     transferLimits.effectiveOneTimeLimitStranger,
                     account.currency,

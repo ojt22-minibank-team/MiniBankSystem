@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -140,9 +141,9 @@ export default function MyAccountsPage() {
     returnTo?: string;
     returnState?: any;
   } | null;
-  const [selectedAccountNumber, setSelectedAccountNumber] = useState<string | null>(
-    locationState?.accountNumber || null,
-  );
+
+  const [selectedAccountNumber, setSelectedAccountNumber] =
+    useState<string | null>(locationState?.accountNumber || null);
 
   useEffect(() => {
     void dispatch(fetchMyAccounts());
@@ -187,8 +188,7 @@ export default function MyAccountsPage() {
     );
   }
 
-  // 4. Single Account Case: Customer has only 1 account!
-  // Directly show detail view (no overview list, no view details button needed).
+  // 4. Single Account Case
   if (accounts.length === 1) {
     return (
       <AccountDetailPage
@@ -197,7 +197,9 @@ export default function MyAccountsPage() {
         onSelectAccount={(accNo) => setSelectedAccountNumber(accNo)}
         onBack={() => {
           if (locationState?.returnTo) {
-            navigate(locationState.returnTo, { state: locationState.returnState });
+            navigate(locationState.returnTo, {
+              state: locationState.returnState,
+            });
           } else {
             navigate(-1);
           }
@@ -206,7 +208,7 @@ export default function MyAccountsPage() {
     );
   }
 
-  // 5. Multiple Accounts: If user selected an account (from Dashboard or View Details), show detail
+  // 5. Multiple Accounts: Selected Account Detail
   if (selectedAccountNumber) {
     return (
       <AccountDetailPage
@@ -215,17 +217,22 @@ export default function MyAccountsPage() {
         onSelectAccount={(accNo) => setSelectedAccountNumber(accNo)}
         onBack={() => {
           if (locationState?.returnTo) {
-            navigate(locationState.returnTo, { state: locationState.returnState });
+            navigate(locationState.returnTo, {
+              state: locationState.returnState,
+            });
           } else {
             setSelectedAccountNumber(null);
-            navigate(location.pathname, { replace: true, state: null });
+            navigate(location.pathname, {
+              replace: true,
+              state: null,
+            });
           }
         }}
       />
     );
   }
 
-  // 6. Multiple Accounts Overview: Show the full Accounts list with AccountCards!
+  // 6. Multiple Accounts Overview
   return (
     <main
       className="mx-auto max-w-7xl space-y-3.5 px-4 py-2.5 sm:px-6 sm:py-3.5 md:px-8"
@@ -235,34 +242,44 @@ export default function MyAccountsPage() {
       <header className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between pb-0.5">
         <div>
           {/* Breadcrumb Navigation */}
-          <nav aria-label="Breadcrumb" className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold">
+          <nav
+            aria-label="Breadcrumb"
+            className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold"
+          >
             <Link
               to="/dashboard"
               className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
             >
-              Dashboard
+              {t("dashboard")}
             </Link>
-            <span className="text-slate-300" aria-hidden="true">/</span>
-            <span className="text-[#00A3C4]" aria-current="page">My Accounts</span>
+
+            <span className="text-slate-300" aria-hidden="true">
+              /
+            </span>
+
+            <span className="text-[#00A3C4]" aria-current="page">
+              {t("title")}
+            </span>
           </nav>
 
           <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#0A192F]">
-            {t("title", { defaultValue: "My Accounts" })}
+            {t("title")}
           </h1>
+
           <p className="mt-0.5 text-xs font-medium text-slate-400">
-            Manage your linked bank accounts and view details
+            {t("manageAccountsDescription")}
           </p>
         </div>
 
-        {/* Account count pill */}
+        {/* Account Count */}
         <div className="self-start sm:self-auto rounded-full bg-white px-3 py-1 shadow-xs border border-slate-100 text-xs font-bold text-slate-700">
-          {accounts.length} Accounts
+          {t("accountsCount", { count: accounts.length })}
         </div>
       </header>
 
       <section
         className="space-y-3.5"
-        aria-label={t("title", { defaultValue: "My Accounts" })}
+        aria-label={t("title")}
       >
         {accounts.map((account, index) => (
           <AccountCard

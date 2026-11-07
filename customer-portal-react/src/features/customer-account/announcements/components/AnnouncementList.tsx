@@ -1,4 +1,5 @@
 import { Megaphone } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import AnnouncementCard from "./AnnouncementCard";
 import type {
@@ -21,22 +22,21 @@ export default function AnnouncementList({
   isMarkingAllRead,
   onToggleRead,
 }: AnnouncementListProps) {
+  const { t } = useTranslation("announcement");
+
   if (announcements.length === 0) {
     const emptyContent = {
       ALL: {
-        title: "No announcements yet",
-        message:
-          "There are no announcements available for you right now. Please check again later.",
+        title: t("emptyAllTitle"),
+        message: t("emptyAllMessage"),
       },
       UNREAD: {
-        title: "You're all caught up!",
-        message:
-          "You have read all your announcements. We'll show new updates here when they arrive.",
+        title: t("emptyUnreadTitle"),
+        message: t("emptyUnreadMessage"),
       },
       READ: {
-        title: "No read announcements",
-        message:
-          "Announcements you have read will appear here.",
+        title: t("emptyReadTitle"),
+        message: t("emptyReadMessage"),
       },
     }[filter];
 

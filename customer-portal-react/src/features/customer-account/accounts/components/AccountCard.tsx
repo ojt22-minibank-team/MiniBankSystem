@@ -1,6 +1,14 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, FileText, Send, Copy, Check, Building2 } from "lucide-react";
+import {
+  ArrowRight,
+  FileText,
+  Send,
+  Copy,
+  Check,
+  Building2,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { CustomerAccount } from "../types/accountTypes";
@@ -29,13 +37,28 @@ export default function AccountCard({
   onSelect,
 }: AccountCardProps) {
   const { t } = useTranslation("accounts");
-  const [copied, setCopied] = useState(false);
 
-  const handleCopy = (e: React.MouseEvent) => {
+  const [copyStatus, setCopyStatus] = useState<
+    "success" | "error" | null
+  >(null);
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
-    void navigator.clipboard.writeText(account.accountNumber);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+
+    try {
+      await navigator.clipboard.writeText(account.accountNumber);
+
+      setCopyStatus("success");
+    } catch (error) {
+      console.error("Failed to copy account number:", error);
+
+      setCopyStatus("error");
+    }
+
+    setTimeout(() => {
+      setCopyStatus(null);
+    }, 2000);
   };
 
   const statusClass =
@@ -58,21 +81,23 @@ export default function AccountCard({
 
   const statusLabel = statusLabels[account.status] ?? account.status;
 
-  // Format account number revealing 3 digits matching the bank card (e.g. **** *** 568)
+  // Format account number revealing the last 4 digits.
   const maskedAccNumber = (() => {
     const cleaned = account.accountNumber.replace(/\D/g, "");
+
     if (cleaned.length === 10) {
       return `**** **** ${cleaned.slice(6, 10)}`;
     }
+
     const last4 = cleaned.length >= 4 ? cleaned.slice(-4) : cleaned;
     return `**** **** ${last4}`;
   })();
 
   return (
     <article className="overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#0A192F] shadow-xs hover:shadow-md transition-all duration-300">
-      {/* Upper Main Body: Flex-col on Mobile (<640px), Flex-row on Tablet & Desktop (>=640px) */}
+      {/* Upper Main Body */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5 p-4 sm:p-5">
-        {/* Left: Compact Bank Card Visual (displays balance and card number) */}
+        {/* Left: Compact Bank Card Visual */}
         <div className="shrink-0 flex justify-center sm:justify-start">
           <BankCard
             account={{
@@ -100,12 +125,13 @@ export default function AccountCard({
 
         {/* Right: Account Information */}
         <div className="flex-1 min-w-0 space-y-2">
-          {/* Row 1: Category & Type on Left, Status Badge on Right */}
+          {/* Row 1: Category & Type + Status */}
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-cyan-50 dark:bg-cyan-950/50 text-[#00A3C4]">
                 <Building2 size={16} />
               </div>
+
               <h2 className="truncate text-base sm:text-lg font-black text-[#0A192F] dark:text-white">
                 <span className="font-extrabold text-slate-400 dark:text-slate-500 text-xs sm:text-sm uppercase mr-1.5">
                   {account.accountCategory} —
@@ -122,27 +148,39 @@ export default function AccountCard({
             </span>
           </div>
 
-          {/* Row 2: Masked Account Number: revealing last 3 digits matching card with 1-Click Copy */}
+          {/* Row 2: Account Number + Copy */}
           <div className="flex items-center gap-2">
             <span className="font-mono text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 tracking-wider">
               {maskedAccNumber}
             </span>
+
             <button
               type="button"
               onClick={handleCopy}
               className="inline-flex items-center gap-1 text-slate-400 hover:text-[#00A3C4] transition p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-              title="Copy account number"
-              aria-label="Copy account number"
+              title={t("copyAccountNumber")}
+              aria-label={t("copyAccountNumber")}
             >
-              {copied ? (
+              {copyStatus === "success" ? (
                 <Check size={14} className="text-emerald-500" />
               ) : (
                 <Copy size={14} />
               )}
             </button>
-            {copied && (
-              <span className="text-[11px] font-bold text-emerald-600 animate-in fade-in">
-                Copied!
+
+            {copyStatus && (
+              <span
+                role="status"
+                aria-live="polite"
+                className={`text-[11px] font-bold animate-in fade-in ${
+                  copyStatus === "success"
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-red-600 dark:text-red-400"
+                }`}
+              >
+                {copyStatus === "success"
+                  ? t("copied")
+                  : t("copyFailed")}
               </span>
             )}
           </div>
@@ -152,14 +190,14 @@ export default function AccountCard({
       {/* Horizontal Divider Line */}
       <div className="border-t border-slate-100 dark:border-slate-800" />
 
-      {/* Bottom Action Shortcuts Bar: Transfer, Statement, and View Details together */}
+      {/* Bottom Action Shortcuts Bar */}
       <div className="px-4 py-2.5 sm:px-5 sm:py-3 bg-slate-50/70 dark:bg-slate-900/40 flex flex-wrap items-center gap-2 sm:gap-2.5">
         <Link
           to="/transfer"
           className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 shadow-2xs transition-all duration-200 hover:border-[#00A3C4] hover:bg-[#00A3C4] hover:text-white hover:shadow-xs"
         >
           <Send size={13} />
-          <span>Transfer</span>
+          <span>{t("transfer")}</span>
         </Link>
 
         <Link
@@ -167,7 +205,7 @@ export default function AccountCard({
           className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 shadow-2xs transition-all duration-200 hover:border-[#00A3C4] hover:bg-[#00A3C4] hover:text-white hover:shadow-xs"
         >
           <FileText size={13} />
-          <span>Statement</span>
+          <span>{t("statement")}</span>
         </Link>
 
         <button
