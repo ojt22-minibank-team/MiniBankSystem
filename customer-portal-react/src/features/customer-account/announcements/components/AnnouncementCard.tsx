@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   CalendarDays,
   Check,
@@ -18,13 +19,16 @@ interface AnnouncementCardProps {
   onToggleRead: (announcementId: number) => void;
 }
 
-function formatDate(value: string | null): string {
-  if (!value) return "Date unavailable";
+function formatDate(
+  value: string | null,
+  unavailableText: string
+): string {
+  if (!value) return unavailableText;
 
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return "Date unavailable";
+    return unavailableText;
   }
 
   return new Intl.DateTimeFormat("en-GB", {
@@ -40,6 +44,8 @@ export default function AnnouncementCard({
   disabled = false,
   onToggleRead,
 }: AnnouncementCardProps) {
+  const { t } = useTranslation("announcement");
+
   const [menuOpen, setMenuOpen] = useState(false);
 
   const isRead = announcement.isRead;
@@ -80,7 +86,7 @@ export default function AnnouncementCard({
           {!isRead && (
             <span
               className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white bg-[#00A3C4]"
-              aria-label="Unread"
+              aria-label={t("unread")}
             />
           )}
         </div>
@@ -91,7 +97,9 @@ export default function AnnouncementCard({
             type="button"
             onClick={handleOpenAnnouncement}
             disabled={isRead || isActionDisabled}
-            aria-label={`Mark announcement as read: ${announcement.title}`}
+            aria-label={t("markAnnouncementAsRead", {
+              title: announcement.title,
+            })}
             className="min-w-0 flex-1 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4] focus-visible:ring-offset-2 disabled:cursor-default"
           >
             {/* Title */}
@@ -106,7 +114,7 @@ export default function AnnouncementCard({
 
               {!isRead && (
                 <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#0089A6]">
-                  New
+                  {t("new")}
                 </span>
               )}
             </div>
@@ -115,7 +123,10 @@ export default function AnnouncementCard({
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
               <span className="flex items-center gap-1.5">
                 <CalendarDays size={13} aria-hidden="true" />
-                {formatDate(announcement.startsAt)}
+                {formatDate(
+                  announcement.startsAt,
+                  t("dateUnavailable")
+                )}
               </span>
 
               <span
@@ -132,7 +143,8 @@ export default function AnnouncementCard({
                     aria-hidden="true"
                   />
                 )}
-                {isRead ? "Read" : "Unread"}
+
+                {isRead ? t("read") : t("unread")}
               </span>
             </div>
 
@@ -145,7 +157,13 @@ export default function AnnouncementCard({
             {announcement.endsAt && (
               <div className="mt-4 flex items-center gap-1.5 border-t border-slate-100 pt-3 text-xs text-slate-400">
                 <CalendarDays size={13} aria-hidden="true" />
-                <span>Ends {formatDate(announcement.endsAt)}</span>
+                <span>
+                  {t("ends")}{" "}
+                  {formatDate(
+                    announcement.endsAt,
+                    t("dateUnavailable")
+                  )}
+                </span>
               </div>
             )}
           </button>
@@ -156,10 +174,10 @@ export default function AnnouncementCard({
               type="button"
               onClick={() => setMenuOpen((previous) => !previous)}
               disabled={isActionDisabled}
-              aria-label="Announcement actions"
+              aria-label={t("announcementActions")}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
-              title="Announcement actions"
+              title={t("announcementActions")}
               className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isUpdating ? (
@@ -178,7 +196,7 @@ export default function AnnouncementCard({
                 <button
                   type="button"
                   className="fixed inset-0 z-10 cursor-default"
-                  aria-label="Close announcement actions"
+                  aria-label={t("closeAnnouncementActions")}
                   onClick={() => setMenuOpen(false)}
                 />
 
@@ -206,7 +224,9 @@ export default function AnnouncementCard({
                       />
                     )}
 
-                    {isRead ? "Mark as unread" : "Mark as read"}
+                    {isRead
+                      ? t("markAsUnread")
+                      : t("markAsRead")}
                   </button>
                 </div>
               </>

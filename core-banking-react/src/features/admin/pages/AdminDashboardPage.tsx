@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
 import AdminLayout from '../../../components/layout/AdminLayout';
 import { adminDashboardApi } from '../../../services/apiClient';
-import type { AdminDashboardSummaryResponse } from '../../../types/api.types';
+import type { AdminDashboardSummaryResponse, AnnouncementResponse } from '../../../types/api.types';
 import type { AxiosError } from 'axios';
 import { formatDate } from '../../../utils/formatDate';
 import ekarajCrown from '../../../assets/ekaraj-crown-transparent.png';
@@ -11,6 +11,23 @@ import ekarajCrown from '../../../assets/ekaraj-crown-transparent.png';
 // ============================================================
 // Liquid Glass Stat Card Component
 // ============================================================
+
+function getAnnouncementStatus(a: AnnouncementResponse): { label: string; className: string } {
+  const isExplicitlyActive = a.isActive !== undefined ? a.isActive : a.active !== undefined ? a.active : true;
+  if (!isExplicitlyActive) {
+    return { label: 'Inactive', className: 'status-pill-crimson' };
+  }
+  const now = Date.now();
+  const start = a.startsAt ? new Date(a.startsAt).getTime() : -Infinity;
+  const end = a.endsAt ? new Date(a.endsAt).getTime() : Infinity;
+  if (now > end) {
+    return { label: 'Expired', className: 'status-pill-amber' };
+  }
+  if (now < start) {
+    return { label: 'Scheduled', className: 'status-pill-purple' };
+  }
+  return { label: 'Active', className: 'status-pill-emerald' };
+}
 
 interface LiquidStatCardProps {
   title: string;
@@ -477,18 +494,14 @@ export default function AdminDashboardPage() {
                 ) : recentAnnouncements.length === 0 ? (
                   <div className="py-8 text-center text-xs font-medium text-slate-400">No active notices broadcasted.</div>
                 ) : (
-                  recentAnnouncements.map((a) => (
+                  recentAnnouncements.map((a) => {
+                    const statusInfo = getAnnouncementStatus(a);
+                    return (
                     <div key={a.announcementId} className="py-3 px-1 hover:bg-white/60 rounded-xl transition-colors">
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-xs font-bold text-slate-900 leading-snug">{a.title}</p>
-                        <span
-                          className={
-                            a.isActive
-                              ? 'status-pill-emerald'
-                              : 'status-pill-amber'
-                          }
-                        >
-                          {a.isActive ? 'Active' : 'Draft'}
+                        <span className={statusInfo.className}>
+                          {statusInfo.label}
                         </span>
                       </div>
                       <p className="mt-1 text-[11px] text-slate-500 line-clamp-1 font-medium">{a.message}</p>
@@ -500,7 +513,8 @@ export default function AdminDashboardPage() {
                         <span>{formatDate(a.createdAt)}</span>
                       </div>
                     </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>

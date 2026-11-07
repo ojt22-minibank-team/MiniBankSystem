@@ -215,7 +215,7 @@ export default function TransactionDetailModal({
                   </div>
                 ) : (
                   <div className="text-xs text-slate-400 italic py-1">
-                    Cash Counter / Physical Teller Vault
+                    Counter Cash
                   </div>
                 )}
               </div>
@@ -242,7 +242,7 @@ export default function TransactionDetailModal({
                   </div>
                 ) : (
                   <div className="text-xs text-slate-400 italic py-1">
-                    Cash Counter / External Gateway Settlement
+                    Counter Cash
                   </div>
                 )}
               </div>

@@ -406,7 +406,7 @@ export default function TransactionDetailsPage() {
                             </span>
                           </>
                         ) : (
-                          <span className="text-slate-400 italic text-[11px]">Counter Cash / External</span>
+                          <span className="text-slate-400 italic text-[11px]">Counter Cash</span>
                         )}
                       </td>
 
@@ -422,7 +422,7 @@ export default function TransactionDetailsPage() {
                             </span>
                           </>
                         ) : (
-                          <span className="text-slate-400 italic text-[11px]">Counter Cash / External</span>
+                          <span className="text-slate-400 italic text-[11px]">Counter Cash</span>
                         )}
                       </td>
 

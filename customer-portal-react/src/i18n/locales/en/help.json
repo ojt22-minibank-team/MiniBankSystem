@@ -1,4 +1,9 @@
+
+
 {
+  "breadcrumb": "Breadcrumb",
+  "dashboard": "Dashboard",
+  "pageTitle": "FAQ & About",
   "hero": {
     "title": "Frequently Asked Questions",
     "description": "Find answers to common questions about your account, security, and banking services.",

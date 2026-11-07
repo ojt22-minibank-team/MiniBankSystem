@@ -1,3 +1,4 @@
+
 {
   "title": "ကျွန်ုပ်၏ ဘဏ်အကောင့်များ",
   "dashboard": "ပင်မစာမျက်နှာ",
@@ -44,11 +45,23 @@
   "copyFailed": "ကူးယူ၍မရပါ",
   "copyFailedDescription": "ကူးယူ၍မရပါ။ အကောင့်နံပါတ်ကို ကိုယ်တိုင်ရွေးချယ်ပြီး ကူးယူပါ။",
   "viewDetails": "အသေးစိတ်ကြည့်ရန်",
+  "transfer": "ငွေလွှဲရန်",
+  "statement": "အကောင့်ရှင်းတမ်း",
   "accountTypeSavings": "စုငွေအကောင့်",
   "accountTypeCurrent": "စာရင်းရှင်အကောင့်",
   "statusActive": "အသုံးပြုနိုင်သည်",
   "statusDormant": "လှုပ်ရှားမှုမရှိသောအကောင့်",
   "statusFrozen": "ယာယီရပ်ဆိုင်းထားသည်",
   "statusClosed": "ပိတ်သိမ်းပြီး",
-  "accountStatusLabel": "အကောင့်အခြေအနေ - {{status}}"
+  "accountStatusLabel": "အကောင့်အခြေအနေ - {{status}}",
+  "manageAccountsDescription": "သင့်ဘဏ်အကောင့်များကို စီမံခန့်ခွဲပြီး အသေးစိတ်အချက်အလက်များကို ကြည့်ရှုနိုင်ပါသည်။",
+  "accountsCount_one": "အကောင့် {{count}} ခု",
+  "accountsCount_other": "အကောင့် {{count}} ခု",
+  "breadcrumb": "လမ်းကြောင်းပြ",
+  "totalLedgerBalance": "စာရင်းရှိ စုစုပေါင်းလက်ကျန်ငွေ",
+  "minimumReserve": "အနည်းဆုံး ထိန်းသိမ်းထားရမည့်ငွေ",
+  "lockedReserveAmount": "အသုံးပြု၍မရသော ထိန်းသိမ်းငွေပမာဏ",
+  "makeTransfer": "ငွေလွှဲလုပ်ဆောင်ရန်",
+  "accountStatement": "အကောင့်ရှင်းတမ်း",
+  "specificationsAndAttributes": "အကောင့်သတ်မှတ်ချက်များနှင့် အချက်အလက်များ"
 }

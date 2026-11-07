@@ -1,19 +1,24 @@
 
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+
 import {
   resetCustomerState,
   useAppDispatch,
   type AppDispatch,
 } from "../../../lib/redux";
+
 import { logoutCustomer } from "../../../services/authService";
 import { clearPendingPaymentRedirect } from "../utils/pendingPaymentRedirect";
+
 import {
   clearTokens,
   getAccessToken,
   getAuthenticationGeneration,
   invalidateAuthenticationGeneration,
 } from "../../../utils/tokenStorage";
+
+import i18n from "../../../i18n";
 
 // Only consumers ending the same authentication generation share an operation.
 let logoutLock: {
@@ -27,7 +32,9 @@ export const isIndividualLogoutInProgress = () =>
 function logoutIndividualCustomer(
   dispatch: AppDispatch,
 ): Promise<number | null> {
-  if (logoutLock?.generation === getAuthenticationGeneration()) {
+  if (
+    logoutLock?.generation === getAuthenticationGeneration()
+  ) {
     return logoutLock.promise;
   }
 
@@ -41,6 +48,9 @@ function logoutIndividualCustomer(
 
   // Clear customer data once, before awaiting revocation of the captured session.
   dispatch(resetCustomerState());
+
+  // Reset language for the unauthenticated state.
+  void i18n.changeLanguage("en");
 
   // Reset balance visibility for the next login session.
   sessionStorage.removeItem("customer-portal:balance-visible");

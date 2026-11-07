@@ -1,9 +1,11 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
+import { ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
+
 import { mapHistoryItemToTransferReceiptData } from "../../transactions/utils/transactionReceiptAdapter";
 import type { TransferReceiptData } from "../../../transfer/types/transferReceiptTypes";
-import { ChevronRight } from "lucide-react";
 import { getTransactions } from "../../transactions/services/transactionHistoryService";
 import type { CusTransactionHistoryItemDTO } from "../../transactions/types/transactionHistoryTypes";
 import {
@@ -22,6 +24,8 @@ export default function RecentTransactions({
   accounts,
 }: RecentTransactionsProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation("dashboard");
+
   const [transactions, setTransactions] = useState<CusTransactionHistoryItemDTO[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -145,7 +149,7 @@ export default function RecentTransactions({
       {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4">
         <h3 className="text-base sm:text-lg font-extrabold text-[#0A192F] dark:text-white">
-          Recent Transactions
+          {t("recentTransactions")}
         </h3>
 
         <div className="flex items-center gap-3">
@@ -153,14 +157,16 @@ export default function RecentTransactions({
           <div className="relative">
             <select
               id="recent-transactions-account-select"
-              aria-label="Select account for recent transactions"
+              aria-label={t("selectAccountForTransactions")}
               value={activeAccountNumber}
               onChange={(e) => setSelectedAccount(e.target.value)}
               disabled={activeAccounts.length === 0}
               className="flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 focus:outline-none focus:ring-2 focus:ring-[#00A3C4]/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             >
               {activeAccounts.length === 0 ? (
-                <option value="">No active accounts</option>
+                <option value="">
+                  {t("noActiveAccounts")}
+                </option>
               ) : (
                 activeAccounts.map((acc) => (
                   <option key={acc.accountNumber} value={acc.accountNumber}>
@@ -176,7 +182,7 @@ export default function RecentTransactions({
             to="/transaction"
             className="text-xs font-bold text-[#00A3C4] transition hover:text-[#0891B2] hover:underline shrink-0"
           >
-            View Transactions
+            {t("viewTransactions")}
           </Link>
         </div>
       </div>
@@ -209,8 +215,8 @@ export default function RecentTransactions({
           <div className="py-10 text-center">
             <p className="text-xs font-medium text-slate-400 dark:text-slate-500">
               {activeAccounts.length === 0
-                ? "No active accounts available."
-                : "No recent transactions found for this account."}
+                ? t("noActiveAccounts")
+                : t("noRecentTransactionsForAccount")}
             </p>
           </div>
         )}
@@ -242,7 +248,9 @@ export default function RecentTransactions({
                   }
                 }}
                 className="group flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-6 py-4 px-2 sm:px-3 transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40 cursor-pointer rounded-xl select-none"
-                aria-label={`View transaction ${primaryTitle}`}
+                aria-label={t("viewTransaction", {
+                  title: primaryTitle,
+                })}
               >
                 {/* LEFT SECTION: Display Title + Date & Type */}
                 <div className="min-w-0 flex-1 space-y-1">
