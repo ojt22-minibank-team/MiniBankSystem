@@ -1,5 +1,5 @@
 export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8006";
+  import.meta.env.VITE_API_BASE_URL || "http://42.156.32.114:8092";
 
 export const API_ENDPOINTS = {
   // Auth

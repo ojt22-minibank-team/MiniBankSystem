@@ -59,7 +59,7 @@ class CustomerControllerTest {
                 .customerCode("CUST-20261102-1001")
                 .customerType("PERSONAL")
                 .fullName("Daw Yoon")
-                .email("yoon@test.com")
+                .email("yoon@gmail.com")
                 .phone("09123456789")
                 .status("ACTIVE")
                 .build();
@@ -70,7 +70,7 @@ class CustomerControllerTest {
                 {
                     "fullName": "Daw Yoon",
                     "nrc": "12/DAGANA(N)123456",
-                    "email": "yoon@test.com",
+                    "email": "yoon@gmail.com",
                     "phone": "09123456789",
                     "customerType": "PERSONAL"
                 }
@@ -94,7 +94,7 @@ class CustomerControllerTest {
                 .customerCode("COMP-20261102-5001")
                 .customerType("COMPANY")
                 .fullName("Ace Tech Co., Ltd")
-                .email("info@acetech.com")
+                .email("info.acetech@gmail.com")
                 .phone("09123456789")
                 .status("ACTIVE")
                 .build();
@@ -107,7 +107,7 @@ class CustomerControllerTest {
                     "registrationNumber": "REG-2026-9988",
                     "taxId": "TAX-998877",
                     "businessType": "FINTECH",
-                    "email": "info@acetech.com",
+                    "email": "info.acetech@gmail.com",
                     "phone": "09123456789",
                     "customerType": "COMPANY"
                 }
@@ -134,7 +134,7 @@ class CustomerControllerTest {
                 {
                     "fullName": "Daw Yoon",
                     "nrc": "12/DAGANA(N)123456",
-                    "email": "yoon@test.com",
+                    "email": "yoon@gmail.com",
                     "phone": "091234567",
                     "customerType": "PERSONAL"
                 }
@@ -153,13 +153,13 @@ class CustomerControllerTest {
     @DisplayName("testCreateCustomer_DuplicateEntry_ReturnsConflictOrBadRequest: Duplicate service exception returns client error")
     void testCreateCustomer_DuplicateEntry_ReturnsConflictOrBadRequest() throws Exception {
         when(customerService.createCustomer(any(CustomerDTO.class)))
-                .thenThrow(new IllegalArgumentException("Email address is already registered in the system: duplicate@test.com"));
+                .thenThrow(new IllegalArgumentException("Email address is already registered in the system: duplicate@gmail.com"));
 
         String jsonPayload = """
                 {
                     "fullName": "Daw Yoon",
                     "nrc": "12/DAGANA(N)123456",
-                    "email": "duplicate@test.com",
+                    "email": "duplicate@gmail.com",
                     "phone": "09123456789",
                     "customerType": "PERSONAL"
                 }
@@ -171,6 +171,72 @@ class CustomerControllerTest {
                 .andExpect(status().is4xxClientError())
                 .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
                 .andExpect(jsonPath("$.message", containsString("Email address is already registered")));
+    }
+
+    @Test
+    @DisplayName("testCreateCustomer_NonGmailEmail_Returns400ValidationError: Non-gmail address is rejected by @Pattern")
+    void testCreateCustomer_NonGmailEmail_Returns400ValidationError() throws Exception {
+        String jsonPayload = """
+                {
+                    "fullName": "Daw Yoon",
+                    "nrc": "12/DAGANA(N)123456",
+                    "email": "user@yahoo.com",
+                    "phone": "09123456789",
+                    "customerType": "PERSONAL"
+                }
+                """;
+
+        mockMvc.perform(post("/api/customers/personal")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message", containsString("Email must be a valid @gmail.com address")));
+    }
+
+    @Test
+    @DisplayName("testCreateCustomer_InvalidEmailHost_Returns400InvalidEmail: Host deliverability failure returns 400")
+    void testCreateCustomer_InvalidEmailHost_Returns400InvalidEmail() throws Exception {
+        when(customerService.createCustomer(any(CustomerDTO.class)))
+                .thenThrow(new com.corebanking.exception.InvalidEmailException("The provided email address does not have a reachable mail server."));
+
+        String jsonPayload = """
+                {
+                    "fullName": "Daw Yoon",
+                    "nrc": "12/DAGANA(N)123456",
+                    "email": "nonexistent@gmail.com",
+                    "phone": "09123456789",
+                    "customerType": "PERSONAL"
+                }
+                """;
+
+        mockMvc.perform(post("/api/customers/personal")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_EMAIL"))
+                .andExpect(jsonPath("$.message").value("The provided email address does not have a reachable mail server."));
+    }
+
+    @Test
+    @DisplayName("testCreateCustomer_InvalidNrcFormat_Returns400ValidationError: Invalid NRC format is rejected by @Pattern")
+    void testCreateCustomer_InvalidNrcFormat_Returns400ValidationError() throws Exception {
+        String jsonPayload = """
+                {
+                    "fullName": "Daw Yoon",
+                    "nrc": "99/INVALID(X)123",
+                    "email": "yoon@gmail.com",
+                    "phone": "09123456789",
+                    "customerType": "PERSONAL"
+                }
+                """;
+
+        mockMvc.perform(post("/api/customers/personal")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message", containsString("Invalid Myanmar NRC format")));
     }
 
     @Test

@@ -1,4 +1,4 @@
-﻿import axios, { type AxiosRequestConfig, type InternalAxiosRequestConfig } from "axios";
+import axios, { type AxiosRequestConfig, type InternalAxiosRequestConfig } from "axios";
 import type { CorporateTokens } from "../types";
 import {
   assertCorporateGeneration, assertCorporateSessionActive, endCorporateSession, getCorporateAccessToken,
@@ -6,7 +6,7 @@ import {
   saveCorporateTokens,
 } from "../utils/storage";
 
-const API_BASE = ((typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) || "http://localhost:8006").replace(/\/+$/, "");
+const API_BASE = ((typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) || "http://42.156.32.114:8092").replace(/\/+$/, "");
 const options = { baseURL: `${API_BASE}/api/corporate`, timeout: 10_000 };
 const corporateApi = axios.create(options);
 const refreshClient = axios.create(options);

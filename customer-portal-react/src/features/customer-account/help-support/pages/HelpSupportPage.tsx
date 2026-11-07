@@ -19,7 +19,7 @@ const HelpSupportPage = () => {
           Dashboard
         </Link>
         <span className="text-slate-300" aria-hidden="true">/</span>
-        <span className="text-[#00A3C4]" aria-current="page">Help & Support</span>
+        <span className="text-[#00A3C4]" aria-current="page">FAQ & About</span>
       </nav>
 
       <HelpCenterHero
