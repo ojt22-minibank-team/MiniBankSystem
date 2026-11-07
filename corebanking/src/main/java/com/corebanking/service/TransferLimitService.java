@@ -65,6 +65,8 @@ public class TransferLimitService {
     public static final String KEY_UNSAVED_STRANGER_ONETIME_HYPHEN = "ONE_TIME_LIMIT_FOR_UN-SAVE_ACCOUNT";
     public static final String KEY_DAILY_LIMIT = "DAILY_TRANSFER_LIMIT";
     public static final String KEY_DAILY_LIMIT_DEFAULT = "DAILY_TRANSFER_LIMIT_DEFAULT";
+    public static final String KEY_ECOMMERCE_DAILY_LIMIT = "ECOMMERCE_DAILY_TRANSFER_LIMIT";
+    public static final String KEY_ECOMMERCE_DAILY_LIMIT_ALT = "ECOMMERCE_DAILY_LIMIT";
     public static final String KEY_MINIMUM_BALANCE = "MINIMUM_BALANCE";
     public static final String KEY_MINIMUM_BALANCE_SAVINGS = "MINIMUM_BALANCE_SAVINGS";
 
@@ -74,6 +76,7 @@ public class TransferLimitService {
     public static final BigDecimal DEFAULT_SAVED_BENEFICIARY_ONETIME = new BigDecimal("3000000.00");
     public static final BigDecimal DEFAULT_UNSAVED_STRANGER_ONETIME = new BigDecimal("1000000.00");
     public static final BigDecimal DEFAULT_DAILY_LIMIT = new BigDecimal("10000000.00");
+    public static final BigDecimal DEFAULT_ECOMMERCE_DAILY_LIMIT = new BigDecimal("5000000.00");
     public static final BigDecimal DEFAULT_MINIMUM_BALANCE = new BigDecimal("10000.00");
 
     // Corporate / Company Account Limits
@@ -162,6 +165,13 @@ public class TransferLimitService {
      */
     public BigDecimal getDailyTransferLimit() {
         return getSystemParameter(DEFAULT_DAILY_LIMIT, KEY_DAILY_LIMIT, KEY_DAILY_LIMIT_DEFAULT);
+    }
+
+    /**
+     * Retrieves the daily limit for e-commerce payments configured in system_parameters (default: 5,000,000 MMK).
+     */
+    public BigDecimal getEcommerceDailyTransferLimit() {
+        return getSystemParameter(DEFAULT_ECOMMERCE_DAILY_LIMIT, KEY_ECOMMERCE_DAILY_LIMIT, KEY_ECOMMERCE_DAILY_LIMIT_ALT);
     }
 
     /**

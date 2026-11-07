@@ -71,13 +71,13 @@ public class CoreBankingLedgerAdapter implements LedgerFacadePort {
         
         // Cumulative Daily Transfer Limit Check (Synchronized with Member 3 and Group 2)
         // Uses TransferLimitService to compute effective limit (User custom limit capped by bank maximum daily limit)
-        BigDecimal dailyLimit = transferLimitService.getEffectiveDailyLimit(sourceAccount);
+        BigDecimal dailyLimit = transferLimitService.getEcommerceDailyTransferLimit();
 
         if (dailyLimit != null && dailyLimit.compareTo(BigDecimal.ZERO) > 0) {
             LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
             LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
 
-            BigDecimal todayTotal = bankTransactionRepository.findTodayTotalTransferredAmount(
+            BigDecimal todayTotal = bankTransactionRepository.findTodayTotalEcommercePaymentAmount(
                     sourceAccount.getAccountId(), startOfDay, endOfDay);
             if (todayTotal == null) {
                 todayTotal = BigDecimal.ZERO;
@@ -95,7 +95,7 @@ public class CoreBankingLedgerAdapter implements LedgerFacadePort {
                     sourceAccount.getAccountNumber(), dailyLimit, todayTotal, amount, remainingLimit);
 
                 throw new TransactionException(String.format(
-                        "Payment breaches daily limit of %s %s. Transferred today: %s, Remaining: %s, Attempted: %s",
+                        "Payment breaches daily ecommerce limit of %s %s. Transferred today: %s, Remaining: %s, Attempted: %s",
                         dailyLimit, sourceAccount.getCurrency(), todayTotal, remainingLimit, amount
                 ));
             }
