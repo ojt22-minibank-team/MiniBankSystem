@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   X,
   UserPlus,
@@ -24,6 +25,7 @@ export const AddBeneficiaryModal: React.FC<AddBeneficiaryModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const { t } = useTranslation("beneficiaries");
   const [accountNumber, setAccountNumber] = useState("");
   const [nickname, setNickname] = useState("");
 
@@ -50,18 +52,18 @@ export const AddBeneficiaryModal: React.FC<AddBeneficiaryModalProps> = ({
         if (res && res.accountName) {
           setVerifiedName(res.accountName);
         } else {
-          setLookupError("Account not found");
+          setLookupError(t("accountNotFound", "Account not found or inactive"));
         }
       } catch (err: any) {
         setVerifiedName("");
-        setLookupError(err.response?.data?.message || "Account not found or inactive");
+        setLookupError(err.response?.data?.message || t("accountNotFound", "Account not found or inactive"));
       } finally {
         setLookupLoading(false);
       }
     }, 450);
 
     return () => clearTimeout(timer);
-  }, [accountNumber]);
+  }, [accountNumber, t]);
 
   if (!isOpen) return null;
 
@@ -69,7 +71,7 @@ export const AddBeneficiaryModal: React.FC<AddBeneficiaryModalProps> = ({
     e.preventDefault();
     if (!accountNumber.trim()) return;
     if (!verifiedName) {
-      setSubmitError("Please enter a valid, active account number");
+      setSubmitError(t("enterValidAccount", "Please enter a valid, active account number"));
       return;
     }
 
@@ -84,7 +86,7 @@ export const AddBeneficiaryModal: React.FC<AddBeneficiaryModalProps> = ({
       handleClose();
     } catch (err: any) {
       setSubmitError(
-        err.response?.data?.message || err.message || "Failed to add beneficiary"
+        err.response?.data?.message || err.message || t("addFailed", "Failed to add beneficiary")
       );
     } finally {
       setSubmitting(false);
@@ -114,6 +116,7 @@ export const AddBeneficiaryModal: React.FC<AddBeneficiaryModalProps> = ({
         <button
           onClick={handleClose}
           disabled={submitting}
+          title={t("close", "Close")}
           className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#0f2445] rounded-xl transition-colors disabled:opacity-50"
         >
           <X className="w-5 h-5" />
@@ -125,8 +128,12 @@ export const AddBeneficiaryModal: React.FC<AddBeneficiaryModalProps> = ({
             <UserPlus className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h3 className="text-xl font-black text-slate-900 dark:text-white">Add Beneficiary</h3>
-            <p className="text-xs text-slate-400 dark:text-slate-400">Save an account for quick transfers</p>
+            <h3 className="text-xl font-black text-slate-900 dark:text-white">
+              {t("modalTitle", "Add Beneficiary")}
+            </h3>
+            <p className="text-xs text-slate-400 dark:text-slate-400">
+              {t("modalSubtitle", "Save an account for quick transfers")}
+            </p>
           </div>
         </div>
 
@@ -135,7 +142,7 @@ export const AddBeneficiaryModal: React.FC<AddBeneficiaryModalProps> = ({
           {/* Account Number */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-2">
-              Recipient Account Number
+              {t("accountNumberLabel", "Recipient Account Number")}
             </label>
             <div className="relative">
               <input
@@ -144,7 +151,7 @@ export const AddBeneficiaryModal: React.FC<AddBeneficiaryModalProps> = ({
                 pattern="[0-9]*"
                 value={accountNumber}
                 onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ""))}
-                placeholder="Enter account number"
+                placeholder={t("accountNumberPlaceholder", "Enter account number")}
                 className="w-full px-4 py-3.5 border-2 border-slate-200 dark:border-slate-700/60 rounded-2xl text-sm font-semibold text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#00A3C4] focus:bg-white dark:focus:bg-[#0a192f] focus:ring-2 focus:ring-cyan-500/20 outline-none transition-all bg-slate-50 dark:bg-[#0f2445]"
                 maxLength={34}
                 required
@@ -158,7 +165,7 @@ export const AddBeneficiaryModal: React.FC<AddBeneficiaryModalProps> = ({
             {lookupLoading && (
               <div className="flex items-center gap-2 mt-2 px-3.5 py-2 bg-cyan-50/80 dark:bg-cyan-950/40 border border-cyan-100 dark:border-cyan-800/60 rounded-xl text-xs text-[#00A3C4] dark:text-cyan-300 font-medium">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>Checking account...</span>
+                <span>{t("verifyingAccount", "Checking account...")}</span>
               </div>
             )}
 
@@ -167,11 +174,11 @@ export const AddBeneficiaryModal: React.FC<AddBeneficiaryModalProps> = ({
                 <div className="flex items-center gap-2 font-medium text-emerald-900 dark:text-emerald-300">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <span>
-                    Recipient: <strong className="font-bold text-emerald-950 dark:text-emerald-200 text-sm">{verifiedName}</strong>
+                    {t("recipientLabel", "Recipient")}: <strong className="font-bold text-emerald-950 dark:text-emerald-200 text-sm">{verifiedName}</strong>
                   </span>
                 </div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-md">
-                  Verified
+                  {t("accountVerified", "Verified")}
                 </span>
               </div>
             )}
@@ -187,14 +194,15 @@ export const AddBeneficiaryModal: React.FC<AddBeneficiaryModalProps> = ({
           {/* Nickname */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-2">
-              Nickname <span className="text-slate-400 font-normal lowercase">(optional)</span>
+              {t("nicknameLabel", "Nickname")}{" "}
+              <span className="text-slate-400 font-normal lowercase">{t("optional", "(optional)")}</span>
             </label>
             <div className="relative">
               <input
                 type="text"
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
-                placeholder={verifiedName ? `e.g. ${verifiedName}` : "e.g. Mom, Rent, Office"}
+                placeholder={verifiedName ? `e.g. ${verifiedName}` : t("nicknamePlaceholder", "e.g., Mom, Rent, Office")}
                 maxLength={100}
                 className="w-full px-4 py-3.5 border-2 border-slate-200 dark:border-slate-700/60 rounded-2xl text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#00A3C4] focus:bg-white dark:focus:bg-[#0a192f] focus:ring-2 focus:ring-cyan-500/20 outline-none transition-all bg-slate-50 dark:bg-[#0f2445]"
               />
@@ -203,7 +211,7 @@ export const AddBeneficiaryModal: React.FC<AddBeneficiaryModalProps> = ({
               </div>
             </div>
             <p className="text-xs text-slate-400 mt-1 pl-1">
-              Give this beneficiary a friendly name so you can identify it easily.
+              {t("nicknameHint", "Give this beneficiary a friendly name so you can identify it easily.")}
             </p>
           </div>
 
@@ -224,7 +232,7 @@ export const AddBeneficiaryModal: React.FC<AddBeneficiaryModalProps> = ({
               className="flex-1 py-3.5 rounded-2xl font-semibold text-sm text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-[#0f2445] hover:bg-slate-200 dark:hover:bg-[#152b4e] transition-colors flex items-center justify-center gap-1.5"
             >
               <ChevronLeft className="w-4 h-4" />
-              <span>Back</span>
+              <span>{t("back", "Back")}</span>
             </button>
             <button
               type="submit"
@@ -233,11 +241,11 @@ export const AddBeneficiaryModal: React.FC<AddBeneficiaryModalProps> = ({
             >
               {submitting ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+                  <Loader2 className="w-4 h-4 animate-spin" /> {t("saving", "Saving...")}
                 </>
               ) : (
                 <>
-                  <UserPlus className="w-4 h-4" /> Save Beneficiary
+                  <UserPlus className="w-4 h-4" /> {t("saveBeneficiary", "Save Beneficiary")}
                 </>
               )}
             </button>
