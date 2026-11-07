@@ -26,6 +26,7 @@ public class NotificationResponseDto {
     private UUID transactionId;
     private String transactionRef;
     private BigDecimal amount;
+    private BigDecimal serviceFee;
     private String currency;
     private String counterpartyName;
     private String counterpartyAccountNumber;
