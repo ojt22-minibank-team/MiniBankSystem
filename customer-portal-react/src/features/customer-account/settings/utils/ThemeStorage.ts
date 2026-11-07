@@ -1,3 +1,4 @@
+
 import type { ThemePreference } from "../types/settingsTypes";
 import { getCurrentCustomerSubject } from "../../../../utils/tokenStorage";
 
@@ -11,17 +12,34 @@ const isThemePreference = (
   value === "system";
 
 const getThemeKey = (userId?: string | null): string => {
-  const id = userId !== undefined ? userId : getCurrentCustomerSubject();
-  return id ? `${BASE_THEME_KEY}_${id}` : BASE_THEME_KEY;
+  const id =
+    userId !== undefined
+      ? userId
+      : getCurrentCustomerSubject();
+
+  return id
+    ? `${BASE_THEME_KEY}_${id}`
+    : BASE_THEME_KEY;
 };
 
-export function getStoredTheme(userId?: string | null): ThemePreference {
-  const id = userId !== undefined ? userId : getCurrentCustomerSubject();
-  // When no user is authenticated, unauthenticated/login pages remain on default "system"
+export function getStoredTheme(
+  userId?: string | null,
+): ThemePreference {
+  const id =
+    userId !== undefined
+      ? userId
+      : getCurrentCustomerSubject();
+
+  // Login / unauthenticated pages use the last saved theme.
   if (!id) {
-    return "system";
+    const storedTheme = localStorage.getItem(BASE_THEME_KEY);
+
+    return isThemePreference(storedTheme)
+      ? storedTheme
+      : "system";
   }
 
+  // Authenticated customers use their own theme preference.
   const storedTheme = localStorage.getItem(getThemeKey(id));
 
   return isThemePreference(storedTheme)
@@ -29,11 +47,20 @@ export function getStoredTheme(userId?: string | null): ThemePreference {
     : "system";
 }
 
-export function saveTheme(theme: ThemePreference, userId?: string | null): void {
-  const id = userId !== undefined ? userId : getCurrentCustomerSubject();
-  if (!id) {
-    return;
-  }
+export function saveTheme(
+  theme: ThemePreference,
+  userId?: string | null,
+): void {
+  const id =
+    userId !== undefined
+      ? userId
+      : getCurrentCustomerSubject();
 
-  localStorage.setItem(getThemeKey(id), theme);
+  // Save the latest theme for unauthenticated / login pages.
+  localStorage.setItem(BASE_THEME_KEY, theme);
+
+  // Also preserve each customer's individual preference.
+  if (id) {
+    localStorage.setItem(getThemeKey(id), theme);
+  }
 }
