@@ -154,11 +154,11 @@ public class EcommercePaymentService {
         }
 
         // Daily Limit Check
-        BigDecimal dailyLimit = transferLimitService.getDailyTransferLimit();
+        BigDecimal dailyLimit = transferLimitService.getEcommerceDailyTransferLimit();
         if (dailyLimit != null && dailyLimit.compareTo(BigDecimal.ZERO) > 0) {
             LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
             LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
-            BigDecimal todayTotal = bankTransactionRepository.findTodayTotalTransferredAmount(
+            BigDecimal todayTotal = bankTransactionRepository.findTodayTotalEcommercePaymentAmount(
                     customerAccount.getAccountId(), startOfDay, endOfDay);
 
             if (todayTotal == null) {
@@ -167,7 +167,7 @@ public class EcommercePaymentService {
 
             if (todayTotal.add(request.getAmount()).compareTo(dailyLimit) > 0) {
                 throw new TransactionException(String.format(
-                        "Payment breaches daily limit of %s %s. Transferred today: %s, Attempted: %s",
+                        "Payment breaches daily ecommerce limit of %s %s. Transferred today: %s, Attempted: %s",
                         dailyLimit, customerAccount.getCurrency(), todayTotal, request.getAmount()
                 ));
             }

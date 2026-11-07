@@ -78,13 +78,28 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
     BigDecimal calculateTotalCompletedVolume();
 
     /**
-     * Calculates total transferred amount by account for the current day.
+     * Calculates total transferred amount by account for the current day,
+     * excluding e-commerce external payments to prevent cross-limit interference.
      */
     @Query("SELECT COALESCE(SUM(t.amount), 0) FROM BankTransactions t " +
            "WHERE t.sourceAccount.accountId = :accountId " +
+           "AND t.transactionType != com.corebanking.entity.enums.TransactionType.EXTERNAL_PAYMENT " +
            "AND t.status = 'COMPLETED' " +
            "AND t.completedAt >= :startOfDay AND t.completedAt <= :endOfDay")
     BigDecimal findTodayTotalTransferredAmount(
+            @Param("accountId") UUID accountId,
+            @Param("startOfDay") LocalDateTime startOfDay,
+            @Param("endOfDay") LocalDateTime endOfDay);
+
+    /**
+     * Calculates total e-commerce payment amount by account for the current day.
+     */
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM BankTransactions t " +
+           "WHERE t.sourceAccount.accountId = :accountId " +
+           "AND t.transactionType = com.corebanking.entity.enums.TransactionType.EXTERNAL_PAYMENT " +
+           "AND t.status = com.corebanking.entity.enums.TransactionStatus.COMPLETED " +
+           "AND t.completedAt >= :startOfDay AND t.completedAt <= :endOfDay")
+    BigDecimal findTodayTotalEcommercePaymentAmount(
             @Param("accountId") UUID accountId,
             @Param("startOfDay") LocalDateTime startOfDay,
             @Param("endOfDay") LocalDateTime endOfDay);

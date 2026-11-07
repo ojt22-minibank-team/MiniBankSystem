@@ -107,28 +107,36 @@ export default function StaffCreateModal({
     const errs: Record<string, string> = {};
     if (!formData.username.trim()) errs.username = 'Username is required.';
     if (!formData.fullName.trim()) errs.fullName = 'Full name is required.';
-    if (!formData.email.trim()) {
+
+    // Email validation
+    const emailVal = formData.email.trim();
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailVal) {
       errs.email = 'Email is required.';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
-      errs.email = 'Please enter a valid email address.';
+    } else if (!emailRegex.test(emailVal)) {
+      errs.email = 'Please enter a valid email address (e.g. user@domain.com).';
     }
-    if (!formData.phone.trim()) {
+
+    // Phone validation (must be at least 11 digits)
+    const rawPhone = formData.phone.trim();
+    if (!rawPhone) {
       errs.phone = 'Phone number is required.';
     } else {
-      const cleanPhone = formData.phone.trim().replace(/[\s-]/g, '');
+      const cleanPhone = rawPhone.replace(/[\s-]/g, '');
       const normalized = cleanPhone.startsWith('+959')
         ? '09' + cleanPhone.slice(4)
         : cleanPhone.startsWith('959')
         ? '09' + cleanPhone.slice(3)
         : cleanPhone;
 
-      const digitsOnly = cleanPhone.replace(/\D/g, '');
-      if (digitsOnly.length < 9) {
-        errs.phone = 'Myanmar phone number must be at least 9 digits (e.g. 09xxxxxxxxx).';
-      } else if (!/^09\d{7,9}$/.test(normalized)) {
-        errs.phone = 'Please enter a valid Myanmar phone number starting with 09 (e.g. 09xxxxxxxxx).';
+      const digitsOnly = normalized.replace(/\D/g, '');
+      if (digitsOnly.length < 11) {
+        errs.phone = 'Phone number must be at least 11 digits (e.g. 09xxxxxxxxx).';
+      } else if (!/^09\d{9}$/.test(normalized)) {
+        errs.phone = 'Please enter a valid 11-digit Myanmar phone number starting with 09 (e.g. 09xxxxxxxxx).';
       }
     }
+
     if (!formData.roleId) errs.roleId = 'Role selection is required.';
 
     setErrors(errs);
@@ -200,7 +208,7 @@ export default function StaffCreateModal({
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
         {apiError && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             {apiError}
@@ -271,6 +279,18 @@ export default function StaffCreateModal({
               setFormData({ ...formData, email: e.target.value });
               if (errors.email) setErrors({ ...errors, email: '' });
             }}
+            onBlur={() => {
+              const emailVal = formData.email.trim();
+              if (emailVal) {
+                const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                if (!emailRegex.test(emailVal)) {
+                  setErrors((prev) => ({
+                    ...prev,
+                    email: 'Please enter a valid email address (e.g. user@domain.com).',
+                  }));
+                }
+              }
+            }}
             error={errors.email}
             disabled={isLoading}
             required
@@ -284,6 +304,30 @@ export default function StaffCreateModal({
             onChange={(e) => {
               setFormData({ ...formData, phone: e.target.value });
               if (errors.phone) setErrors({ ...errors, phone: '' });
+            }}
+            onBlur={() => {
+              const rawPhone = formData.phone.trim();
+              if (rawPhone) {
+                const cleanPhone = rawPhone.replace(/[\s-]/g, '');
+                const normalized = cleanPhone.startsWith('+959')
+                  ? '09' + cleanPhone.slice(4)
+                  : cleanPhone.startsWith('959')
+                  ? '09' + cleanPhone.slice(3)
+                  : cleanPhone;
+
+                const digitsOnly = normalized.replace(/\D/g, '');
+                if (digitsOnly.length < 11) {
+                  setErrors((prev) => ({
+                    ...prev,
+                    phone: 'Phone number must be at least 11 digits (e.g. 09xxxxxxxxx).',
+                  }));
+                } else if (!/^09\d{9}$/.test(normalized)) {
+                  setErrors((prev) => ({
+                    ...prev,
+                    phone: 'Please enter a valid 11-digit Myanmar phone number starting with 09 (e.g. 09xxxxxxxxx).',
+                  }));
+                }
+              }
             }}
             error={errors.phone}
             disabled={isLoading}

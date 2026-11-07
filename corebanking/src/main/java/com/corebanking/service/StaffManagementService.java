@@ -49,7 +49,7 @@ public class StaffManagementService {
     public static boolean isValidMyanmarPhone(String phone) {
         if (phone == null || phone.isBlank()) return false;
         String cleaned = normalizeMyanmarPhone(phone);
-        return cleaned.matches("^09\\d{7,9}$");
+        return cleaned.matches("^09\\d{9}$");
     }
 
     private void validateStaffPhone(String phone, UUID excludeStaffId) {
@@ -57,16 +57,18 @@ public class StaffManagementService {
             throw new IllegalArgumentException("Phone number is required");
         }
         String rawPhone = phone.trim();
-        String cleanedDigits = rawPhone.replaceAll("[^0-9]", "");
 
-        // Myanmar phone numbers must have at least 9 digits and match Myanmar format
-        if (cleanedDigits.length() < 9 || !isValidMyanmarPhone(rawPhone)) {
+        String normalizedPhone = normalizeMyanmarPhone(rawPhone);
+        String cleanedDigits = normalizedPhone != null ? normalizedPhone.replaceAll("[^0-9]", "") : "";
+
+        // Myanmar phone numbers must have at least 11 digits and match Myanmar format
+        if (cleanedDigits.length() < 11 || !isValidMyanmarPhone(rawPhone)) {
             throw new IllegalArgumentException(
-                    "Phone number must be a valid Myanmar phone number with at least 9 digits (e.g. 09xxxxxxxxx)"
+                    "Phone number must be at least 11 digits starting with 09 (e.g. 09xxxxxxxxx)"
             );
         }
 
-        String normalizedPhone = normalizeMyanmarPhone(rawPhone);
+
         boolean exists;
         if (excludeStaffId == null) {
             exists = staffUsersRepository.existsByPhoneMatching(rawPhone, normalizedPhone);
@@ -283,9 +285,18 @@ public class StaffManagementService {
                 request.getFullName()
         );
 
-        staff.setEmail(
-                request.getEmail()
-        );
+        if (request.getEmail() != null && !request.getEmail().trim().isBlank()) {
+            String newEmail = request.getEmail().trim();
+            if (!newEmail.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$")) {
+                throw new IllegalArgumentException("Please enter a valid email address (e.g. user@domain.com)");
+            }
+            if (staffUsersRepository.existsByEmailIgnoreCaseAndStaffIdNot(newEmail, staffId)) {
+                throw new IllegalArgumentException("Email is already registered: " + newEmail);
+            }
+            staff.setEmail(newEmail);
+        } else {
+            staff.setEmail(request.getEmail());
+        }
 
         if (request.getPhone() != null && !request.getPhone().isBlank()) {
             validateStaffPhone(request.getPhone(), staffId);

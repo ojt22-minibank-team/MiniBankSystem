@@ -7,7 +7,7 @@
   "navigation": {
     "dashboard": "Dashboard",
     "accounts": "My Accounts",
-    "transfer": "Transfer & Payments",
+    "transfer": "Transfer",
     "transactionHistory": "Transaction History",
     "accountStatement": "Account Statement",
     "beneficiaries": "Beneficiaries",

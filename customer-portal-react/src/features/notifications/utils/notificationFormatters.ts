@@ -1,3 +1,5 @@
+import i18n from "../../../i18n";
+
 /**
  * Utility functions for notification presentation:
  * - Masking account numbers for privacy (e.g. 2006382479 -> **** 2479)
@@ -90,16 +92,20 @@ export const resolveNotificationMeta = (item: NotificationMetaInput): Notificati
     itemTitleLower.includes("funds received") ||
     isDeposit;
 
-  // Real-world Customer-facing Display Title
+  // Real-world Customer-facing Display Title (Localized)
   let displayTitle = itemTitle;
   if (isDeposit) {
-    displayTitle = "Deposit Successful";
+    displayTitle = i18n.t("depositSuccessful", { ns: "notifications", defaultValue: "Deposit Successful" });
   } else if (isWithdrawal) {
-    displayTitle = "Withdrawal Successful";
+    displayTitle = i18n.t("withdrawalSuccessful", { ns: "notifications", defaultValue: "Withdrawal Successful" });
   } else if (isItemReceived) {
-    displayTitle = "Money Received";
+    displayTitle = i18n.t("moneyReceived", { ns: "notifications", defaultValue: "Money Received" });
   } else if (item.transferDirection === "SENT" || itemTitleLower.includes("sent")) {
-    displayTitle = "Transfer Successful";
+    displayTitle = i18n.t("transferSuccessful", { ns: "notifications", defaultValue: "Transfer Successful" });
+  } else if (isFailed) {
+    displayTitle = i18n.t("transactionFailed", { ns: "notifications", defaultValue: "Transaction Failed" });
+  } else if (isPayment) {
+    displayTitle = i18n.t("paymentSuccessful", { ns: "notifications", defaultValue: "Payment Successful" });
   }
 
   // Account resolution for deposit/withdrawal
@@ -164,12 +170,27 @@ export const formatNotificationMessage = (item: NotificationMessageTarget): stri
       if (match) amtStr = formatAmountValue(match[1]);
     }
 
-    const accStr = meta.targetAccount ? ` to account ${maskAccountNumber(meta.targetAccount)}` : "";
-
-    if (amtStr) {
-      return `Your cash deposit of ${amtStr} ${currency}${accStr} was successful.`;
+    if (amtStr && meta.targetAccount) {
+      return i18n.t("depositMsgWithAcc", {
+        ns: "notifications",
+        amount: amtStr,
+        currency,
+        account: maskAccountNumber(meta.targetAccount),
+        defaultValue: `Your cash deposit of ${amtStr} ${currency} to account ${maskAccountNumber(meta.targetAccount)} was successful.`,
+      });
     }
-    return "Your cash deposit was successful.";
+    if (amtStr) {
+      return i18n.t("depositMsg", {
+        ns: "notifications",
+        amount: amtStr,
+        currency,
+        defaultValue: `Your cash deposit of ${amtStr} ${currency} was successful.`,
+      });
+    }
+    return i18n.t("depositGeneric", {
+      ns: "notifications",
+      defaultValue: "Your cash deposit was successful.",
+    });
   }
 
   // Case 0.1: Cash Withdrawal via Bank Counter
@@ -182,12 +203,27 @@ export const formatNotificationMessage = (item: NotificationMessageTarget): stri
       if (match) amtStr = formatAmountValue(match[1]);
     }
 
-    const accStr = meta.targetAccount ? ` from account ${maskAccountNumber(meta.targetAccount)}` : "";
-
-    if (amtStr) {
-      return `Your cash withdrawal of ${amtStr} ${currency}${accStr} was successful.`;
+    if (amtStr && meta.targetAccount) {
+      return i18n.t("withdrawalMsgWithAcc", {
+        ns: "notifications",
+        amount: amtStr,
+        currency,
+        account: maskAccountNumber(meta.targetAccount),
+        defaultValue: `Your cash withdrawal of ${amtStr} ${currency} from account ${maskAccountNumber(meta.targetAccount)} was successful.`,
+      });
     }
-    return "Your cash withdrawal was successful.";
+    if (amtStr) {
+      return i18n.t("withdrawalMsg", {
+        ns: "notifications",
+        amount: amtStr,
+        currency,
+        defaultValue: `Your cash withdrawal of ${amtStr} ${currency} was successful.`,
+      });
+    }
+    return i18n.t("withdrawalGeneric", {
+      ns: "notifications",
+      defaultValue: "Your cash withdrawal was successful.",
+    });
   }
 
   const isReceived = meta.isItemReceived;
@@ -211,9 +247,17 @@ export const formatNotificationMessage = (item: NotificationMessageTarget): stri
       }
     }
     if (amtStr) {
-      return `You have successfully transferred ${amtStr} ${currency}.`;
+      return i18n.t("transferSentMsg", {
+        ns: "notifications",
+        amount: amtStr,
+        currency,
+        defaultValue: `You have successfully transferred ${amtStr} ${currency}.`,
+      });
     }
-    return "You have successfully transferred funds.";
+    return i18n.t("transferSentGeneric", {
+      ns: "notifications",
+      defaultValue: "You have successfully transferred funds.",
+    });
   }
 
   // Case 2: Funds Received - eliminate redundancy and format amount cleanly
@@ -228,9 +272,17 @@ export const formatNotificationMessage = (item: NotificationMessageTarget): stri
       }
     }
     if (amtStr) {
-      return `You have successfully received ${amtStr} ${currency}.`;
+      return i18n.t("fundsReceivedMsg", {
+        ns: "notifications",
+        amount: amtStr,
+        currency,
+        defaultValue: `You have successfully received ${amtStr} ${currency}.`,
+      });
     }
-    return "You have successfully received funds.";
+    return i18n.t("fundsReceivedGeneric", {
+      ns: "notifications",
+      defaultValue: "You have successfully received funds.",
+    });
   }
 
   // Case 3: Other notifications (e.g. Failed, Payment, System)

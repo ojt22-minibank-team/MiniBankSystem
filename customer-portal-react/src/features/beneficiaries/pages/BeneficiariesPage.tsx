@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Users, UserPlus, AlertCircle, CheckCircle2 } from "lucide-react";
 import { getBeneficiaries, deleteBeneficiary } from "../services/beneficiaryService";
 import type { Beneficiary } from "../types/beneficiaryTypes";
@@ -7,6 +8,7 @@ import { BeneficiaryList } from "../components/BeneficiaryList";
 import { AddBeneficiaryModal } from "../components/AddBeneficiaryModal";
 
 export default function BeneficiariesPage() {
+  const { t } = useTranslation("beneficiaries");
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +23,7 @@ export default function BeneficiariesPage() {
       setBeneficiaries(data);
     } catch (err: any) {
       setError(
-        err.response?.data?.message || err.message || "Failed to load beneficiaries."
+        err.response?.data?.message || err.message || t("loadFailed", "Failed to load beneficiaries.")
       );
     } finally {
       setLoading(false);
@@ -39,16 +41,16 @@ export default function BeneficiariesPage() {
 
   const handleAddSuccess = (newB: Beneficiary) => {
     setBeneficiaries((prev) => [newB, ...prev.filter((b) => b.beneficiaryId !== newB.beneficiaryId)]);
-    showToast(`Successfully added "${newB.nickname || newB.beneficiaryAccountName}"!`);
+    showToast(t("addedSuccess", { name: newB.nickname || newB.beneficiaryAccountName, defaultValue: `Successfully added "${newB.nickname || newB.beneficiaryAccountName}"!` }));
   };
 
   const handleDelete = async (id: string) => {
     try {
       await deleteBeneficiary(id);
       setBeneficiaries((prev) => prev.filter((b) => b.beneficiaryId !== id));
-      showToast("Beneficiary removed successfully.");
+      showToast(t("removedSuccess", "Beneficiary removed successfully."));
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to remove beneficiary.");
+      setError(err.response?.data?.message || t("removeFailed", "Failed to remove beneficiary."));
     }
   };
 
@@ -75,17 +77,19 @@ export default function BeneficiariesPage() {
                 to="/dashboard"
                 className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
               >
-                Dashboard
+                {t("breadcrumbDashboard", "Dashboard")}
               </Link>
               <span className="text-slate-300" aria-hidden="true">/</span>
-              <span className="text-[#00A3C4]" aria-current="page">Beneficiaries</span>
+              <span className="text-[#00A3C4]" aria-current="page">
+                {t("breadcrumbBeneficiaries", "Beneficiaries")}
+              </span>
             </nav>
 
             <h1 className="text-2xl font-black text-[#0A192F] dark:text-white tracking-tight">
-              Beneficiaries
+              {t("title", "Beneficiaries")}
             </h1>
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-              Manage saved accounts for instant and error-free transfers
+              {t("subtitle", "Manage saved accounts for instant and error-free transfers")}
             </p>
           </div>
         </div>
@@ -94,7 +98,7 @@ export default function BeneficiariesPage() {
           onClick={() => setIsModalOpen(true)}
           className="inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-[#00A3C4] to-[#0284C7] hover:from-[#0891B2] hover:to-[#0369A1] shadow-lg shadow-cyan-500/25 hover:shadow-xl transition-all"
         >
-          <UserPlus className="w-4 h-4" /> Add Beneficiary
+          <UserPlus className="w-4 h-4" /> {t("addBeneficiary", "Add Beneficiary")}
         </button>
       </div>
 

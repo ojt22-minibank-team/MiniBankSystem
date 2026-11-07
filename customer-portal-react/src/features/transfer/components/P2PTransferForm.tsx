@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../../lib/redux";
@@ -252,6 +253,7 @@ interface FormStepProps {
 }
 
 function FormStep({
+
   accounts,
   accountsLoading,
   sourceAccount,
@@ -273,6 +275,7 @@ function FormStep({
   onContinue,
   onCancel,
 }: FormStepProps) {
+  const { t } = useTranslation("transfer");
   // Filter own accounts excluding currently selected source account
   const ownDestinationAccounts = accounts.filter(
     (a) => a.accountNumber !== sourceAccount && (a.status === "ACTIVE" || a.status === undefined)
@@ -358,9 +361,7 @@ function FormStep({
     <div className="space-y-6">
       {/* 1. From Account Selector */}
       <div>
-        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-          From Account
-        </label>
+        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">{t("fromAccount", "FROM ACCOUNT")}</label>
         {accountsLoading ? (
           <div className="flex items-center gap-2 py-3 text-sm text-slate-400">
             <Loader2 className="w-4 h-4 animate-spin text-cyan-500" /> Loading your accounts...
@@ -388,14 +389,12 @@ function FormStep({
                     <Wallet className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-[#007B99] dark:text-cyan-300">
-                      Available to Transfer
-                    </p>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-[#007B99] dark:text-cyan-300">{t("availableToTransfer", "AVAILABLE TO TRANSFER")}</p>
                     <p className="text-base sm:text-lg font-black text-[#0A192F] dark:text-white tracking-tight">
                       {netAvailable.toLocaleString()} MMK
                     </p>
                     <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium mt-0.5">
-                      Total Balance: <span className="font-bold text-slate-800 dark:text-white">{totalCurrentBalance.toLocaleString()} MMK</span> • Min reserve: {minBalance.toLocaleString()} MMK
+                      {t("totalBalance", "Total Balance")}: <span className="font-bold text-slate-800 dark:text-white">{totalCurrentBalance.toLocaleString()} MMK</span> • {t("minReserve", "Min reserve")}: {minBalance.toLocaleString()} MMK
                     </p>
                   </div>
                 </div>
@@ -411,9 +410,7 @@ function FormStep({
       {/* 2. Recipient Selector (3-Tab Experience: Own Accounts vs Saved Contacts vs Direct Number) */}
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-            Transfer To
-          </label>
+          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">{t("transferTo", "TRANSFER TO")}</label>
           <div className="inline-flex rounded-xl bg-slate-100 dark:bg-[#0f2445] p-1 text-xs font-semibold border border-slate-200/70 dark:border-slate-700/80 shadow-xs flex-wrap gap-1">
             {ownDestinationAccounts.length > 0 && (
               <button
@@ -425,7 +422,7 @@ function FormStep({
                     : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
-                My Accounts ({ownDestinationAccounts.length})
+                {t("ownAccount", "My Accounts")} ({ownDestinationAccounts.length})
               </button>
             )}
             {beneficiaries.length > 0 && (
@@ -438,7 +435,7 @@ function FormStep({
                     : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
-                Saved Contacts ({beneficiaries.length})
+                {t("savedContacts", "Saved Contacts")} ({beneficiaries.length})
               </button>
             )}
             <button
@@ -449,9 +446,7 @@ function FormStep({
                   ? "bg-white dark:bg-[#00A3C4] text-[#00A3C4] dark:text-white shadow-xs"
                   : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
               }`}
-            >
-              Enter Account No
-            </button>
+            >{t("enterAccountNo", "Enter Account No")}</button>
           </div>
         </div>
 
@@ -547,7 +542,7 @@ function FormStep({
               list="recent-destinations"
               value={destinationAccount}
               onChange={(e) => setDestinationAccount(e.target.value.replace(/\D/g, ""))}
-              placeholder="Enter 10 to 16 digit recipient account number"
+              placeholder={t("destinationAccountNumber", "Enter 10 to 16 digit recipient account number")}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder-slate-400 focus:border-[#00A3C4] focus:bg-white focus:ring-2 focus:ring-cyan-100 outline-none transition"
               maxLength={34}
               required
@@ -606,7 +601,7 @@ function FormStep({
                   </span>
                 </div>
                 <span className="font-semibold text-[10px]">
-                  Max One-Time: {effectiveOneTimeLimit?.toLocaleString()} MMK
+                  {t("maxOneTime", "Max One-Time")}: {effectiveOneTimeLimit?.toLocaleString()} MMK
                 </span>
               </div>
             )}
@@ -623,9 +618,7 @@ function FormStep({
 
       {/* 3. Amount Input with Comma Formatting and Quick Pills */}
       <div>
-        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-          Transfer Amount
-        </label>
+        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">{t("transferAmount", "TRANSFER AMOUNT")}</label>
         <div className="relative">
           <input
             type="text"
@@ -808,7 +801,7 @@ function FormStep({
               : "text-white bg-gradient-to-r from-[#00A3C4] to-[#0284C7] hover:from-[#0891B2] hover:to-[#0369A1] shadow-md shadow-cyan-500/25 cursor-pointer"
           }`}
         >
-          <span>Proceed to Review</span>
+          <span>{t("proceedToReview", "Proceed to Review")}</span>
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
@@ -847,6 +840,7 @@ function ReviewStep({
   onConfirm,
   onBack,
 }: ReviewStepProps) {
+  const { t } = useTranslation("transfer");
   return (
     <div className="space-y-6">
       {/* Hero Confirmation Card */}
@@ -920,7 +914,7 @@ function ReviewStep({
                 {serviceFee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MMK
               </span>
             ) : (
-              <span className="font-bold text-emerald-600 dark:text-emerald-400">0.00 MMK (Free)</span>
+              <span className="font-bold text-emerald-600 dark:text-emerald-400">0.00 MMK ({t("free", "Free")})</span>
             )}
           </div>
 
@@ -946,7 +940,7 @@ function ReviewStep({
       <div className="p-3.5 bg-cyan-50/70/60 border border-cyan-100 rounded-2xl flex items-start gap-2.5 text-xs text-blue-900">
         <Lock className="w-4 h-4 text-[#00A3C4] shrink-0 mt-0.5" />
         <p>
-          This transaction is authenticated with 2-Factor Transaction PIN. Funds will be deposited instantly.
+          {t("securityNote", "This transaction is authenticated with 2-Factor Transaction PIN. Funds will be deposited instantly.")}
         </p>
       </div>
 
@@ -967,7 +961,7 @@ function ReviewStep({
           className="flex-[2] py-3.5 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-[#00A3C4] to-[#0284C7] hover:from-[#0891B2] hover:to-[#0369A1] shadow-md shadow-cyan-500/25 transition flex items-center justify-center gap-2"
         >
           <Lock className="w-4 h-4" />
-          <span>Authorize &amp; Enter PIN</span>
+          <span>{t("authorizeAndEnterPin", "Authorize & Enter PIN")}</span>
         </button>
       </div>
     </div>
@@ -1550,6 +1544,7 @@ function ReceiptStep({
 type Step = "form" | "review" | "receipt" | "failed";
 
 export const P2PTransferForm = () => {
+  const { t } = useTranslation("transfer");
   const dispatch = useAppDispatch();
   const { loading, error, success, transactionResult } = useAppSelector((s) => s.transfer);
   const { accounts, loading: accountsLoading } = useAppSelector((s) => s.accounts);
@@ -2167,12 +2162,10 @@ export const P2PTransferForm = () => {
                 </div>
                 <div className="min-w-0">
                   <h2 className="text-base sm:text-lg font-black text-[#0A192F] dark:text-white leading-tight sm:whitespace-nowrap">
-                    {step === "review" ? "Review Transfer Details" : "Internal Fund Transfer"}
+                    {step === "review" ? t("reviewTransferDetails", "Review Transfer Details") : t("title", "Internal Fund Transfer")}
                   </h2>
                   <p className="text-xs sm:text-[13px] text-slate-500 dark:text-slate-400 font-medium mt-1 leading-normal">
-                    {step === "form"
-                      ? "Instant, secure transfer to any account"
-                      : "Confirm transfer details before PIN authorization"}
+                    {step === "form" ? t("subtitle", "Instant, secure transfer to any account") : t("reviewSubtitle", "Confirm transfer details before PIN authorization")}
                   </p>
                 </div>
               </div>
@@ -2189,7 +2182,7 @@ export const P2PTransferForm = () => {
                   <span className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px]">
                     1
                   </span>
-                  <span>Setup</span>
+                  <span>{t("stepSetup", "Setup")}</span>
                 </span>
                 <span className="text-slate-300 dark:text-slate-600 font-bold">➔</span>
                 <span
@@ -2202,7 +2195,7 @@ export const P2PTransferForm = () => {
                   <span className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px]">
                     2
                   </span>
-                  <span>Review &amp; PIN</span>
+                  <span>{t("stepReview", "Review & PIN")}</span>
                 </span>
               </div>
             </div>
@@ -2260,43 +2253,41 @@ export const P2PTransferForm = () => {
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
               <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
                 <CreditCard className="w-4 h-4 text-[#00A3C4]" />
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800">
-                  Transfer Summary
-                </h3>
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800">{t("transferSummary", "Transfer Summary")}</h3>
               </div>
 
               {/* Source Account Overview */}
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 space-y-2">
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500 font-medium">Source Account</span>
+                  <span className="text-slate-500 font-medium">{t("sourceAccount", "Source Account")}</span>
                   <span className="font-mono font-bold text-slate-800">
                     {sourceAccount ? maskAccount(sourceAccount) : "Not selected"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500 font-medium">Current Balance</span>
+                  <span className="text-slate-500 font-medium">{t("currentBalance", "Current Balance")}</span>
                   <span className="font-bold text-slate-800">{formatMMK(currentBalance)}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500 font-medium">Available to Transfer</span>
+                  <span className="text-slate-500 font-medium">{t("availableToTransfer", "Available to Transfer")}</span>
                   <span className="font-bold text-[#00A3C4]">{formatMMK(availBalance)}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs border-t border-slate-200/60 pt-2">
-                  <span className="text-slate-500 font-medium">Transfer Amount</span>
+                  <span className="text-slate-500 font-medium">{t("transferAmountLabel", "Transfer Amount")}</span>
                   <span className="font-black text-[#00A3C4]">
                     -{formatMMK(transferAmountNum)}
                   </span>
                 </div>
                 {!isOwnAccountTransfer && effectiveFee > 0 && (
                   <div className="flex justify-between items-center text-xs pt-1">
-                    <span className="text-slate-500 font-medium">Service Fee</span>
+                    <span className="text-slate-500 font-medium">{t("serviceFee", "Service Fee")}</span>
                     <span className="font-semibold text-slate-700">
                       -{formatMMK(effectiveFee)}
                     </span>
                   </div>
                 )}
                 <div className="flex justify-between items-center text-xs border-t border-slate-200/60 pt-2">
-                  <span className="text-slate-700 font-bold">Available After Transfer</span>
+                  <span className="text-slate-700 font-bold">{t("availableAfterTransfer", "Available After Transfer")}</span>
                   <span className="font-black text-slate-900">
                     {formatMMK(newBalancePreview)}
                   </span>
@@ -2319,7 +2310,7 @@ export const P2PTransferForm = () => {
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-slate-700 flex items-center gap-1.5">
                       <ShieldCheck className="w-4 h-4 text-[#00A3C4]" />
-                      Today's Limit Usage
+                      {t("todaysLimitUsage", "Today's Limit Usage")}
                       <button
                         type="button"
                         onClick={() => {
@@ -2343,7 +2334,7 @@ export const P2PTransferForm = () => {
                         aria-label="Edit transfer limits"
                       >
                         <Pencil className="w-2.5 h-2.5" />
-                        <span>Edit</span>
+                        <span>{t("edit", "Edit")}</span>
                       </button>
                     </span>
                     <span className="font-bold text-[#00A3C4]">
@@ -2377,9 +2368,9 @@ export const P2PTransferForm = () => {
                   </div>
 
                   <div className="flex justify-between text-[11px] text-slate-500">
-                    <span>Transferred: {formatMMK(transferLimits.todayTransferredAmount)}</span>
+                    <span>{t("transferred", "Transferred")}: {formatMMK(transferLimits.todayTransferredAmount)}</span>
                     <span className="font-bold text-slate-700">
-                      Remaining: {formatMMK(transferLimits.remainingDailyLimit)}
+                      {t("remaining", "Remaining")}: {formatMMK(transferLimits.remainingDailyLimit)}
                     </span>
                   </div>
                 </div>
@@ -2401,8 +2392,8 @@ export const P2PTransferForm = () => {
                   )}
                   <span>
                     {isBeneficiarySelected
-                      ? "Saved Beneficiary (High Limit)"
-                      : "Standard / Unsaved Payee Limit"}
+                      ? t("savedBeneficiaryHighLimit", "Saved Beneficiary (High Limit)")
+                      : t("standardUnsavedPayeeLimit", "Standard / Unsaved Payee Limit")}
                   </span>
                 </div>
               </div>
@@ -2412,10 +2403,10 @@ export const P2PTransferForm = () => {
             <div className="p-4 rounded-3xl bg-white border border-slate-200 text-xs text-slate-500 space-y-1.5 shadow-sm">
               <div className="flex items-center gap-1.5 text-slate-700 font-bold">
                 <Sparkles className="w-4 h-4 text-amber-500" />
-                <span>Instant Settlement Guarantee</span>
+                <span>{t("instantSettlementGuarantee", "Instant Settlement Guarantee")}</span>
               </div>
               <p className="text-[11px] leading-relaxed">
-                Internal fund transfers are executed in real time 24/7 with zero waiting time and encrypted end-to-end.
+                {t("instantSettlementDescription", "Internal fund transfers are executed in real time 24/7 with zero waiting time and encrypted end-to-end.")}
               </p>
             </div>
           </div>
