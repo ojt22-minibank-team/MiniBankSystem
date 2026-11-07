@@ -262,12 +262,26 @@ export default function OtcTransactionPage() {
     }
   };
 
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/,/g, '');
+    if (!/^\d*$/.test(rawValue)) return;
+    if (!rawValue) {
+      setAmount('');
+      if (error) setError(null);
+      return;
+    }
+    const cleanDigits = rawValue.replace(/^0+(?=\d)/, '');
+    const formatted = cleanDigits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    setAmount(formatted);
+    if (error) setError(null);
+  };
+
   // Pre-validate form inputs and business rules before triggering the Confirmation Modal (1st click)
   const handleInitiateConfirmation = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!accountNumber.trim()) {
-      setError('Target bank account number is required.');
+      setError('Account number is required.');
       return;
     }
 
@@ -281,7 +295,7 @@ export default function OtcTransactionPage() {
       return;
     }
 
-    const numAmount = Number(amount);
+    const numAmount = Number(amount.replace(/,/g, ''));
     const estimatedFee = computeEstimatedFee(numAmount, operationType, otcParams);
     if (!amount || isNaN(numAmount) || numAmount <= 0) {
       setError('Transaction amount must be a valid number greater than zero.');
@@ -359,7 +373,7 @@ export default function OtcTransactionPage() {
     }
 
     if (!remark.trim()) {
-      setError('Customer statement narration / description is required.');
+      setError('Customer statement narration is required.');
       return;
     }
 
@@ -395,7 +409,7 @@ export default function OtcTransactionPage() {
 
   // Actual execution triggered inside Confirmation Modal (2nd click)
   const handleExecuteTransaction = async () => {
-    const numAmount = Number(amount);
+    const numAmount = Number(amount.replace(/,/g, ''));
     setIsLoading(true);
 
     const idempotencyKey = `otc_${operationType.toLowerCase()}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -467,7 +481,7 @@ export default function OtcTransactionPage() {
 
   // Financial calculations for Before vs After breakdown
   const currentBal = verifiedAccount?.availableBalance ?? 0;
-  const numAmount = Number(amount) || 0;
+  const numAmount = Number(amount.replace(/,/g, '')) || 0;
   const estimatedFee = computeEstimatedFee(numAmount, operationType, otcParams);
   const netDeposit = Math.max(0, numAmount - estimatedFee);
   const totalWithdrawal = numAmount + estimatedFee;
@@ -684,7 +698,7 @@ export default function OtcTransactionPage() {
                   <span className="text-[11px] font-mono text-gray-400">Code: {receipt.customerCode}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500 block text-[11px]">Customer NRC / National ID</span>
+                  <span className="text-gray-500 block text-[11px]">Customer NRC ID</span>
                   <span className="font-semibold text-gray-800 font-mono block mt-0.5">
                     {verifiedAccount?.nrc || '—'}
                   </span>
@@ -879,7 +893,7 @@ export default function OtcTransactionPage() {
                 {/* Account Lookup Row */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Target Bank Account Number <span className="text-red-500">*</span>
+                    Account Number <span className="text-red-500">*</span>
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -928,7 +942,7 @@ export default function OtcTransactionPage() {
                         <svg className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
-                        <span>Account Identity Verified ✓</span>
+                        <span>Account Verified ✓</span>
                       </div>
                       <span
                         className={[
@@ -987,7 +1001,7 @@ export default function OtcTransactionPage() {
                         </div>
 
                         <div className="min-w-0">
-                          <span className="text-gray-500 block text-[11px] font-medium">NRC / National ID</span>
+                          <span className="text-gray-500 block text-[11px] font-medium">NRC ID</span>
                           <span className="font-semibold text-gray-900 font-mono block text-xs mt-0.5">
                             {verifiedAccount.nrc || '—'}
                           </span>
@@ -1055,20 +1069,27 @@ export default function OtcTransactionPage() {
                     <div>
                     <Input
                       label={`${operationType === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'} Amount (${verifiedAccount?.currency || 'MMK'})`}
-                      type="number"
-                      placeholder="e.g. 500000"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="e.g. 500,000"
                       value={amount}
                       onChange={(e) => {
-                        setAmount(e.target.value);
+                        handleAmountChange(e);
                         if (error) setError(null);
                       }}
                       required
                       disabled={isLoading}
-                      min={1}
+
                     />
+                    {numAmount > 0 && (
+                      <div className="mt-1.5 text-[11px] text-blue-700 bg-blue-50/80 px-2.5 py-1.5 rounded-lg border border-blue-100 flex items-start gap-1 font-medium shadow-xs">
+                        <span className="text-blue-600 font-bold shrink-0">Amount in words:</span>
+                        <span className="italic">{formatAmountToWords(numAmount, verifiedAccount?.currency || 'MMK')}</span>
+                      </div>
+                    )}
                     <div className="mt-1.5 flex items-center justify-between text-[11px] text-gray-500">
                       <span>
-                        Tariff Rate:{' '}
+                        Service Fee:{' '}
                         <span className="font-semibold text-gray-700">
                           {formatFeeScheduleDescription(operationType, otcParams, verifiedAccount?.currency || 'MMK')}
                         </span>
@@ -1081,8 +1102,12 @@ export default function OtcTransactionPage() {
                     </div>
                   </div>
                     <Input
-                      label="Customer Statement Narration / Description"
-                      placeholder="e.g. Counter Cash Deposit / Salary Cash Out"
+                      label="Customer Statement Narration"
+                      placeholder={
+                        operationType === 'DEPOSIT'
+                          ? 'e.g. Salary Saving, Cash Deposit'
+                          : 'e.g. Cash Out, House Rent'
+                      }
                       value={remark}
                       onChange={(e) => setRemark(e.target.value)}
                       required
@@ -1094,12 +1119,12 @@ export default function OtcTransactionPage() {
                 {/* Section 2: Internal Teller & Audit Documentation */}
                 <div className="border-t border-gray-100 pt-4 space-y-4">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-gray-600">
-                    2. Internal Teller & Audit Documentation (Manual Transaction)
+                    2. Counter Slip & Audit Details
                   </h3>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <Input
-                      label="Counter Slip / Voucher Reference No."
-                      placeholder="e.g. VCH-20261028-001 or Slip ID"
+                      label="Counter Slip Number"
+                      placeholder="e.g. SLIP-20261028-001 or Slip ID"
                       value={manualReferenceId}
                       onChange={(e) => setManualReferenceId(e.target.value)}
                       required
@@ -1125,7 +1150,7 @@ export default function OtcTransactionPage() {
                     isLoading={isLoading || isPreValidating}
                     className="w-full sm:w-auto px-6 py-2.5 font-semibold shadow-sm"
                   >
-                    {operationType === 'DEPOSIT' ? 'Review & Confirm Cash Deposit' : 'Review & Confirm Cash Withdrawal'}
+                    {operationType === 'DEPOSIT' ? 'Confirm Deposit' : 'Confirm Withdrawal'}
                   </Button>
                 </div>
               </form>
