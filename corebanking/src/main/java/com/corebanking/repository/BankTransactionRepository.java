@@ -114,4 +114,14 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
             @Param("staffId") UUID staffId,
             @Param("startOfDay") LocalDateTime startOfDay,
             @Param("endOfDay") LocalDateTime endOfDay);
+
+    /**
+     * Finds all OTC transactions processed by a specific staff member across all time.
+     */
+    @Query("SELECT t FROM BankTransactions t " +
+           "WHERE t.initiatedByStaff.staffId = :staffId " +
+           "AND t.transactionType IN (com.corebanking.entity.enums.TransactionType.OTC_DEPOSIT, com.corebanking.entity.enums.TransactionType.OTC_WITHDRAWAL) " +
+           "AND t.status = com.corebanking.entity.enums.TransactionStatus.COMPLETED")
+    java.util.List<BankTransactions> findAllTimeOtcTransactionsByStaff(
+            @Param("staffId") UUID staffId);
 }
