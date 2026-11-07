@@ -1,8 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import AdminLayout from '../../../components/layout/AdminLayout';
-import StaffEditModal from '../components/StaffEditModal';
 import StaffResetPasswordModal from '../components/StaffResetPasswordModal';
-import StaffChangePasswordModal from '../components/StaffChangePasswordModal';
 import { staffProfileApi } from '../../../services/apiClient';
 import type { StaffResponse } from '../../../types/api.types';
 import type { AxiosError } from 'axios';
@@ -27,9 +25,7 @@ export default function ProfilePage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Modals state
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
-  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
 
   // Inline Quick Edit state
   const [isInlineEditing, setIsInlineEditing] = useState(false);
@@ -208,18 +204,6 @@ export default function ProfilePage() {
             <button
               type="button"
               disabled={!staff || isLoading}
-              onClick={() => setIsEditModalOpen(true)}
-              className="flex items-center gap-2 rounded-full border border-purple-950/20 bg-white/90 px-4.5 py-2 text-xs font-bold text-[#1E1B4B] hover:bg-[#1E1B4B] hover:text-white shadow-xs transition-all disabled:opacity-50 cursor-pointer"
-            >
-              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              <span>Edit Information</span>
-            </button>
-
-            <button
-              type="button"
-              disabled={!staff || isLoading}
               onClick={() => setIsResetPasswordModalOpen(true)}
               className="btn-liquid-gold px-5 py-2 text-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >
@@ -330,30 +314,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Quick Action Badges */}
-            <div className="flex items-center gap-2 self-stretch md:self-auto justify-end">
-              <button
-                type="button"
-                onClick={() => setIsInlineEditing((prev) => !prev)}
-                className="flex-1 md:flex-none flex items-center justify-center gap-1.5 rounded-xl border border-purple-950/15 bg-white/80 px-4 py-2.5 text-xs font-bold text-[#1E1B4B] hover:bg-white shadow-xs transition-all cursor-pointer"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                </svg>
-                <span>{isInlineEditing ? 'Close Form' : 'Quick Edit'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsChangePasswordModalOpen(true)}
-                className="flex-1 md:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-all cursor-pointer"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                <span>Change Password</span>
-              </button>
-            </div>
+            
           </div>
         </div>
 
@@ -747,16 +708,6 @@ export default function ProfilePage() {
       </div>
 
       {/* ── Modals Reused from Staff Action Center ──────────────── */}
-      <StaffEditModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        staff={staff}
-        onSuccess={() => {
-          loadProfile();
-          handleShowSuccess('Staff information updated successfully.');
-        }}
-      />
-
       <StaffResetPasswordModal
         isOpen={isResetPasswordModalOpen}
         onClose={() => setIsResetPasswordModalOpen(false)}
@@ -766,11 +717,6 @@ export default function ProfilePage() {
           handleShowSuccess('Password reset link issued successfully.');
         }}
       />
-      <StaffChangePasswordModal
-        isOpen={isChangePasswordModalOpen}
-        onClose={() => setIsChangePasswordModalOpen(false)}
-        onSuccess={(msg) => handleShowSuccess(msg)}
-      />
-    </AdminLayout>
+      </AdminLayout>
   );
 }

@@ -328,6 +328,8 @@ export const otcApi = {
 // ============================================================
 
 export const tellerApi = {
-  getDailyCashSummary: () =>
-    axiosInstance.get<DailyCashSummaryResponse>(API_ENDPOINTS.TELLER.DAILY_CASH_SUMMARY),
+  getDailyCashSummary: (scope: 'today' | 'all' = 'today') =>
+    axiosInstance.get<DailyCashSummaryResponse>(API_ENDPOINTS.TELLER.DAILY_CASH_SUMMARY, {
+      params: { scope },
+    }),
 };

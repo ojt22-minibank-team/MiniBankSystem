@@ -712,24 +712,36 @@ public class OtcTransactionService {
     }
 
     /**
-     * Calculates today's cash summary for the currently authenticated Teller.
+     * Calculates cash summary for the currently authenticated Teller (defaults to today's shift).
      */
     @Transactional(readOnly = true)
     public DailyCashSummaryDto getDailyCashSummary() {
+        return getDailyCashSummary("today");
+    }
+
+    /**
+     * Calculates cash summary for the currently authenticated Teller for a given scope.
+     * @param scope "today" (default) for today's shift or "all" for all-time teller history
+     */
+    @Transactional(readOnly = true)
+    public DailyCashSummaryDto getDailyCashSummary(String scope) {
         StaffUsers teller = getCurrentAuthenticatedStaff();
         LocalDate today = LocalDate.now();
         LocalDateTime startOfDay = today.atStartOfDay();
         LocalDateTime endOfDay = today.atTime(23, 59, 59, 999999999);
 
-        java.util.List<BankTransactions> todayTxns = bankTransactionRepository
-                .findTodayOtcTransactionsByStaff(teller.getStaffId(), startOfDay, endOfDay);
+        boolean isAllTime = "all".equalsIgnoreCase(scope) || "all-time".equalsIgnoreCase(scope);
+
+        java.util.List<BankTransactions> txns = isAllTime
+                ? bankTransactionRepository.findAllTimeOtcTransactionsByStaff(teller.getStaffId())
+                : bankTransactionRepository.findTodayOtcTransactionsByStaff(teller.getStaffId(), startOfDay, endOfDay);
 
         BigDecimal cashIn = BigDecimal.ZERO;
         BigDecimal cashOut = BigDecimal.ZERO;
         long depositCount = 0;
         long withdrawalCount = 0;
 
-        for (BankTransactions t : todayTxns) {
+        for (BankTransactions t : txns) {
             if (t.getTransactionType() == TransactionType.OTC_DEPOSIT) {
                 cashIn = cashIn.add(t.getAmount());
                 depositCount++;
@@ -749,10 +761,11 @@ public class OtcTransactionService {
                 .totalCashIn(cashIn)
                 .totalCashOut(cashOut)
                 .netCashInDrawer(netCash)
-                .totalTransactions(todayTxns.size())
+                .totalTransactions(txns.size())
                 .depositCount(depositCount)
                 .withdrawalCount(withdrawalCount)
                 .currency("MMK")
+                .scope(isAllTime ? "ALL_TIME" : "TODAY")
                 .build();
     }
 
