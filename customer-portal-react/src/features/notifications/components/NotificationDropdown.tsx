@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { isAxiosError } from "axios";
@@ -43,6 +44,7 @@ interface NotificationRequestScope {
 }
 
 export const NotificationDropdown: React.FC = () => {
+  const { t } = useTranslation("notifications");
   const navigate = useNavigate();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
@@ -102,11 +104,11 @@ export const NotificationDropdown: React.FC = () => {
       const diffHours = Math.floor(diffMins / 60);
       const diffDays = Math.floor(diffHours / 24);
 
-      if (diffSecs < 60) return "Just now";
-      if (diffMins < 60) return `${diffMins}m ago`;
-      if (diffHours < 24) return `${diffHours}h ago`;
-      if (diffDays === 1) return "Yesterday";
-      if (diffDays < 7) return `${diffDays}d ago`;
+      if (diffSecs < 60) return t("justNow", "Just now");
+      if (diffMins < 60) return t("minutesAgo", { count: diffMins, defaultValue: `${diffMins}m ago` });
+      if (diffHours < 24) return t("hoursAgo", { count: diffHours, defaultValue: `${diffHours}h ago` });
+      if (diffDays === 1) return t("yesterday", "Yesterday");
+      if (diffDays < 7) return t("daysAgo", { count: diffDays, defaultValue: `${diffDays}d ago` });
       return date.toLocaleDateString(undefined, {
         month: "short",
         day: "numeric",
@@ -532,7 +534,7 @@ export const NotificationDropdown: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-black text-slate-800 tracking-tight flex items-center gap-1.5">
-                  Notifications
+                  {t("title", "Notifications")}
                   {isWsConnected && (
                     <span
                       className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"
@@ -561,7 +563,7 @@ export const NotificationDropdown: React.FC = () => {
                   ) : (
                     <CheckCheck className="w-3.5 h-3.5" />
                   )}
-                  <span>Mark all read</span>
+                  <span>{t("markAllRead", "Mark all read")}</span>
                 </button>
               )}
               <button
@@ -584,7 +586,7 @@ export const NotificationDropdown: React.FC = () => {
                   : "text-slate-500 hover:text-slate-800"
               }`}
             >
-              <span>All</span>
+              <span>{t("all", "All")}</span>
               <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600 font-bold">
                 {notifications.length}
               </span>
@@ -598,7 +600,7 @@ export const NotificationDropdown: React.FC = () => {
                   : "text-slate-500 hover:text-slate-800"
               }`}
             >
-              <span>Unread</span>
+              <span>{t("unread", "Unread")}</span>
               {unreadCount > 0 ? (
                 <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-red-100 text-red-600 font-extrabold">
                   {unreadCount}
@@ -616,7 +618,7 @@ export const NotificationDropdown: React.FC = () => {
             {loading ? (
               <div className="py-12 flex flex-col items-center justify-center gap-2 text-slate-400">
                 <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
-                <span className="text-xs font-medium">Loading notifications...</span>
+                <span className="text-xs font-medium">{t("loading", "Loading notifications...")}</span>
               </div>
             ) : error ? (
               <div className="py-8 px-5 text-center flex flex-col items-center justify-center gap-2 bg-red-50/50">
@@ -636,7 +638,7 @@ export const NotificationDropdown: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-xs font-bold text-slate-700">
-                    {activeTab === "unread" ? "No unread notifications" : "No notifications yet"}
+                    {activeTab === "unread" ? t("noUnreadTitle", "No unread notifications") : t("noNotificationsTitle", "No notifications yet")}
                   </p>
                   <p className="text-[11px] text-slate-400 mt-0.5">
                     {activeTab === "unread"
@@ -689,7 +691,7 @@ export const NotificationDropdown: React.FC = () => {
                               <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-800">
                                 <Landmark className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                                 <span className="truncate">
-                                  Credited to: {meta.targetAccount ? maskAccountNumber(meta.targetAccount) : "My Account"}
+                                  {t("creditedTo", "Credited to:")} {meta.targetAccount ? maskAccountNumber(meta.targetAccount) : t("myAccount", "My Account")}
                                 </span>
                                 <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.2 rounded-md shrink-0">
                                   Bank Counter
@@ -699,7 +701,7 @@ export const NotificationDropdown: React.FC = () => {
                               <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-800">
                                 <Landmark className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                                 <span className="truncate">
-                                  Debited from: {meta.targetAccount ? maskAccountNumber(meta.targetAccount) : "My Account"}
+                                  {t("debitedFrom", "Debited from:")} {meta.targetAccount ? maskAccountNumber(meta.targetAccount) : t("myAccount", "My Account")}
                                 </span>
                                 <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-1.5 py-0.2 rounded-md shrink-0">
                                   Bank Counter
@@ -709,7 +711,7 @@ export const NotificationDropdown: React.FC = () => {
                               <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-800">
                                 <User className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                                 <span className="truncate">
-                                  {meta.isItemReceived ? "From: " : "To: "}
+                                  {(meta.isItemReceived ? t("from", "From:") : t("to", "To:")) + " "}
                                   {item.counterpartyName}
                                   {item.counterpartyAccountNumber && item.counterpartyAccountNumber !== "BANK-OTC"
                                     ? ` (${maskAccountNumber(item.counterpartyAccountNumber)})`
@@ -761,9 +763,9 @@ export const NotificationDropdown: React.FC = () => {
           {/* Footer */}
           {notifications.length > 0 && (
             <div className="px-5 py-2.5 bg-slate-50/80 border-t border-slate-100 text-center flex items-center justify-center gap-1.5 text-[11px] font-semibold text-slate-400">
-              <span>Showing latest 30 notifications</span>
+              <span>{t("showingLatest", "Showing latest 30 notifications")}</span>
               <span>•</span>
-              <span>Encrypted & Logged</span>
+              <span>{t("encryptedAndLogged", "Encrypted & Logged")}</span>
             </div>
           )}
         </div>
