@@ -162,7 +162,7 @@ export default function AdminDashboardPage() {
               </div>
 
               <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-tight">
-                Welcome back, {user?.username ?? 'Administrator'}! 👋
+                Welcome back, {user?.username ?? 'Administrator'}
               </h2>
 
               <p className="text-xs sm:text-sm text-sky-100/90 font-medium leading-relaxed">
@@ -496,7 +496,7 @@ export default function AdminDashboardPage() {
                         <span className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 font-bold">
                           {a.audience}
                         </span>
-                        <span>·</span>
+                        <span className="h-1 w-1 rounded-full bg-slate-300 inline-block" />
                         <span>{formatDate(a.createdAt)}</span>
                       </div>
                     </div>

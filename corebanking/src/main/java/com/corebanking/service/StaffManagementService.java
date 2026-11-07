@@ -619,13 +619,77 @@ public class StaffManagementService {
         return rolesRepository.findAll();
     }
 
+    // =====================================================
+    // 10. CURRENT STAFF PROFILE & CREDENTIALS
+    // =====================================================
+
+    public StaffResponse getMyProfile() {
+        StaffUsers currentStaff = getCurrentAuthenticatedStaff();
+        if (currentStaff == null) {
+            throw new RuntimeException("Authenticated staff record not found");
+        }
+        return toResponse(currentStaff);
+    }
+
+    public StaffResponse updateMyProfile(StaffUpdateRequest request) {
+        StaffUsers currentStaff = getCurrentAuthenticatedStaff();
+        if (currentStaff == null) {
+            throw new RuntimeException("Authenticated staff record not found");
+        }
+        return updateStaff(currentStaff.getStaffId(), request);
+    }
+
+    public void changeMyPassword(com.corebanking.dto.StaffChangePasswordRequest request) {
+        StaffUsers currentStaff = getCurrentAuthenticatedStaff();
+        if (currentStaff == null) {
+            throw new RuntimeException("Authenticated staff record not found");
+        }
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), currentStaff.getPasswordHash())) {
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+
+        if (request.getNewPassword() == null || request.getNewPassword().length() < 8) {
+            throw new IllegalArgumentException("New password must be at least 8 characters");
+        }
+
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new IllegalArgumentException("New password and confirmation do not match");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), currentStaff.getPasswordHash())) {
+            throw new IllegalArgumentException("New password cannot be the same as your current password");
+        }
+
+        currentStaff.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        currentStaff.setMustChangePassword(false);
+        currentStaff.setPasswordChangedAt(LocalDateTime.now());
+        currentStaff.setFailedLoginCount(0);
+        currentStaff.setLockedUntil(null);
+        currentStaff.setTokenVersion(currentStaff.getTokenVersion() + 1);
+        currentStaff.setUpdatedAt(LocalDateTime.now());
+
+        staffUsersRepository.save(currentStaff);
+
+        if (auditTrailService != null) {
+            auditTrailService.logActivity(
+                    "SECURITY",
+                    "CHANGE_PASSWORD",
+                    "STAFF_USER",
+                    currentStaff.getStaffNo(),
+                    "Staff successfully changed own password: " + currentStaff.getUsername()
+            );
+        }
+    }
+
+
 
     // =====================================================
     // HELPER METHODS: ID GENERATION & FORMATTING
     // =====================================================
 
     // Helper: Retrieve the currently authenticated staff entity
-    private StaffUsers getCurrentAuthenticatedStaff() {
+    public StaffUsers getCurrentAuthenticatedStaff() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || "anonymousUser".equalsIgnoreCase(auth.getName())) {
             return null;

@@ -54,10 +54,12 @@ public class CusJwtAuthenticationFilter
 
         
     	
-        System.out.println(
-                "CUS JWT FILTER RUNNING: "
-                        + request.getRequestURI()
-        );
+        if (!isNotificationPollingRequest(request)) {
+            System.out.println(
+                    "CUS JWT FILTER RUNNING: "
+                            + request.getRequestURI()
+            );
+        }
 
 
         // =====================================================
@@ -106,31 +108,33 @@ public class CusJwtAuthenticationFilter
                     );
 
 
-            // Temporary Debug
-            System.out.println(
-                    "JWT SUBJECT = "
-                            + claims.getSubject()
-            );
+            // Temporary Debug (suppressed during background notification polling)
+            if (!isNotificationPollingRequest(request)) {
+                System.out.println(
+                        "JWT SUBJECT = "
+                                + claims.getSubject()
+                );
 
-            System.out.println(
-                    "JWT SID = "
-                            + claims.get("sid")
-            );
+                System.out.println(
+                        "JWT SID = "
+                                + claims.get("sid")
+                );
 
-            System.out.println(
-                    "JWT TOKEN TYPE = "
-                            + claims.get("tokenType")
-            );
+                System.out.println(
+                        "JWT TOKEN TYPE = "
+                                + claims.get("tokenType")
+                );
 
-            System.out.println(
-                    "JWT TOKEN VERSION = "
-                            + claims.get("tokenVersion")
-            );
+                System.out.println(
+                        "JWT TOKEN VERSION = "
+                                + claims.get("tokenVersion")
+                );
 
-            System.out.println(
-                    "JWT JTI = "
-                            + claims.getId()
-            );
+                System.out.println(
+                        "JWT JTI = "
+                                + claims.getId()
+                );
+            }
 
 
             // =================================================

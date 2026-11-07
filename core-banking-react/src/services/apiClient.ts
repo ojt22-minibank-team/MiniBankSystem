@@ -7,6 +7,7 @@ import type {
   StaffCreateRequest,
   StaffRoleOption,
   StaffUpdateRequest,
+  StaffChangePasswordRequest,
   ChangeStaffRoleRequest,
   StaffPasswordSetupRequest,
   SystemParameterResponse,
@@ -100,6 +101,20 @@ export const staffApi = {
 
   resendSetupLink: (staffId: string) =>
     axiosInstance.post<{ message: string }>(API_ENDPOINTS.ADMIN.STAFF_RESEND_SETUP_LINK(staffId)),
+};
+
+export const staffProfileApi = {
+  getMe: () =>
+    axiosInstance.get<StaffResponse>(API_ENDPOINTS.STAFF_PROFILE.ME),
+
+  updateMe: (data: StaffUpdateRequest) =>
+    axiosInstance.put<StaffResponse>(API_ENDPOINTS.STAFF_PROFILE.ME, data),
+
+  changePassword: (data: StaffChangePasswordRequest) =>
+    axiosInstance.post<{ message: string }>(
+      API_ENDPOINTS.STAFF_PROFILE.CHANGE_PASSWORD,
+      data,
+    ),
 };
 
 // ============================================================
@@ -313,6 +328,8 @@ export const otcApi = {
 // ============================================================
 
 export const tellerApi = {
-  getDailyCashSummary: () =>
-    axiosInstance.get<DailyCashSummaryResponse>(API_ENDPOINTS.TELLER.DAILY_CASH_SUMMARY),
+  getDailyCashSummary: (scope: 'today' | 'all' = 'today') =>
+    axiosInstance.get<DailyCashSummaryResponse>(API_ENDPOINTS.TELLER.DAILY_CASH_SUMMARY, {
+      params: { scope },
+    }),
 };

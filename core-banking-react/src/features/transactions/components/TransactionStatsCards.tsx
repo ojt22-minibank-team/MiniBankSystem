@@ -15,6 +15,22 @@ interface Props {
   onFilterStatus?: (status: string) => void;
 }
 
+function formatCompactVolume(amount: number, currency = 'MMK'): string {
+  if (Math.abs(amount) < 1_000_000) {
+    return formatCurrency(amount, currency);
+  }
+  try {
+    const compact = new Intl.NumberFormat('en-US', {
+      notation: 'compact',
+      compactDisplay: 'short',
+      maximumFractionDigits: 2,
+    }).format(amount);
+    return `${currency} ${compact}`;
+  } catch {
+    return formatCurrency(amount, currency);
+  }
+}
+
 export default React.memo(function TransactionStatsCards({ stats, isLoading, onFilterStatus }: Props) {
   if (isLoading || !stats) {
     return (
@@ -36,6 +52,7 @@ export default React.memo(function TransactionStatsCards({ stats, isLoading, onF
     {
       label: 'Total Transactions',
       value: stats.totalCount.toLocaleString(),
+      tooltip: undefined,
       icon: Activity,
       textColor: 'text-slate-800',
       badgeBg: 'bg-blue-50 text-blue-600 border border-blue-200/60',
@@ -44,6 +61,7 @@ export default React.memo(function TransactionStatsCards({ stats, isLoading, onF
     {
       label: 'Completed',
       value: stats.completedCount.toLocaleString(),
+      tooltip: undefined,
       icon: CheckCircle2,
       textColor: 'text-emerald-700',
       badgeBg: 'bg-emerald-50 text-emerald-600 border border-emerald-200/60',
@@ -52,6 +70,7 @@ export default React.memo(function TransactionStatsCards({ stats, isLoading, onF
     {
       label: 'Held & In Review',
       value: stats.heldOrPendingCount.toLocaleString(),
+      tooltip: undefined,
       icon: AlertTriangle,
       textColor: 'text-amber-700',
       badgeBg: 'bg-amber-50 text-amber-600 border border-amber-200/60',
@@ -60,6 +79,7 @@ export default React.memo(function TransactionStatsCards({ stats, isLoading, onF
     {
       label: 'Failed / Rejected',
       value: stats.failedCount.toLocaleString(),
+      tooltip: undefined,
       icon: XCircle,
       textColor: 'text-rose-700',
       badgeBg: 'bg-rose-50 text-rose-600 border border-rose-200/60',
@@ -67,7 +87,8 @@ export default React.memo(function TransactionStatsCards({ stats, isLoading, onF
     },
     {
       label: 'Settled Volume',
-      value: formatCurrency(stats.totalCompletedVolume, 'MMK'),
+      value: formatCompactVolume(stats.totalCompletedVolume, 'MMK'),
+      tooltip: formatCurrency(stats.totalCompletedVolume, 'MMK'),
       icon: Coins,
       textColor: 'text-indigo-800',
       badgeBg: 'bg-indigo-50 text-indigo-600 border border-indigo-200/60',
@@ -83,6 +104,7 @@ export default React.memo(function TransactionStatsCards({ stats, isLoading, onF
         return (
           <div
             key={c.label}
+            title={c.tooltip}
             onClick={() => {
               if (onFilterStatus && c.status) {
                 onFilterStatus(c.status);
@@ -100,7 +122,10 @@ export default React.memo(function TransactionStatsCards({ stats, isLoading, onF
                 <Icon className="w-3.5 h-3.5" />
               </div>
             </div>
-            <div className={`text-xl font-bold tracking-tight ${c.textColor} truncate`}>
+            <div
+              className={`text-xl font-bold tracking-tight ${c.textColor} truncate`}
+              title={c.tooltip || c.value}
+            >
               {c.value}
             </div>
           </div>

@@ -10,11 +10,13 @@ import {
   ExternalLink,
   Store,
   CreditCard,
+  Landmark,
 } from "lucide-react";
 import type { NotificationItem } from "../types/notificationTypes";
 import {
   maskAccountNumber,
   formatNotificationMessage,
+  resolveNotificationMeta,
 } from "../utils/notificationFormatters";
 import { SESSION_TIMEOUT_EVENT, type SessionTimeoutDetail } from "../../../utils/sessionEvents";
 import {
@@ -237,27 +239,18 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
     return () => clearInterval(timer);
   }, [isPaused, duration]);
 
-  const titleLower = toast.title.toLowerCase();
-  const messageLower = (toast.message || "").toLowerCase();
+  const meta = resolveNotificationMeta(toast);
   const isError =
     toast.type === "ERROR" ||
-    titleLower.includes("fail") ||
-    titleLower.includes("reject") ||
-    titleLower.includes("error");
-  const isReceived =
-    toast.transferDirection === "RECEIVED" ||
-    titleLower.includes("received") ||
-    titleLower.includes("funds received") ||
-    messageLower.includes("you received") ||
-    messageLower.includes("received");
+    meta.isFailed;
+  const isReceived = meta.isItemReceived;
   const isSent =
-    toast.transferDirection === "SENT" ||
-    titleLower.includes("transfer sent") ||
-    titleLower.includes("sent") ||
-    messageLower.includes("you have transferred");
-  const isPayment =
-    toast.type === "PAYMENT" ||
-    titleLower.includes("payment");
+    !isReceived &&
+    (toast.transferDirection === "SENT" ||
+      (toast.title || "").toLowerCase().includes("transfer sent") ||
+      (toast.title || "").toLowerCase().includes("sent") ||
+      (toast.message || "").toLowerCase().includes("you have transferred"));
+  const isPayment = meta.isPayment;
 
   const formatAmount = (num: number | null | undefined) => {
     if (num === null || num === undefined) return null;
@@ -274,11 +267,22 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
     const ref = toast.transactionRef || toast.id;
 
     // If already viewing a receipt, replace history to avoid stacking
-    const isAlreadyOnReceipt = location.pathname.startsWith("/receipt");
+    const isAlreadyOnReceipt = location.pathname.startsWith("/receipt") || location.pathname.startsWith("/merchant-payment/receipt");
     const currentFrom = (location.state as { from?: string } | null)?.from;
     const originFrom = isAlreadyOnReceipt
-      ? (currentFrom && !currentFrom.startsWith("/receipt") ? currentFrom : "/dashboard")
+      ? (currentFrom && !currentFrom.startsWith("/receipt") && !currentFrom.startsWith("/merchant-payment/receipt") ? currentFrom : "/dashboard")
       : location.pathname;
+
+    if (toast.type === "PAYMENT") {
+      navigate(`/merchant-payment/receipt/${encodeURIComponent(ref)}`, {
+        replace: isAlreadyOnReceipt,
+        state: {
+          notification: toast,
+          from: originFrom,
+        },
+      });
+      return;
+    }
 
     navigate(`/receipt/${encodeURIComponent(ref)}`, {
       replace: isAlreadyOnReceipt,
@@ -316,7 +320,11 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
               : "bg-slate-100 text-slate-600"
           }`}
         >
-          {isPayment && isReceived ? (
+          {meta.isDeposit ? (
+            <Landmark className="w-5 h-5" />
+          ) : meta.isWithdrawal ? (
+            <Landmark className="w-5 h-5" />
+          ) : isPayment && isReceived ? (
             <Store className="w-5 h-5" />
           ) : isPayment && isSent ? (
             <CreditCard className="w-5 h-5" />

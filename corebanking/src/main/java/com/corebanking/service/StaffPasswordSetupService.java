@@ -102,7 +102,14 @@ public class StaffPasswordSetupService {
 
         setupTokenRepository.saveAndFlush(setupToken);
 
-        String baseUrl = frontendBaseUrl.replaceAll("/+$", "");
+        String baseUrl = "http://localhost:8001";
+        if (frontendBaseUrl != null && !frontendBaseUrl.isBlank()) {
+            String firstUrl = frontendBaseUrl.split(",")[0].trim().replaceAll("/+$", "");
+            if (!firstUrl.startsWith("http://") && !firstUrl.startsWith("https://")) {
+                firstUrl = "http://" + firstUrl;
+            }
+            baseUrl = firstUrl;
+        }
         String setupLink = baseUrl
                 + "/set-password?token="
                 + rawToken;

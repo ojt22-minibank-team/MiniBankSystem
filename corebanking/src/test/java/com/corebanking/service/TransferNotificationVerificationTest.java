@@ -347,8 +347,8 @@ public class TransferNotificationVerificationTest {
 
         Notifications saved = notiCaptor.getValue();
         assertEquals(receiverId, saved.getCustomer().getCustomerId());
-        assertEquals("Funds Received", saved.getTitle());
-        assertTrue(saved.getMessage().contains("You received 50000.0000 MMK via Bank Counter Deposit to account 2002222222"));
+        assertEquals("Deposit Successful", saved.getTitle());
+        assertTrue(saved.getMessage().contains("Cash deposit of 50000.0000 MMK to account 2002222222 was successful"));
 
         ArgumentCaptor<NotificationResponseDto> wsCaptor = ArgumentCaptor.forClass(NotificationResponseDto.class);
         verify(notificationWebSocketHandler).sendNotification(eq(receiverId.toString()), wsCaptor.capture());
@@ -370,8 +370,8 @@ public class TransferNotificationVerificationTest {
 
         Notifications saved = notiCaptor.getValue();
         assertEquals(senderId, saved.getCustomer().getCustomerId());
-        assertEquals("Transfer Sent", saved.getTitle());
-        assertTrue(saved.getMessage().contains("You have withdrawn 50000.0000 MMK via Bank Counter from account 2001111111"));
+        assertEquals("Withdrawal Successful", saved.getTitle());
+        assertTrue(saved.getMessage().contains("Cash withdrawal of 50000.0000 MMK from account 2001111111 was successful"));
 
         ArgumentCaptor<NotificationResponseDto> wsCaptor = ArgumentCaptor.forClass(NotificationResponseDto.class);
         verify(notificationWebSocketHandler).sendNotification(eq(senderId.toString()), wsCaptor.capture());

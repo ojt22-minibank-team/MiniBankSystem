@@ -87,9 +87,6 @@ public class P2PTransferService {
         }
         merchantSecurityValidationService.validateTransactionPin(customerUuid, request.getTransactionPin().trim());
 
-        BigDecimal serviceFee = calculateTransferFee(request.getAmount());
-        BigDecimal totalDebitedAmount = request.getAmount().add(serviceFee);
-
         // =========================================================================
         // STEP 2: DETERMINISTIC ACCOUNT LOCKING (DEADLOCK PREVENTION)
         // Enforce lock hierarchy by ordering account numbers lexicographically
@@ -110,6 +107,15 @@ public class P2PTransferService {
 
         Accounts sourceAccount = firstLocked.getAccountNumber().equalsIgnoreCase(request.getSourceAccountNumber()) ? firstLocked : secondLocked;
         Accounts destAccount = firstLocked.getAccountNumber().equalsIgnoreCase(request.getSourceAccountNumber()) ? secondLocked : firstLocked;
+
+        // Own Account Transfer Check: Strictly zero service fee for transfers between own accounts
+        boolean isOwnAccount = sourceAccount.getCustomer() != null
+                && destAccount.getCustomer() != null
+                && sourceAccount.getCustomer().getCustomerId() != null
+                && sourceAccount.getCustomer().getCustomerId().equals(destAccount.getCustomer().getCustomerId());
+
+        BigDecimal serviceFee = isOwnAccount ? BigDecimal.ZERO : calculateTransferFee(request.getAmount());
+        BigDecimal totalDebitedAmount = request.getAmount().add(serviceFee);
 
         // =========================================================================
         // STEP 3: SECURITY & BUSINESS RULE VERIFICATIONS
@@ -258,14 +264,15 @@ public class P2PTransferService {
      * Calculates transfer fee solely from active FeeSchedules in the database.
      * Returns BigDecimal.ZERO if no active schedule exists.
      */
-    private BigDecimal calculateTransferFee(BigDecimal amount) {
+    public BigDecimal calculateTransferFee(BigDecimal amount) {
         return feeScheduleRepository.findFirstByTransactionTypeAndIsActiveTrueOrderByCreatedAtDesc(TransactionType.INTERNAL_TRANSFER)
                 .map(schedule -> {
                     BigDecimal fee = BigDecimal.ZERO;
                     if (schedule.getFeeType() == FeeType.FLAT) {
                         fee = schedule.getFeeValue();
                     } else if (schedule.getFeeType() == FeeType.PERCENTAGE) {
-                        fee = amount.multiply(schedule.getFeeValue()).divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
+                        BigDecimal pct = schedule.getFeeValue().divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
+                        fee = amount.multiply(pct).setScale(2, RoundingMode.HALF_UP);
                     }
                     if (schedule.getMinimumFee() != null && fee.compareTo(schedule.getMinimumFee()) < 0) {
                         fee = schedule.getMinimumFee();
@@ -276,6 +283,54 @@ public class P2PTransferService {
                     return fee;
                 })
                 .orElse(BigDecimal.ZERO); 
+    }
+
+    public Map<String, Object> getTransferFeeEstimate(BigDecimal amount) {
+        return getTransferFeeEstimate(amount, null, null);
+    }
+
+    public Map<String, Object> getTransferFeeEstimate(BigDecimal amount, String sourceAccountNumber, String destinationAccountNumber) {
+        boolean isOwnAccount = false;
+        if (sourceAccountNumber != null && destinationAccountNumber != null
+                && !sourceAccountNumber.trim().isEmpty() && !destinationAccountNumber.trim().isEmpty()) {
+            if (sourceAccountNumber.trim().equalsIgnoreCase(destinationAccountNumber.trim())) {
+                isOwnAccount = true;
+            } else {
+                Optional<Accounts> srcOpt = accountRepository.findByAccountNumber(sourceAccountNumber.trim());
+                Optional<Accounts> dstOpt = accountRepository.findByAccountNumber(destinationAccountNumber.trim());
+                if (srcOpt.isPresent() && dstOpt.isPresent()) {
+                    Accounts src = srcOpt.get();
+                    Accounts dst = dstOpt.get();
+                    if (src.getCustomer() != null && dst.getCustomer() != null
+                            && src.getCustomer().getCustomerId() != null
+                            && src.getCustomer().getCustomerId().equals(dst.getCustomer().getCustomerId())) {
+                        isOwnAccount = true;
+                    }
+                }
+            }
+        }
+
+        BigDecimal fee = isOwnAccount ? BigDecimal.ZERO : calculateTransferFee(amount);
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("fee", fee);
+        map.put("amount", amount);
+        map.put("totalDebitedAmount", amount.add(fee));
+        map.put("isOwnAccount", isOwnAccount);
+        if (isOwnAccount) {
+            map.put("feeType", "FLAT");
+            map.put("feeValue", BigDecimal.ZERO);
+            map.put("feeCode", "OWN_TRANSFER_FREE");
+            map.put("currency", "MMK");
+        } else {
+            feeScheduleRepository.findFirstByTransactionTypeAndIsActiveTrueOrderByCreatedAtDesc(TransactionType.INTERNAL_TRANSFER)
+                    .ifPresent(schedule -> {
+                        map.put("feeType", schedule.getFeeType().name());
+                        map.put("feeValue", schedule.getFeeValue());
+                        map.put("feeCode", schedule.getFeeCode());
+                        map.put("currency", schedule.getCurrency() != null ? schedule.getCurrency() : "MMK");
+                    });
+        }
+        return map;
     }
 
     private void createLedgerEntries(BankTransactions txn, Accounts source, Accounts dest, BigDecimal amount, BigDecimal fee, BigDecimal sourceBalBefore, BigDecimal destBalBefore) {
@@ -451,7 +506,13 @@ public class P2PTransferService {
                     sourceAccount.getCurrency(), destAccount.getCurrency()));
         }
 
-        BigDecimal serviceFee = calculateTransferFee(request.getAmount());
+        // Own Account Transfer Check: Strictly zero service fee for transfers between own accounts
+        boolean isOwnAccount = sourceAccount.getCustomer() != null
+                && destAccount.getCustomer() != null
+                && sourceAccount.getCustomer().getCustomerId() != null
+                && sourceAccount.getCustomer().getCustomerId().equals(destAccount.getCustomer().getCustomerId());
+
+        BigDecimal serviceFee = isOwnAccount ? BigDecimal.ZERO : calculateTransferFee(request.getAmount());
         BigDecimal totalDebitedAmount = request.getAmount().add(serviceFee);
         BigDecimal minBalance = transferLimitService.getEffectiveMinimumBalance(sourceAccount);
         BigDecimal netAvailable = sourceAccount.getAvailableBalance().subtract(minBalance);

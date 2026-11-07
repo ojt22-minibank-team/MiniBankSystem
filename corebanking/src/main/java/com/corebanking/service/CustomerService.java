@@ -49,6 +49,7 @@ public class CustomerService {
     private final StaffUsersRepository staffUsersRepository;
     private final PasswordEncoder passwordEncoder;
     private final CusEmailService cusEmailService;
+    private final EmailVerificationService emailVerificationService;
     private final AuditTrailService auditTrailService;
     private AuditLogsRepository auditLogsRepository;
 
@@ -61,6 +62,7 @@ public class CustomerService {
             StaffUsersRepository staffUsersRepository,
             PasswordEncoder passwordEncoder,
             CusEmailService cusEmailService,
+            EmailVerificationService emailVerificationService,
             @Autowired(required = false) AuditTrailService auditTrailService,
             @Autowired(required = false) AuditLogsRepository auditLogsRepository) {
         this.customerRepository = customerRepository;
@@ -70,6 +72,7 @@ public class CustomerService {
         this.staffUsersRepository = staffUsersRepository;
         this.passwordEncoder = passwordEncoder;
         this.cusEmailService = cusEmailService;
+        this.emailVerificationService = emailVerificationService;
         this.auditTrailService = auditTrailService;
         this.auditLogsRepository = auditLogsRepository;
     }
@@ -82,9 +85,23 @@ public class CustomerService {
             StaffUsersRepository staffUsersRepository,
             PasswordEncoder passwordEncoder,
             CusEmailService cusEmailService,
+            EmailVerificationService emailVerificationService,
             AuditTrailService auditTrailService) {
         this(customerRepository, personalInfoRepository, companyInfoRepository, customerCredentialsRepository,
-                staffUsersRepository, passwordEncoder, cusEmailService, auditTrailService, null);
+                staffUsersRepository, passwordEncoder, cusEmailService, emailVerificationService, auditTrailService, null);
+    }
+
+    public CustomerService(
+            CustomerRepository customerRepository,
+            PersonalInfoRepository personalInfoRepository,
+            CompanyInfoRepository companyInfoRepository,
+            CustomerCredentialsRepository customerCredentialsRepository,
+            StaffUsersRepository staffUsersRepository,
+            PasswordEncoder passwordEncoder,
+            CusEmailService cusEmailService,
+            AuditTrailService auditTrailService) {
+        this(customerRepository, personalInfoRepository, companyInfoRepository, customerCredentialsRepository,
+                staffUsersRepository, passwordEncoder, cusEmailService, null, auditTrailService, null);
     }
 
     public CustomerService(
@@ -96,7 +113,7 @@ public class CustomerService {
             PasswordEncoder passwordEncoder,
             CusEmailService cusEmailService) {
         this(customerRepository, personalInfoRepository, companyInfoRepository, customerCredentialsRepository,
-                staffUsersRepository, passwordEncoder, cusEmailService, null, null);
+                staffUsersRepository, passwordEncoder, cusEmailService, null, null, null);
     }
 
     public void setAuditLogsRepository(AuditLogsRepository auditLogsRepository) {
@@ -153,21 +170,42 @@ public class CustomerService {
             }
         }
 
-        // Email Uniqueness: at most 1 PERSONAL customer, at most 1 COMPANY customer
-        if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
-            String email = dto.getEmail().trim();
+        // Email Deliverability & Uniqueness Validation
+        String rawEmail = dto.getEmail();
+        if (rawEmail == null || rawEmail.isBlank()) {
+            throw new IllegalArgumentException("Email is required");
+        }
+        String email = rawEmail.trim();
+
+        // 1. Verify reachable mail host via DNS MX lookup
+        if (emailVerificationService != null) {
+            emailVerificationService.verifyEmailHost(email);
+        }
+
+        // 2. Prevent duplicate registrations using existsByEmail
+        if (customerRepository.existsByEmail(email)) {
             boolean isPersonal = (customerType == CustomerType.PERSONAL || customerType == CustomerType.INDIVIDUAL);
-            if (isPersonal) {
-                boolean personalExists = customerRepository.existsByEmailAndCustomerType(email, CustomerType.PERSONAL)
-                        || customerRepository.existsByEmailAndCustomerType(email, CustomerType.INDIVIDUAL);
-                if (personalExists) {
-                    throw new IllegalArgumentException("A Personal customer with this email already exists: " + email);
-                }
+            if (isPersonal && (customerRepository.existsByEmailAndCustomerType(email, CustomerType.PERSONAL)
+                    || customerRepository.existsByEmailAndCustomerType(email, CustomerType.INDIVIDUAL))) {
+                throw new IllegalArgumentException("A Personal customer with this email already exists: " + email);
+            } else if (!isPersonal && customerRepository.existsByEmailAndCustomerType(email, CustomerType.COMPANY)) {
+                throw new IllegalArgumentException("A Company customer with this email already exists: " + email);
             } else {
-                boolean companyExists = customerRepository.existsByEmailAndCustomerType(email, CustomerType.COMPANY);
-                if (companyExists) {
-                    throw new IllegalArgumentException("A Company customer with this email already exists: " + email);
-                }
+                throw new IllegalArgumentException("A customer with this email already exists: " + email);
+            }
+        }
+
+        boolean isPersonal = (customerType == CustomerType.PERSONAL || customerType == CustomerType.INDIVIDUAL);
+        if (isPersonal) {
+            boolean personalExists = customerRepository.existsByEmailAndCustomerType(email, CustomerType.PERSONAL)
+                    || customerRepository.existsByEmailAndCustomerType(email, CustomerType.INDIVIDUAL);
+            if (personalExists) {
+                throw new IllegalArgumentException("A Personal customer with this email already exists: " + email);
+            }
+        } else {
+            boolean companyExists = customerRepository.existsByEmailAndCustomerType(email, CustomerType.COMPANY);
+            if (companyExists) {
+                throw new IllegalArgumentException("A Company customer with this email already exists: " + email);
             }
         }
 

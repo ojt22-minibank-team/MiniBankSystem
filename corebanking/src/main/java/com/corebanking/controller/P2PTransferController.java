@@ -17,6 +17,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -34,6 +36,15 @@ public class P2PTransferController {
     public ResponseEntity<AccountLookupResponseDto> lookupAccount(
             @PathVariable String accountNumber) {
         AccountLookupResponseDto response = p2pTransferService.lookupAccount(accountNumber);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/calculate-fee")
+    public ResponseEntity<Map<String, Object>> calculateFee(
+            @RequestParam("amount") BigDecimal amount,
+            @RequestParam(value = "sourceAccount", required = false) String sourceAccount,
+            @RequestParam(value = "destinationAccount", required = false) String destinationAccount) {
+        Map<String, Object> response = p2pTransferService.getTransferFeeEstimate(amount, sourceAccount, destinationAccount);
         return ResponseEntity.ok(response);
     }
 

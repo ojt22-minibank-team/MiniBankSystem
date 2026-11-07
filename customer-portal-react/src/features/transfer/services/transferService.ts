@@ -6,11 +6,39 @@ import type {
   AccountLookupResponse,
 } from '../types/transferTypes';
 
+export interface FeeCalculationResponse {
+  fee: number;
+  amount: number;
+  totalDebitedAmount: number;
+  feeType?: string;
+  feeValue?: number;
+  feeCode?: string;
+  currency?: string;
+}
+
 export const lookupDestinationAccount = async (
   accountNumber: string
 ): Promise<AccountLookupResponse> => {
   const response = await api.get<AccountLookupResponse>(
     `/transfers/lookup/${accountNumber}`
+  );
+  return response.data;
+};
+
+export const calculateTransferFee = async (
+  amount: number,
+  sourceAccount?: string,
+  destinationAccount?: string
+): Promise<FeeCalculationResponse> => {
+  const response = await api.get<FeeCalculationResponse>(
+    `/transfers/calculate-fee`,
+    {
+      params: {
+        amount,
+        ...(sourceAccount ? { sourceAccount } : {}),
+        ...(destinationAccount ? { destinationAccount } : {}),
+      },
+    }
   );
   return response.data;
 };

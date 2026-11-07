@@ -12,6 +12,7 @@ export interface NotificationItem {
   transactionId?: string | null;
   transactionRef?: string | null;
   amount?: number | null;
+  serviceFee?: number | null;
   currency?: string | null;
   counterpartyName?: string | null;
   counterpartyAccountNumber?: string | null;

@@ -87,6 +87,9 @@ function mapNotificationItemToReceipt(
     (typeof noti.title === "string" && noti.title.toLowerCase().includes("sent"));
   const amount = Number(noti.amount || 0);
   const currency = (typeof noti.currency === "string" && noti.currency) || "MMK";
+  const rawServiceFee = (noti as any).serviceFee != null ? Number((noti as any).serviceFee) : 0;
+  const serviceFee = isSent ? rawServiceFee : 0;
+  const totalDebited = isSent ? amount + serviceFee : null;
   const ref =
     (typeof noti.transactionRef === "string" && noti.transactionRef) ||
     `TXN-NOTI-${noti.notificationId || Date.now()}`;
@@ -128,8 +131,8 @@ function mapNotificationItemToReceipt(
     transactionRef: ref,
     amount,
     currency,
-    serviceFee: 0,
-    totalDebitedAmount: isSent ? amount : null,
+    serviceFee: isSent ? serviceFee : 0,
+    totalDebitedAmount: totalDebited,
     completedAt: createdAt,
     sourceAccountNumber: resolvedSourceAcc,
     sourceDisplayName: resolvedSourceDisplay,
@@ -139,8 +142,20 @@ function mapNotificationItemToReceipt(
     isOwnAccount: false,
     description: effectiveMemo,
     status: "COMPLETED",
-    badgeLabel: isSent ? "TRANSFER SENT" : "FUNDS RECEIVED",
-    transactionType: "TRANSFER",
+    badgeLabel:
+      (typeof noti.title === "string" && noti.title.toLowerCase().includes("deposit")) || ref.includes("OTC-DEP")
+        ? "CASH DEPOSIT"
+        : (typeof noti.title === "string" && noti.title.toLowerCase().includes("withdraw")) || ref.includes("OTC-WDL")
+        ? "CASH WITHDRAWAL"
+        : isSent
+        ? "TRANSFER SENT"
+        : "FUNDS RECEIVED",
+    transactionType:
+      (typeof noti.title === "string" && noti.title.toLowerCase().includes("deposit")) || ref.includes("OTC-DEP")
+        ? "OTC_DEPOSIT"
+        : (typeof noti.title === "string" && noti.title.toLowerCase().includes("withdraw")) || ref.includes("OTC-WDL")
+        ? "OTC_WITHDRAWAL"
+        : "TRANSFER",
   };
 }
 

@@ -1,4 +1,5 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://42.156.32.114:8092";
 
 export const API_ENDPOINTS = {
   // Auth
@@ -64,6 +65,12 @@ export const API_ENDPOINTS = {
   // Transfers
   TRANSFER_P2P: "/api/transfers/p2p",
 
+  // Staff Profile
+  STAFF_PROFILE: {
+    ME: "/api/staff/profile",
+    CHANGE_PASSWORD: "/api/staff/profile/change-password",
+  },
+
   // Over-the-Counter (OTC) Transactions
   OTC: {
     DEPOSIT: "/api/transactions/otc/deposit",
@@ -91,12 +98,16 @@ export const API_ENDPOINTS = {
   // Staff Transaction Management & Details
   STAFF_TRANSACTIONS: {
     BASE: "/api/v1/staff/transactions",
-    BY_IDENTIFIER: (id: string) => `/api/v1/staff/transactions/detail/${encodeURIComponent(id)}`,
+    BY_IDENTIFIER: (id: string) =>
+      `/api/v1/staff/transactions/detail/${encodeURIComponent(id)}`,
     STATS: "/api/v1/staff/transactions/stats",
-    FLAG: (transactionId: string) => `/api/v1/staff/transactions/${transactionId}/flag`,
-    OVERRIDE: (transactionId: string) => `/api/v1/staff/transactions/${transactionId}/override`,
+    FLAG: (transactionId: string) =>
+      `/api/v1/staff/transactions/${transactionId}/flag`,
+    OVERRIDE: (transactionId: string) =>
+      `/api/v1/staff/transactions/${transactionId}/override`,
     REVIEW_QUEUE: "/api/v1/staff/transactions/review-queue",
-    REVIEW_HISTORY: (transactionId: string) => `/api/v1/staff/transactions/${transactionId}/review-history`,
+    REVIEW_HISTORY: (transactionId: string) =>
+      `/api/v1/staff/transactions/${transactionId}/review-history`,
   },
 } as const;
 

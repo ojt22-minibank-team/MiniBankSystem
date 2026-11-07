@@ -24,4 +24,5 @@ public class DailyCashSummaryDto {
     private long depositCount;
     private long withdrawalCount;
     private String currency;
+    private String scope;
 }

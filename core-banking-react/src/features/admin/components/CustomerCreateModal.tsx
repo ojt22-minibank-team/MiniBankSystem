@@ -5,7 +5,7 @@ import Button from '../../../components/common/Button';
 import { customersApi } from '../../../services/apiClient';
 import type { CustomerCreateDTO, CustomerCreateResponse } from '../../../types/api.types';
 import type { AxiosError } from 'axios';
-
+import { NRC_STATES, NRC_TOWNSHIPS, NRC_CITIZEN_TYPES } from '../../../constants/nrcData';
 
 interface CustomerCreateModalProps {
   isOpen: boolean;
@@ -13,9 +13,7 @@ interface CustomerCreateModalProps {
   onSuccess: () => void;
 }
 
-const NRC_PREFIXES = [
-  '1/', '2/', '3/', '4/', '5/', '6/', '7/', '8/', '9/', '10/', '11/', '12/', '13/', '14/'
-];
+const GMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
 
 export default function CustomerCreateModal({
   isOpen,
@@ -27,7 +25,9 @@ export default function CustomerCreateModal({
 
   // Personal Fields
   const [fullName, setFullName] = useState('');
-  const [nrcPrefix, setNrcPrefix] = useState('12/');
+  const [nrcState, setNrcState] = useState('12');
+  const [nrcTownship, setNrcTownship] = useState('DAGANA');
+  const [nrcCitizenType, setNrcCitizenType] = useState('(N)');
   const [nrcNumber, setNrcNumber] = useState('');
   const [gender, setGender] = useState<'MALE' | 'FEMALE' | 'OTHER'>('MALE');
   const [dateOfBirth, setDateOfBirth] = useState('');
@@ -51,10 +51,19 @@ export default function CustomerCreateModal({
   const [createdCustomer, setCreatedCustomer] = useState<CustomerCreateResponse | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
+  const handleNrcStateChange = (stateCode: string) => {
+    setNrcState(stateCode);
+    const townships = NRC_TOWNSHIPS[stateCode] || [];
+    setNrcTownship(townships[0] || '');
+    clearError('nrc');
+  };
+
   const resetForm = () => {
     setCustomerType('PERSONAL');
     setFullName('');
-    setNrcPrefix('12/');
+    setNrcState('12');
+    setNrcTownship('DAGANA');
+    setNrcCitizenType('(N)');
     setNrcNumber('');
     setGender('MALE');
     setDateOfBirth('');
@@ -102,15 +111,17 @@ export default function CustomerCreateModal({
         errs.fullName = 'Full name is required';
       }
 
-      // 2. NRC
-      if (!nrcNumber.trim()) {
-        errs.nrc = 'NRC is required';
-      } else {
-        const combinedNrc = `${nrcPrefix}${nrcNumber.trim().toUpperCase()}`;
-        const nrcRegex = /^[0-9]{1,2}\/[A-Za-z]{3,10}\([A-Za-z]{1,5}\)\d{6}$/;
-        if (!nrcRegex.test(combinedNrc)) {
-          errs.nrc = 'Format must be e.g. 12/DAGANA(N)123456';
-        }
+      // 2. NRC (Cascading Myanmar NRC Validation)
+      const combinedNrc = `${nrcState}/${nrcTownship}${nrcCitizenType}${nrcNumber.trim()}`;
+      const nrcRegex = /^(1[0-4]|[1-9])\/[A-Z0-9a-z]+\([NPE]\)[0-9]{6}$/;
+      if (!nrcTownship) {
+        errs.nrc = 'Township is required';
+      } else if (!nrcNumber.trim()) {
+        errs.nrc = 'NRC 6-digit number is required';
+      } else if (!/^\d{6}$/.test(nrcNumber.trim())) {
+        errs.nrc = 'NRC number must be exactly 6 digits';
+      } else if (!nrcRegex.test(combinedNrc)) {
+        errs.nrc = 'Invalid Myanmar NRC format (e.g., 12/DAGANA(N)123456)';
       }
 
       // 3. Phone (must be exactly 11 digits)
@@ -121,11 +132,12 @@ export default function CustomerCreateModal({
         errs.phone = 'Phone must be exactly 11 digits';
       }
 
-      // 4. Email
-      if (!email.trim()) {
+      // 4. Email (Strict @gmail.com enforcement)
+      const trimmedPersonalEmail = email.trim();
+      if (!trimmedPersonalEmail) {
         errs.email = 'Email address is required';
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-        errs.email = 'Please enter a valid email address';
+      } else if (!GMAIL_REGEX.test(trimmedPersonalEmail)) {
+        errs.email = 'Please provide a valid @gmail.com email address.';
       }
     } else {
       // Corporate Validations: Company Name, Registration Number, Tax ID, Official Email, Phone
@@ -141,10 +153,11 @@ export default function CustomerCreateModal({
         errs.taxId = 'Tax ID is required';
       }
 
-      if (!email.trim()) {
+      const trimmedOfficialEmail = email.trim();
+      if (!trimmedOfficialEmail) {
         errs.email = 'Official email is required';
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-        errs.email = 'Please enter a valid email address';
+      } else if (!GMAIL_REGEX.test(trimmedOfficialEmail)) {
+        errs.email = 'Please provide a valid @gmail.com email address.';
       }
 
       if (!phone.trim()) {
@@ -165,7 +178,7 @@ export default function CustomerCreateModal({
     setIsLoading(true);
     setApiError(null);
 
-    const combinedNrc = `${nrcPrefix}${nrcNumber.trim().toUpperCase()}`;
+    const combinedNrc = `${nrcState}/${nrcTownship}${nrcCitizenType}${nrcNumber.trim()}`;
     const nameParts = fullName.trim().split(/\s+/);
     const derivedFirstName = nameParts[0] || '';
     const derivedLastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : derivedFirstName;
@@ -199,8 +212,27 @@ export default function CustomerCreateModal({
       setCreatedCustomer(res.data);
       onSuccess();
     } catch (err) {
-      const axErr = err as AxiosError<{ message?: string }>;
-      setApiError(axErr.response?.data?.message || 'Failed to register customer. Please try again.');
+      const axErr = err as AxiosError<{ message?: string; code?: string }>;
+      const responseData = axErr.response?.data;
+      const errorMsg = responseData?.message || 'Failed to register customer. Please try again.';
+      const errorCode = responseData?.code;
+
+      if (
+        errorCode === 'INVALID_EMAIL' ||
+        (errorCode === 'VALIDATION_ERROR' && errorMsg.toLowerCase().includes('email')) ||
+        errorMsg.toLowerCase().includes('mail server') ||
+        errorMsg.toLowerCase().includes('reachable') ||
+        errorMsg.toLowerCase().includes('@gmail.com') ||
+        errorMsg.toLowerCase().includes('already exists') && errorMsg.toLowerCase().includes('email')
+      ) {
+        setApiError(errorMsg);
+        setErrors((prev) => ({
+          ...prev,
+          email: errorMsg,
+        }));
+      } else {
+        setApiError(errorMsg);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -370,69 +402,117 @@ export default function CustomerCreateModal({
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {/* NRC Number with Combined Prefix Selector */}
-                <div className="sm:col-span-1">
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    NRC Number <span className="text-red-500">*</span>
-                  </label>
-                  <div className="flex gap-1.5">
-                    <div className="w-20 shrink-0">
-                      <select
-                        value={nrcPrefix}
-                        onChange={(e) => {
-                          setNrcPrefix(e.target.value);
-                          clearError('nrc');
-                        }}
-                        className={`w-full rounded-xl border px-2.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all cursor-pointer ${
-                          errors.nrc
-                            ? 'border-red-500 focus:border-red-500 bg-red-50/20'
-                            : 'border-slate-200 hover:border-slate-300 focus:border-sky-500'
-                        }`}
-                        title="Myanmar State/Region Prefix"
-                      >
-                        {NRC_PREFIXES.map((prefix) => (
-                          <option key={prefix} value={prefix}>
-                            {prefix}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <input
-                        type="text"
-                        placeholder="DAGANA(N)123456"
-                        value={nrcNumber}
-                        onChange={(e) => {
-                          let val = e.target.value.toUpperCase().replace(/\s+/g, '');
-                          const prefixMatch = val.match(/^([1-9]|1[0-4])\/(.*)$/);
-                          if (prefixMatch) {
-                            const matchedPrefix = `${prefixMatch[1]}/`;
-                            if (NRC_PREFIXES.includes(matchedPrefix)) {
-                              setNrcPrefix(matchedPrefix);
-                              val = prefixMatch[2];
-                            }
-                          }
-                          setNrcNumber(val);
-                          clearError('nrc');
-                        }}
-                        className={`w-full rounded-xl border px-3 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all ${
-                          errors.nrc
-                            ? 'border-red-500 focus:border-red-500 bg-red-50/20'
-                            : 'border-slate-200 hover:border-slate-300 focus:border-sky-500'
-                        }`}
-                      />
-                    </div>
+              {/* Dynamic Cascading Myanmar NRC Selector */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  NRC Number (National Registration Card) <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-12 gap-2">
+                  {/* 1. State Code dropdown */}
+                  <div className="col-span-3 sm:col-span-3">
+                    <select
+                      value={nrcState}
+                      onChange={(e) => handleNrcStateChange(e.target.value)}
+                      className={`w-full rounded-xl border px-2.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all cursor-pointer ${
+                        errors.nrc
+                          ? 'border-red-500 focus:border-red-500 bg-red-50/20'
+                          : 'border-slate-200 hover:border-slate-300 focus:border-sky-500'
+                      }`}
+                      title="State/Region Code"
+                    >
+                      {NRC_STATES.map((state) => (
+                        <option key={state.code} value={state.code}>
+                          {state.label} ({state.name})
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  {errors.nrc ? (
-                    <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
-                      {errors.nrc}
-                    </p>
-                  ) : (
-                    <p className="mt-1 text-[11px] text-gray-500">e.g. 12/DAGANA(N)123456</p>
-                  )}
+
+                  {/* 2. Dynamic Township dropdown */}
+                  <div className="col-span-4 sm:col-span-3">
+                    <select
+                      value={nrcTownship}
+                      onChange={(e) => {
+                        setNrcTownship(e.target.value);
+                        clearError('nrc');
+                      }}
+                      className={`w-full rounded-xl border px-2.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all cursor-pointer ${
+                        errors.nrc
+                          ? 'border-red-500 focus:border-red-500 bg-red-50/20'
+                          : 'border-slate-200 hover:border-slate-300 focus:border-sky-500'
+                      }`}
+                      title="Township Code"
+                    >
+                      {(NRC_TOWNSHIPS[nrcState] || []).map((twp) => (
+                        <option key={twp} value={twp}>
+                          {twp}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 3. Citizen Type dropdown */}
+                  <div className="col-span-2 sm:col-span-2">
+                    <select
+                      value={nrcCitizenType}
+                      onChange={(e) => {
+                        setNrcCitizenType(e.target.value);
+                        clearError('nrc');
+                      }}
+                      className={`w-full rounded-xl border px-2.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all cursor-pointer ${
+                        errors.nrc
+                          ? 'border-red-500 focus:border-red-500 bg-red-50/20'
+                          : 'border-slate-200 hover:border-slate-300 focus:border-sky-500'
+                      }`}
+                      title="Citizen Type"
+                    >
+                      {NRC_CITIZEN_TYPES.map((type) => (
+                        <option key={type.code} value={type.code}>
+                          {type.code}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 4. 6-digit numeric input field */}
+                  <div className="col-span-3 sm:col-span-4">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="123456"
+                      value={nrcNumber}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, '').slice(0, 6);
+                        setNrcNumber(digits);
+                        clearError('nrc');
+                      }}
+                      className={`w-full rounded-xl border px-3 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all font-mono tracking-wider ${
+                        errors.nrc
+                          ? 'border-red-500 focus:border-red-500 bg-red-50/20'
+                          : 'border-slate-200 hover:border-slate-300 focus:border-sky-500'
+                      }`}
+                    />
+                  </div>
                 </div>
 
+                {errors.nrc ? (
+                  <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
+                    {errors.nrc}
+                  </p>
+                ) : (
+                  <div className="mt-1 flex items-center justify-between text-[11px] text-gray-500">
+                    <span>Standard format: <code>State/Township(Type)Number</code></span>
+                    {nrcNumber && (
+                      <span className="font-semibold text-blue-700">
+                        NRC: {nrcState}/{nrcTownship}{nrcCitizenType}{nrcNumber}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Gender</label>
                   <select
@@ -554,7 +634,7 @@ export default function CustomerCreateModal({
                 </label>
                 <Input
                   type="email"
-                  placeholder={customerType === 'PERSONAL' ? 'client@example.com' : 'official@company.com'}
+                  placeholder={customerType === 'PERSONAL' ? 'customer@gmail.com' : 'company@gmail.com'}
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
@@ -562,9 +642,13 @@ export default function CustomerCreateModal({
                   }}
                   className={errors.email ? '!border-red-500 !bg-red-50/20 focus:!border-red-500' : ''}
                 />
-                {errors.email && (
+                {errors.email ? (
                   <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
                     {errors.email}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-[11px] text-gray-500">
+                    Must be an active, reachable @gmail.com address.
                   </p>
                 )}
               </div>

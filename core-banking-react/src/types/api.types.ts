@@ -105,6 +105,12 @@ export interface PasswordResetRequest {
   newPassword?: string;
 }
 
+export interface StaffChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
 // --- System Rules DTOs ---
 
 export interface SystemParameterResponse {
@@ -423,6 +429,7 @@ export interface DailyCashSummaryResponse {
   depositCount: number;
   withdrawalCount: number;
   currency: string;
+  scope?: string;
 }
 
 export interface OtcAccountLimitResponse {
