@@ -151,7 +151,7 @@ class AuthServiceStaffLoginTest {
             assertEquals(OtpStatus.ACTIVE, savedChallenge.getStatus());
 
             // Verify email sent
-            verify(emailService).sendStaffLoginOtpEmail(eq("staff@minibank.com"), anyString(), eq(5));
+            verify(emailService).sendStaffLoginOtpEmail(eq("staff@minibank.com"), anyString(), eq(1));
         }
 
         @Test

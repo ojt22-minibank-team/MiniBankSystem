@@ -29,7 +29,7 @@ export interface PaymentReceipt {
   timestamp: string;
 }
 
-const API_BASE = ((typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || 'http://localhost:8080').replace(/\/+$/, '');
+const API_BASE = ((typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || 'http://localhost:8006').replace(/\/+$/, '');
 const API_BASE_URL = `${API_BASE}/api/customer/merchant-payment`;
 
 export const fetchPaymentDetails = async (token: string): Promise<PaymentDetails> => {

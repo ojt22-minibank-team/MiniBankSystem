@@ -1,4 +1,5 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8006";
 
 export const API_ENDPOINTS = {
   // Auth
@@ -97,12 +98,16 @@ export const API_ENDPOINTS = {
   // Staff Transaction Management & Details
   STAFF_TRANSACTIONS: {
     BASE: "/api/v1/staff/transactions",
-    BY_IDENTIFIER: (id: string) => `/api/v1/staff/transactions/detail/${encodeURIComponent(id)}`,
+    BY_IDENTIFIER: (id: string) =>
+      `/api/v1/staff/transactions/detail/${encodeURIComponent(id)}`,
     STATS: "/api/v1/staff/transactions/stats",
-    FLAG: (transactionId: string) => `/api/v1/staff/transactions/${transactionId}/flag`,
-    OVERRIDE: (transactionId: string) => `/api/v1/staff/transactions/${transactionId}/override`,
+    FLAG: (transactionId: string) =>
+      `/api/v1/staff/transactions/${transactionId}/flag`,
+    OVERRIDE: (transactionId: string) =>
+      `/api/v1/staff/transactions/${transactionId}/override`,
     REVIEW_QUEUE: "/api/v1/staff/transactions/review-queue",
-    REVIEW_HISTORY: (transactionId: string) => `/api/v1/staff/transactions/${transactionId}/review-history`,
+    REVIEW_HISTORY: (transactionId: string) =>
+      `/api/v1/staff/transactions/${transactionId}/review-history`,
   },
 } as const;
 

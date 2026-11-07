@@ -21,6 +21,19 @@ type StatusFilter = 'ALL' | 'ACTIVE' | 'DORMANT' | 'FROZEN' | 'CLOSED';
 type SortField = 'openedAt' | 'accountNumber' | 'availableBalance';
 type SortDir = 'asc' | 'desc';
 
+
+function formatCompactNumber(amount: number): string {
+  try {
+    return new Intl.NumberFormat('en-US', {
+      notation: 'compact',
+      compactDisplay: 'short',
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return amount.toLocaleString();
+  }
+}
+
 export default function AccountsPage() {
   // ── Parallel Data Fetching & SWR In-Memory Cache (Sub-3s SLA) ─────────────
   const {
@@ -28,7 +41,6 @@ export default function AccountsPage() {
     isLoading: isBankingLoading,
     isRevalidating,
     error: bankingError,
-    loadDurationMs,
     refresh: refreshBanking,
   } = useBankingData({
     autoFetch: true,
@@ -350,22 +362,6 @@ export default function AccountsPage() {
               <h2 className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight">
                 Customer Accounts
               </h2>
-              {/* SLA Performance Indicator */}
-              {loadDurationMs !== null && (
-                <span
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-mono font-bold ${
-                    loadDurationMs <= 3000
-                      ? 'bg-emerald-100/80 text-emerald-800 border border-emerald-300/60'
-                      : 'bg-amber-100/80 text-amber-800 border border-amber-300/60'
-                  }`}
-                  title="Database and network response time on browser screen"
-                >
-                  <svg className="h-3 w-3 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  {loadDurationMs}ms (Sub-3s SLA)
-                </span>
-              )}
               {isRevalidating && (
                 <span className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-600 animate-pulse">
                   <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
@@ -403,46 +399,60 @@ export default function AccountsPage() {
         {/* 3 Summary KPI Cards (Liquid Glass) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           {/* Card 1: Total Portfolio Balance */}
-          <div className="liquid-glass-card rounded-3xl p-6">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Total Portfolio Balance
-            </span>
-            <div className="flex items-baseline justify-between mt-3">
-              <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
-                {isLoading ? 'Loading…' : formatCurrency(totalBalance, 'MMK')}
+          <div className="liquid-glass-card rounded-3xl p-6 flex flex-col justify-between">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Total Portfolio Balance
               </span>
-              <span className="status-pill-emerald text-[11px]">
+              <span className="status-pill-emerald text-[11px] shrink-0">
                 {accounts.length} Accounts
               </span>
+            </div>
+            <div className="mt-3">
+              <span
+                className="text-xl sm:text-2xl font-bold text-slate-900 font-mono tabular-nums block truncate tracking-tight"
+                title={formatCurrency(totalBalance, 'MMK')}
+              >
+                {isLoading ? 'Loading…' : formatCurrency(totalBalance, 'MMK')}
+              </span>
+              {!isLoading && totalBalance >= 1000000 && (
+                <p className="text-xs font-semibold text-slate-400 mt-1">
+                  ≈ {formatCompactNumber(totalBalance)} MMK
+                </p>
+              )}
             </div>
           </div>
 
           {/* Card 2: Active Accounts */}
-          <div className="liquid-glass-card rounded-3xl p-6">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Active Accounts
-            </span>
-            <div className="flex items-baseline justify-between mt-3">
+          <div className="liquid-glass-card rounded-3xl p-6 flex flex-col justify-between">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Active Accounts
+              </span>
+              <span className="status-pill-emerald text-[11px] shrink-0">
+                Normal Standing
+              </span>
+            </div>
+            <div className="mt-3">
               <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
                 {activeAccountsCount}
-              </span>
-              <span className="status-pill-emerald text-[11px]">
-                Normal Standing
               </span>
             </div>
           </div>
 
           {/* Card 3: Frozen Accounts */}
-          <div className="liquid-glass-card rounded-3xl p-6">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Frozen / Restricted
-            </span>
-            <div className="flex items-baseline justify-between mt-3">
+          <div className="liquid-glass-card rounded-3xl p-6 flex flex-col justify-between">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Frozen / Restricted
+              </span>
+              <span className="status-pill-crimson text-[11px] shrink-0">
+                Compliance Watch
+              </span>
+            </div>
+            <div className="mt-3">
               <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
                 {frozenAccountsCount}
-              </span>
-              <span className="status-pill-crimson text-[11px]">
-                Compliance Watch
               </span>
             </div>
           </div>
