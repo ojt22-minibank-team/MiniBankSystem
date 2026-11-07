@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { UseFormRegister, FieldErrors, UseFormSetValue, Path } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { ShieldCheck, Eye, EyeOff } from 'lucide-react';
 
 interface PinFormValues {
@@ -19,6 +20,7 @@ export const PinInput = <T extends PinFormValues>({
   disabled = false, 
   setValue 
 }: Props<T>) => {
+  const { t } = useTranslation('payment');
   const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [showPin, setShowPin] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -96,7 +98,7 @@ export const PinInput = <T extends PinFormValues>({
       {/* Header with Title and Show/Hide toggle */}
       <div className="flex items-center justify-between mb-3">
         <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-          Transaction PIN
+          {t('transactionPin')}
         </label>
         <button
           type="button"
@@ -107,12 +109,12 @@ export const PinInput = <T extends PinFormValues>({
           {showPin ? (
             <>
               <EyeOff size={14} className="text-slate-400" />
-              <span>Hide PIN</span>
+              <span>{t('hidePin')}</span>
             </>
           ) : (
             <>
               <Eye size={14} className="text-slate-400" />
-              <span>Show PIN</span>
+              <span>{t('showPin')}</span>
             </>
           )}
         </button>
@@ -164,7 +166,7 @@ export const PinInput = <T extends PinFormValues>({
       {/* Security Reassurance Callout */}
       <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 pt-3">
         <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-        <span>Secured with 256-bit bank-grade encryption</span>
+        <span>{t('securedEncryption')}</span>
       </div>
     </div>
   );
