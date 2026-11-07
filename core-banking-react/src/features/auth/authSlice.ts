@@ -1,8 +1,8 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+﻿import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import type { AuthState, AuthUser } from '../../types/common.types';
 import type { LoginRequest, LoginResponse, CoreApiResponse, OtpResendResponse } from '../../types/api.types';
-import { STORAGE_KEYS } from '../../config/api.config';
+import { STORAGE_KEYS, API_BASE_URL } from '../../config/api.config';
 import axiosInstance from '../../lib/axios';
 import { API_ENDPOINTS } from '../../config/api.config';
 import type { AxiosError } from 'axios';
@@ -130,7 +130,7 @@ export const loginThunk = createAsyncThunk<
     }
     if (error.code === 'ECONNABORTED' || !error.response) {
       return rejectWithValue(
-        'Cannot connect to server. Please verify the backend is running on port 8080.',
+        `Cannot connect to server (${API_BASE_URL}). Please verify the backend is running.`,
       );
     }
     return rejectWithValue('Login failed. Please try again.');

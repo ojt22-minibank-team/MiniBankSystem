@@ -22,9 +22,11 @@ import {
 // BASE URL
 // ======================================================
 
+const defaultHost = (typeof window !== "undefined" && window.location?.hostname) ? window.location.hostname : "localhost";
+const defaultProtocol = (typeof window !== "undefined" && window.location?.protocol) ? window.location.protocol : "http:";
 const API_BASE = (
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
-  "http://localhost:8080"
+  `${defaultProtocol}//${defaultHost}:8006`
 ).replace(/\/+$/, "");
 
 const BASE_URL = `${API_BASE}/api/customer`;
