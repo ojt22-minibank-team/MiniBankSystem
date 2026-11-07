@@ -393,11 +393,22 @@ export const NotificationDropdown: React.FC = () => {
     const ref = item.transactionRef || (item.notificationId ? `NOTI-${item.notificationId}` : "");
 
     // If already viewing a receipt, replace history so clicking multiple notifications doesn't stack receipts
-    const isAlreadyOnReceipt = location.pathname.startsWith("/receipt");
+    const isAlreadyOnReceipt = location.pathname.startsWith("/receipt") || location.pathname.startsWith("/merchant-payment/receipt");
     const currentFrom = (location.state as { from?: string } | null)?.from;
     const originFrom = isAlreadyOnReceipt
-      ? (currentFrom && !currentFrom.startsWith("/receipt") ? currentFrom : "/dashboard")
+      ? (currentFrom && !currentFrom.startsWith("/receipt") && !currentFrom.startsWith("/merchant-payment/receipt") ? currentFrom : "/dashboard")
       : location.pathname;
+
+    if (item.notificationType === "PAYMENT") {
+      navigate(`/merchant-payment/receipt/${encodeURIComponent(ref)}`, {
+        replace: isAlreadyOnReceipt,
+        state: {
+          notification: item,
+          from: originFrom,
+        },
+      });
+      return;
+    }
 
     navigate(`/receipt/${encodeURIComponent(ref)}`, {
       replace: isAlreadyOnReceipt,
