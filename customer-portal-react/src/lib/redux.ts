@@ -1,4 +1,3 @@
-
 import {
   combineReducers,
   configureStore,
@@ -38,12 +37,7 @@ const rootReducer = (
   action: Parameters<typeof appReducer>[1],
 ) => {
   if (resetCustomerState.match(action)) {
-    const resetState = appReducer(undefined, action);
-
-    return {
-      ...resetState,
-      settings: state?.settings ?? resetState.settings,
-    };
+    return appReducer(undefined, action);
   }
 
   return appReducer(state, action);

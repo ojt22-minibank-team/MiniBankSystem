@@ -243,27 +243,8 @@ export default function BankCard({
     account.accountNumber,
   );
 
-  // Available Balance = Current Balance - Minimum Reserve.
-  const effectiveAvailableBalance = (() => {
-    const minReserve =
-      (account as { minimumBalance?: number }).minimumBalance ?? 10000;
-
-    if (
-      account.currentBalance !== undefined &&
-      account.currentBalance !== null
-    ) {
-      if (
-        account.availableBalance !== undefined &&
-        account.availableBalance < account.currentBalance
-      ) {
-        return account.availableBalance;
-      }
-
-      return Math.max(0, account.currentBalance - minReserve);
-    }
-
-    return account.availableBalance ?? 0;
-  })();
+  // Use the available balance provided by the backend.
+  const effectiveAvailableBalance = account.availableBalance;
 
   const handleToggleEye = (e: MouseEvent) => {
     e.preventDefault();

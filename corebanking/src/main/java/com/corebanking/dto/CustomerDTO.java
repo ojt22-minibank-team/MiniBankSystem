@@ -1,29 +1,35 @@
 package com.corebanking.dto;
 
-
-
 import java.time.LocalDate;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-   @Getter
-   @Setter
-   @Builder
-   @NoArgsConstructor
-   @AllArgsConstructor
 
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class CustomerDTO {
 
     // Common Fields
     private String customerType; // PERSONAL or COMPANY
     private String phone;
+
+    @NotBlank(message = "Email is required")
+    @Pattern(
+        regexp = "^[A-Za-z0-9._%+-]+@gmail\\.com$",
+        message = "Email must be a valid @gmail.com address"
+    )
     private String email;
+
     private String address;
     private String status;
-    
 
     // Personal Customer Fields
     private String fullName;
@@ -31,7 +37,13 @@ public class CustomerDTO {
     private String lastName;
     private String gender; // MALE, FEMALE, OTHER
     private LocalDate dateOfBirth;
+
+    @Pattern(
+        regexp = "^(1[0-4]|[1-9])/[A-Z0-9a-z]+\\([NPE]\\)[0-9]{6}$",
+        message = "Invalid Myanmar NRC format (e.g., 12/DAGANA(N)123456)"
+    )
     private String nrc;
+
     private String occupation;
 
     // Company Customer Fields
@@ -39,7 +51,13 @@ public class CustomerDTO {
     private String registrationNumber;
     private String taxId;
     private String businessType;
+
+    @Pattern(
+        regexp = "^$|^[A-Za-z0-9._%+-]+@gmail\\.com$",
+        message = "Email must be a valid @gmail.com address"
+    )
     private String officialEmail;
+
     private String businessAddress;
     private LocalDate establishedDate;
 
@@ -74,6 +92,4 @@ public class CustomerDTO {
         if (address != null && !address.isBlank()) return address;
         return businessAddress;
     }
-
-	
 }

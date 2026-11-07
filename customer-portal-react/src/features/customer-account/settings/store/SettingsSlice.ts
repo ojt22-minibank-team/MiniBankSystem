@@ -1,4 +1,3 @@
-
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 import type {
@@ -13,11 +12,13 @@ import {
   getStoredNotificationsEnabled,
 } from "../utils/SettingsStorage";
 
-const initialState: SettingsState = {
+export const getInitialSettingsState = (): SettingsState => ({
   theme: getStoredTheme(),
   notificationsEnabled: getStoredNotificationsEnabled(),
   language: getStoredLanguage(),
-};
+});
+
+const initialState: SettingsState = getInitialSettingsState();
 
 const settingsSlice = createSlice({
   name: "settings",
@@ -40,6 +41,10 @@ const settingsSlice = createSlice({
     ) {
       state.language = action.payload;
     },
+
+    resetSettings() {
+      return getInitialSettingsState();
+    },
   },
 });
 
@@ -47,6 +52,7 @@ export const {
   setTheme,
   setNotificationsEnabled,
   setLanguage,
+  resetSettings,
 } = settingsSlice.actions;
 
 export default settingsSlice.reducer;

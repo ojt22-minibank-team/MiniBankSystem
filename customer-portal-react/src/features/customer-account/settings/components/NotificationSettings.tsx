@@ -1,9 +1,9 @@
-
 import { Bell, BellOff } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 
 import type { RootState, AppDispatch } from "../../../../lib/redux";
 import { setNotificationsEnabled } from "../store/SettingsSlice";
+import { saveNotificationsEnabled } from "../utils/SettingsStorage";
 
 export default function NotificationSettings() {
   const dispatch = useDispatch<AppDispatch>();
@@ -11,6 +11,12 @@ export default function NotificationSettings() {
   const enabled = useSelector(
     (state: RootState) => state.settings.notificationsEnabled,
   );
+
+  const handleToggle = () => {
+    const nextVal = !enabled;
+    dispatch(setNotificationsEnabled(nextVal));
+    saveNotificationsEnabled(nextVal);
+  };
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-6">
@@ -40,9 +46,7 @@ export default function NotificationSettings() {
           role="switch"
           aria-checked={enabled}
           aria-label="Enable in-app notifications"
-          onClick={() =>
-            dispatch(setNotificationsEnabled(!enabled))
-          }
+          onClick={handleToggle}
           className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4] focus-visible:ring-offset-2 ${
             enabled ? "bg-[#00A3C4]" : "bg-slate-300 dark:bg-slate-600"
           }`}

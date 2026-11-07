@@ -102,7 +102,7 @@ export const useNotificationWebSocket = ({
         const wsBase = import.meta.env.VITE_API_BASE_URL.replace(/^http:/, "ws:").replace(/^https:/, "wss:").replace(/\/+$/, "");
         wsUrl = wsBase + "/ws/notifications?token=" + encodeURIComponent(expected.token);
       } else {
-        wsUrl = protocol + "//" + host + ":8006/ws/notifications?token=" + encodeURIComponent(expected.token);
+        wsUrl = protocol + "//" + host + ":8092/ws/notifications?token=" + encodeURIComponent(expected.token);
       }
       try {
         // Access token only; transport retained for existing browser/client compatibility.

@@ -429,6 +429,7 @@ export interface DailyCashSummaryResponse {
   depositCount: number;
   withdrawalCount: number;
   currency: string;
+  scope?: string;
 }
 
 export interface OtcAccountLimitResponse {
