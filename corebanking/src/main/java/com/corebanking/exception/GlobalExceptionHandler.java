@@ -247,6 +247,11 @@ public ResponseEntity<Map<String, Object>> handleMissingRequestHeaderException(M
     return buildErrorResponse(HttpStatus.BAD_REQUEST, "MISSING_HEADER", msg);
 }
 
+@ExceptionHandler(InvalidEmailException.class)
+public ResponseEntity<Map<String, Object>> handleInvalidEmailException(InvalidEmailException ex) {
+    return buildErrorResponse(HttpStatus.BAD_REQUEST, "INVALID_EMAIL", ex.getMessage());
+}
+
 @ExceptionHandler(HttpMessageNotReadableException.class)
 public ResponseEntity<Map<String, Object>> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex) {
     return buildErrorResponse(HttpStatus.BAD_REQUEST, "INVALID_REQUEST_BODY", "Required request body is missing or invalid.");
