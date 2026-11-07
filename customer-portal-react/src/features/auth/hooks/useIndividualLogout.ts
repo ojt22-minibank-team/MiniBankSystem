@@ -9,6 +9,7 @@ import {
   getAuthenticationGeneration,
   invalidateAuthenticationGeneration,
 } from "../../../utils/tokenStorage";
+import i18n from "../../../i18n";
 
 // Only consumers ending the same authentication generation share an operation.
 let logoutLock: { generation: number; promise: Promise<number | null> } | null = null;
@@ -27,8 +28,13 @@ function logoutIndividualCustomer(dispatch: AppDispatch): Promise<number | null>
   // Clear customer data once, before awaiting revocation of the captured session.
   dispatch(resetCustomerState());
 
+  // Reset DOM theme and language back to default for the unauthenticated state
+  document.documentElement.classList.remove("dark");
+  document.documentElement.style.colorScheme = "light";
+  void i18n.changeLanguage("en");
+
   // Reset balance visibility for the next login session.
-sessionStorage.removeItem("customer-portal:balance-visible");
+  sessionStorage.removeItem("customer-portal:balance-visible");
 
   const promise = (async () => {
     try {

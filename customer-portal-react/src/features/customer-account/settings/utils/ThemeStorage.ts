@@ -1,6 +1,7 @@
 import type { ThemePreference } from "../types/settingsTypes";
+import { getCurrentCustomerSubject } from "../../../../utils/tokenStorage";
 
-const THEME_STORAGE_KEY = "customer-portal-theme";
+const BASE_THEME_KEY = "customer-portal-theme";
 
 const isThemePreference = (
   value: string | null,
@@ -9,14 +10,30 @@ const isThemePreference = (
   value === "dark" ||
   value === "system";
 
-export function getStoredTheme(): ThemePreference {
-  const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+const getThemeKey = (userId?: string | null): string => {
+  const id = userId !== undefined ? userId : getCurrentCustomerSubject();
+  return id ? `${BASE_THEME_KEY}_${id}` : BASE_THEME_KEY;
+};
+
+export function getStoredTheme(userId?: string | null): ThemePreference {
+  const id = userId !== undefined ? userId : getCurrentCustomerSubject();
+  // When no user is authenticated, unauthenticated/login pages remain on default "system"
+  if (!id) {
+    return "system";
+  }
+
+  const storedTheme = localStorage.getItem(getThemeKey(id));
 
   return isThemePreference(storedTheme)
     ? storedTheme
     : "system";
 }
 
-export function saveTheme(theme: ThemePreference): void {
-  localStorage.setItem(THEME_STORAGE_KEY, theme);
+export function saveTheme(theme: ThemePreference, userId?: string | null): void {
+  const id = userId !== undefined ? userId : getCurrentCustomerSubject();
+  if (!id) {
+    return;
+  }
+
+  localStorage.setItem(getThemeKey(id), theme);
 }
