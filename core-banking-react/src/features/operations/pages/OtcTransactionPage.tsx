@@ -3,8 +3,8 @@ import AdminLayout from '../../../components/layout/AdminLayout';
 import Button from '../../../components/common/Button';
 import Input from '../../../components/common/Input';
 import Modal from '../../../components/common/Modal';
-import { otcApi, accountsApi } from '../../../services/apiClient';
-import type { OtcTransactionResponseDto, AccountResponse, OtcParametersResponse, OtcAccountLimitResponse } from '../../../types/api.types';
+import { otcApi, accountsApi, staffProfileApi } from '../../../services/apiClient';
+import type { OtcTransactionResponseDto, AccountResponse, OtcParametersResponse, OtcAccountLimitResponse, StaffResponse } from '../../../types/api.types';
 import { formatCurrency } from '../../../utils/formatCurrency';
 import { formatDate } from '../../../utils/formatDate';
 import type { AxiosError } from 'axios';
@@ -76,6 +76,16 @@ function maskAccountNumber(accountNumber?: string | null): string {
 }
 
 /**
+ * Masks the last 3 digits of NRC ID for customer receipts (e.g. 5/PATHA(N)789***)
+ */
+function maskNrcLastThree(nrc?: string | null): string {
+  if (!nrc) return '—';
+  const trimmed = nrc.trim();
+  if (trimmed.length <= 3) return '***';
+  return trimmed.slice(0, -3) + '***';
+}
+
+/**
  * Builds comprehensive digital verification text encoded into the voucher QR code.
  */
 function formatReceiptQrText(receipt: OtcTransactionResponseDto): string {
@@ -85,7 +95,7 @@ function formatReceiptQrText(receipt: OtcTransactionResponseDto): string {
   const dateStr = formatTransactionDateTime(receipt.transactedAt);
 
   return [
-    'EKARAJ BANK PLC - OFFICIAL OTC VOUCHER',
+    'EKARAJ BANK - OFFICIAL OTC VOUCHER',
     `REF: ${receipt.transactionRef}`,
     `SLIP: ${receipt.manualReferenceId || 'N/A'}`,
     `TYPE: ${typeLabel}`,
@@ -174,11 +184,13 @@ export default function OtcTransactionPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<OtcTransactionResponseDto | null>(null);
+  const [printMode, setPrintMode] = useState<'CUSTOMER' | 'BANK' | 'DUAL'>('DUAL');
 
   const [isPreValidating, setIsPreValidating] = useState(false);
   const [otcParams, setOtcParams] = useState<OtcParametersResponse | null>(null);
+  const [staffProfile, setStaffProfile] = useState<StaffResponse | null>(null);
 
-  // Load OTC system parameters from DB on mount
+  // Load OTC system parameters and current staff profile on mount
   useEffect(() => {
     otcApi.getParameters()
       .then((res) => {
@@ -186,6 +198,14 @@ export default function OtcTransactionPage() {
       })
       .catch((err) => {
         console.error('Failed to load OTC system parameters:', err);
+      });
+
+    staffProfileApi.getMe()
+      .then((res) => {
+        setStaffProfile(res.data);
+      })
+      .catch((err) => {
+        console.warn('Failed to load staff profile:', err);
       });
   }, []);
 
@@ -475,8 +495,196 @@ export default function OtcTransactionPage() {
     setAccountLookupError(null);
   };
 
-  const handlePrintVoucher = () => {
-    window.print();
+  const handlePrintVoucher = (mode?: 'CUSTOMER' | 'BANK' | 'DUAL') => {
+    const targetMode = mode || printMode;
+    setPrintMode(targetMode);
+    setTimeout(() => {
+      window.print();
+    }, 60);
+  };
+
+  const renderSlip = (copyType: 'CUSTOMER' | 'BANK') => {
+    if (!receipt) return null;
+    const isCustomer = copyType === 'CUSTOMER';
+    const isDeposit = receipt.transactionType === 'OTC_DEPOSIT';
+    const curr = receipt.currency || 'MMK';
+    const auditNote = receipt.manualAuditNote || manualAuditNote;
+    const staffNoLabel = staffProfile?.staffNo ? `(${staffProfile.staffNo})` : '';
+
+    return (
+      <div className="slip-container rounded-xl border border-gray-300 bg-white p-3.5 sm:p-4.5 shadow-xs text-gray-800 space-y-2 relative overflow-hidden text-xs">
+        {/* Subtle Watermark Logo */}
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.035]">
+          <img src={ekarajCrown} alt="" className="h-32 w-32 object-contain" />
+        </div>
+
+        {/* Header Row: Bank Logo & Clean Branch Info + Plain Status Badges & QR */}
+        <div className="flex items-start justify-between gap-3 border-b border-gray-200 pb-2">
+          <div className="flex items-center gap-2.5">
+            <img src={ekarajCrown} alt="EKARAJ BANK" className="h-8.5 w-auto object-contain shrink-0" />
+            <div>
+              <h1 className="text-sm sm:text-base font-black tracking-tight text-gray-900 uppercase leading-none">
+                EKARAJ BANK
+              </h1>
+              <p className="text-[10px] text-gray-600 font-semibold leading-tight mt-1">
+                Yangon Main Branch (Code: BR-001)
+              </p>
+              <p className="text-[9px] text-gray-400 font-mono leading-tight mt-0.5">
+                Counter #02 • Licensed Commercial Bank
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            {/* Digital Security Verification QR Code (Always Masked Account Number) */}
+            <div className="flex flex-col items-center justify-center bg-white p-1 rounded-md border border-gray-200 shadow-2xs">
+              <QRCodeSVG
+                value={formatReceiptQrText(receipt)}
+                size={58}
+                level="M"
+                includeMargin={true}
+              />
+              <span className="text-[7.5px] font-mono font-bold text-gray-500 mt-0.5 uppercase tracking-wider">
+                Scan Verify
+              </span>
+            </div>
+
+            {/* Plain Unbordered/Uncolored Typography for Voucher & Receipt Labels */}
+            <div className="text-right">
+              <span className="block text-xs font-black uppercase tracking-wider text-gray-900 leading-tight">
+                {isDeposit ? 'Deposit Voucher' : 'Withdrawal Voucher'}
+              </span>
+              <span className="block text-[10.5px] font-bold uppercase tracking-wider text-gray-600 leading-tight mt-0.5">
+                {isCustomer ? 'Customer Receipt' : 'Branch Voucher'}
+              </span>
+              <p className="mt-1 text-[8.5px] text-gray-500 font-mono leading-tight">
+                {formatTransactionDateTime(receipt.transactedAt)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Reference Bar: Txn Ref, Counter Slip No, Processed By + Staff No (NO CHANNEL) */}
+        <div className="grid grid-cols-3 gap-2 bg-gray-50 rounded-lg p-2 text-[10.5px] border border-gray-200">
+          <div>
+            <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">Transaction Ref</span>
+            <span className="font-mono font-bold text-gray-900 block truncate">{receipt.transactionRef}</span>
+          </div>
+          <div>
+            <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">Counter Slip No</span>
+            <span className="font-mono font-bold text-blue-800 block truncate">{receipt.manualReferenceId || '—'}</span>
+          </div>
+          <div>
+            <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">Processed By</span>
+            <span className="font-mono font-bold text-gray-900 block truncate">
+              {receipt.tellerUsername} {staffNoLabel}
+            </span>
+          </div>
+        </div>
+
+        {/* Customer & Account Particulars: Bank Account Number, Account Holder Name, NRC ID (Masked on Customer Receipt) */}
+        <div className="grid grid-cols-3 gap-2 border border-gray-200 rounded-lg p-2 bg-white text-[10.5px]">
+          <div>
+            <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">Bank Account Number</span>
+            <span className="font-mono font-black text-gray-900 text-xs sm:text-[13px] block mt-0.5 tracking-wide">
+              {isCustomer ? maskAccountNumber(receipt.accountNumber) : receipt.accountNumber}
+            </span>
+          </div>
+          <div>
+            <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">Account Holder Name</span>
+            <span className="font-bold text-gray-900 block truncate mt-0.5">{receipt.customerName}</span>
+            <span className="text-[9px] font-mono text-gray-400 block">{receipt.customerCode}</span>
+          </div>
+          <div>
+            <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">NRC ID</span>
+            <span className="font-semibold text-gray-800 font-mono block mt-0.5 truncate">
+              {isCustomer
+                ? maskNrcLastThree(verifiedAccount?.nrc || receipt.nrc)
+                : (verifiedAccount?.nrc || receipt.nrc || '—')}
+            </span>
+          </div>
+        </div>
+
+        {/* Financial Settlement Card */}
+        <div className="rounded-lg border border-gray-900/80 p-2 bg-gray-50/60 space-y-1">
+          <div className="flex items-baseline justify-between border-b border-gray-200 pb-1">
+            <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Net Cash Amount:</span>
+            <span className="text-base sm:text-lg font-black font-mono text-gray-900 tracking-tight">
+              {formatCurrency(receipt.amount, curr)}
+            </span>
+          </div>
+
+          {/* Amount in Words */}
+          <div className="text-[9.5px] text-gray-700 bg-white px-2 py-0.5 rounded border border-gray-200 flex items-baseline gap-1">
+            <span className="font-bold text-gray-500 uppercase tracking-wide text-[8.5px] shrink-0">In Words:</span>
+            <span className="font-serif italic font-semibold text-gray-900 truncate">
+              "{formatAmountToWords(receipt.amount, curr)}"
+            </span>
+          </div>
+
+          {/* Balances Summary */}
+          <div className="grid grid-cols-3 gap-1 pt-0.5 text-center divide-x divide-gray-200 text-[10px]">
+            <div>
+              <span className="text-gray-500 block text-[8.5px]">Balance Before</span>
+              <span className="font-mono font-medium text-gray-700 block mt-0.5">
+                {formatCurrency(receipt.balanceBefore, curr)}
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-500 block text-[8.5px]">Service Fee</span>
+              <span className="font-mono font-medium text-gray-700 block mt-0.5">
+                {formatCurrency(receipt.serviceFee ?? 0, curr)}
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-500 block text-[8.5px] font-bold">New Available Balance</span>
+              <span className="font-mono font-black text-blue-900 block mt-0.5">
+                {formatCurrency(receipt.balanceAfter, curr)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Customer Statement Narration */}
+        {receipt.description && (
+          <div className="text-[10px] border border-gray-200 rounded-md px-2 py-1 bg-white">
+            <span className="text-gray-500 font-bold block text-[8.5px] uppercase tracking-wider">Customer Statement Narration:</span>
+            <p className="font-medium text-gray-800 truncate mt-0.5">{receipt.description}</p>
+          </div>
+        )}
+
+        {/* Internal Audit Note (Branch Voucher Only) */}
+        {!isCustomer && auditNote && (
+          <div className="text-[10px] border border-gray-200 rounded-md px-2 py-1 bg-white">
+            <span className="text-gray-500 font-bold block text-[8.5px] uppercase tracking-wider">Internal Audit Note:</span>
+            <p className="font-medium text-gray-800 truncate mt-0.5">{auditNote}</p>
+          </div>
+        )}
+
+        {/* Dual Signatures Section */}
+        <div className="pt-2 border-t border-gray-200">
+          <div className="grid grid-cols-2 gap-6 text-[9.5px]">
+            <div>
+              <div className="border-b border-gray-400 w-full mb-1"></div>
+              <span className="font-bold text-gray-900 block">Customer Signature</span>
+              <span className="text-[8px] text-gray-500 block">Date: ____________________</span>
+            </div>
+            <div className="text-right">
+              <div className="border-b border-gray-400 w-full mb-1"></div>
+              <span className="font-bold text-gray-900 block">Authorized Bank Teller & Stamp</span>
+              <span className="text-[8px] text-gray-500 block">
+                Processed by: {receipt.tellerUsername} {staffNoLabel} • {receipt.transactedAt ? formatDate(receipt.transactedAt) : '—'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Compact Footer */}
+        <div className="border-t border-gray-100 pt-0.5 text-[8px] text-gray-400 text-center leading-tight">
+          EKARAJ BANK Official Counter Transaction Voucher • Licensed Commercial Bank
+        </div>
+      </div>
+    );
   };
 
   // Financial calculations for Before vs After breakdown
@@ -494,7 +702,7 @@ export default function OtcTransactionPage() {
       <style>{`
         @page {
           size: A4 portrait;
-          margin: 10mm 12mm;
+          margin: 10mm;
         }
         @media print {
           * {
@@ -504,7 +712,27 @@ export default function OtcTransactionPage() {
           html, body {
             margin: 0 !important;
             padding: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            min-height: auto !important;
+            overflow: visible !important;
             background: #ffffff !important;
+          }
+          /* Completely hide all layout Chrome/Sidebar/Navbar elements */
+          aside, nav, header, .no-print, [class*="Sidebar"], [class*="Navbar"], [class*="backdrop"] {
+            display: none !important;
+          }
+          /* Reset root layout hierarchy so nothing offsets printable content */
+          #root, #root > div, #root > div > div, main {
+            display: block !important;
+            position: static !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow: visible !important;
+            height: auto !important;
+            min-height: auto !important;
           }
           body * {
             visibility: hidden !important;
@@ -513,297 +741,132 @@ export default function OtcTransactionPage() {
             visibility: visible !important;
           }
           #printable-voucher {
-            position: fixed !important;
-            left: 0 !important;
-            top: 0 !important;
+            display: block !important;
+            position: relative !important;
             width: 100% !important;
-            box-sizing: border-box !important;
-            margin: 0 !important;
-            padding: 24px 28px !important;
-            border: 2px solid #0f172a !important;
-            border-radius: 16px !important;
-            background: #ffffff !important;
+            max-width: 100% !important;
+            margin: 0 auto !important;
+            padding: 0 !important;
+            background: transparent !important;
+            border: none !important;
             box-shadow: none !important;
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+          }
+          .slip-container {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
-          }
-          .no-print {
-            display: none !important;
           }
         }
       `}</style>
 
       {/* VIEW 1: DEDICATED OFFICIAL BANK VOUCHER / RECEIPT VIEW */}
       {receipt ? (
-        <div ref={voucherTopRef} className="space-y-6 max-w-4xl mx-auto pb-10">
-          {/* Top Actions Bar (Hidden in Print) */}
-          <div className="no-print flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 shadow-sm">
+        <div ref={voucherTopRef} className="space-y-4 w-full max-w-4xl mx-auto pb-10">
+          {/* Top Actions Bar (Unified: Segmented View Selector + Print Slip + Next Transaction) */}
+          <div className="no-print flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-3.5 shadow-sm">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm">
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm shrink-0">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
               <div>
-                <h3 className="font-bold text-gray-900 text-base">Transaction Completed Successfully</h3>
-                <p className="text-xs text-gray-600">
-                  Ref: <span className="font-mono font-semibold text-gray-900">{receipt.transactionRef}</span> • Official Bank Counter Voucher ready.
+                <h3 className="font-bold text-gray-900 text-sm">Transaction Completed Successfully</h3>
+                <p className="text-[11px] text-gray-500 font-mono">
+                  Ref: <span className="font-semibold text-gray-800">{receipt.transactionRef}</span>
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            {/* Segmented View Selector + Print Slip + Next Transaction */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Segmented Toggle Control */}
+              <div className="inline-flex rounded-xl border border-gray-200 bg-gray-100/90 p-1 text-xs shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setPrintMode('CUSTOMER')}
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
+                    printMode === 'CUSTOMER'
+                      ? 'bg-white shadow-xs text-blue-700 font-bold'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Customer Receipt
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPrintMode('BANK')}
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
+                    printMode === 'BANK'
+                      ? 'bg-white shadow-xs text-purple-700 font-bold'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Branch Voucher (Internal Audit Voucher)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPrintMode('DUAL')}
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
+                    printMode === 'DUAL'
+                      ? 'bg-white shadow-xs text-emerald-800 font-bold'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  2-in-1 Both
+                </button>
+              </div>
+
+              {/* Print Slip Button */}
               <Button
                 type="button"
                 variant="secondary"
-                onClick={handlePrintVoucher}
-                className="flex items-center gap-2 px-4 py-2 font-semibold shadow-xs"
+                onClick={() => handlePrintVoucher(printMode)}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold shadow-xs cursor-pointer border-gray-300 hover:bg-gray-50"
               >
-                <svg className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                <svg className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
-                <span>Print / Download PDF</span>
+                <span>Print Slip</span>
               </Button>
 
+              {/* Next Transaction Button */}
               <Button
                 type="button"
                 variant="primary"
                 onClick={handleResetForNewTransaction}
-                className="flex items-center gap-2 px-5 py-2 font-semibold shadow-sm"
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold shadow-sm cursor-pointer"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                <span>New Transaction</span>
+                <span>Next Transaction</span>
               </Button>
             </div>
           </div>
 
           {/* OFFICIAL COMMERCIAL BANK VOUCHER SHEET (PRINTABLE) */}
-          <div
-            id="printable-voucher"
-            className="rounded-2xl border border-gray-300 bg-white p-8 sm:p-10 shadow-lg text-gray-800 space-y-6 relative overflow-hidden"
-          >
-            {/* Watermark Logo / Badge */}
-            <div className="absolute right-6 top-6 opacity-[0.06] pointer-events-none select-none">
-              <img
-                src={ekarajCrown}
-                alt="EKARAJ Watermark"
-                className="h-48 w-48 object-contain"
-              />
-            </div>
-
-            {/* Bank & Branch Header */}
-            <div className="border-b-2 border-gray-800 pb-5">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={ekarajCrown}
-                      alt="EKARAJ BANK"
-                      className="h-12 w-auto object-contain drop-shadow-sm"
-                    />
-                    <div>
-                      <div className="flex items-baseline gap-2">
-                        <h1 className="text-2xl font-black tracking-tight text-gray-900 uppercase">
-                          EKARAJ BANK
-                        </h1>
-                        <span className="text-xs font-bold text-amber-700 font-sans tracking-wide">
-                          ( á€§á€€á€›á€¬á€‡á€º á€˜á€á€º )
-                        </span>
-                      </div>
-                      <p className="mt-0.5 text-xs text-gray-600 font-medium">
-                        Ekaraj Commercial Bank PLC • Licensed Financial Institution
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    <strong>Branch:</strong> Yangon Main Branch (Code: BR-001) • <strong>Station:</strong> Counter #02 (Teller Counter)
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  {/* Digital Security Verification QR Code */}
-                  <div className="flex flex-col items-center justify-center bg-white p-2 rounded-xl border border-gray-200 shadow-2xs">
-                    <QRCodeSVG
-                      value={formatReceiptQrText(receipt)}
-                      size={105}
-                      level="M"
-                      includeMargin={false}
-                    />
-                    <span className="text-[9px] font-mono font-bold text-gray-500 mt-1 uppercase tracking-wider">
-                      Scan to Verify
-                    </span>
-                  </div>
-
-                  <div className="text-right">
-                    <span
-                      className={[
-                        'inline-block px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider shadow-2xs',
-                        receipt.transactionType === 'OTC_DEPOSIT'
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                          : 'bg-amber-100 text-amber-800 border border-amber-300',
-                      ].join(' ')}
-                    >
-                      {receipt.transactionType === 'OTC_DEPOSIT' ? 'Cash Deposit Voucher' : 'Cash Withdrawal Voucher'}
-                    </span>
-                    <p className="mt-1 text-[11px] font-mono text-gray-500">
-                      STATUS: <strong className="text-emerald-700">COMPLETED & SETTLED</strong>
-                    </p>
-                    <p className="text-[11px] text-gray-500 font-mono">
-                      Date: {formatTransactionDateTime(receipt.transactedAt)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Transaction Reference & Identifier Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-gray-50 rounded-xl p-3.5 text-xs border border-gray-200 items-center">
-              <div className="sm:col-span-5 min-w-0">
-                <span className="text-gray-500 block text-[10px] uppercase font-bold tracking-wider">Transaction Ref</span>
-                <span className="font-mono font-bold text-gray-900 text-xs sm:text-[13px] block break-all select-all">{receipt.transactionRef}</span>
-              </div>
-              <div className="sm:col-span-3 min-w-0">
-                <span className="text-gray-500 block text-[10px] uppercase font-bold tracking-wider">Counter Slip / Voucher No</span>
-                <span className="font-mono font-bold text-blue-800 text-xs sm:text-[13px] block break-all">{receipt.manualReferenceId || '—'}</span>
-              </div>
-              <div className="sm:col-span-2 min-w-0">
-                <span className="text-gray-500 block text-[10px] uppercase font-bold tracking-wider">Channel</span>
-                <span className="font-semibold text-gray-800 text-xs block">OTC Counter</span>
-              </div>
-              <div className="sm:col-span-2 min-w-0">
-                <span className="text-gray-500 block text-[10px] uppercase font-bold tracking-wider">Processed By</span>
-                <span className="font-mono font-semibold text-gray-800 text-xs block">{receipt.tellerUsername}</span>
-              </div>
-            </div>
-
-            {/* Customer & Account Particulars */}
-            <div className="rounded-xl border border-gray-200 p-4 space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-100 pb-2">
-                Account & Customer Particulars
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                <div>
-                  <span className="text-gray-500 block text-[11px]">Bank Account Number</span>
-                  <span className="font-mono font-black text-gray-900 text-base block mt-0.5 tracking-wide">
-                    {maskAccountNumber(receipt.accountNumber)}
+          <div id="printable-voucher" className="w-full space-y-3">
+            {printMode === 'CUSTOMER' && renderSlip('CUSTOMER')}
+            {printMode === 'BANK' && renderSlip('BANK')}
+            {printMode === 'DUAL' && (
+              <div className="space-y-2.5">
+                {renderSlip('BANK')}
+                <div className="relative py-1 flex items-center justify-center my-0.5">
+                  <div className="w-full border-t-2 border-dashed border-gray-400"></div>
+                  <span className="absolute bg-white px-3 py-0.5 text-[8.5px] font-mono font-bold text-gray-500 uppercase tracking-widest border border-gray-300 rounded-full shadow-2xs flex items-center gap-1">
+                    ✂ Cut Here
                   </span>
                 </div>
-                <div>
-                  <span className="text-gray-500 block text-[11px]">Account Holder Name</span>
-                  <span className="font-bold text-gray-900 text-sm block mt-0.5">
-                    {receipt.customerName}
-                  </span>
-                  <span className="text-[11px] font-mono text-gray-400">Code: {receipt.customerCode}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block text-[11px]">Customer NRC ID</span>
-                  <span className="font-semibold text-gray-800 font-mono block mt-0.5">
-                    {verifiedAccount?.nrc || '—'}
-                  </span>
-                  <span className="text-[11px] text-gray-500">Phone: {verifiedAccount?.phone || '—'}</span>
-                </div>
+                {renderSlip('CUSTOMER')}
               </div>
-            </div>
-
-            {/* Financial Settlement & Ledger Details */}
-            <div className="rounded-xl border-2 border-gray-900 p-5 space-y-4 bg-gray-50/40">
-              <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-300 pb-3">
-                <span className="text-sm font-bold text-gray-700 uppercase">Settled Cash Amount:</span>
-                <span className="text-2xl sm:text-3xl font-black font-mono text-gray-900 tracking-tight">
-                  {formatCurrency(receipt.amount, receipt.currency)}
-                </span>
-              </div>
-
-              {/* Amount In Words */}
-              <div className="bg-white p-3 rounded-lg border border-gray-200 text-xs">
-                <span className="text-gray-500 block font-semibold text-[10px] uppercase tracking-wide">
-                  Amount In Words:
-                </span>
-                <span className="font-serif italic font-bold text-gray-800 text-sm block mt-0.5">
-                  “ {formatAmountToWords(receipt.amount, receipt.currency)} ”
-                </span>
-              </div>
-
-              {/* Balance Before & After Ledger Summary */}
-              <div className="grid grid-cols-3 gap-2 pt-1 text-center divide-x divide-gray-200 text-xs">
-                <div>
-                  <span className="text-gray-500 block text-[11px]">Balance Before</span>
-                  <span className="font-mono font-medium text-gray-700 text-sm block mt-0.5">
-                    {formatCurrency(receipt.balanceBefore, receipt.currency)}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block text-[11px]">Service Fee</span>
-                  <span className="font-mono font-medium text-gray-700 text-sm block mt-0.5">
-                    {formatCurrency(receipt.serviceFee ?? 0, receipt.currency)}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block text-[11px] font-bold">New Available Balance</span>
-                  <span className="font-mono font-black text-blue-900 text-sm block mt-0.5">
-                    {formatCurrency(receipt.balanceAfter, receipt.currency)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Customer Statement Narration */}
-            <div className="text-xs border border-gray-200 rounded-xl p-3.5 bg-white">
-              <span className="text-gray-500 font-semibold block text-[11px] uppercase tracking-wider">Customer Statement Narration:</span>
-              <p className="font-medium text-gray-800 mt-0.5 text-xs sm:text-sm">{receipt.description || '—'}</p>
-            </div>
-
-            {/* Dual Signatures Section */}
-            <div className="pt-8 pb-4 border-t border-gray-200">
-              <div className="grid grid-cols-2 gap-8 text-xs">
-                {/* Left: Customer Signature */}
-                <div className="space-y-12">
-                  <div className="border-b border-gray-400 w-full"></div>
-                  <div>
-                    <span className="font-bold text-gray-900 block">Customer / Depositor / Withdrawer Signature</span>
-                    <span className="text-[11px] text-gray-500 block mt-0.5">Date: ________________________</span>
-                  </div>
-                </div>
-
-                {/* Right: Authorized Teller Signature */}
-                <div className="space-y-12 text-right">
-                  <div className="border-b border-gray-400 w-full"></div>
-                  <div>
-                    <span className="font-bold text-gray-900 block">Authorized Bank Teller & Official Stamp</span>
-                    <span className="text-[11px] text-gray-500 block mt-0.5">
-                      Teller: {receipt.tellerUsername} • Date: {receipt.transactedAt ? formatDate(receipt.transactedAt) : '—'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Official Legal Disclaimer Footer */}
-            <div className="border-t border-gray-100 pt-3 text-[10px] text-gray-400 text-center leading-normal">
-              This counter transaction voucher is generated by EKARAJ BANK Core Banking System. It constitutes official proof of cash transaction when endorsed by the branch teller. Please retain this slip for your financial records. For inquiries, contact support@ekarajbank.com.mm.
-            </div>
-          </div>
-
-          {/* Bottom Action Bar */}
-          <div className="no-print flex justify-end gap-3 pt-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handlePrintVoucher}
-              className="px-5 py-2.5 font-semibold"
-            >
-              Print / Download PDF
-            </Button>
-            <Button
-              type="button"
-              variant="primary"
-              onClick={handleResetForNewTransaction}
-              className="px-6 py-2.5 font-bold shadow-md"
-            >
-              Process Next Transaction
-            </Button>
+            )}
           </div>
         </div>
       ) : (
@@ -811,7 +874,7 @@ export default function OtcTransactionPage() {
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Over-the-Counter (OTC) Banking</h2>
+              <h2 className="text-xl font-bold text-gray-900">Over-the-Counter (OTC)</h2>
               <p className="mt-0.5 text-sm text-gray-500">
                 Process direct counter cash deposits and cash withdrawals for walk-in customers.
               </p>
@@ -1156,32 +1219,55 @@ export default function OtcTransactionPage() {
               </form>
             </div>
 
-            {/* Right 1 Col: Teller Counter Policy & Guidance */}
-            <div className="space-y-6">
-              <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-5 space-y-4 text-xs text-gray-600">
-                <h4 className="font-bold text-gray-800 text-sm uppercase tracking-wide flex items-center gap-1.5">
-                  <svg className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>Teller Counter Policy</span>
-                </h4>
-                <ul className="space-y-2.5 list-disc pl-4 leading-relaxed">
-                  <li>
-                    <strong>Mandatory Account Verification:</strong> Account details must be checked and visually validated against walk-in customer identity before confirming.
-                  </li>
-                  <li>
-                    <strong>Dual-Step Confirmation:</strong> Before debiting or crediting the ledger, verify the 3-column balance impact screen in the review dialog.
-                  </li>
-                  <li>
-                    <strong>Official Bank Voucher:</strong> Upon settlement, generate the official bank voucher slip for physical customer endorsement and audit archiving.
-                  </li>
-                  <li>
-                    <strong>Pessimistic Concurrency:</strong> Database accounts are locked with row-level locks during execution to prevent race conditions.
-                  </li>
-                  <li>
-                    <strong>Vault Balancing:</strong> Cash received or disbursed updates the teller vault cash ledger in real time.
-                  </li>
-                </ul>
+            {/* Right 1 Col: Counter Transaction Limits */}
+            <div className="space-y-4">
+              {/* OTC System Limits & Rules Card */}
+              <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3 text-xs shadow-2xs">
+                <div className="border-b border-gray-100 pb-2">
+                  <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wide flex items-center gap-1.5">
+                    <svg className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    <span>Counter Transaction Limits</span>
+                  </h4>
+                </div>
+
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-600">Account Minimum Balance</span>
+                    <span className="font-mono font-bold text-gray-900">
+                      {formatCurrency(otcParams?.minimumBalance ?? 1000, 'MMK')}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-600">Minimum Deposit Amount</span>
+                    <span className="font-mono font-bold text-gray-900">
+                      {formatCurrency(otcParams?.minDepositAmount ?? 1000, 'MMK')}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-600">Minimum Withdrawal Amount</span>
+                    <span className="font-mono font-bold text-gray-900">
+                      {formatCurrency(otcParams?.minWithdrawalAmount ?? 1000, 'MMK')}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between py-1 border-b border-gray-100">
+                    <span className="text-gray-600">One-time Withdrawal Limit</span>
+                    <span className="font-mono font-bold text-gray-900">
+                      {formatCurrency(otcParams?.maxOnetimeWithdrawal ?? 1000000, 'MMK')}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between py-1">
+                    <span className="text-gray-600">Daily Withdrawal Limit</span>
+                    <span className="font-mono font-bold text-gray-900">
+                      {formatCurrency(otcParams?.maxDailyWithdrawal ?? 10000000, 'MMK')}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1206,7 +1292,7 @@ export default function OtcTransactionPage() {
               onClick={() => setShowConfirmModal(false)}
               disabled={isLoading}
             >
-              Cancel / Review Again
+              Back / Cancel
             </Button>
             <Button
               type="button"
@@ -1216,8 +1302,8 @@ export default function OtcTransactionPage() {
               className="px-6 font-bold"
             >
               {operationType === 'DEPOSIT'
-                ? 'Confirm & Execute Deposit'
-                : 'Confirm & Execute Withdrawal'}
+                ? 'Confirm Deposit'
+                : 'Confirm Withdrawal'}
             </Button>
           </>
         }
@@ -1264,7 +1350,7 @@ export default function OtcTransactionPage() {
           {/* Balance Impact Breakdown Card (Current -> Transacted -> Projected) */}
           <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 space-y-3">
             <div className="text-[11px] font-bold text-gray-600 uppercase tracking-wider flex items-center justify-between">
-              <span>Financial Balance Impact</span>
+              <span>Account Balance Summary</span>
               <span
                 className={[
                   'px-2 py-0.5 rounded text-[10px] font-bold uppercase',
@@ -1277,48 +1363,56 @@ export default function OtcTransactionPage() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center divide-x divide-gray-200 bg-white p-3 rounded-lg border border-gray-200/70 shadow-2xs">
-              <div className="px-1">
-                <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-tight">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center divide-x divide-gray-200 bg-white p-3 rounded-lg border border-gray-200/70 shadow-2xs overflow-hidden">
+              <div className="px-1 min-w-0">
+                <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-tight truncate">
                   Current Balance
                 </span>
-                <span className="block text-xs sm:text-sm font-mono font-bold text-gray-800 mt-1">
+                <span
+                  className="block text-[11px] sm:text-xs font-mono font-bold text-gray-800 mt-1 whitespace-nowrap truncate"
+                  title={formatCurrency(currentBal, verifiedAccount?.currency || 'MMK')}
+                >
                   {formatCurrency(currentBal, verifiedAccount?.currency || 'MMK')}
                 </span>
               </div>
 
-              <div className="px-1">
-                <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-tight">
+              <div className="px-1 min-w-0">
+                <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-tight truncate">
                   {operationType === 'DEPOSIT' ? 'Deposit Amount' : 'Withdrawal Amount'}
                 </span>
                 <span
                   className={[
-                    'block text-xs sm:text-sm font-mono font-bold mt-1',
+                    'block text-[11px] sm:text-xs font-mono font-bold mt-1 whitespace-nowrap truncate',
                     operationType === 'DEPOSIT' ? 'text-emerald-600' : 'text-red-600',
                   ].join(' ')}
+                  title={`${operationType === 'DEPOSIT' ? '+' : '-'} ${formatCurrency(numAmount, verifiedAccount?.currency || 'MMK')}`}
                 >
                   {operationType === 'DEPOSIT' ? '+' : '-'} {formatCurrency(numAmount, verifiedAccount?.currency || 'MMK')}
                 </span>
               </div>
 
-              <div className="px-1">
-                <span className="block text-[10px] font-bold text-amber-700 uppercase tracking-tight">
+              <div className="px-1 min-w-0">
+                <span className="block text-[10px] font-bold text-amber-700 uppercase tracking-tight truncate">
                   Service Fee
                 </span>
-                <span className="block text-xs sm:text-sm font-mono font-bold text-amber-700 mt-1">
+                <span
+                  className="block text-[11px] sm:text-xs font-mono font-bold text-amber-700 mt-1 whitespace-nowrap truncate"
+                  title={estimatedFee > 0 ? `- ${formatCurrency(estimatedFee, verifiedAccount?.currency || 'MMK')}` : '0 MMK Free'}
+                >
                   {estimatedFee > 0 ? `- ${formatCurrency(estimatedFee, verifiedAccount?.currency || 'MMK')}` : '0 MMK Free'}
                 </span>
               </div>
 
-              <div className="px-1">
-                <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-tight">
-                  Projected New Balance
+              <div className="px-1 min-w-0">
+                <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-tight truncate">
+                  New Available Balance
                 </span>
                 <span
                   className={[
-                    'block text-xs sm:text-sm font-mono font-extrabold mt-1',
+                    'block text-[11px] sm:text-xs font-mono font-extrabold mt-1 whitespace-nowrap truncate',
                     projectedBal < 0 ? 'text-red-600' : 'text-blue-700',
                   ].join(' ')}
+                  title={formatCurrency(projectedBal, verifiedAccount?.currency || 'MMK')}
                 >
                   {formatCurrency(projectedBal, verifiedAccount?.currency || 'MMK')}
                 </span>
@@ -1351,13 +1445,13 @@ export default function OtcTransactionPage() {
           {/* Operational & Audit Details */}
           <div className="divide-y divide-gray-100 text-xs rounded-xl border border-gray-200 p-3.5 bg-white space-y-2.5 shadow-2xs">
             <div className="flex justify-between items-center pt-1">
-              <span className="text-gray-500">Counter Slip / Voucher No:</span>
+              <span className="text-gray-500">Counter Slip No:</span>
               <span className="font-mono font-bold text-gray-900 bg-gray-50 px-2 py-0.5 rounded border border-gray-200">
                 {manualReferenceId}
               </span>
             </div>
             <div className="flex justify-between items-center pt-2">
-              <span className="text-gray-500">Statement Narration:</span>
+              <span className="text-gray-500">Customer Statement Narration:</span>
               <span className="font-medium text-gray-800">{remark}</span>
             </div>
             <div className="flex flex-col gap-1 pt-2">
