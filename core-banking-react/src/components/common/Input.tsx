@@ -1,7 +1,7 @@
 import { type InputHTMLAttributes, type ReactNode, useState } from 'react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
+  label?: ReactNode;
   error?: string;
   showPasswordToggle?: boolean;
   leadingIcon?: ReactNode;
@@ -18,7 +18,7 @@ export default function Input({
   ...rest
 }: InputProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const inputId = id ?? label?.toLowerCase().replace(/\s+/g, '-');
+  const inputId = id ?? (typeof label === 'string' ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
   const errorId = `${inputId}-error`;
   const resolvedType = showPasswordToggle
     ? showPassword
@@ -34,6 +34,9 @@ export default function Input({
           className="text-xs font-semibold text-slate-700 tracking-wide"
         >
           {label}
+          {rest.required && (typeof label !== 'string' || !label.includes('*')) && (
+            <span className="text-red-500 ml-0.5">*</span>
+          )}
         </label>
       )}
 

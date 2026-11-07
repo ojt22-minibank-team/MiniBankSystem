@@ -17,6 +17,17 @@ public interface StaffUsersRepository extends JpaRepository<StaffUsers, UUID> {
 
     boolean existsByEmailIgnoreCase(String email);
 
+    @Query("""
+            SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END
+            FROM StaffUsers s
+            WHERE LOWER(s.email) = LOWER(:email)
+              AND s.staffId <> :staffId
+            """)
+    boolean existsByEmailIgnoreCaseAndStaffIdNot(
+            @Param("email") String email,
+            @Param("staffId") UUID staffId
+    );
+
     boolean existsByPhone(String phone);
 
     @Query("""
@@ -71,4 +82,22 @@ public interface StaffUsersRepository extends JpaRepository<StaffUsers, UUID> {
     long countByStatus(com.corebanking.entity.enums.StaffUserStatus status);
 
     java.util.List<StaffUsers> findTop5ByOrderByCreatedAtDesc();
+
+    @Query("""
+            SELECT s, r
+            FROM StaffUsers s
+            LEFT JOIN StaffUserRoles sur ON sur.staffId = s.staffId
+            LEFT JOIN Roles r ON sur.roleId = r.roleId
+            ORDER BY s.createdAt DESC
+            """)
+    java.util.List<Object[]> findAllStaffWithRoles();
+
+    @Query("""
+            SELECT s, r
+            FROM StaffUsers s
+            LEFT JOIN StaffUserRoles sur ON sur.staffId = s.staffId
+            LEFT JOIN Roles r ON sur.roleId = r.roleId
+            WHERE s.staffId = :staffId
+            """)
+    java.util.List<Object[]> findStaffWithRoleById(@Param("staffId") UUID staffId);
 }
