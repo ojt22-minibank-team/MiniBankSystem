@@ -1,0 +1,180 @@
+
+{
+  "detail": {
+    "validation": {
+      "title": "Invalid Transaction",
+      "referenceMissing": "Transaction reference is missing.",
+      "accountMissing": "Account information is missing."
+    },
+    "returnToHistory": "Return to Transaction History",
+    "loading": "Loading transaction details...",
+    "errors": {
+      "title": "Unable to Load Transaction",
+      "invalidReference": "The transaction reference is invalid.",
+      "notFound": "Transaction not found.",
+      "sessionExpired": "Your session has expired. Please log in again.",
+      "connection": "Unable to connect to the server. Please check your connection.",
+      "unexpected": "An unexpected error occurred."
+    },
+    "retry": "Try Again"
+  },
+  "detailContent": {
+    "completedDateTime": "Completed Date & Time",
+    "initiatedDateTime": "Initiated Date & Time",
+    "transaction": "Transaction",
+    "companyCustomer": "Company Customer",
+    "customer": "Customer",
+    "account": "Account",
+    "savingsAccount": "Savings Account",
+    "dashboard": "Dashboard",
+    "transactionHistory": "Transaction History",
+    "transactionActivityDetail": "Transaction Activity Details",
+    "close": "Close",
+    "status": {
+      "success": "Success",
+      "completed": "Completed",
+      "failed": "Failed",
+      "rejected": "Rejected",
+      "cancelled": "Cancelled",
+      "reversed": "Reversed",
+      "pendingAuthorization": "Pending Authorization",
+      "onHold": "On Hold",
+      "initiated": "Initiated",
+      "held": "Held",
+      "unknown": "Unknown"
+    },
+    "actions": {
+      "shareReceiptTitle": "Share Receipt",
+      "sharing": "Sharing...",
+      "downloadPrintTitle": "Download / Print Receipt",
+      "downloadPdf": "Download PDF",
+      "copyReferenceTitle": "Copy Transaction Reference",
+      "copied": "Copied!",
+      "copyRef": "Copy Reference",
+      "printReceipt": "Print Receipt"
+    },
+    "share": {
+      "title": "Transaction Receipt",
+      "message": "Here is my transaction receipt."
+    },
+    "shareModal": {
+      "title": "Share Transaction Receipt",
+      "subtitle": "Share your transaction receipt securely.",
+      "close": "Close",
+      "previewAlt": "Transaction receipt preview",
+      "copiedNotice": "Copied to clipboard",
+      "imageCopied": "Receipt image copied successfully.",
+      "copyImage": "Copy Image",
+      "saved": "Saved successfully",
+      "saveImage": "Save Image",
+      "openChatApp": "Open Chat App",
+      "openTelegram": "Telegram",
+      "openViber": "Viber",
+      "openMessenger": "Messenger",
+      "openWhatsApp": "WhatsApp"
+    },
+    "messages": {
+      "reversed": "This transaction has been reversed.",
+      "refunded": "This transaction has been refunded.",
+      "failed": "This transaction failed.",
+      "rejected": "This transaction was rejected.",
+      "cancelled": "This transaction was cancelled.",
+      "pendingAuthorization": "This transaction is waiting for authorization.",
+      "onHold": "This transaction is currently on hold.",
+      "processing": "This transaction is being processed."
+    },
+    "labels": {
+      "reversalCode": "Reversal Code",
+      "referenceCode": "Reference Code",
+      "reasonCode": "Reason Code",
+      "cancellationCode": "Cancellation Code",
+      "transactionReference": "Transaction Reference",
+      "transactionType": "Transaction Type",
+      "amount": "Amount",
+      "serviceFee": "Service Fee",
+      "totalDebited": "Total Debited",
+      "status": "Status",
+      "note": "Note"
+    },
+    "parties": {
+      "fromOwnAccount": "From Own Account",
+      "fromSender": "From Sender",
+      "fromMyAccount": "From My Account",
+      "ownSourceAccount": "Own Source Account",
+      "externalSender": "External Sender",
+      "myAccount": "My Account",
+      "toOwnAccount": "To Own Account",
+      "toMyAccount": "To My Account",
+      "toRecipient": "To Recipient",
+      "ownDestinationAccount": "Own Destination Account",
+      "recipient": "Recipient",
+      "paidFrom": "Paid From",
+      "paidTo": "Paid To",
+      "verifiedMerchant": "Verified Merchant",
+      "commercialSettlement": "Commercial Settlement",
+      "creditedToAccount": "Credited to Account",
+      "creditedAccount": "Credited Account",
+      "debitedAccount": "Debited Account"
+    }
+  },
+  "history": {
+    "validation": {
+      "futureDates": "Future dates are not allowed.",
+      "dateRange": "The start date must be earlier than or equal to the end date.",
+      "minAmountNegative": "Minimum amount cannot be negative.",
+      "maxAmountNegative": "Maximum amount cannot be negative.",
+      "amountRange": "Minimum amount cannot be greater than maximum amount."
+    },
+    "errors": {
+      "loadFailed": "Failed to load transaction history."
+    },
+    "breadcrumb": "Transaction History",
+    "dashboard": "Dashboard",
+    "title": "Transaction History",
+    "description": "View and manage your account transaction history.",
+    "accountsError": {
+      "title": "Unable to Load Accounts",
+      "description": "We couldn't retrieve your account information. Please try again."
+    },
+    "tryAgain": "Try Again"
+  },
+  "filters": {
+    "title": "Filter Transactions",
+    "account": "Account",
+    "noActiveAccounts": "No active accounts",
+    "transactionType": "Transaction Type",
+    "allTypes": "All Types",
+    "status": "Status",
+    "allStatuses": "All Statuses",
+    "fromDate": "From Date",
+    "toDate": "To Date",
+    "amountRange": "Amount Range (MMK)",
+    "minimum": "Min",
+    "maximum": "Max",
+    "openCalendar": "Open calendar",
+    "openCalendarFor": "Open calendar for {{label}}",
+    "clear": "Clear Filters",
+    "applying": "Applying...",
+    "apply": "Apply Filters"
+  },
+  "pagination": {
+    "showing": "Showing {{start}} to {{end}} of {{total}} transactions",
+    "perPage": "Per page:",
+    "page": "Page {{current}} of {{total}}",
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "statusBadge": {
+    "ariaLabel": "Transaction status: {{status}}"
+  },
+  "table": {
+    "empty": {
+      "filteredTitle": "No transactions found matching your criteria.",
+      "filteredDescription": "Try modifying or clearing your filter criteria to see more transactions.",
+      "clearFilters": "Clear Filters",
+      "noHistoryTitle": "No transaction history is available for this account.",
+      "noHistoryDescription": "When transactions occur on this account, they will appear here."
+    },
+    "viewDetails": "View details for transaction {{reference}}, {{title}}"
+  }
+}

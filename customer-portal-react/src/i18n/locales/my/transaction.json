@@ -1,0 +1,180 @@
+
+{
+  "detail": {
+    "validation": {
+      "title": "ငွေလွှဲမှု အချက်အလက် မမှန်ကန်ပါ",
+      "referenceMissing": "ငွေလွှဲမှု Reference မရှိပါ။",
+      "accountMissing": "အကောင့်အချက်အလက် မရှိပါ။"
+    },
+    "returnToHistory": "ငွေလွှဲမှတ်တမ်းသို့ ပြန်သွားရန်",
+    "loading": "ငွေလွှဲမှုအသေးစိတ်ကို ရယူနေသည်...",
+    "errors": {
+      "title": "ငွေလွှဲမှုအချက်အလက် ရယူ၍မရပါ",
+      "invalidReference": "ငွေလွှဲမှု Reference မမှန်ကန်ပါ။",
+      "notFound": "ငွေလွှဲမှုကို ရှာမတွေ့ပါ။",
+      "sessionExpired": "သင်၏ Session သက်တမ်းကုန်ဆုံးသွားပါပြီ။ ပြန်လည်ဝင်ရောက်ပါ။",
+      "connection": "Server သို့ ချိတ်ဆက်၍မရပါ။ သင်၏ Internet Connection ကို စစ်ဆေးပါ။",
+      "unexpected": "မမျှော်လင့်ထားသော အမှားတစ်ခု ဖြစ်ပွားခဲ့သည်။"
+    },
+    "retry": "ထပ်မံကြိုးစားရန်"
+  },
+  "detailContent": {
+    "completedDateTime": "ပြီးဆုံးသည့် ရက်စွဲနှင့်အချိန်",
+    "initiatedDateTime": "စတင်သည့် ရက်စွဲနှင့်အချိန်",
+    "transaction": "ငွေလွှဲမှု",
+    "companyCustomer": "ကုမ္ပဏီဖောက်သည်",
+    "customer": "ဖောက်သည်",
+    "account": "အကောင့်",
+    "savingsAccount": "စုဆောင်းငွေအကောင့်",
+    "dashboard": "ပင်မစာမျက်နှာ",
+    "transactionHistory": "ငွေလွှဲမှတ်တမ်း",
+    "transactionActivityDetail": "ငွေလွှဲမှုအသေးစိတ်အချက်အလက်",
+    "close": "ပိတ်ရန်",
+    "status": {
+      "success": "အောင်မြင်သည်",
+      "completed": "ပြီးမြောက်သည်",
+      "failed": "မအောင်မြင်ပါ",
+      "rejected": "ငြင်းပယ်ခံရသည်",
+      "cancelled": "ပယ်ဖျက်ထားသည်",
+      "reversed": "ပြန်လည်ပယ်ဖျက်ထားသည်",
+      "pendingAuthorization": "အတည်ပြုရန် စောင့်ဆိုင်းနေသည်",
+      "onHold": "ဆိုင်းငံ့ထားသည်",
+      "initiated": "စတင်ထားသည်",
+      "held": "ဆိုင်းငံ့ထားသည်",
+      "unknown": "မသိရှိပါ"
+    },
+    "actions": {
+      "shareReceiptTitle": "ပြေစာမျှဝေရန်",
+      "sharing": "မျှဝေနေသည်...",
+      "downloadPrintTitle": "ပြေစာ Download / Print ပြုလုပ်ရန်",
+      "downloadPdf": "PDF Download ပြုလုပ်ရန်",
+      "copyReferenceTitle": "ငွေလွှဲမှု Reference ကူးယူရန်",
+      "copied": "ကူးယူပြီးပါပြီ!",
+      "copyRef": "Reference ကူးယူရန်",
+      "printReceipt": "ပြေစာ Print ထုတ်ရန်"
+    },
+    "share": {
+      "title": "ငွေလွှဲပြေစာ",
+      "message": "ကျွန်ုပ်၏ ငွေလွှဲပြေစာကို ကြည့်ရှုနိုင်ပါသည်။"
+    },
+    "shareModal": {
+      "title": "ငွေလွှဲပြေစာ မျှဝေရန်",
+      "subtitle": "သင်၏ ငွေလွှဲပြေစာကို လုံခြုံစွာ မျှဝေနိုင်ပါသည်။",
+      "close": "ပိတ်ရန်",
+      "previewAlt": "ငွေလွှဲပြေစာ နမူနာ",
+      "copiedNotice": "Clipboard သို့ ကူးယူပြီးပါပြီ",
+      "imageCopied": "ပြေစာပုံကို အောင်မြင်စွာ ကူးယူပြီးပါပြီ။",
+      "copyImage": "ပုံကူးယူရန်",
+      "saved": "အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ",
+      "saveImage": "ပုံသိမ်းဆည်းရန်",
+      "openChatApp": "Chat App ဖွင့်ရန်",
+      "openTelegram": "Telegram",
+      "openViber": "Viber",
+      "openMessenger": "Messenger",
+      "openWhatsApp": "WhatsApp"
+    },
+    "messages": {
+      "reversed": "ဤငွေလွှဲမှုကို ပြန်လည်ပယ်ဖျက်ထားပါသည်။",
+      "refunded": "ဤငွေလွှဲမှုအတွက် ငွေပြန်အမ်းထားပါသည်။",
+      "failed": "ဤငွေလွှဲမှု မအောင်မြင်ခဲ့ပါ။",
+      "rejected": "ဤငွေလွှဲမှုကို ငြင်းပယ်ထားပါသည်။",
+      "cancelled": "ဤငွေလွှဲမှုကို ပယ်ဖျက်ထားပါသည်။",
+      "pendingAuthorization": "ဤငွေလွှဲမှုသည် အတည်ပြုချက်ရရှိရန် စောင့်ဆိုင်းနေပါသည်။",
+      "onHold": "ဤငွေလွှဲမှုကို ယာယီဆိုင်းငံ့ထားပါသည်။",
+      "processing": "ဤငွေလွှဲမှုကို လုပ်ဆောင်နေပါသည်။"
+    },
+    "labels": {
+      "reversalCode": "ပြန်လည်ပယ်ဖျက်မှု ကုဒ်",
+      "referenceCode": "Reference ကုဒ်",
+      "reasonCode": "အကြောင်းပြချက် ကုဒ်",
+      "cancellationCode": "ပယ်ဖျက်မှု ကုဒ်",
+      "transactionReference": "ငွေလွှဲမှု Reference",
+      "transactionType": "ငွေလွှဲမှု အမျိုးအစား",
+      "amount": "ငွေပမာဏ",
+      "serviceFee": "ဝန်ဆောင်ခ",
+      "totalDebited": "စုစုပေါင်း နုတ်ယူငွေ",
+      "status": "အခြေအနေ",
+      "note": "မှတ်ချက်"
+    },
+    "parties": {
+      "fromOwnAccount": "မိမိအကောင့်မှ",
+      "fromSender": "ပေးပို့သူထံမှ",
+      "fromMyAccount": "ကျွန်ုပ်၏အကောင့်မှ",
+      "ownSourceAccount": "မိမိ၏ မူလအကောင့်",
+      "externalSender": "ပြင်ပမှ ပေးပို့သူ",
+      "myAccount": "ကျွန်ုပ်၏အကောင့်",
+      "toOwnAccount": "မိမိအကောင့်သို့",
+      "toMyAccount": "ကျွန်ုပ်၏အကောင့်သို့",
+      "toRecipient": "လက်ခံသူထံသို့",
+      "ownDestinationAccount": "မိမိ၏ လက်ခံအကောင့်",
+      "recipient": "လက်ခံသူ",
+      "paidFrom": "ငွေပေးချေသည့် အကောင့်",
+      "paidTo": "ငွေလက်ခံသည့် အကောင့်",
+      "verifiedMerchant": "အတည်ပြုပြီးသော ကုန်သည်",
+      "commercialSettlement": "စီးပွားရေးဆိုင်ရာ ငွေရှင်းလင်းမှု",
+      "creditedToAccount": "ငွေထည့်သွင်းသည့် အကောင့်",
+      "creditedAccount": "ငွေထည့်သွင်းထားသော အကောင့်",
+      "debitedAccount": "ငွေနုတ်ယူထားသော အကောင့်"
+    }
+  },
+  "history": {
+    "validation": {
+      "futureDates": "အနာဂတ်ရက်စွဲများကို ရွေးချယ်၍မရပါ။",
+      "dateRange": "စတင်ရက်စွဲသည် ပြီးဆုံးရက်စွဲထက် စောရမည် သို့မဟုတ် တူညီရမည်။",
+      "minAmountNegative": "အနည်းဆုံးငွေပမာဏသည် အနုတ်တန်ဖိုး မဖြစ်ရပါ။",
+      "maxAmountNegative": "အများဆုံးငွေပမာဏသည် အနုတ်တန်ဖိုး မဖြစ်ရပါ။",
+      "amountRange": "အနည်းဆုံးငွေပမာဏသည် အများဆုံးငွေပမာဏထက် မများရပါ။"
+    },
+    "errors": {
+      "loadFailed": "ငွေလွှဲမှတ်တမ်း ရယူ၍မရပါ။"
+    },
+    "breadcrumb": "ငွေလွှဲမှတ်တမ်း",
+    "dashboard": "ပင်မစာမျက်နှာ",
+    "title": "ငွေလွှဲမှတ်တမ်း",
+    "description": "သင်၏အကောင့် ငွေလွှဲမှတ်တမ်းများကို ကြည့်ရှုစီမံနိုင်ပါသည်။",
+    "accountsError": {
+      "title": "အကောင့်များ ရယူ၍မရပါ",
+      "description": "သင်၏အကောင့်အချက်အလက်များကို ရယူ၍မရပါ။ ထပ်မံကြိုးစားပါ။"
+    },
+    "tryAgain": "ထပ်မံကြိုးစားရန်"
+  },
+  "filters": {
+    "title": "ငွေလွှဲမှုများကို စစ်ထုတ်ရန်",
+    "account": "အကောင့်",
+    "noActiveAccounts": "အသုံးပြုနေသော အကောင့်မရှိပါ",
+    "transactionType": "ငွေလွှဲမှု အမျိုးအစား",
+    "allTypes": "အမျိုးအစားအားလုံး",
+    "status": "အခြေအနေ",
+    "allStatuses": "အခြေအနေအားလုံး",
+    "fromDate": "စတင်ရက်စွဲ",
+    "toDate": "ပြီးဆုံးရက်စွဲ",
+    "amountRange": "ငွေပမာဏ အပိုင်းအခြား (MMK)",
+    "minimum": "အနည်းဆုံး",
+    "maximum": "အများဆုံး",
+    "openCalendar": "ပြက္ခဒိန်ဖွင့်ရန်",
+    "openCalendarFor": "{{label}} အတွက် ပြက္ခဒိန်ဖွင့်ရန်",
+    "clear": "စစ်ထုတ်မှုများ ရှင်းလင်းရန်",
+    "applying": "အသုံးပြုနေသည်...",
+    "apply": "စစ်ထုတ်ရန်"
+  },
+  "pagination": {
+    "showing": "ငွေလွှဲမှု {{total}} ခုအနက် {{start}} မှ {{end}} အထိ ပြသနေသည်",
+    "perPage": "တစ်မျက်နှာလျှင်:",
+    "page": "စာမျက်နှာ {{current}} / {{total}}",
+    "previous": "ယခင်",
+    "next": "နောက်တစ်ခု"
+  },
+  "statusBadge": {
+    "ariaLabel": "ငွေလွှဲမှုအခြေအနေ - {{status}}"
+  },
+  "table": {
+    "empty": {
+      "filteredTitle": "သတ်မှတ်ထားသော စစ်ထုတ်မှုများနှင့် ကိုက်ညီသည့် ငွေလွှဲမှတ်တမ်း မတွေ့ရှိပါ။",
+      "filteredDescription": "ငွေလွှဲမှတ်တမ်းများ ထပ်မံကြည့်ရှုနိုင်ရန် စစ်ထုတ်မှုများကို ပြင်ဆင်ခြင်း သို့မဟုတ် ရှင်းလင်းခြင်း ပြုလုပ်ပါ။",
+      "clearFilters": "စစ်ထုတ်မှုများ ရှင်းလင်းရန်",
+      "noHistoryTitle": "ဤအကောင့်အတွက် ငွေလွှဲမှတ်တမ်း မရှိသေးပါ။",
+      "noHistoryDescription": "ဤအကောင့်တွင် ငွေလွှဲမှုများ ပြုလုပ်သည့်အခါ မှတ်တမ်းများကို ဤနေရာတွင် ဖော်ပြပေးပါမည်။"
+    },
+    "viewDetails": "ငွေလွှဲမှု {{reference}}၊ {{title}} ၏ အသေးစိတ်ကို ကြည့်ရန်"
+  }
+}
