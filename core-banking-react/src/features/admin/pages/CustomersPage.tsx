@@ -220,16 +220,18 @@ export default function CustomersPage() {
           </button>
 
           {/* Edit Profile Action */}
-          <button
-            onClick={() => handleOpenEdit(row)}
-            className="inline-flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50/80 px-2.5 py-1 text-xs font-semibold text-sky-700 shadow-xs hover:bg-sky-100 hover:border-sky-300 transition-all cursor-pointer"
-            title="Edit Customer Profile (Phone, Occupation, DOB)"
-          >
-            <svg className="h-3.5 w-3.5 text-sky-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            <span>Edit</span>
-          </button>
+          {isTeller && (
+            <button
+              onClick={() => handleOpenEdit(row)}
+              className="inline-flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50/80 px-2.5 py-1 text-xs font-semibold text-sky-700 shadow-xs hover:bg-sky-100 hover:border-sky-300 transition-all cursor-pointer"
+              title="Edit Customer Profile (Phone, Occupation, DOB)"
+            >
+              <svg className="h-3.5 w-3.5 text-sky-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              <span>Edit</span>
+            </button>
+          )}
         </div>
       ),
     },
@@ -504,16 +506,17 @@ export default function CustomersPage() {
           }}
           customer={selectedCustomer}
           isLoading={isDetailLoading}
-          onEdit={(cust: CustomerDetailResponse) => {
+          onEdit={isTeller ? ((cust: CustomerDetailResponse) => {
             setSelectedCustomer(null);
             setIsDetailModalOpen(false);
             setSelectedEditCustomer(cust);
             setIsEditModalOpen(true);
-          }}
+          }) : undefined}
         />
 
         {/* Customer Profile Edit Modal */}
-        <CustomerEditModal
+        {isTeller && (
+          <CustomerEditModal
           isOpen={isEditModalOpen}
           onClose={() => {
             setIsEditModalOpen(false);
@@ -524,6 +527,7 @@ export default function CustomersPage() {
             refresh();
           }}
         />
+        )}
       </div>
     </AdminLayout>
   );

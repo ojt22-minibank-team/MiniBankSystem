@@ -15,6 +15,7 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -69,6 +70,7 @@ public class AccountController {
 
     
     @PatchMapping("/{accountNumber}/status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TELLER')")
     public ResponseEntity<AccountResponseDTO> updateAccountStatus(
             @PathVariable String accountNumber,
             @Valid @RequestBody AccountStatusUpdateDTO dto) {
@@ -78,6 +80,7 @@ public class AccountController {
 
     
     @PostMapping("/{accountNumber}/joint-holders")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TELLER')")
     public ResponseEntity<AccountResponseDTO> addJointHolder(
             @PathVariable String accountNumber,
             @Valid @RequestBody JointHolderAddDTO dto) {

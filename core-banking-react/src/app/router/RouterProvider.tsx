@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from '../../features/auth/pages/LoginPage';
 import SignupPage from '../../features/auth/pages/SignupPage';
-import StaffPasswordSetupPage from '../../features/auth/pages/StaffPasswordSetupPage';
+// StaffPasswordSetupPage replaced by unified SignupPage
 import AdminDashboardPage from '../../features/admin/pages/AdminDashboardPage';
 import TellerDashboardPage from '../../features/teller/pages/TellerDashboardPage';
 import StaffListPage from '../../features/admin/pages/StaffListPage';
@@ -31,7 +31,7 @@ export default function RouterProvider() {
         <Route path="/register" element={<SignupPage />} />
         <Route path="/setup-password" element={<SignupPage />} />
         <Route path="/set-password" element={<SignupPage />} />
-        <Route path="/staff-setup" element={<StaffPasswordSetupPage />} />
+        <Route path="/staff-setup" element={<SignupPage />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
         {/* ========================================================
@@ -164,6 +164,99 @@ export default function RouterProvider() {
         />
 
         {/* ========================================================
+            Auditor Dedicated Routes (/auditor/*)
+           ======================================================== */}
+        <Route
+          path="/auditor/dashboard"
+          element={
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
+              <AdminDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditor/audit-logs"
+          element={
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
+              <AuditLogsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditor/reporting"
+          element={
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
+              <ReportingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditor/reports"
+          element={<Navigate to="/auditor/reporting" replace />}
+        />
+        <Route
+          path="/auditor/transactions"
+          element={
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
+              <TransactionDetailsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditor/transactions/:refOrId"
+          element={
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
+              <TransactionDetailsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditor/customers"
+          element={
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
+              <CustomersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditor/accounts"
+          element={
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
+              <AccountsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditor/announcements"
+          element={
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
+              <AnnouncementsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditor/system-rules"
+          element={
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
+              <SystemRulesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditor/profile"
+          element={
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditor"
+          element={<Navigate to="/auditor/dashboard" replace />}
+        />
+
+
+        {/* ========================================================
             Teller Dedicated Routes (/teller/*)
            ======================================================== */}
         {/* Teller Dashboard */}
@@ -236,7 +329,11 @@ export default function RouterProvider() {
 
         <Route
           path="/teller/profile"
-          element={<Navigate to="/teller/dashboard" replace />}
+          element={
+            <ProtectedRoute requiredRole="TELLER">
+              <ProfilePage />
+            </ProtectedRoute>
+          }
         />
 
         <Route

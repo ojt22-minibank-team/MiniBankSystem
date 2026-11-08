@@ -334,19 +334,21 @@ export default function AccountsPage() {
           >
             <span>Details</span>
           </button>
-          <button
-            onClick={() => {
-              setSelectedAccount(row);
-              setNewStatus(row.status);
-              setStatusReason('');
-              setStatusError(null);
-              setIsStatusModalOpen(true);
-            }}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-all cursor-pointer"
-            title="Update account status"
-          >
-            <span>Status</span>
-          </button>
+          {isTeller && (
+            <button
+              onClick={() => {
+                setSelectedAccount(row);
+                setNewStatus(row.status);
+                setStatusReason('');
+                setStatusError(null);
+                setIsStatusModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-all cursor-pointer"
+              title="Update account status"
+            >
+              <span>Status</span>
+            </button>
+          )}
         </div>
       ),
     },
@@ -637,8 +639,9 @@ export default function AccountsPage() {
         )}
 
         {/* Status Update Modal */}
-        <Modal
-          isOpen={isStatusModalOpen}
+        {isTeller && (
+          <Modal
+            isOpen={isStatusModalOpen}
           onClose={() => setIsStatusModalOpen(false)}
           title={`Update Account Status: ${selectedAccount?.accountNumber}`}
           size="md"
@@ -702,6 +705,7 @@ export default function AccountsPage() {
             </div>
           </div>
         </Modal>
+        )}
 
         {/* Account Creation Modal (Retail & Corporate) */}
         <AccountCreateModal

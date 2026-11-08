@@ -26,11 +26,30 @@ export default function SignupPage() {
   const [staffInfo, setStaffInfo] = useState<{ username?: string; email?: string }>({});
 
   // Common UI states
-  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [capsLockActive, setCapsLockActive] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // Live password policy criteria checks
+  const isLengthValid = staffPassword.length >= 6 && staffPassword.length <= 16;
+  const isUpperValid = /[A-Z]/.test(staffPassword);
+  const isSpecialValid = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(staffPassword);
+  const isNoUsername =
+    !staffInfo.username ||
+    staffInfo.username.trim().length < 2 ||
+    !staffPassword.toLowerCase().includes(staffInfo.username.trim().toLowerCase());
+  const isNoGmail = !staffPassword.toLowerCase().includes('gmail');
+  const isNoEmail =
+    !staffInfo.email ||
+    staffInfo.email.trim().length < 3 ||
+    (!staffPassword.toLowerCase().includes(staffInfo.email.trim().toLowerCase()) &&
+      !staffPassword.toLowerCase().includes(staffInfo.email.trim().split('@')[0].toLowerCase()));
+  const isIdentityValid = isNoUsername && isNoGmail && isNoEmail;
+  const isMatching =
+    staffConfirmPassword.length > 0 && staffPassword === staffConfirmPassword;
 
   // Validate setup token immediately on page load
   useEffect(() => {
@@ -230,16 +249,6 @@ export default function SignupPage() {
                   </div>
                 )}
 
-                {/* Password Policy Box */}
-                <div className="mb-5 rounded-xl border border-amber-200/80 bg-amber-50/80 p-3 text-xs text-amber-950 flex items-start gap-2.5 shadow-xs">
-                  <svg className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                  <p className="text-[11px] leading-relaxed text-amber-900">
-                    Password must be <strong>6–16 characters</strong> with at least <strong>1 uppercase letter</strong> and <strong>1 special character</strong>. Cannot contain your username or Gmail.
-                  </p>
-                </div>
-
                 {/* Error Alert */}
                 {apiError && (
                   <div
@@ -268,66 +277,173 @@ export default function SignupPage() {
                 )}
 
                 <form onSubmit={handleStaffSubmit} noValidate className="space-y-4">
-                  {/* Password & Confirm */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  {/* New Password Field */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label
+                        htmlFor="staff-new-password"
+                        className="block text-xs font-bold text-slate-700 uppercase tracking-wider"
+                      >
                         New Password
                       </label>
+                      {capsLockActive && (
+                        <span className="text-[10px] font-bold text-amber-600 animate-pulse">
+                          CAPS LOCK IS ACTIVE
+                        </span>
+                      )}
+                    </div>
+                    <div className="relative">
                       <input
-                        type={showPassword ? 'text' : 'password'}
+                        id="staff-new-password"
+                        type={showNewPassword ? 'text' : 'password'}
                         value={staffPassword}
                         onChange={(e) => {
-                          setStaffPassword(e.target.value);
-                          if (fieldErrors.staffPassword) setFieldErrors((err) => ({ ...err, staffPassword: '' }));
+                          const val = e.target.value;
+                          setStaffPassword(val);
+                          if (fieldErrors.staffPassword) {
+                            setFieldErrors((prev) => ({ ...prev, staffPassword: '' }));
+                          }
+                          if (staffConfirmPassword && fieldErrors.staffConfirmPassword && val === staffConfirmPassword) {
+                            setFieldErrors((prev) => ({ ...prev, staffConfirmPassword: '' }));
+                          }
                         }}
                         onKeyDown={handleKeyDown}
-                        placeholder="6-16 characters"
-                        className="w-full rounded-xl border border-slate-300 bg-white py-2.5 px-3.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#c5a028] focus:ring-2 focus:ring-[#c5a028]/20 transition-all"
+                        placeholder="Enter secure password (6–16 characters)"
+                        disabled={isLoading}
+                        autoComplete="new-password"
+                        className={`w-full rounded-xl border ${
+                          fieldErrors.staffPassword
+                            ? 'border-red-400 bg-red-50/30 text-red-900 focus:border-red-500 focus:ring-red-200'
+                            : 'border-slate-200 bg-slate-50/70 text-slate-900 focus:border-[#dfba61] focus:ring-[#dfba61]/20'
+                        } px-4 py-3 pr-11 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-4 transition-all`}
                       />
-                      {fieldErrors.staffPassword && (
-                        <p className="mt-1 text-xs text-red-600">{fieldErrors.staffPassword}</p>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        disabled={isLoading}
+                        className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                        aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showNewPassword ? (
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                          </svg>
+                        ) : (
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        )}
+                      </button>
                     </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                        Confirm Password
-                      </label>
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        value={staffConfirmPassword}
-                        onChange={(e) => {
-                          setStaffConfirmPassword(e.target.value);
-                          if (fieldErrors.staffConfirmPassword) setFieldErrors((err) => ({ ...err, staffConfirmPassword: '' }));
-                        }}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Re-enter password"
-                        className="w-full rounded-xl border border-slate-300 bg-white py-2.5 px-3.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#c5a028] focus:ring-2 focus:ring-[#c5a028]/20 transition-all"
-                      />
-                      {fieldErrors.staffConfirmPassword && (
-                        <p className="mt-1 text-xs text-red-600">{fieldErrors.staffConfirmPassword}</p>
-                      )}
-                    </div>
+                    {fieldErrors.staffPassword && (
+                      <p className="mt-1 text-[11px] font-semibold text-red-600">
+                        {fieldErrors.staffPassword}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Show password checkbox */}
-                  <div className="flex items-center justify-between pt-0.5">
-                    <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-600">
+                  {/* Confirm Password Field */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label
+                        htmlFor="staff-confirm-password"
+                        className="block text-xs font-bold text-slate-700 uppercase tracking-wider"
+                      >
+                        Confirm Password
+                      </label>
+                    </div>
+                    <div className="relative">
                       <input
-                        type="checkbox"
-                        checked={showPassword}
-                        onChange={(e) => setShowPassword(e.target.checked)}
-                        className="h-3.5 w-3.5 rounded border-slate-300 text-[#caa13b] focus:ring-[#caa13b]/30 accent-[#caa13b]"
+                        id="staff-confirm-password"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={staffConfirmPassword}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setStaffConfirmPassword(val);
+                          if (fieldErrors.staffConfirmPassword) {
+                            setFieldErrors((prev) => ({ ...prev, staffConfirmPassword: '' }));
+                          }
+                        }}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Re-enter your password to confirm"
+                        disabled={isLoading}
+                        autoComplete="new-password"
+                        className={`w-full rounded-xl border ${
+                          fieldErrors.staffConfirmPassword
+                            ? 'border-red-400 bg-red-50/30 text-red-900 focus:border-red-500 focus:ring-red-200'
+                            : 'border-slate-200 bg-slate-50/70 text-slate-900 focus:border-[#dfba61] focus:ring-[#dfba61]/20'
+                        } px-4 py-3 pr-11 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-4 transition-all`}
                       />
-                      <span>Show passwords</span>
-                    </label>
-                    {capsLockActive && (
-                      <span className="text-xs text-amber-700 font-medium">Caps Lock is ON</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        disabled={isLoading}
+                        className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                        aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showConfirmPassword ? (
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                          </svg>
+                        ) : (
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                    {fieldErrors.staffConfirmPassword && (
+                      <p className="mt-1 text-[11px] font-semibold text-red-600">
+                        {fieldErrors.staffConfirmPassword}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Real-time Password Security Criteria Checklist */}
+                  <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-3.5 space-y-2">
+                    <p className="font-semibold text-slate-700 text-[11px] uppercase tracking-wider">
+                      Security Policy Criteria
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                      <div className={`flex items-center gap-2 transition-colors ${isLengthValid ? 'text-emerald-700 font-semibold' : 'text-slate-500'}`}>
+                        <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] shrink-0 ${isLengthValid ? 'bg-emerald-100 text-emerald-700 font-bold' : 'bg-slate-200 text-slate-400'}`}>
+                          {isLengthValid ? '✓' : '•'}
+                        </span>
+                        <span>6–16 characters</span>
+                      </div>
+                      <div className={`flex items-center gap-2 transition-colors ${isUpperValid ? 'text-emerald-700 font-semibold' : 'text-slate-500'}`}>
+                        <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] shrink-0 ${isUpperValid ? 'bg-emerald-100 text-emerald-700 font-bold' : 'bg-slate-200 text-slate-400'}`}>
+                          {isUpperValid ? '✓' : '•'}
+                        </span>
+                        <span>1+ Uppercase (A-Z)</span>
+                      </div>
+                      <div className={`flex items-center gap-2 transition-colors ${isSpecialValid ? 'text-emerald-700 font-semibold' : 'text-slate-500'}`}>
+                        <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] shrink-0 ${isSpecialValid ? 'bg-emerald-100 text-emerald-700 font-bold' : 'bg-slate-200 text-slate-400'}`}>
+                          {isSpecialValid ? '✓' : '•'}
+                        </span>
+                        <span>1+ Special character</span>
+                      </div>
+                      <div className={`flex items-center gap-2 transition-colors ${isIdentityValid ? 'text-emerald-700 font-semibold' : 'text-slate-500'}`}>
+                        <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] shrink-0 ${isIdentityValid ? 'bg-emerald-100 text-emerald-700 font-bold' : 'bg-slate-200 text-slate-400'}`}>
+                          {isIdentityValid ? '✓' : '•'}
+                        </span>
+                        <span>No username or Gmail</span>
+                      </div>
+                    </div>
+                    {staffConfirmPassword && (
+                      <div className={`pt-2 border-t border-slate-200/60 flex items-center gap-2 text-[11px] transition-colors ${isMatching ? 'text-emerald-700 font-semibold' : 'text-red-600'}`}>
+                        <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] shrink-0 ${isMatching ? 'bg-emerald-100 text-emerald-700 font-bold' : 'bg-red-100 text-red-600 font-bold'}`}>
+                          {isMatching ? '✓' : '✕'}
+                        </span>
+                        <span>{isMatching ? 'Passwords match' : 'Passwords do not match'}</span>
+                      </div>
                     )}
                   </div>
 
                   {/* Submit button */}
-                  <div className="pt-3">
+                  <div className="pt-2">
                     <button
                       type="submit"
                       disabled={isLoading}
