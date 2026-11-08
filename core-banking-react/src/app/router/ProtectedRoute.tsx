@@ -2,6 +2,7 @@ import { type ReactNode, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { forceLogout } from '../../features/auth/authSlice';
+import { clearBankingMemoryCache } from '../../hooks/useBankingData';
 import type { AppDispatch } from '../../lib/redux';
 import { useAuth } from '../../features/auth/hooks/useAuth';
 
@@ -17,6 +18,7 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
 
   useEffect(() => {
     const handleLogoutSync = () => {
+      clearBankingMemoryCache();
       dispatch(forceLogout());
       navigate('/login', { replace: true });
     };
@@ -57,19 +59,12 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
     });
   })();
 
-  useEffect(() => {
-    if (isAuthenticated && !hasRole) {
-      dispatch(forceLogout());
-      navigate('/login', { replace: true });
-    }
-  }, [isAuthenticated, hasRole, dispatch, navigate]);
-
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
   if (!hasRole) {
-    return null;
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return <>{children}</>;

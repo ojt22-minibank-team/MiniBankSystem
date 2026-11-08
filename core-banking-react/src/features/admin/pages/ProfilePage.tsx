@@ -7,9 +7,10 @@ import type { AxiosError } from 'axios';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { STORAGE_KEYS } from '../../../config/api.config';
 import ekarajCrown from '../../../assets/ekaraj-crown-transparent.png';
+import { formatDateTime } from '../../../utils/formatDate';
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, isAuditor, isTeller, isAdmin } = useAuth();
   const [staff, setStaff] = useState<StaffResponse | null>(() => {
     try {
       const cached = sessionStorage.getItem(STORAGE_KEYS.STAFF_PROFILE);
@@ -204,29 +205,41 @@ export default function ProfilePage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
           <div>
             <h2 className="text-2xl sm:text-[28px] font-black text-[#1E1B4B] tracking-tight flex items-center gap-2.5">
-              <span>Admin Profile & Security Settings</span>
+              <span>
+                {isAuditor
+                  ? 'Auditor Profile & Security'
+                  : isTeller
+                  ? 'Teller Profile & Operational Identity'
+                  : 'Admin Profile & Security Settings'}
+              </span>
               <span className="status-pill-purple text-[10px] uppercase font-bold tracking-wider">
                 {roleDisplayName}
               </span>
             </h2>
             <p className="mt-0.5 text-xs sm:text-sm text-zinc-500 font-medium">
-              Ekaraj Bank Core Banking RBAC Identity: Manage administrative credentials, contact details, and account security
+              {isAuditor
+                ? 'Ekaraj Bank Core Banking RBAC Identity: Review compliance oversight credentials and contact details'
+                : isTeller
+                ? 'Ekaraj Bank Core Banking RBAC Identity: Front-counter teller credentials, cash operations, and contact details'
+                : 'Ekaraj Bank Core Banking RBAC Identity: Manage administrative credentials, contact details, and account security'}
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <button
-              type="button"
-              disabled={!staff || isLoading}
-              onClick={() => setIsResetPasswordModalOpen(true)}
-              className="btn-liquid-gold px-5 py-2 text-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              <svg className="h-4 w-4 text-[#1E1B4B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-              </svg>
-              <span>Reset Password</span>
-            </button>
-          </div>
+          {isAdmin && (
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <button
+                type="button"
+                disabled={!staff || isLoading}
+                onClick={() => setIsResetPasswordModalOpen(true)}
+                className="btn-liquid-gold px-5 py-2 text-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <svg className="h-4 w-4 text-[#1E1B4B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+                <span>Reset Password</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── Success Toast Alert ─────────────────────────────────── */}
@@ -588,7 +601,7 @@ export default function ProfilePage() {
                       Account Registered On
                     </span>
                     <p className="text-xs font-medium text-zinc-600 mt-1 font-mono">
-                      {staff?.createdAt ? new Date(staff.createdAt).toLocaleString() : 'System Genesis'}
+                      {staff?.createdAt ? formatDateTime(staff.createdAt) : 'System Genesis'}
                     </p>
                   </div>
 
@@ -597,7 +610,7 @@ export default function ProfilePage() {
                       Last Updated
                     </span>
                     <p className="text-xs font-medium text-zinc-600 mt-1 font-mono">
-                      {staff?.updatedAt ? new Date(staff.updatedAt).toLocaleString() : 'Recently'}
+                      {staff?.updatedAt ? formatDateTime(staff.updatedAt) : 'Recently'}
                     </p>
                   </div>
                 </div>
@@ -607,61 +620,171 @@ export default function ProfilePage() {
             {/* Actionable Privileges & Oversight Scope */}
             <div className="liquid-glass-card rounded-3xl p-6 sm:p-7 border border-white/90">
               <h3 className="text-base font-black text-[#1E1B4B] tracking-tight mb-1">
-                Administrative Permissions & System Authority
+                {isAuditor
+                  ? 'Compliance Permissions & Oversight Scope'
+                  : isTeller
+                  ? 'Operational Permissions & Counter Scope'
+                  : 'Administrative Permissions & System Authority'}
               </h3>
               <p className="text-xs text-zinc-500 font-medium mb-4">
-                Assigned RBAC privileges associated with your administrator credential
+                {isAuditor
+                  ? 'Assigned RBAC compliance and auditing privileges associated with your auditor credential'
+                  : isTeller
+                  ? 'Assigned RBAC banking counter and customer service privileges associated with your teller credential'
+                  : 'Assigned RBAC privileges associated with your administrator credential'}
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/70 border border-purple-950/5">
-                  <div className="h-6 w-6 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 font-bold">
-                    ✓
+              {isAuditor ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/70 border border-purple-950/5">
+                    <div className="h-6 w-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 font-bold">
+                      ✓
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800">Complete Audit Trail Oversight</p>
+                      <p className="text-zinc-500 text-[11px] mt-0.5">
+                        Verify cryptographic non-repudiation event logs across all staff actions.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-bold text-slate-800">Staff Personnel Administration</p>
-                    <p className="text-zinc-500 text-[11px] mt-0.5">
-                      Provision tellers, cashiers, auditors; manage role assignments and account lifecycles.
-                    </p>
-                  </div>
-                </div>
 
-                <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/70 border border-purple-950/5">
-                  <div className="h-6 w-6 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center shrink-0 font-bold">
-                    ✓
+                  <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/70 border border-purple-950/5">
+                    <div className="h-6 w-6 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center shrink-0 font-bold">
+                      ✓
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800">Operational & Ledger Analytics</p>
+                      <p className="text-zinc-500 text-[11px] mt-0.5">
+                        Inspect daily ledger movements, cash flows, and system transaction summaries.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-bold text-slate-800">Financial Rules & Fee Parameters</p>
-                    <p className="text-zinc-500 text-[11px] mt-0.5">
-                      Configure dynamic interest thresholds, fee schedules, and global overdraft limits.
-                    </p>
-                  </div>
-                </div>
 
-                <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/70 border border-purple-950/5">
-                  <div className="h-6 w-6 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 font-bold">
-                    ✓
+                  <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/70 border border-purple-950/5">
+                    <div className="h-6 w-6 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 font-bold">
+                      ✓
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800">Transaction Support Inspection</p>
+                      <p className="text-zinc-500 text-[11px] mt-0.5">
+                        Search and review any customer transfer or OTC deposit details for compliance.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-bold text-slate-800">Operational Analytics & Reports</p>
-                    <p className="text-zinc-500 text-[11px] mt-0.5">
-                      Inspect vault balances, KYC compliance metrics, liquidity ratios, and transactional velocity.
-                    </p>
-                  </div>
-                </div>
 
-                <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/70 border border-purple-950/5">
-                  <div className="h-6 w-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 font-bold">
-                    ✓
-                  </div>
-                  <div>
-                    <p className="font-bold text-slate-800">Complete Audit Trail Oversight</p>
-                    <p className="text-zinc-500 text-[11px] mt-0.5">
-                      Verify cryptographic non-repudiation event logs across all staff actions.
-                    </p>
+                  <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/70 border border-purple-950/5">
+                    <div className="h-6 w-6 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 font-bold">
+                      ✓
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800">Customer & Account Auditing</p>
+                      <p className="text-zinc-500 text-[11px] mt-0.5">
+                        Read-only inspection of customer profiles, statuses, and joint holders.
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : isTeller ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/70 border border-purple-950/5">
+                    <div className="h-6 w-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 font-bold">
+                      ✓
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800">Over-The-Counter (OTC) Operations</p>
+                      <p className="text-zinc-500 text-[11px] mt-0.5">
+                        Execute manual cash deposits, withdrawals, and ledger adjustments with audit notes.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/70 border border-purple-950/5">
+                    <div className="h-6 w-6 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center shrink-0 font-bold">
+                      ✓
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800">Customer Profile Management</p>
+                      <p className="text-zinc-500 text-[11px] mt-0.5">
+                        Create customer profiles, update contact details, and verify identity credentials.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/70 border border-purple-950/5">
+                    <div className="h-6 w-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 font-bold">
+                      ✓
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800">Account Lifecycle Operations</p>
+                      <p className="text-zinc-500 text-[11px] mt-0.5">
+                        Process new account approvals, open accounts, and update account operational statuses.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/70 border border-purple-950/5">
+                    <div className="h-6 w-6 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 font-bold">
+                      ✓
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800">Transaction Support & Overrides</p>
+                      <p className="text-zinc-500 text-[11px] mt-0.5">
+                        Inspect customer transfers, flag suspicious activity, and release held transactions.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/70 border border-purple-950/5">
+                    <div className="h-6 w-6 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 font-bold">
+                      ✓
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800">Staff Personnel Administration</p>
+                      <p className="text-zinc-500 text-[11px] mt-0.5">
+                        Provision tellers, cashiers, auditors; manage role assignments and account lifecycles.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/70 border border-purple-950/5">
+                    <div className="h-6 w-6 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center shrink-0 font-bold">
+                      ✓
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800">Financial Rules & Fee Parameters</p>
+                      <p className="text-zinc-500 text-[11px] mt-0.5">
+                        Configure dynamic interest thresholds, fee schedules, and global overdraft limits.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/70 border border-purple-950/5">
+                    <div className="h-6 w-6 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 font-bold">
+                      ✓
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800">Operational Analytics & Reports</p>
+                      <p className="text-zinc-500 text-[11px] mt-0.5">
+                        Inspect vault balances, KYC compliance metrics, liquidity ratios, and transactional velocity.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 rounded-2xl bg-white/70 border border-purple-950/5">
+                    <div className="h-6 w-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 font-bold">
+                      ✓
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800">Complete Audit Trail Oversight</p>
+                      <p className="text-zinc-500 text-[11px] mt-0.5">
+                        Verify cryptographic non-repudiation event logs across all staff actions.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -673,14 +796,24 @@ export default function ProfilePage() {
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                   Authority Scope
                 </span>
-                <span className="status-pill-amber text-[10px]">Tier 1 Admin</span>
+                <span className={isTeller ? 'status-pill-emerald text-[10px]' : 'status-pill-amber text-[10px]'}>
+                  {isAuditor ? 'Compliance Auditor' : isTeller ? 'Bank Teller / Cashier' : 'Tier 1 Admin'}
+                </span>
               </div>
               <div className="mt-3 space-y-1">
                 <p className="text-lg font-bold text-slate-900">
-                  Full Oversight
+                  {isAuditor
+                    ? 'Audit & Compliance Oversight'
+                    : isTeller
+                    ? 'Front-Counter Branch Operations'
+                    : 'Full Oversight'}
                 </p>
                 <p className="text-xs text-zinc-500 font-medium">
-                  Rules, Personnel, OTC, Analytics
+                  {isAuditor
+                    ? 'Immutable Logs, Ledgers, Reports'
+                    : isTeller
+                    ? 'OTC Deposits, Customer Accounts, Approvals'
+                    : 'Rules, Personnel, OTC, Analytics'}
                 </p>
               </div>
             </div>
@@ -695,10 +828,10 @@ export default function ProfilePage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-[#1E1B4B] tracking-tight">
-                    Credential & Password Control
+                    {!isAdmin ? 'Credential Status' : 'Credential & Password Control'}
                   </h3>
                   <p className="text-[11px] text-zinc-500 font-medium">
-                    Self-service credential maintenance
+                    {!isAdmin ? 'Account authentication status' : 'Self-service credential maintenance'}
                   </p>
                 </div>
               </div>
@@ -720,21 +853,38 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <p className="text-xs text-zinc-600 leading-relaxed mb-5">
-                Triggering a password reset will generate an encrypted, single-use authentication token link sent to your registered email address.
-              </p>
+              {isAdmin ? (
+                <>
+                  <p className="text-xs text-zinc-600 leading-relaxed mb-5">
+                    Triggering a password reset will generate an encrypted, single-use authentication token link sent to your registered email address.
+                  </p>
 
-              <button
-                type="button"
-                disabled={!staff || isLoading}
-                onClick={() => setIsResetPasswordModalOpen(true)}
-                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-3 text-xs font-bold text-white shadow-md shadow-amber-500/20 hover:from-amber-600 hover:to-amber-700 transition-all cursor-pointer disabled:opacity-50"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                </svg>
-                <span>Issue Password Reset Link</span>
-              </button>
+                  <button
+                    type="button"
+                    disabled={!staff || isLoading}
+                    onClick={() => setIsResetPasswordModalOpen(true)}
+                    className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-3 text-xs font-bold text-white shadow-md shadow-amber-500/20 hover:from-amber-600 hover:to-amber-700 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                    </svg>
+                    <span>Issue Password Reset Link</span>
+                  </button>
+                </>
+              ) : (
+                <div className="rounded-2xl bg-slate-100/80 border border-slate-200/80 p-3.5 text-xs text-slate-600 flex items-start gap-2.5">
+                  <svg className="h-4 w-4 text-slate-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="leading-relaxed">
+                    {isAuditor
+                      ? 'Auditor credential maintenance and password resets are managed directly by a System Administrator.'
+                      : isTeller
+                      ? 'Bank Teller credential maintenance and password resets are managed directly by a System Administrator.'
+                      : 'Staff credential maintenance and password resets are managed directly by a System Administrator.'}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Quick Security Tips */}
@@ -758,15 +908,17 @@ export default function ProfilePage() {
       </div>
 
       {/* ── Modals Reused from Staff Action Center ──────────────── */}
-      <StaffResetPasswordModal
-        isOpen={isResetPasswordModalOpen}
-        onClose={() => setIsResetPasswordModalOpen(false)}
-        staff={staff}
-        onSuccess={() => {
-          loadProfile();
-          handleShowSuccess('Password reset link issued successfully.');
-        }}
-      />
+      {isAdmin && (
+        <StaffResetPasswordModal
+          isOpen={isResetPasswordModalOpen}
+          onClose={() => setIsResetPasswordModalOpen(false)}
+          staff={staff}
+          onSuccess={() => {
+            loadProfile();
+            handleShowSuccess('Password reset link issued successfully.');
+          }}
+        />
+      )}
       </AdminLayout>
   );
 }

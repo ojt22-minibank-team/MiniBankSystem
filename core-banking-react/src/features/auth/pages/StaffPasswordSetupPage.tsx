@@ -5,6 +5,7 @@ import type { AppDispatch } from '../../../lib/redux';
 import { forceLogout, broadcastLogout } from '../authSlice';
 import { authApi } from '../../../services/apiClient';
 import Input from '../../../components/common/Input';
+import { validatePasswordPolicy } from '../../../utils/validation';
 import hirokiEmblem from '../../../assets/hiroki-emblem.png';
 import hirokiHeroCard from '../../../assets/hiroki-hero-card.png';
 import type { AxiosError } from 'axios';
@@ -14,13 +15,69 @@ export default function StaffPasswordSetupPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const [token, setToken] = useState(() => searchParams.get('token') || '');
+  const [token] = useState(() => searchParams.get('token') || '');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  // Token validation state
+  const [isValidatingToken, setIsValidatingToken] = useState(true);
+  const [isTokenValid, setIsTokenValid] = useState(false);
+  const [staffInfo, setStaffInfo] = useState<{ username?: string; email?: string }>({});
+
+  // Validate setup token immediately on page load
+  useEffect(() => {
+    let isMounted = true;
+    const checkToken = async () => {
+      if (!token.trim()) {
+        if (isMounted) {
+          setIsValidatingToken(false);
+          setIsTokenValid(false);
+          setApiError('Setup token is missing. Please use the activation link sent to your email.');
+        }
+        return;
+      }
+
+      setIsValidatingToken(true);
+      setApiError(null);
+      try {
+        const response = await authApi.validatePasswordSetupToken(token.trim());
+        if (isMounted) {
+          if (response.data.valid) {
+            setIsTokenValid(true);
+            setStaffInfo({
+              username: response.data.username,
+              email: response.data.email,
+            });
+          } else {
+            setIsTokenValid(false);
+            setApiError('This password setup link is invalid or expired.');
+          }
+        }
+      } catch (err) {
+        if (isMounted) {
+          const error = err as AxiosError<{ message?: string }>;
+          setIsTokenValid(false);
+          setApiError(
+            error.response?.data?.message ||
+              'This password setup link is invalid, expired, or has already been used.'
+          );
+        }
+      } finally {
+        if (isMounted) {
+          setIsValidatingToken(false);
+        }
+      }
+    };
+
+    checkToken();
+    return () => {
+      isMounted = false;
+    };
+  }, [token]);
 
   // Manage the 3-second redirect timer cleanly after successful setup
   useEffect(() => {
@@ -34,13 +91,15 @@ export default function StaffPasswordSetupPage() {
 
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
-    if (!token.trim()) {
-      errors.token = 'Setup token is required.';
+    if (!token.trim() || !isTokenValid) {
+      errors.token = 'Setup token is invalid or missing.';
     }
-    if (!newPassword) {
-      errors.newPassword = 'Password is required.';
-    } else if (newPassword.length < 8 || newPassword.length > 72) {
-      errors.newPassword = 'Password must be between 8 and 72 characters.';
+    const pwdError = validatePasswordPolicy(newPassword, {
+      username: staffInfo.username,
+      email: staffInfo.email,
+    });
+    if (pwdError) {
+      errors.newPassword = pwdError;
     }
     if (!confirmPassword) {
       errors.confirmPassword = 'Confirmation password is required.';
@@ -135,8 +194,38 @@ export default function StaffPasswordSetupPage() {
               </p>
             </div>
 
-            {/* Success State */}
-            {isSuccess ? (
+            {/* Token Validating Loading State */}
+            {isValidatingToken ? (
+              <div className="py-16 text-center space-y-3">
+                <div className="mx-auto h-9 w-9 animate-spin rounded-full border-3 border-[#c69f4b] border-t-transparent" />
+                <p className="text-sm font-semibold text-stone-700">Verifying activation token...</p>
+                <p className="text-xs text-stone-400">Please wait while we validate your setup credentials.</p>
+              </div>
+            ) : !isTokenValid ? (
+              /* Invalid or Expired Token State */
+              <div className="py-8 space-y-5 animate-in fade-in duration-300">
+                <div className="rounded-2xl border border-red-200 bg-red-50/80 p-6 text-center">
+                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600">
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-base font-bold text-red-900">Invalid or Expired Link</h3>
+                  <p className="mt-1.5 text-xs text-red-700 leading-relaxed max-w-sm mx-auto">
+                    {apiError || 'This password setup link is invalid, expired, or has already been used. Please contact your system administrator.'}
+                  </p>
+                </div>
+                <div className="text-center pt-2">
+                  <Link
+                    to="/login"
+                    className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl text-xs font-bold text-stone-700 bg-stone-100 hover:bg-stone-200 transition-colors"
+                  >
+                    ← Return to Login
+                  </Link>
+                </div>
+              </div>
+            ) : isSuccess ? (
+              /* Success State */
               <div className="text-center py-8">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-50 border border-amber-300 text-[#b88c3a] shadow-md shadow-amber-900/10 animate-in zoom-in-95 duration-200">
                   <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -157,7 +246,16 @@ export default function StaffPasswordSetupPage() {
                 </div>
               </div>
             ) : (
+              /* Valid Token: Form State */
               <form onSubmit={handleSubmit} noValidate className="space-y-4">
+                {/* User Info Badge */}
+                {staffInfo.username && (
+                  <div className="rounded-xl border border-amber-200/80 bg-amber-50/60 p-3 text-xs text-amber-950 flex items-center justify-between">
+                    <span className="font-semibold">Account: <span className="text-[#9e7b44]">{staffInfo.username}</span></span>
+                    {staffInfo.email && <span className="text-stone-500 text-[11px]">{staffInfo.email}</span>}
+                  </div>
+                )}
+
                 {/* Server Error Alert */}
                 {apiError && (
                   <div
@@ -173,40 +271,22 @@ export default function StaffPasswordSetupPage() {
                 )}
 
                 {/* Helpful Guidance Pill in Warm Gold */}
-                <div className="rounded-xl bg-amber-50/90 border border-amber-200/80 p-3 text-xs text-amber-950 flex items-center gap-2.5 shadow-sm">
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100/90 text-[#b88c3a]">
+                <div className="rounded-xl bg-amber-50/90 border border-amber-200/80 p-3 text-xs text-amber-950 flex items-start gap-2.5 shadow-sm">
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100/90 text-[#b88c3a] mt-0.5">
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                   </div>
-                  <span>Please configure a permanent password (8–72 characters) for your staff account.</span>
+                  <span className="text-[11px] leading-relaxed">
+                    Password must be <strong>6–16 characters</strong> with at least <strong>1 uppercase letter</strong> and <strong>1 special character</strong>. Cannot contain your username or Gmail.
+                  </span>
                 </div>
-
-                {/* Setup Token */}
-                <Input
-                  label="Setup Token"
-                  id="token"
-                  placeholder="Paste security setup token"
-                  value={token}
-                  onChange={(e) => {
-                    setToken(e.target.value);
-                    if (fieldErrors.token) setFieldErrors({ ...fieldErrors, token: '' });
-                  }}
-                  error={fieldErrors.token}
-                  disabled={isLoading}
-                  required
-                  leadingIcon={
-                    <svg className="h-5 w-5 text-amber-800/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
-                    </svg>
-                  }
-                />
 
                 {/* New Password */}
                 <Input
                   label="New Password"
                   id="new-password"
-                  placeholder="Minimum 8 characters"
+                  placeholder="6–16 chars, 1 uppercase, 1 special char"
                   value={newPassword}
                   onChange={(e) => {
                     setNewPassword(e.target.value);
@@ -258,58 +338,45 @@ export default function StaffPasswordSetupPage() {
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                       </svg>
                     )}
-                    <span>{isLoading ? 'Activating Account...' : 'Set Password & Activate'}</span>
+                    <span>{isLoading ? 'Activating Credentials...' : 'Set Staff Password'}</span>
                   </button>
                 </div>
-
-                {/* Back to Login Link */}
-                <p className="pt-2 text-center text-xs text-stone-500">
-                  Already activated?{' '}
-                  <Link
-                    to="/login"
-                    className="font-semibold text-[#8c672b] hover:text-[#b88c3a] hover:underline transition-colors"
-                  >
-                    Sign in to your account
-                  </Link>
-                </p>
               </form>
             )}
           </div>
 
           {/* Secure Footer Note */}
-          <div className="mt-8 pt-5 border-t border-amber-100/80 flex items-center justify-between text-[11px] text-stone-400">
-            <span className="flex items-center gap-1.5 text-stone-500">
-              <span className="inline-block h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-              Hiroki Gold Standard Security • Active
-            </span>
-            <span className="flex items-center gap-1 font-mono text-stone-400">
-              <svg className="h-3 w-3 text-amber-600/70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          <div className="mt-8 pt-4 border-t border-amber-100/60 flex items-center justify-between text-xs text-stone-400">
+            <span>Hiroki Banking System v2.4</span>
+            <span className="flex items-center gap-1.5 text-[11px] text-amber-700 font-medium">
+              <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 2a4 4 0 00-4 4v2H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-1V6a4 4 0 00-4-4zm2 6V6a2 2 0 10-4 0v2h4zm-2 5a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
               </svg>
-              TLS 1.3 • 256-bit Encrypted
+              TLS 1.3 · 256-bit Encrypted
             </span>
           </div>
         </div>
 
         {/* ============================================================ */}
-        {/* RIGHT COLUMN: Static Luxury Glass Showcase                   */}
+        {/* RIGHT COLUMN: Full Image Cover View                          */}
         {/* ============================================================ */}
-        <div className="hidden lg:col-span-6 lg:flex relative overflow-hidden p-8 items-center justify-center">
-          {/* Card Container (Clean, Crisp & Still) */}
-          <div className="relative w-full h-full max-h-[640px] rounded-[32px] overflow-hidden shadow-[0_20px_50px_-15px_rgba(180,135,60,0.22)] border border-amber-100/70">
-            {/* The Silk & Glassmorphism Showcase Hero Image */}
+        <div className="hidden lg:col-span-6 lg:flex relative p-8 items-center justify-center bg-stone-100/40">
+          <div className="relative w-full h-full max-h-[580px] rounded-[28px] overflow-hidden shadow-[0_20px_50px_-10px_rgba(180,135,60,0.3)] border border-amber-200/50">
             <img
               src={hirokiHeroCard}
-              alt="Hiroki Banking Showcase"
-              className="w-full h-full object-cover object-center pointer-events-none select-none"
+              alt="Hiroki Secure Workspace"
+              className="w-full h-full object-cover object-center select-none"
             />
-
-            {/* Breathing Golden Ambient Backlight behind the 3D Crest Logo */}
-            <div className="animate-gold-backlight absolute top-[27%] left-1/2 -translate-x-1/2 -translate-y-1/2 h-56 w-56 rounded-full bg-gradient-to-r from-amber-400/50 via-yellow-300/60 to-amber-500/50 pointer-events-none mix-blend-screen" />
-            <div className="animate-gold-backlight absolute top-[27%] left-1/2 -translate-x-1/2 -translate-y-1/2 h-36 w-36 rounded-full bg-gradient-to-r from-amber-200/70 via-yellow-100/80 to-amber-300/70 pointer-events-none mix-blend-screen blur-md" />
-
-            {/* Crisp Glass Inner Border Highlight with Warm Gold Accent */}
-            <div className="absolute inset-0 rounded-[32px] ring-1 ring-inset ring-amber-200/40 pointer-events-none" />
+            {/* Subtle Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-stone-900/60 via-transparent to-transparent pointer-events-none" />
+            <div className="absolute bottom-6 left-6 right-6 text-white pointer-events-none">
+              <p className="text-xs font-semibold tracking-wider uppercase text-amber-300">
+                Verified Staff Security
+              </p>
+              <p className="text-sm font-medium text-white/90 mt-1">
+                Robust credential protection and cryptographic session isolation.
+              </p>
+            </div>
           </div>
         </div>
       </div>

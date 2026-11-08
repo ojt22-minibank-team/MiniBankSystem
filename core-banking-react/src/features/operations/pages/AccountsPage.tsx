@@ -12,6 +12,7 @@ import { formatDate } from '../../../utils/formatDate';
 import type { AxiosError } from 'axios';
 import AccountCreateModal from '../components/AccountCreateModal';
 import AccountDetailModal from '../components/AccountDetailModal';
+import { useAuth } from '../../auth/hooks/useAuth';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10;
@@ -35,6 +36,7 @@ function formatCompactNumber(amount: number): string {
 }
 
 export default function AccountsPage() {
+  const { isTeller } = useAuth();
   // ── Parallel Data Fetching & SWR In-Memory Cache (Sub-3s SLA) ─────────────
   const {
     accounts: bankingAccounts,
@@ -255,7 +257,7 @@ export default function AccountsPage() {
     },
     {
       key: 'accountType',
-      header: 'Product',
+      header: 'Type',
       render: (row: AccountResponse) => (
         <span className="rounded-md bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
           {row.accountType}
@@ -332,19 +334,21 @@ export default function AccountsPage() {
           >
             <span>Details</span>
           </button>
-          <button
-            onClick={() => {
-              setSelectedAccount(row);
-              setNewStatus(row.status);
-              setStatusReason('');
-              setStatusError(null);
-              setIsStatusModalOpen(true);
-            }}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-all cursor-pointer"
-            title="Update account status"
-          >
-            <span>Status</span>
-          </button>
+          {isTeller && (
+            <button
+              onClick={() => {
+                setSelectedAccount(row);
+                setNewStatus(row.status);
+                setStatusReason('');
+                setStatusError(null);
+                setIsStatusModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-all cursor-pointer"
+              title="Update account status"
+            >
+              <span>Status</span>
+            </button>
+          )}
         </div>
       ),
     },
@@ -383,16 +387,18 @@ export default function AccountsPage() {
               </svg>
               <span>Refresh</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setIsCreateAccountModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 text-xs font-semibold shadow-xs transition-all duration-200 ease-in-out hover:-translate-y-0.5 cursor-pointer"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              <span>Open New Account</span>
-            </button>
+            {isTeller && (
+              <button
+                type="button"
+                onClick={() => setIsCreateAccountModalOpen(true)}
+                className="inline-flex items-center gap-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 text-xs font-semibold shadow-xs transition-all duration-200 ease-in-out hover:-translate-y-0.5 cursor-pointer"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Open New Account</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -633,8 +639,9 @@ export default function AccountsPage() {
         )}
 
         {/* Status Update Modal */}
-        <Modal
-          isOpen={isStatusModalOpen}
+        {isTeller && (
+          <Modal
+            isOpen={isStatusModalOpen}
           onClose={() => setIsStatusModalOpen(false)}
           title={`Update Account Status: ${selectedAccount?.accountNumber}`}
           size="md"
@@ -698,6 +705,7 @@ export default function AccountsPage() {
             </div>
           </div>
         </Modal>
+        )}
 
         {/* Account Creation Modal (Retail & Corporate) */}
         <AccountCreateModal

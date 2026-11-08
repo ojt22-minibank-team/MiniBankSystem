@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from '../../features/auth/pages/LoginPage';
 import SignupPage from '../../features/auth/pages/SignupPage';
-import StaffPasswordSetupPage from '../../features/auth/pages/StaffPasswordSetupPage';
+// StaffPasswordSetupPage replaced by unified SignupPage
 import AdminDashboardPage from '../../features/admin/pages/AdminDashboardPage';
 import TellerDashboardPage from '../../features/teller/pages/TellerDashboardPage';
 import StaffListPage from '../../features/admin/pages/StaffListPage';
@@ -15,11 +15,14 @@ import ReportingPage from '../../features/reporting/pages/ReportingPage';
 import AuditLogsPage from '../../features/audit-logs/pages/AuditLogsPage';
 import TransactionDetailsPage from '../../features/transactions/pages/TransactionDetailsPage';
 import ProtectedRoute from './ProtectedRoute';
+import UnauthorizedPage from '../../components/common/UnauthorizedPage';
+import SessionTimeoutProvider from '../providers/SessionTimeoutProvider';
 
 export default function RouterProvider() {
   return (
     <BrowserRouter>
-      <Routes>
+      <SessionTimeoutProvider>
+        <Routes>
         {/* ========================================================
             Public Authentication Routes
            ======================================================== */}
@@ -28,8 +31,8 @@ export default function RouterProvider() {
         <Route path="/register" element={<SignupPage />} />
         <Route path="/setup-password" element={<SignupPage />} />
         <Route path="/set-password" element={<SignupPage />} />
-        <Route path="/staff-setup" element={<StaffPasswordSetupPage />} />
-        <Route path="/unauthorized" element={<Navigate to="/login" replace />} />
+        <Route path="/staff-setup" element={<SignupPage />} />
+        <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
         {/* ========================================================
             Admin & Auditor Routes (/admin/*)
@@ -161,6 +164,99 @@ export default function RouterProvider() {
         />
 
         {/* ========================================================
+            Auditor Dedicated Routes (/auditor/*)
+           ======================================================== */}
+        <Route
+          path="/auditor/dashboard"
+          element={
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
+              <AdminDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditor/audit-logs"
+          element={
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
+              <AuditLogsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditor/reporting"
+          element={
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
+              <ReportingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditor/reports"
+          element={<Navigate to="/auditor/reporting" replace />}
+        />
+        <Route
+          path="/auditor/transactions"
+          element={
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
+              <TransactionDetailsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditor/transactions/:refOrId"
+          element={
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
+              <TransactionDetailsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditor/customers"
+          element={
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
+              <CustomersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditor/accounts"
+          element={
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
+              <AccountsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditor/announcements"
+          element={
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
+              <AnnouncementsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditor/system-rules"
+          element={
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
+              <SystemRulesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditor/profile"
+          element={
+            <ProtectedRoute requiredRole={['ADMIN', 'AUDITOR']}>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/auditor"
+          element={<Navigate to="/auditor/dashboard" replace />}
+        />
+
+
+        {/* ========================================================
             Teller Dedicated Routes (/teller/*)
            ======================================================== */}
         {/* Teller Dashboard */}
@@ -233,7 +329,11 @@ export default function RouterProvider() {
 
         <Route
           path="/teller/profile"
-          element={<Navigate to="/teller/dashboard" replace />}
+          element={
+            <ProtectedRoute requiredRole="TELLER">
+              <ProfilePage />
+            </ProtectedRoute>
+          }
         />
 
         <Route
@@ -247,6 +347,7 @@ export default function RouterProvider() {
         {/* 404 fallback */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
+      </SessionTimeoutProvider>
     </BrowserRouter>
   );
 }

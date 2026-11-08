@@ -6,6 +6,7 @@ import com.corebanking.dto.DailyLedgerSummaryDTO;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.*;
+import net.sf.jasperreports.engine.util.JRLoader;
 import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import net.sf.jasperreports.engine.export.JRCsvExporter;
 import net.sf.jasperreports.engine.export.ooxml.JRXlsxExporter;
@@ -35,8 +36,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class JasperReportService {
 
     public static final String LOGO_PATH = "reports/assets/logo.png";
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
     private final Map<String, JasperReport> reportCache = new ConcurrentHashMap<>();
     private volatile byte[] cachedLogoBytes;
@@ -59,7 +60,8 @@ public class JasperReportService {
                 "balance_bracket_subreport",
                 "audit_trail_log",
                 "fee_revenue_report",
-                "large_transaction_report"
+                "large_transaction_report",
+                "transaction_detail_report"
         );
         for (String template : templates) {
             try {
@@ -79,7 +81,7 @@ public class JasperReportService {
             return;
         }
         try {
-            ClassPathResource resource = new ClassPathResource(LOGO_PATH);
+            ClassPathResource resource = new ClassPathResource(LOGO_PATH, JasperReportService.class.getClassLoader());
             if (resource.exists()) {
                 try (InputStream is = resource.getInputStream()) {
                     this.cachedLogoBytes = is.readAllBytes();
@@ -97,14 +99,37 @@ public class JasperReportService {
      * Compiles and caches a JRXML template by name.
      */
     public JasperReport getCompiledReport(String reportName) {
-        String cleanName = reportName.replace("reports/", "").replace(".jrxml", "");
+        String cleanName = reportName.replace("reports/", "").replace(".jrxml", "").replace(".jasper", "");
         return reportCache.computeIfAbsent(cleanName, name -> {
-            String path = "reports/" + name + ".jrxml";
-            log.info("Compiling JasperReports template: {}", path);
-            try (InputStream in = new ClassPathResource(path).getInputStream()) {
-                return JasperCompileManager.compileReport(in);
+            ClassLoader serviceClassLoader = JasperReportService.class.getClassLoader();
+
+            // 1. Try loading precompiled .jasper first (zero-compilation, rock-solid in production JARs)
+            String jasperPath = "reports/" + name + ".jasper";
+            try {
+                ClassPathResource jasperRes = new ClassPathResource(jasperPath, serviceClassLoader);
+                if (jasperRes.exists()) {
+                    try (InputStream in = jasperRes.getInputStream()) {
+                        log.info("Loaded precompiled JasperReport: {}", jasperPath);
+                        return (JasperReport) JRLoader.loadObject(in);
+                    }
+                }
+            } catch (Exception ex) {
+                log.warn("Could not load precompiled report {}: {}. Falling back to .jrxml", jasperPath, ex.getMessage());
+            }
+
+            // 2. Fallback to compiling .jrxml
+            String jrxmlPath = "reports/" + name + ".jrxml";
+            log.info("Compiling JasperReports template: {}", jrxmlPath);
+            try (InputStream in = new ClassPathResource(jrxmlPath, serviceClassLoader).getInputStream()) {
+                ClassLoader originalCl = Thread.currentThread().getContextClassLoader();
+                try {
+                    Thread.currentThread().setContextClassLoader(serviceClassLoader);
+                    return JasperCompileManager.compileReport(in);
+                } finally {
+                    Thread.currentThread().setContextClassLoader(originalCl);
+                }
             } catch (Exception e) {
-                log.error("Failed to compile JasperReport template: {}", path, e);
+                log.error("Failed to compile JasperReport template: {}", jrxmlPath, e);
                 throw new IllegalStateException("Could not load report template: " + name, e);
             }
         });

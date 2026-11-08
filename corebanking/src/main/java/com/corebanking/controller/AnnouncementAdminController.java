@@ -19,7 +19,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin/announcements")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
 public class AnnouncementAdminController {
 
 
@@ -32,6 +31,7 @@ public class AnnouncementAdminController {
     // =====================================================
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AnnouncementResponse> createAnnouncement(
             @Valid @RequestBody AnnouncementCreateRequest request,
             Authentication authentication) {
@@ -55,6 +55,7 @@ public class AnnouncementAdminController {
     // =====================================================
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUDITOR')")
     public ResponseEntity<List<AnnouncementResponse>>
     getAllAnnouncements() {
 
@@ -70,6 +71,7 @@ public class AnnouncementAdminController {
     // =====================================================
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUDITOR')")
     public ResponseEntity<AnnouncementResponse>
     getAnnouncementById(
             @PathVariable Integer id
@@ -87,6 +89,7 @@ public class AnnouncementAdminController {
     // =====================================================
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AnnouncementResponse> updateAnnouncement(
             @PathVariable Integer id,
             @Valid @RequestBody AnnouncementUpdateRequest request,
@@ -112,6 +115,7 @@ public class AnnouncementAdminController {
     // =====================================================
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String>
     deleteAnnouncement(
             @PathVariable Integer id
@@ -131,6 +135,7 @@ public class AnnouncementAdminController {
     // =====================================================
 
     @PatchMapping("/{id}/deactivate")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AnnouncementResponse>
     deactivateAnnouncement(
             @PathVariable Integer id,
@@ -154,6 +159,7 @@ public class AnnouncementAdminController {
     // DELETE /api/admin/announcements/{id}/soft-delete
     // =====================================================
     @DeleteMapping("/{id}/soft-delete")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> softDeleteAnnouncement(
             @PathVariable Integer id
     ) {
@@ -166,6 +172,7 @@ public class AnnouncementAdminController {
     // DELETE /api/admin/announcements/bulk-soft-delete-expired
     // =====================================================
     @DeleteMapping("/bulk-soft-delete-expired")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> bulkDeleteExpiredAnnouncements() {
         announcementService.bulkDeleteExpiredAnnouncements();
         return ResponseEntity.noContent().build();

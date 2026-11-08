@@ -72,6 +72,7 @@ export interface StaffTransactionDetail {
   amount: number;
   serviceFee: number;
   totalDebited: number;
+  netCreditAmount?: number | null;
   currency: string;
 
   sourceAccountId: string | null;

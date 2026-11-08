@@ -192,7 +192,7 @@
                 <textElement textAlignment="Left" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="7"/>
                 </textElement>
-                <textFieldExpression><![CDATA[$F{createdAt} != null ? $F{createdAt}.toString().replace("T", " ") : ""]]></textFieldExpression>
+                <textFieldExpression><![CDATA[$F{createdAt} != null ? ($F{createdAt} instanceof java.time.LocalDateTime ? ((java.time.LocalDateTime)$F{createdAt}).format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")) : ($F{createdAt} instanceof java.time.temporal.TemporalAccessor ? java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").format((java.time.temporal.TemporalAccessor)$F{createdAt}) : $F{createdAt}.toString().replace("T", " "))) : ""]]></textFieldExpression>
             </textField>
             <textField isBlankWhenNull="true">
                 <reportElement x="120" y="0" width="50" height="18" forecolor="#334155" uuid="b2233445-0001-4000-8000-000000000022"/>

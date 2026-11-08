@@ -7,6 +7,7 @@ import com.corebanking.dto.BalanceBracketDTO;
 import com.corebanking.dto.DailyLedgerSummaryDTO;
 import com.corebanking.dto.FeeRevenueItemDTO;
 import com.corebanking.dto.LargeTransactionItemDTO;
+import com.corebanking.dto.TransactionDetailReportDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -168,6 +169,93 @@ class JasperReportServiceTest {
                         "EndDate", "2026-09-30",
                         "Threshold", "10000000",
                         "TxType", "OTC_DEPOSIT"
+                ));
+
+        assertThat(pdfBytes).isNotEmpty();
+        String header = new String(pdfBytes, 0, 5, StandardCharsets.US_ASCII);
+        assertThat(header).isEqualTo("%PDF-");
+    }
+
+    @Test
+    @DisplayName("Should compile and generate Transaction Detail Report PDF using JasperReports")
+    void testTransactionDetailPdfGeneration() {
+        TransactionDetailReportDTO dto = TransactionDetailReportDTO.builder()
+                .ref("TX-100200")
+                .date(LocalDateTime.of(2026, 9, 15, 12, 30, 0))
+                .amount(new BigDecimal("250000.00"))
+                .fee(new BigDecimal("250.00"))
+                .sourceAccount("1001000001")
+                .destAccount("1001000002")
+                .status("COMPLETED")
+                .channel("MOBILE")
+                .currency("MMK")
+                .build();
+
+        byte[] pdfBytes = jasperReportService.exportToPdf(
+                "reports/transaction_detail_report.jrxml",
+                List.of(dto),
+                java.util.Map.of(
+                        "StartDate", "2026-09-01",
+                        "EndDate", "2026-09-30",
+                        "Status", "COMPLETED",
+                        "Type", "ALL",
+                        "Channel", "MOBILE"
+                ));
+
+        assertThat(pdfBytes).isNotEmpty();
+        String header = new String(pdfBytes, 0, 5, StandardCharsets.US_ASCII);
+        assertThat(header).isEqualTo("%PDF-");
+    }
+
+    @Test
+    @DisplayName("Should generate Transaction Detail Report PDF with empty rows without error")
+    void testTransactionDetailPdfEmptyRows() {
+        byte[] pdfBytes = jasperReportService.exportToPdf(
+                "reports/transaction_detail_report.jrxml",
+                java.util.Collections.emptyList(),
+                java.util.Map.of(
+                        "StartDate", "2026-09-01",
+                        "EndDate", "2026-09-30",
+                        "Status", "ALL",
+                        "Type", "ALL",
+                        "Channel", "ALL"
+                ));
+
+        assertThat(pdfBytes).isNotEmpty();
+        String header = new String(pdfBytes, 0, 5, StandardCharsets.US_ASCII);
+        assertThat(header).isEqualTo("%PDF-");
+    }
+
+    @Test
+    @DisplayName("Should generate Transaction Detail Report PDF with nulls and 5000 rows without error")
+    void testTransactionDetailPdfWithNullsAndLargeDataset() {
+        java.util.List<TransactionDetailReportDTO> list = new java.util.ArrayList<>();
+        for (int i = 0; i < 5000; i++) {
+            list.add(TransactionDetailReportDTO.builder()
+                    .ref(i % 5 == 0 ? null : "TX-" + i)
+                    .date(i % 7 == 0 ? null : LocalDateTime.now())
+                    .amount(i % 3 == 0 ? null : new BigDecimal("1000.50"))
+                    .fee(i % 4 == 0 ? null : new BigDecimal("10.00"))
+                    .sourceAccount(i % 6 == 0 ? null : "ACC-" + i)
+                    .destAccount(null)
+                    .status("COMPLETED")
+                    .channel("MOBILE")
+                    .currency("MMK")
+                    .build());
+        }
+
+        // test with subList
+        java.util.List<TransactionDetailReportDTO> sub = list.subList(0, 5000);
+
+        byte[] pdfBytes = jasperReportService.exportToPdf(
+                "reports/transaction_detail_report.jrxml",
+                sub,
+                java.util.Map.of(
+                        "StartDate", "ALL",
+                        "EndDate", "ALL",
+                        "Status", "ALL",
+                        "Type", "ALL",
+                        "Channel", "ALL"
                 ));
 
         assertThat(pdfBytes).isNotEmpty();

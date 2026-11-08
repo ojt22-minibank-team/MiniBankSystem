@@ -1,5 +1,4 @@
 import axiosInstance from '../lib/axios';
-import { STORAGE_KEYS } from '../config/api.config';
 import type {
   DailyLedgerSummary,
   AccountStatusReport,
@@ -11,20 +10,12 @@ import type {
 
 const BASE = '/api/v1/reports';
 
-function authHeaders(): Record<string, string> {
-  const token =
-    localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN) ||
-    localStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 export async function fetchDailyLedgerSummary(
   params: LedgerFilterParams
 ): Promise<DailyLedgerSummary[]> {
   const res = await axiosInstance.get<DailyLedgerSummary[]>(
     `${BASE}/daily-ledger-summary`,
     {
-      headers: authHeaders(),
       params: {
         startDate: params.startDate,
         endDate: params.endDate,
@@ -41,7 +32,6 @@ export async function fetchAccountStatusSummary(
   const res = await axiosInstance.get<AccountStatusReport>(
     `${BASE}/account-status-summary`,
     {
-      headers: authHeaders(),
       params: {
         startDate: params.startDate,
         endDate: params.endDate,
@@ -58,7 +48,6 @@ export async function fetchAuditTrailLogs(
   const res = await axiosInstance.get<AuditTrailPage>(
     `${BASE}/audit-trail-logs`,
     {
-      headers: authHeaders(),
       params: {
         staffId: params.staffId || undefined,
         actionType: params.actionType || undefined,
@@ -89,7 +78,6 @@ export async function exportDailyLedger(
   format: 'csv' | 'excel' | 'pdf'
 ): Promise<void> {
   const res = await axiosInstance.get(`${BASE}/daily-ledger-summary/export`, {
-    headers: authHeaders(),
     params: {
       startDate: params.startDate,
       endDate: params.endDate,
@@ -107,7 +95,6 @@ export async function exportAccountStatus(
   format: 'csv' | 'excel' | 'pdf'
 ): Promise<void> {
   const res = await axiosInstance.get(`${BASE}/account-status-summary/export`, {
-    headers: authHeaders(),
     params: {
       startDate: params.startDate,
       endDate: params.endDate,
@@ -125,7 +112,6 @@ export async function exportAuditTrail(
   format: 'csv' | 'excel' | 'pdf'
 ): Promise<void> {
   const res = await axiosInstance.get(`${BASE}/audit-trail-logs/export`, {
-    headers: authHeaders(),
     params: {
       staffId: params.staffId || undefined,
       actionType: params.actionType || undefined,

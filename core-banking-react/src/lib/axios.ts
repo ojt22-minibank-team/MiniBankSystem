@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { API_BASE_URL, API_ENDPOINTS, STORAGE_KEYS } from '../config/api.config';
 import { updateTokens, forceLogout, broadcastLogout } from '../features/auth/authSlice';
+import { clearBankingMemoryCache } from '../hooks/useBankingData';
 
 let store: any;
 
@@ -29,11 +30,12 @@ const axiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: 30000,
+  withCredentials: true,
 });
 
-// ============================================================++++
-// Request interceptor — attach JWT access token from localStorage
-// ============================================================++++
+// ============================================================
+// Request interceptor — attach JWT access token from sessionStorage
+// ============================================================
 
 axiosInstance.interceptors.request.use(
   (config) => {
@@ -61,8 +63,7 @@ axiosInstance.interceptors.response.use(
     }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      
-      // တကယ်လို့ Refresh လုပ်နေတုန်း တခြား API တွေ 401 တက်လာရင် Queue ထဲမှာ စောင့်ခိုင်းထားမယ်
+      // If a refresh is already in flight, queue incoming requests
       if (isRefreshing) {
         return new Promise(function (resolve, reject) {
           failedQueue.push({ resolve, reject });
@@ -82,13 +83,11 @@ axiosInstance.interceptors.response.use(
       try {
         const refreshToken = sessionStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
 
-        if (!refreshToken) {
-          throw new Error('No refresh token available');
-        }
-
+        // Uses withCredentials: true so that the HttpOnly 'cb_refresh_token' cookie is transmitted
         const response = await axios.post(
           `${API_BASE_URL}${API_ENDPOINTS.AUTH.REFRESH}`,
-          { refreshToken }
+          refreshToken ? { refreshToken } : {},
+          { withCredentials: true }
         );
 
         const { accessToken, refreshToken: newRefreshToken } = response.data.data || response.data;
@@ -97,26 +96,22 @@ axiosInstance.interceptors.response.use(
           store.dispatch(
             updateTokens({
               accessToken,
-              refreshToken: newRefreshToken || refreshToken,
+              refreshToken: newRefreshToken || refreshToken || undefined,
             })
           );
         } else {
           sessionStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
-          if (newRefreshToken) {
-            sessionStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
-          }
         }
 
-        
         processQueue(null, accessToken);
 
         originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
         return axiosInstance(originalRequest);
       } catch (refreshError) {
-        
         processQueue(refreshError, null);
+        clearBankingMemoryCache();
         broadcastLogout();
-        
+
         if (store) {
           store.dispatch(forceLogout());
         } else {
@@ -128,7 +123,7 @@ axiosInstance.interceptors.response.use(
         window.location.href = '/login';
         return Promise.reject(refreshError);
       } finally {
-        isRefreshing = false; 
+        isRefreshing = false;
       }
     }
 

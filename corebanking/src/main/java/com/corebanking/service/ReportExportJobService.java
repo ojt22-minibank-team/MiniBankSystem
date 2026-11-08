@@ -95,7 +95,16 @@ public class ReportExportJobService {
         log.info("Submitted export job {} for report {} in format {}", jobId, safeReportType, safeFormat);
 
         // Process in background worker thread
-        CompletableFuture.runAsync(() -> processExportAsync(jobId));
+        ClassLoader appClassLoader = getClass().getClassLoader();
+        CompletableFuture.runAsync(() -> {
+            ClassLoader originalCl = Thread.currentThread().getContextClassLoader();
+            try {
+                Thread.currentThread().setContextClassLoader(appClassLoader);
+                processExportAsync(jobId);
+            } finally {
+                Thread.currentThread().setContextClassLoader(originalCl);
+            }
+        });
 
         return toDto(record);
     }

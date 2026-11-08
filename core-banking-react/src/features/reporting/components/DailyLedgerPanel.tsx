@@ -6,6 +6,7 @@ import DataTable, { type Column } from './DataTable';
 import ExportButtons from './ExportButtons';
 import { ExportNotificationBanner } from './ExportNotificationBanner';
 import { useAsyncExport } from '../hooks/useAsyncExport';
+import { formatDate } from '../../../utils/formatDate';
 
 interface Props {
   startDate: string;
@@ -124,7 +125,11 @@ const DailyLedgerPanel: React.FC<Props> = ({
         </span>
       ),
     },
-    { key: 'reportDate', label: 'Date' },
+    {
+      key: 'reportDate',
+      label: 'Date',
+      render: (r: DailyLedgerSummary) => formatDate(r.reportDate),
+    },
     { key: 'transactionCount', label: 'Count' },
     {
       key: 'totalAmount',

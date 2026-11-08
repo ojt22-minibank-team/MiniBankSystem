@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toBlob } from "html-to-image";
 import {
@@ -28,8 +28,10 @@ import {
 } from "../types/transactionHistoryTypes";
 import TransactionStatusBadge from "./TransactionStatusBadge";
 import TransferReceiptView from "../../../transfer/components/TransferReceiptView";
+import { PaymentReceipt } from "../../../merchant-payment/components/PaymentReceipt";
 import { EkarajCrown } from "../../../../components/common/EkarajLogo";
 import { mapHistoryItemToTransferReceiptData } from "../utils/transactionReceiptAdapter";
+import { mapHistoryItemToPaymentReceiptProps } from "../utils/merchantReceiptAdapter";
 import { useAppDispatch, useAppSelector } from "../../../../lib/redux";
 import { fetchMyAccounts } from "../../accounts/stores/accountsSlice";
 
@@ -145,6 +147,8 @@ export default function TransactionDetailContent({
   const { t } = useTranslation("transaction");
 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const routeAccountNumber = searchParams.get("accountNumber");
   const dispatch = useAppDispatch();
   const profile = useAppSelector((state) => state.profile?.profile);
   const userAccounts = useAppSelector((state) => state.accounts?.accounts);
@@ -415,10 +419,27 @@ export default function TransactionDetailContent({
 
   const isOutgoing = transaction.direction === "OUT";
   const serviceFeeNum = Number(transaction.serviceFee || 0);
-  const totalDebitedNum =
-    isOutgoing && isCompleted
-      ? Number(transaction.amount || 0) + serviceFeeNum
-      : null;
+  const totalDebitedNum = isOutgoing && isCompleted ? Number(transaction.amount || 0) + (isExternalPayment ? 0 : serviceFeeNum) : null;
+
+  // For COMPLETED EXTERNAL_PAYMENT, reuse the official PaymentReceipt
+  if (isCompleted && isExternalPayment) {
+    const fallbackAccNo =
+      transaction.sourceAccountNumber?.trim() ||
+      routeAccountNumber?.trim() ||
+      "";
+    const receiptProps = mapHistoryItemToPaymentReceiptProps(transaction, fallbackAccNo);
+
+    return (
+      <div className="w-full max-w-xl mx-auto print:max-w-none print:m-0">
+        <PaymentReceipt
+          receipt={receiptProps.receipt}
+          details={receiptProps.details}
+          selectedAccount={receiptProps.selectedAccount}
+          onClose={onBack}
+        />
+      </div>
+    );
+  }
 
   if (isCompleted && (isInternalTransfer || isDeposit || isWithdrawal)) {
     const isCompany =
@@ -445,7 +466,7 @@ export default function TransactionDetailContent({
       availBal != null
         ? isDeposit
           ? Math.max(0, availBal - Number(transaction.amount || 0))
-          : availBal + Number(transaction.amount || 0) + Number(transaction.serviceFee || 0)
+          : availBal + Number(transaction.amount || 0) + (isExternalPayment ? 0 : Number(transaction.serviceFee || 0))
         : null;
 
     const receiptData = mapHistoryItemToTransferReceiptData(transaction, {
@@ -995,7 +1016,8 @@ export default function TransactionDetailContent({
               </span>
             </div>
 
-            {transaction.direction !== "IN" && (
+            {/* Service Fee: Only shown for sender / outgoing transactions, hidden for recipient */}
+            {transaction.direction !== "IN" && !isExternalPayment && (
               <div className="flex justify-between items-center py-1 border-b border-slate-100">
                 <span className="text-slate-500 font-medium">
                   {t("detailContent.labels.serviceFee")}
