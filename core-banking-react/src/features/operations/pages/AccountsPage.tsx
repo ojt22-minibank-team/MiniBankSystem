@@ -36,7 +36,7 @@ function formatCompactNumber(amount: number): string {
 }
 
 export default function AccountsPage() {
-  const { isTeller, isAuditor } = useAuth();
+  const { isTeller } = useAuth();
   // ── Parallel Data Fetching & SWR In-Memory Cache (Sub-3s SLA) ─────────────
   const {
     accounts: bankingAccounts,
@@ -334,7 +334,7 @@ export default function AccountsPage() {
           >
             <span>Details</span>
           </button>
-          {!isAuditor && (
+          {isTeller && (
             <button
               onClick={() => {
                 setSelectedAccount(row);
@@ -639,8 +639,9 @@ export default function AccountsPage() {
         )}
 
         {/* Status Update Modal */}
-        <Modal
-          isOpen={isStatusModalOpen}
+        {isTeller && (
+          <Modal
+            isOpen={isStatusModalOpen}
           onClose={() => setIsStatusModalOpen(false)}
           title={`Update Account Status: ${selectedAccount?.accountNumber}`}
           size="md"
@@ -704,6 +705,7 @@ export default function AccountsPage() {
             </div>
           </div>
         </Modal>
+        )}
 
         {/* Account Creation Modal (Retail & Corporate) */}
         <AccountCreateModal
