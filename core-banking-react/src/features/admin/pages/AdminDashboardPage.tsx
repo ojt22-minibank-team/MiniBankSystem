@@ -6,7 +6,7 @@ import { adminDashboardApi } from '../../../services/apiClient';
 import type { AdminDashboardSummaryResponse, AnnouncementResponse } from '../../../types/api.types';
 import type { AxiosError } from 'axios';
 import { formatDate } from '../../../utils/formatDate';
-import ekarajCrown from '../../../assets/ekaraj-crown-transparent.png';
+import { formatCurrency } from '../../../utils/formatCurrency';
 
 // ============================================================
 // Liquid Glass Stat Card Component
@@ -39,6 +39,7 @@ interface LiquidStatCardProps {
   gradient: string;
   iconBg: string;
   onClick?: () => void;
+  headerAction?: React.ReactNode;
 }
 
 function LiquidStatCard({
@@ -51,6 +52,7 @@ function LiquidStatCard({
   gradient,
   iconBg,
   onClick,
+  headerAction,
 }: LiquidStatCardProps) {
   const badgeClasses = {
     emerald: 'status-pill-emerald',
@@ -73,18 +75,21 @@ function LiquidStatCard({
       />
 
       <div className="relative z-10 flex items-start justify-between">
-        <div className="space-y-1">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-            {title}
-          </p>
-          <div className="flex items-baseline gap-2 pt-1">
-            <span className="text-3xl font-black text-slate-900 tracking-tight font-mono tabular-nums">
+        <div className="space-y-1 min-w-0 pr-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              {title}
+            </p>
+            {headerAction}
+          </div>
+          <div className="flex items-baseline gap-2 pt-1 flex-wrap">
+            <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-mono tabular-nums">
               {value}
             </span>
             {badge && <span className={`${badgeClasses} text-[10px]`}>{badge}</span>}
           </div>
           {subtitle && (
-            <p className="text-xs font-medium text-slate-400 pt-0.5">{subtitle}</p>
+            <p className="text-xs font-medium text-slate-400 pt-0.5 truncate">{subtitle}</p>
           )}
         </div>
 
@@ -120,10 +125,12 @@ function LiquidStatCard({
 export default function AdminDashboardPage() {
   const { user, isAdmin, isAuditor, isTeller } = useAuth();
   const navigate = useNavigate();
+  const baseRoute = isAuditor ? '/auditor' : '/admin';
 
   const [summary, setSummary] = useState<AdminDashboardSummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [feeTimeframe, setFeeTimeframe] = useState<'today' | 'all'>('today');
 
   useEffect(() => {
     setLoading(true);
@@ -146,9 +153,12 @@ export default function AdminDashboardPage() {
       });
   }, []);
 
-  const currentRole = user?.roles?.[0]?.replace('ROLE_', '') ?? 'ADMIN';
   const recentStaff = summary?.recentStaff ?? [];
   const recentAnnouncements = summary?.recentAnnouncements ?? [];
+
+  const todayFee = summary?.todayFeeRevenue ?? 0;
+  const allTimeFee = summary?.allTimeFeeRevenue ?? 0;
+  const displayedFee = feeTimeframe === 'today' ? todayFee : allTimeFee;
 
   return (
     <AdminLayout pageTitle="Dashboard">
@@ -157,50 +167,24 @@ export default function AdminDashboardPage() {
             1. Liquid Glass Welcome Hero Banner
            ======================================================== */}
         <div className="liquid-glass-hero relative overflow-hidden rounded-3xl p-7 text-white shadow-xl">
-          {/* Frosted Crown Watermark with Specular Glow */}
-          <div className="pointer-events-none absolute -right-6 -bottom-6 opacity-20 sm:opacity-25 transition-transform duration-700 hover:scale-105">
-            <img
-              src={ekarajCrown}
-              alt="EKARAJ Crown"
-              className="h-56 w-auto object-contain filter drop-shadow-[0_10px_20px_rgba(255,255,255,0.4)]"
-            />
-          </div>
-
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-2 max-w-xl">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-white/15 backdrop-blur-md border border-white/20 text-white shadow-xs">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  System Operational · Node 01
-                </span>
-                <span className="text-xs text-sky-200/90 font-medium">
-                  {formatDate(new Date())}
-                </span>
-              </div>
-
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-tight">
-                Welcome back, {user?.username ?? 'Administrator'}
-              </h2>
-
-              <p className="text-xs sm:text-sm text-sky-100/90 font-medium leading-relaxed">
-                Welcome to the EKARAJ BANK Core Banking Operating System. Audit logging engine, account ledgers, and customer management services are operating smoothly.
-              </p>
+          <div className="relative z-10 space-y-2 max-w-2xl">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-white/15 backdrop-blur-md border border-white/20 text-white shadow-xs">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                System Operational · Node 01
+              </span>
+              <span className="text-xs text-sky-200/90 font-medium">
+                {formatDate(new Date())}
+              </span>
             </div>
 
-            {/* Live Session Badges */}
-            <div className="flex flex-wrap md:flex-col items-start md:items-end gap-2.5 shrink-0">
-              <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white/15 backdrop-blur-xl border border-white/25 shadow-xs">
-                <div className="h-2 w-2 rounded-full bg-sky-300 animate-ping" />
-                <span className="text-xs font-bold text-white uppercase tracking-wider">
-                  Role: {currentRole}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20">
-                <span className="text-[11px] font-medium text-sky-200">
-                  Audit Logging: <strong className="text-emerald-300 font-bold">ACTIVE</strong>
-                </span>
-              </div>
-            </div>
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-tight">
+              Welcome back, {user?.username ?? 'Administrator'}
+            </h2>
+
+            <p className="text-xs sm:text-sm text-sky-100/90 font-medium leading-relaxed">
+              Welcome to the EKARAJ BANK Core Banking Operating System. Audit logging engine, account ledgers, and customer management services are operating smoothly.
+            </p>
           </div>
         </div>
 
@@ -218,7 +202,7 @@ export default function AdminDashboardPage() {
           {/* Quick 1: Customer Registry */}
           <button
             type="button"
-            onClick={() => navigate('/admin/customers')}
+            onClick={() => navigate(`${baseRoute}/customers`)}
             className="liquid-glass-card rounded-2xl p-3.5 flex items-center gap-3 text-left group hover:border-sky-300/80 transition-all cursor-pointer"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 border border-sky-500/20 group-hover:scale-105 transition-transform">
@@ -235,7 +219,7 @@ export default function AdminDashboardPage() {
           {/* Quick 2: Open Bank Account */}
           <button
             type="button"
-            onClick={() => navigate('/admin/accounts')}
+            onClick={() => navigate(`${baseRoute}/accounts`)}
             className="liquid-glass-card rounded-2xl p-3.5 flex items-center gap-3 text-left group hover:border-emerald-300/80 transition-all cursor-pointer"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 group-hover:scale-105 transition-transform">
@@ -252,7 +236,7 @@ export default function AdminDashboardPage() {
           {/* Quick 3: Announcements */}
           <button
             type="button"
-            onClick={() => navigate('/admin/announcements')}
+            onClick={() => navigate(`${baseRoute}/announcements`)}
             className="liquid-glass-card rounded-2xl p-3.5 flex items-center gap-3 text-left group hover:border-purple-300/80 transition-all cursor-pointer"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 border border-purple-500/20 group-hover:scale-105 transition-transform">
@@ -269,7 +253,7 @@ export default function AdminDashboardPage() {
           {/* Quick 4: Audit Logs */}
           <button
             type="button"
-            onClick={() => navigate('/admin/audit-logs')}
+            onClick={() => navigate(`${baseRoute}/audit-logs`)}
             className="liquid-glass-card rounded-2xl p-3.5 flex items-center gap-3 text-left group hover:border-amber-300/80 transition-all cursor-pointer"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 border border-amber-500/20 group-hover:scale-105 transition-transform">
@@ -287,7 +271,7 @@ export default function AdminDashboardPage() {
         {/* ========================================================
             3. Liquid Glass High-Impact KPI Stat Cards
            ======================================================== */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {/* Card 1: Staff Workforce */}
           <LiquidStatCard
             title="Staff Workforce"
@@ -303,7 +287,7 @@ export default function AdminDashboardPage() {
             badgeColor="sky"
             gradient="bg-sky-400"
             iconBg="bg-gradient-to-br from-sky-400 to-blue-600 text-white"
-            onClick={() => (!isTeller ? navigate('/admin/staff') : undefined)}
+            onClick={() => (isAdmin ? navigate('/admin/staff') : undefined)}
             icon={
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
@@ -320,7 +304,7 @@ export default function AdminDashboardPage() {
             badgeColor="emerald"
             gradient="bg-emerald-400"
             iconBg="bg-gradient-to-br from-emerald-400 to-teal-600 text-white"
-            onClick={() => navigate('/admin/customers')}
+            onClick={() => navigate(`${baseRoute}/customers`)}
             icon={
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
@@ -337,7 +321,7 @@ export default function AdminDashboardPage() {
             badgeColor="purple"
             gradient="bg-indigo-400"
             iconBg="bg-gradient-to-br from-indigo-400 to-purple-600 text-white"
-            onClick={() => navigate('/admin/accounts')}
+            onClick={() => navigate(`${baseRoute}/accounts`)}
             icon={
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm6 0a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -354,7 +338,7 @@ export default function AdminDashboardPage() {
             badgeColor="amber"
             gradient="bg-amber-400"
             iconBg="bg-gradient-to-br from-amber-400 to-orange-500 text-white"
-            onClick={() => navigate('/admin/system-rules')}
+            onClick={() => ((isAdmin || isAuditor) ? navigate(`${baseRoute}/system-rules`) : undefined)}
             icon={
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
@@ -363,7 +347,67 @@ export default function AdminDashboardPage() {
             }
           />
 
-          {/* Card 5: Operational Analytics (Admin & Auditor) */}
+          {/* Card 5: Fee Revenue (GL-FEE-REVENUE) */}
+          {(isAdmin || isAuditor) && (
+            <LiquidStatCard
+              title="Fee Revenue"
+              value={loading ? '—' : formatCurrency(displayedFee, 'MMK')}
+              subtitle={
+                loading
+                  ? 'Calculating ledger fees…'
+                  : feeTimeframe === 'today'
+                  ? `All-Time: ${formatCurrency(allTimeFee, 'MMK')}`
+                  : `Today: ${formatCurrency(todayFee, 'MMK')}`
+              }
+              badge={feeTimeframe === 'today' ? 'Today' : 'All-Time'}
+              badgeColor="emerald"
+              gradient="bg-emerald-400"
+              iconBg="bg-gradient-to-br from-emerald-500 to-teal-700 text-white"
+              onClick={() => navigate('/admin/reporting')}
+              headerAction={
+                <div
+                  className="inline-flex p-0.5 rounded-xl bg-slate-200/80 border border-slate-300/60 shadow-xs"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFeeTimeframe('today');
+                    }}
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                      feeTimeframe === 'today'
+                        ? 'bg-white text-emerald-700 shadow-xs ring-1 ring-slate-900/5'
+                        : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFeeTimeframe('all');
+                    }}
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                      feeTimeframe === 'all'
+                        ? 'bg-white text-emerald-700 shadow-xs ring-1 ring-slate-900/5'
+                        : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                  >
+                    All Time
+                  </button>
+                </div>
+              }
+              icon={
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              }
+            />
+          )}
+
+          {/* Card 6: Operational Analytics (Admin & Auditor) */}
           {(isAdmin || isAuditor) && (
             <LiquidStatCard
               title="Operational Reports"
@@ -373,7 +417,7 @@ export default function AdminDashboardPage() {
               badgeColor="purple"
               gradient="bg-purple-400"
               iconBg="bg-gradient-to-br from-purple-500 to-indigo-600 text-white"
-              onClick={() => navigate('/admin/reporting')}
+              onClick={() => navigate(`${baseRoute}/reporting`)}
               icon={
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
@@ -402,7 +446,7 @@ export default function AdminDashboardPage() {
                     <p className="text-[11px] text-slate-400 font-medium">Bank workforce directory</p>
                   </div>
                 </div>
-                {!isTeller && (
+                {isAdmin && (
                   <button
                     onClick={() => navigate('/admin/staff')}
                     className="text-xs font-bold text-sky-600 hover:text-sky-700 hover:underline flex items-center gap-1 cursor-pointer"
@@ -467,7 +511,9 @@ export default function AdminDashboardPage() {
                 <div className="flex items-center gap-2.5">
                   <div className="h-8 w-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-xs border border-purple-100">
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m11 6a13 13 0 0 0 8.4-2.8A1 1 0 0 1 21 4v12a1 1 0 0 1-1.6.8A13 13 0 0 0 11 14H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 14a12 12 0 0 0 2.4 7.2 2 2 0 0 0 3.2-2.4A8 8 0 0 1 10 14" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 6v8" />
                     </svg>
                   </div>
                   <div>
@@ -477,7 +523,7 @@ export default function AdminDashboardPage() {
                 </div>
                 {!isTeller && (
                   <button
-                    onClick={() => navigate('/admin/announcements')}
+                    onClick={() => navigate(`${baseRoute}/announcements`)}
                     className="text-xs font-bold text-purple-600 hover:text-purple-700 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <span>Manage</span>
@@ -548,7 +594,7 @@ export default function AdminDashboardPage() {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => navigate('/admin/audit-logs')}
+                onClick={() => navigate(`${baseRoute}/audit-logs`)}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
               >
                 <span>Audit Logs</span>

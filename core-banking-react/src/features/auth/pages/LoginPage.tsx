@@ -1,7 +1,8 @@
 import { useState, type FormEvent, useEffect, useRef, type ClipboardEvent, type KeyboardEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { loginThunk, verifyOtpThunk, resendOtpApi } from '../authSlice';
+import { validatePasswordPolicy } from '../../../utils/validation';
 import ekarajCrown from '../../../assets/ekaraj-crown-transparent.png';
 import ekarajShowcase from '../../../assets/ekaraj-showcase-full.png';
 
@@ -13,6 +14,7 @@ type LoginStep = 'CREDENTIALS' | 'OTP';
 export default function LoginPage() {
   const { login, verifyOtp, isLoading, error, isAuthenticated, isTeller, dismissError } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // Step state
   const [step, setStep] = useState<LoginStep>('CREDENTIALS');
@@ -60,6 +62,13 @@ export default function LoginPage() {
     setErrorMessage(null);
     if (error) dismissError();
   };
+
+  // Check for session timeout reason in query params
+  useEffect(() => {
+    if (searchParams.get('reason') === 'idle_timeout') {
+      setErrorMessage('Your session has expired due to inactivity. Please sign in again.');
+    }
+  }, [searchParams]);
 
   // If already authenticated, redirect to dashboard
   useEffect(() => {
@@ -111,8 +120,13 @@ export default function LoginPage() {
 
   const validateCredentials = (): boolean => {
     const errors: { username?: string; password?: string } = {};
-    if (!username.trim()) errors.username = 'User Name is required.';
-    if (!password) errors.password = 'Password is required.';
+    if (!username.trim()) {
+      errors.username = 'User Name is required.';
+    }
+    const pwdError = validatePasswordPolicy(password, { username: username.trim() });
+    if (pwdError) {
+      errors.password = pwdError;
+    }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -152,7 +166,13 @@ export default function LoginPage() {
         } else {
           // Direct login (if MFA wasn't required)
           const isTellerRole = payload?.roles?.some((r: string) => r === 'ROLE_TELLER' || r === 'TELLER');
-          navigate(isTellerRole ? '/teller/dashboard' : '/admin/dashboard', { replace: true });
+          const isAuditorRole = payload?.roles?.some((r: string) => r === 'ROLE_AUDITOR' || r === 'AUDITOR');
+          const targetDashboard = isTellerRole
+            ? '/teller/dashboard'
+            : isAuditorRole
+              ? '/auditor/dashboard'
+              : '/admin/dashboard';
+          navigate(targetDashboard, { replace: true });
         }
       } else if (loginThunk.rejected.match(result)) {
         const backendMessage =
@@ -245,7 +265,13 @@ export default function LoginPage() {
 
       if (verifyOtpThunk.fulfilled.match(result)) {
         const isTellerRole = result.payload?.roles?.some((r: string) => r === 'ROLE_TELLER' || r === 'TELLER');
-        navigate(isTellerRole ? '/teller/dashboard' : '/admin/dashboard', { replace: true });
+        const isAuditorRole = result.payload?.roles?.some((r: string) => r === 'ROLE_AUDITOR' || r === 'AUDITOR');
+        const targetDashboard = isTellerRole
+          ? '/teller/dashboard'
+          : isAuditorRole
+            ? '/auditor/dashboard'
+            : '/admin/dashboard';
+        navigate(targetDashboard, { replace: true });
       } else if (verifyOtpThunk.rejected.match(result)) {
         const backendMessage =
           (result.payload as string) ||
@@ -341,7 +367,11 @@ export default function LoginPage() {
             {/* Header: Royal Crown + Bank Title */}
             <div className="flex items-center gap-3">
               <img
-                src={ekarajCrown}
+                src={ekarajCrown || '/ekaraj-crown-transparent.png'}
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = '/ekaraj-crown-transparent.png';
+                }}
                 alt="EKARAJ BANK"
                 className="h-9 w-auto object-contain drop-shadow-sm select-none"
               />
@@ -430,11 +460,10 @@ export default function LoginPage() {
                       disabled={isLoading}
                       autoComplete="username"
                       autoFocus
-                      className={`w-full rounded-xl border ${
-                        fieldErrors.username
-                          ? 'border-red-400 bg-red-50/30 text-red-900 focus:border-red-500 focus:ring-red-200'
-                          : 'border-slate-200 bg-slate-50/70 text-slate-900 focus:border-[#dfba61] focus:ring-[#dfba61]/20'
-                      } px-4 py-3 text-sm placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-4 transition-all font-medium`}
+                      className={`w-full rounded-xl border ${fieldErrors.username
+                        ? 'border-red-400 bg-red-50/30 text-red-900 focus:border-red-500 focus:ring-red-200'
+                        : 'border-slate-200 bg-slate-50/70 text-slate-900 focus:border-[#dfba61] focus:ring-[#dfba61]/20'
+                        } px-4 py-3 text-sm placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-4 transition-all font-medium`}
                     />
                   </div>
                   {fieldErrors.username && (
@@ -469,11 +498,10 @@ export default function LoginPage() {
                       placeholder="Enter your confidential password"
                       disabled={isLoading}
                       autoComplete="current-password"
-                      className={`w-full rounded-xl border ${
-                        fieldErrors.password
-                          ? 'border-red-400 bg-red-50/30 text-red-900 focus:border-red-500 focus:ring-red-200'
-                          : 'border-slate-200 bg-slate-50/70 text-slate-900 focus:border-[#dfba61] focus:ring-[#dfba61]/20'
-                      } px-4 py-3 pr-11 text-sm placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-4 transition-all font-medium`}
+                      className={`w-full rounded-xl border ${fieldErrors.password
+                        ? 'border-red-400 bg-red-50/30 text-red-900 focus:border-red-500 focus:ring-red-200'
+                        : 'border-slate-200 bg-slate-50/70 text-slate-900 focus:border-[#dfba61] focus:ring-[#dfba61]/20'
+                        } px-4 py-3 pr-11 text-sm placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-4 transition-all font-medium`}
                     />
                     <button
                       type="button"
@@ -534,7 +562,7 @@ export default function LoginPage() {
                   </button>
                 </div>
 
-                
+
               </form>
             )}
 
@@ -594,8 +622,8 @@ export default function LoginPage() {
                     {resending
                       ? 'Sending...'
                       : resendCooldown > 0
-                      ? `Resend in ${resendCooldown}s`
-                      : 'Resend Code'}
+                        ? `Resend in ${resendCooldown}s`
+                        : 'Resend Code'}
                   </button>
                 </div>
 
@@ -635,13 +663,11 @@ export default function LoginPage() {
           {/* Secure Footer Note */}
           <div className="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span className="text-slate-600 font-medium">
-              Authorized Staff Gateway
+
             </span>
             <span className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
-              <svg className="h-3.5 w-3.5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 2a4 4 0 00-4 4v2H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-1V6a4 4 0 00-4-4zm2 6V6a2 2 0 10-4 0v2h4zm-2 5a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
-              </svg>
-              TLS 1.3 · 256-bit Encrypted Security
+
+
             </span>
           </div>
         </div>
@@ -649,18 +675,22 @@ export default function LoginPage() {
         {/* ============================================================ */}
         {/* RIGHT COLUMN: Pristine Full-Res Showcase Card */}
         {/* ============================================================ */}
-        <div className="hidden lg:col-span-5 lg:flex relative p-6 sm:p-7 items-center justify-center bg-slate-50/20">
-          <div className="relative w-full h-full max-h-[520px] rounded-[28px] overflow-hidden shadow-[0_20px_50px_-12px_rgba(26,58,110,0.18)] border border-[#dfba61]/70 ring-1 ring-[#caa13b]/30 flex items-center justify-center bg-white">
+        <div className="hidden lg:col-span-5 lg:flex relative p-6 sm:p-7 items-center justify-center bg-slate-50/50">
+          <div className="relative w-full h-full min-h-[460px] max-h-[520px] rounded-[28px] overflow-hidden shadow-[0_20px_50px_-12px_rgba(26,58,110,0.18)] border border-[#dfba61]/70 ring-1 ring-[#caa13b]/30">
             <img
-              src={ekarajShowcase}
-              alt="Welcome to Ekaraj Bank - Empowering your financial future with royal security"
-              className="w-full h-full object-cover object-center select-none"
+              src={ekarajShowcase || '/ekaraj-showcase-full.png'}
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = '/ekaraj-showcase-full.png';
+              }}
+              alt="Welcome to Ekaraj Bank"
+              className="w-full h-full object-cover object-center select-none block"
             />
           </div>
         </div>
 
       </div>
 
-      </div>
+    </div>
   );
 }

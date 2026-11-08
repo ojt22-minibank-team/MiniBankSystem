@@ -660,9 +660,7 @@ public class StaffManagementService {
             throw new IllegalArgumentException("Current password is incorrect");
         }
 
-        if (request.getNewPassword() == null || request.getNewPassword().length() < 8) {
-            throw new IllegalArgumentException("New password must be at least 8 characters");
-        }
+        com.corebanking.util.StaffPasswordValidator.validate(request.getNewPassword(), currentStaff.getUsername(), currentStaff.getEmail());
 
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
             throw new IllegalArgumentException("New password and confirmation do not match");

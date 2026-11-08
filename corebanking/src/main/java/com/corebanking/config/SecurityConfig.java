@@ -91,10 +91,9 @@ public class SecurityConfig {
                     "/api/auth/logout"
                 ).permitAll()
 
-                // Public staff password setup completion
+                                // Public staff password setup (token validation & completion)
                 .requestMatchers(
-                    HttpMethod.POST,
-                    "/api/auth/staff-password-setup/complete"
+                    "/api/auth/staff-password-setup/**"
                 ).permitAll()
 
                 // CORS preflight requests

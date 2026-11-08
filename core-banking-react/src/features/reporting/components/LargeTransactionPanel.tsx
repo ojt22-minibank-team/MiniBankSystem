@@ -10,6 +10,7 @@ import DataTable, { type Column } from './DataTable';
 import ExportButtons from './ExportButtons';
 import { ExportNotificationBanner } from './ExportNotificationBanner';
 import { useAsyncExport } from '../hooks/useAsyncExport';
+import { formatDateTime } from '../../../utils/formatDate';
 
 interface Props {
   startDate: string;
@@ -128,7 +129,7 @@ const LargeTransactionPanel: React.FC<Props> = ({
       key: 'transactionTime',
       label: 'Timestamp',
       render: (r: LargeTransactionItem) =>
-        r.transactionTime ? r.transactionTime.replace('T', ' ') : '—',
+        r.transactionTime ? formatDateTime(r.transactionTime) : '—',
     },
     {
       key: 'transactionType',

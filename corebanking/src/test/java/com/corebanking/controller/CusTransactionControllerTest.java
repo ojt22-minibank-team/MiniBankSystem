@@ -308,6 +308,27 @@ class CusTransactionControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/customer/transactions/{transactionRef} returns externalReference for merchant payment")
+    void getTransactionDetail_merchantPayment_returnsExternalReference() throws Exception {
+        CusTransactionHistoryItemDTO item = createSampleItem();
+        item.setTransactionType("EXTERNAL_PAYMENT");
+        item.setExternalReference("ORD-20261108-001");
+
+        when(transactionService.getTransactionDetail(TRANSACTION_REF, ACCOUNT_NUMBER))
+                .thenReturn(item);
+
+        mockMvc.perform(get(BASE_URL + "/{transactionRef}", TRANSACTION_REF)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .param("accountNumber", ACCOUNT_NUMBER))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.transactionRef", is(TRANSACTION_REF)))
+                .andExpect(jsonPath("$.transactionType", is("EXTERNAL_PAYMENT")))
+                .andExpect(jsonPath("$.externalReference", is("ORD-20261108-001")));
+
+        verify(transactionService).getTransactionDetail(TRANSACTION_REF, ACCOUNT_NUMBER);
+    }
+
+    @Test
     @DisplayName("GET /api/customer/transactions/{transactionRef} missing accountNumber returns client error")
     void getTransactionDetail_missingAccountNumber_returnsBadRequest() throws Exception {
         var result = mockMvc.perform(get(BASE_URL + "/{transactionRef}", TRANSACTION_REF)

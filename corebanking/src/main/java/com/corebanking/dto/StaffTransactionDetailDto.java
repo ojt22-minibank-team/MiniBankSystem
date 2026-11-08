@@ -36,6 +36,7 @@ public class StaffTransactionDetailDto {
     private BigDecimal amount;
     private BigDecimal serviceFee;
     private BigDecimal totalDebited;
+    private BigDecimal netCreditAmount;
     private String currency;
 
     // Source Account
@@ -78,7 +79,9 @@ public class StaffTransactionDetailDto {
 
         BigDecimal fee = tx.getServiceFee() != null ? tx.getServiceFee() : BigDecimal.ZERO;
         BigDecimal amount = tx.getAmount() != null ? tx.getAmount() : BigDecimal.ZERO;
-        BigDecimal total = amount.add(fee);
+        boolean isExternalPayment = tx.getTransactionType() == TransactionType.EXTERNAL_PAYMENT;
+        BigDecimal total = isExternalPayment ? amount : amount.add(fee);
+        BigDecimal netCredit = isExternalPayment ? amount.subtract(fee) : amount;
 
         // Source details
         UUID srcAccId = tx.getSourceAccount() != null ? tx.getSourceAccount().getAccountId() : null;
@@ -129,6 +132,7 @@ public class StaffTransactionDetailDto {
                 .amount(amount)
                 .serviceFee(fee)
                 .totalDebited(total)
+                .netCreditAmount(netCredit)
                 .currency(tx.getCurrency() != null ? tx.getCurrency() : "MMK")
                 .sourceAccountId(srcAccId)
                 .sourceAccountNo(srcAccNo)

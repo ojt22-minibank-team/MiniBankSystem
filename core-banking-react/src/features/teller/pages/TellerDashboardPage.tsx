@@ -6,7 +6,6 @@ import { tellerApi, announcementsApi } from '../../../services/apiClient';
 import type { DailyCashSummaryResponse, AnnouncementResponse } from '../../../types/api.types';
 import { formatCurrency } from '../../../utils/formatCurrency';
 import { formatDate } from '../../../utils/formatDate';
-import ekarajCrown from '../../../assets/ekaraj-crown-transparent.png';
 
 // ============================================================
 // Helper: Compact Currency Formatter (e.g. 27.88M / 1.50B)
@@ -207,52 +206,24 @@ export default function TellerDashboardPage() {
             1. Liquid Glass Welcome Hero Banner
            ======================================================== */}
         <div className="liquid-glass-hero relative overflow-hidden rounded-3xl p-7 text-white shadow-xl">
-          <div className="pointer-events-none absolute -right-6 -bottom-6 opacity-20 sm:opacity-25 transition-transform duration-700 hover:scale-105">
-            <img
-              src={ekarajCrown}
-              alt="EKARAJ Crown"
-              className="h-56 w-auto object-contain filter drop-shadow-[0_10px_20px_rgba(255,255,255,0.4)]"
-            />
-          </div>
-
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-2 max-w-xl">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-white/15 backdrop-blur-md border border-white/20 text-white shadow-xs">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  Counter Active · Station 01
-                </span>
-                <span className="text-xs text-sky-200/90 font-medium">
-                  {formatDate(new Date())}
-                </span>
-              </div>
-
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-tight">
-                Welcome back, {user?.username ?? 'Teller Officer'}
-              </h2>
-
-              <p className="text-xs sm:text-sm text-sky-100/90 font-medium leading-relaxed">
-                Ready to serve bank customers. Over-the-counter cash deposits, withdrawals, and account inquiries are active and verified.
-              </p>
+          <div className="relative z-10 space-y-2 max-w-2xl">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-white/15 backdrop-blur-md border border-white/20 text-white shadow-xs">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                Counter Active · Station 01
+              </span>
+              <span className="text-xs text-sky-200/90 font-medium">
+                {formatDate(new Date())}
+              </span>
             </div>
 
-            {/* Live Session Badges */}
-            <div className="flex flex-wrap md:flex-col items-start md:items-end gap-2.5 shrink-0">
-              <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white/15 backdrop-blur-xl border border-white/25 shadow-xs">
-                <div className="h-2 w-2 rounded-full bg-emerald-300 animate-ping" />
-                <span className="text-xs font-bold text-white uppercase tracking-wider">
-                  Role: TELLER
-                </span>
-              </div>
-              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20">
-                <span className="text-[11px] font-medium text-sky-200">
-                  Drawer Status:{' '}
-                  <strong className="text-emerald-300 font-bold">
-                    ACTIVE & BALANCED
-                  </strong>
-                </span>
-              </div>
-            </div>
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-tight">
+              Welcome back, {user?.username ?? 'Teller Officer'}
+            </h2>
+
+            <p className="text-xs sm:text-sm text-sky-100/90 font-medium leading-relaxed">
+              Ready to serve bank customers. Over-the-counter cash deposits, withdrawals, and account inquiries are active and verified.
+            </p>
           </div>
         </div>
 

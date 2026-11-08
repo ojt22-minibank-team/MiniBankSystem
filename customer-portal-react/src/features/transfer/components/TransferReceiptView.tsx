@@ -9,7 +9,6 @@ import {
   ArrowUpRight,
   Clock,
   AlertOctagon,
-  Landmark,
 } from "lucide-react";
 import { QRCodeView } from "../../../components/common/QRCodeView";
 import { EkarajCrown } from "../../../components/common/EkarajLogo";
@@ -405,7 +404,7 @@ export default function TransferReceiptView({
             </div>
 
             <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-              <EkarajCrown size={34} className="drop-shadow-md print:w-8 print:h-8" />
+              <EkarajCrown size={38} className="drop-shadow-md print:w-9 print:h-9" />
               {onClose && (
                 <button
                   type="button"
@@ -505,7 +504,7 @@ export default function TransferReceiptView({
               <div className="bg-white rounded-2xl print:rounded-xl border border-slate-200/90 p-4 print:p-4 shadow-2xs space-y-2.5">
                 <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-2">
                   <div className="flex items-center gap-1.5">
-                    <Landmark className="w-3.5 h-3.5 text-[#00A3C4]" />
+                    <EkarajCrown size={16} className="shrink-0" />
                     <span className="font-extrabold text-slate-700">Balance Summary</span>
                   </div>
                 </div>
@@ -591,7 +590,7 @@ export default function TransferReceiptView({
               <div className="bg-white rounded-2xl print:rounded-xl border border-slate-200/90 p-4 print:p-4 shadow-2xs space-y-2.5">
                 <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-2">
                   <div className="flex items-center gap-1.5">
-                    <Landmark className="w-3.5 h-3.5 text-[#00A3C4]" />
+                    <EkarajCrown size={16} className="shrink-0" />
                     <span className="font-extrabold text-slate-700">Balance Summary</span>
                   </div>
                 </div>

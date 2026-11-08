@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 
 export default function TransactionDetailsPage() {
-  const { isTeller } = useAuth();
+  const { isTeller, isAuditor } = useAuth();
   const { refOrId } = useParams<{ refOrId?: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -433,7 +433,9 @@ export default function TransactionDetailsPage() {
                         </span>
                         {tx.serviceFee > 0 && (
                           <span className="text-[10px] text-slate-500">
-                            Fee: +{formatCurrency(tx.serviceFee, tx.currency)}
+                            {tx.transactionType === 'EXTERNAL_PAYMENT'
+                              ? `Fee: ${formatCurrency(tx.serviceFee, tx.currency)} (Merchant)`
+                              : `Fee: +${formatCurrency(tx.serviceFee, tx.currency)}`}
                           </span>
                         )}
                       </td>
@@ -547,7 +549,7 @@ export default function TransactionDetailsPage() {
             setSelectedTransaction(null);
             // If refOrId or query param was set, clear it smoothly
             if (refOrId || searchParams.has('ref') || searchParams.has('id')) {
-              navigate(isTeller ? '/teller/transactions' : '/admin/transactions', { replace: true });
+              navigate(isTeller ? '/teller/transactions' : isAuditor ? '/auditor/transactions' : '/admin/transactions', { replace: true });
             }
           }}
         />

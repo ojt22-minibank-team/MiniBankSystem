@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import AdminLayout from '../../../components/layout/AdminLayout';
 import DataTable from '../../../components/common/DataTable';
 import StaffCreateModal from '../components/StaffCreateModal';
@@ -35,18 +36,75 @@ export default function StaffListPage() {
 
   // Dropdown menu state
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+  } | null>(null);
 
-  // Close dropdown on outside click
+  const handleCloseDropdown = () => {
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
+  };
+
+  const handleToggleDropdown = (e: React.MouseEvent<HTMLButtonElement>, staffId: string) => {
+    e.stopPropagation();
+    if (openDropdownId === staffId) {
+      handleCloseDropdown();
+      return;
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const dropdownWidth = 192; // 12rem (w-48)
+    const estimatedHeight = 220;
+
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    const openUpwards = spaceBelow < estimatedHeight && spaceAbove > spaceBelow;
+
+    let left = rect.right - dropdownWidth;
+    if (left < 10) left = 10;
+    if (left + dropdownWidth > window.innerWidth - 10) {
+      left = window.innerWidth - dropdownWidth - 10;
+    }
+
+    if (openUpwards) {
+      setDropdownPosition({
+        bottom: window.innerHeight - rect.top + 4,
+        left,
+      });
+    } else {
+      setDropdownPosition({
+        top: rect.bottom + 4,
+        left,
+      });
+    }
+
+    setOpenDropdownId(staffId);
+  };
+
+  // Close dropdown on outside click or window scroll/resize
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (!target.closest('[data-dropdown-container]')) {
-        setOpenDropdownId(null);
+      if (!target.closest('[data-dropdown-container]') && !target.closest('[data-dropdown-menu]')) {
+        handleCloseDropdown();
       }
     };
+
+    const handleScrollOrResize = () => {
+      handleCloseDropdown();
+    };
+
     document.addEventListener('mousedown', handleOutsideClick);
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick);
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
     };
   }, []);
 
@@ -116,6 +174,34 @@ export default function StaffListPage() {
       return code === 'ADMIN' || code === 'AUDITOR';
     }).length;
   }, [staffList]);
+
+  // Active staff for dropdown
+  const activeStaff = useMemo(() => {
+    if (!openDropdownId) return null;
+    return staffList.find((s) => s.staffId === openDropdownId) || null;
+  }, [staffList, openDropdownId]);
+
+  const activeStaffPermissions = useMemo(() => {
+    if (!activeStaff) return null;
+    const currentUsername = user?.username?.trim().toLowerCase();
+    const rowUsername = activeStaff.username?.trim().toLowerCase();
+    const isSelf = !!currentUsername && !!rowUsername && currentUsername === rowUsername;
+
+    const roleCode = (
+      activeStaff.roleCode ||
+      (activeStaff.staffNo?.includes('TLR') ? 'TELLER' : activeStaff.staffNo?.includes('AUD') ? 'AUDITOR' : activeStaff.staffNo?.includes('ADM') ? 'ADMIN' : '')
+    ).toUpperCase();
+    const isRowAdmin = roleCode === 'ADMIN';
+    const isOtherAdmin = isRowAdmin && !isSelf;
+    const isDeactivated = activeStaff.status === 'DEACTIVATED';
+
+    return {
+      canEdit: !isOtherAdmin && !isDeactivated,
+      canChangeRole: !isRowAdmin && !isSelf && !isDeactivated,
+      canResetPassword: !isOtherAdmin && !isDeactivated,
+      canDeactivate: !isRowAdmin && !isSelf && !isDeactivated,
+    };
+  }, [activeStaff, user?.username]);
 
   // Handle deactivation
   const handleConfirmDeactivate = async () => {
@@ -250,10 +336,6 @@ export default function StaffListPage() {
       header: 'Actions',
       align: 'right' as const,
       render: (row: StaffResponse) => {
-        const currentUsername = user?.username?.trim().toLowerCase();
-        const rowUsername = row.username?.trim().toLowerCase();
-        const isSelf = !!currentUsername && !!rowUsername && currentUsername === rowUsername;
-
         const roleCode = (row.roleCode || (row.staffNo?.includes('TLR') ? 'TELLER' : row.staffNo?.includes('AUD') ? 'AUDITOR' : row.staffNo?.includes('ADM') ? 'ADMIN' : '')).toUpperCase();
         const isRowAdmin = roleCode === 'ADMIN';
 
@@ -263,28 +345,15 @@ export default function StaffListPage() {
             <span className="text-xs text-zinc-400 font-medium select-none pr-3">—</span>
           );
         }
-        const isOtherAdmin = isRowAdmin && !isSelf;
-
-        const isDeactivated = row.status === 'DEACTIVATED';
-
-        const canEdit = !isOtherAdmin && !isDeactivated;
-        const canChangeRole = !isRowAdmin && !isSelf && !isDeactivated;
-        const canResetPassword = !isOtherAdmin && !isDeactivated;
-        const canDeactivate = !isRowAdmin && !isSelf && !isDeactivated;
 
         const isOpen = openDropdownId === row.staffId;
-        const rowIndex = filteredStaff.findIndex((s) => s.staffId === row.staffId);
-        const isNearBottom = filteredStaff.length > 2 && rowIndex >= filteredStaff.length - 2;
 
         return (
           <div className="relative inline-block text-left" data-dropdown-container>
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenDropdownId(isOpen ? null : row.staffId);
-              }}
-              className="inline-flex items-center gap-1.5 rounded-full border border-purple-950/15 bg-white/80 px-3.5 py-1.5 text-xs font-bold text-[#1E1B4B] shadow-xs hover:bg-[#1E1B4B] hover:text-white transition-all"
+              onClick={(e) => handleToggleDropdown(e, row.staffId)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-purple-950/15 bg-white/80 px-3.5 py-1.5 text-xs font-bold text-[#1E1B4B] shadow-xs hover:bg-[#1E1B4B] hover:text-white transition-all cursor-pointer"
               aria-expanded={isOpen}
             >
               <span>Actions</span>
@@ -297,102 +366,6 @@ export default function StaffListPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-
-            {isOpen && (
-              <div
-                className={`absolute right-0 z-50 w-48 rounded-2xl bg-white/95 backdrop-blur-xl border border-white/90 shadow-[0_15px_40px_-5px_rgba(30,27,75,0.25)] p-1 divide-y divide-purple-950/5 ${
-                  isNearBottom ? 'bottom-full mb-1 origin-bottom-right' : 'top-full mt-1 origin-top-right'
-                }`}
-              >
-                <div className="py-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOpenDropdownId(null);
-                      setSelectedStaff(row);
-                      setIsDetailsOpen(true);
-                    }}
-                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-purple-50 transition-colors"
-                  >
-                    <svg className="h-4 w-4 text-purple-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    <span>View Details</span>
-                  </button>
-
-                  {canEdit && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenDropdownId(null);
-                        setSelectedStaff(row);
-                        setIsEditOpen(true);
-                      }}
-                      className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold text-[#1E1B4B] hover:bg-purple-50 transition-colors"
-                    >
-                      <svg className="h-4 w-4 text-[#1E1B4B] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                      <span>Edit Information</span>
-                    </button>
-                  )}
-
-                  {canChangeRole && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenDropdownId(null);
-                        setSelectedStaff(row);
-                        setIsRoleOpen(true);
-                      }}
-                      className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-50 transition-colors"
-                    >
-                      <svg className="h-4 w-4 text-purple-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                      </svg>
-                      <span>Change Role</span>
-                    </button>
-                  )}
-
-                  {canResetPassword && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenDropdownId(null);
-                        setSelectedStaff(row);
-                        setIsResetPasswordOpen(true);
-                      }}
-                      className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 transition-colors"
-                    >
-                      <svg className="h-4 w-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                      </svg>
-                      <span>Reset Password</span>
-                    </button>
-                  )}
-                </div>
-
-                {canDeactivate && (
-                  <div className="py-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenDropdownId(null);
-                        setSelectedStaff(row);
-                        setIsDeactivateConfirmOpen(true);
-                      }}
-                      className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
-                    >
-                      <svg className="h-4 w-4 text-red-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                      </svg>
-                      <span>Deactivate</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         );
       },
@@ -580,6 +553,113 @@ export default function StaffListPage() {
             />
           </div>
         </div>
+
+        {/* Floating Action Dropdown Menu Portal */}
+        {openDropdownId && dropdownPosition && activeStaff && activeStaffPermissions && typeof document !== 'undefined' && createPortal(
+          <div
+            data-dropdown-menu
+            style={{
+              position: 'fixed',
+              top: dropdownPosition.top !== undefined ? `${dropdownPosition.top}px` : undefined,
+              bottom: dropdownPosition.bottom !== undefined ? `${dropdownPosition.bottom}px` : undefined,
+              left: `${dropdownPosition.left}px`,
+              width: '12rem',
+              zIndex: 9999,
+              maxHeight: 'calc(100vh - 20px)',
+              overflowY: 'auto',
+            }}
+            className="rounded-2xl bg-white/95 backdrop-blur-xl border border-white/90 shadow-[0_15px_40px_-5px_rgba(30,27,75,0.25)] p-1 divide-y divide-purple-950/5 animate-in fade-in duration-100"
+          >
+            <div className="py-1">
+              <button
+                type="button"
+                onClick={() => {
+                  handleCloseDropdown();
+                  setSelectedStaff(activeStaff);
+                  setIsDetailsOpen(true);
+                }}
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-purple-50 transition-colors cursor-pointer"
+              >
+                <svg className="h-4 w-4 text-purple-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                <span>View Details</span>
+              </button>
+
+              {activeStaffPermissions.canEdit && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleCloseDropdown();
+                    setSelectedStaff(activeStaff);
+                    setIsEditOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold text-[#1E1B4B] hover:bg-purple-50 transition-colors cursor-pointer"
+                >
+                  <svg className="h-4 w-4 text-[#1E1B4B] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  <span>Edit Information</span>
+                </button>
+              )}
+
+              {activeStaffPermissions.canChangeRole && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleCloseDropdown();
+                    setSelectedStaff(activeStaff);
+                    setIsRoleOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-50 transition-colors cursor-pointer"
+                >
+                  <svg className="h-4 w-4 text-purple-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  <span>Change Role</span>
+                </button>
+              )}
+
+              {activeStaffPermissions.canResetPassword && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleCloseDropdown();
+                    setSelectedStaff(activeStaff);
+                    setIsResetPasswordOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 transition-colors cursor-pointer"
+                >
+                  <svg className="h-4 w-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                  </svg>
+                  <span>Reset Password</span>
+                </button>
+              )}
+            </div>
+
+            {activeStaffPermissions.canDeactivate && (
+              <div className="py-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleCloseDropdown();
+                    setSelectedStaff(activeStaff);
+                    setIsDeactivateConfirmOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                >
+                  <svg className="h-4 w-4 text-red-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                  </svg>
+                  <span>Deactivate</span>
+                </button>
+              </div>
+            )}
+          </div>,
+          document.body
+        )}
 
         {/* Modals */}
         <StaffCreateModal
