@@ -71,6 +71,11 @@ export default function RecentTransactions({
     );
   };
 
+  const isExternalPayment = (tx: CusTransactionHistoryItemDTO): boolean => {
+    const normType = (tx.transactionType || "").toUpperCase();
+    return normType === "EXTERNAL_PAYMENT";
+  };
+
   const handleRowClick = (tx: CusTransactionHistoryItemDTO) => {
     if (isTransfer(tx)) {
       const rawReceipt = mapHistoryItemToTransferReceiptData(tx);
@@ -92,6 +97,22 @@ export default function RecentTransactions({
           from: "/dashboard",
         },
       });
+    } else if (isExternalPayment(tx)) {
+      const ref = tx.transactionRef ? tx.transactionRef.trim() : "";
+      const acc = activeAccountNumber ? activeAccountNumber.trim() : "";
+      if (ref && acc) {
+        navigate(
+          `/transaction/${encodeURIComponent(ref)}?accountNumber=${encodeURIComponent(acc)}`,
+          {
+            state: {
+              transaction: tx,
+              from: "/dashboard",
+            },
+          }
+        );
+      } else {
+        navigate("/transaction");
+      }
     } else {
       navigate("/transaction");
     }
