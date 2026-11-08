@@ -223,11 +223,23 @@ public class StaffManagementService {
     // =====================================================
 
     public List<StaffResponse> getAllStaff() {
+        List<StaffUsers> staffList = staffUsersRepository.findAll();
+        List<StaffUserRoles> allStaffRoles = staffUserRolesRepository.findAll();
+        List<Roles> allRoles = rolesRepository.findAll();
 
-        return staffUsersRepository.findAll()
-                .stream()
-                .map(this::toResponse)
-                .toList();
+        java.util.Map<UUID, StaffUserRoles> staffRoleMap = allStaffRoles.stream()
+                .filter(r -> r.getStaffId() != null)
+                .collect(java.util.stream.Collectors.toMap(StaffUserRoles::getStaffId, r -> r, (a, b) -> a));
+
+        java.util.Map<Integer, Roles> roleMap = allRoles.stream()
+                .filter(r -> r.getRoleId() != null)
+                .collect(java.util.stream.Collectors.toMap(Roles::getRoleId, r -> r, (a, b) -> a));
+
+        return staffList.stream().map(staff -> {
+            StaffUserRoles userRole = staffRoleMap.get(staff.getStaffId());
+            Roles role = (userRole != null && userRole.getRoleId() != null) ? roleMap.get(userRole.getRoleId()) : null;
+            return toResponse(staff, role);
+        }).toList();
     }
 
 
