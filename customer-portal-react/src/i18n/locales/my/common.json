@@ -1,10 +1,12 @@
 {
   "customerPortal": "Customer Portal",
   "sections": {
-    "banking": "ဘဏ်လုပ်ငန်း",
+    "banking": "E-Banking",
     "account": "အကောင့်"
   },
   "navigation": {
+    "banking": "E-Banking",
+    "account": "အကောင့်",
     "dashboard": "ပင်မစာမျက်နှာ",
     "accounts": "ကျွန်ုပ်၏ ဘဏ်အကောင့်များ",
     "transfer": "ငွေလွှဲခြင်း",
