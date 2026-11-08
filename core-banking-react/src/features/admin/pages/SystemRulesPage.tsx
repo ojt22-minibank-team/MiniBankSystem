@@ -12,6 +12,7 @@ import type {
   FeeScheduleResponse,
 } from '../../../types/api.types';
 import { formatDateTime, formatDate } from '../../../utils/formatDate';
+import { formatParameterValue } from '../../../utils/formatCurrency';
 import type { AxiosError } from 'axios';
 import { useAuth } from '../../auth/hooks/useAuth';
 
@@ -105,6 +106,7 @@ export default function SystemRulesPage() {
       return (
         p.parameterKey.toLowerCase().includes(term) ||
         p.parameterValue.toLowerCase().includes(term) ||
+        formatParameterValue(p.parameterValue).toLowerCase().includes(term) ||
         (p.description && p.description.toLowerCase().includes(term))
       );
     });
@@ -191,7 +193,7 @@ export default function SystemRulesPage() {
       className: 'w-[28%]',
       render: (row: SystemParameterResponse) => (
         <span className="rounded-xl bg-purple-900/5 border border-purple-900/10 px-3 py-1 text-xs font-mono font-bold text-[#1E1B4B]">
-          {row.parameterValue}
+          {formatParameterValue(row.parameterValue)}
         </span>
       ),
     },

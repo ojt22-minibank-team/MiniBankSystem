@@ -27,3 +27,19 @@ export function formatCurrency(
     })}`;
   }
 }
+
+/**
+ * Formats a raw numeric parameter string or number with thousand separators (e.g., 100000 -> "100,000").
+ * Preserves non-numeric strings as-is (e.g. "MMK" -> "MMK").
+ */
+export function formatParameterValue(val: string | number | null | undefined): string {
+  if (val === null || val === undefined) return '—';
+  const str = String(val).trim();
+  if (str === '') return '—';
+  if (/^-?\d+(\.\d+)?$/.test(str)) {
+    const parts = str.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
+  }
+  return str;
+}
