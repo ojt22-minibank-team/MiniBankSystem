@@ -15,6 +15,11 @@ import com.corebanking.entity.enums.TransactionChannel;
 import com.corebanking.entity.enums.TransactionStatus;
 import com.corebanking.entity.enums.TransactionType;
 import com.corebanking.repository.BankTransactionRepository;
+import com.corebanking.repository.LedgerAccountRepository;
+import com.corebanking.repository.LedgerEntryRepository;
+import com.corebanking.entity.LedgerAccounts;
+import com.corebanking.entity.LedgerEntries;
+import com.corebanking.entity.enums.EntryType;
 
 import com.corebanking.entity.CompanyInfo;
 import com.corebanking.entity.CorporateAccountAccess;
@@ -68,7 +73,7 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Service
-@RequiredArgsConstructor
+
 public class AccountService {
 
     private static final BigDecimal MIN_PERSONAL_INITIAL_DEPOSIT = new BigDecimal("10000");
@@ -90,11 +95,69 @@ public class AccountService {
     private final CorporateAccountAccessRepository corporateAccountAccessRepository;
     private final BankTransactionRepository bankTransactionRepository;
     private final AuditTrailService auditTrailService;
+    private final LedgerAccountRepository ledgerAccountRepository;
+
+    private final LedgerEntryRepository ledgerEntryRepository;
 
     @Autowired(required = false)
     private JwtService jwtService;
 
     
+    @Autowired
+    public AccountService(
+            AccountRepository accountRepository,
+            CustomerRepository customerRepository,
+            StaffUsersRepository staffUsersRepository,
+            CusEmailService cusEmailService,
+            AccountSignatoriesRepository accountSignatoriesRepository,
+            CustomerCredentialsRepository customerCredentialsRepository,
+            PasswordEncoder passwordEncoder,
+            CompanyInfoRepository companyInfoRepository,
+            CorporateUserRepository corporateUserRepository,
+            CorporateCredentialRepository corporateCredentialRepository,
+            CorporateAccountAccessRepository corporateAccountAccessRepository,
+            BankTransactionRepository bankTransactionRepository,
+            @Autowired(required = false) AuditTrailService auditTrailService,
+            @Autowired(required = false) LedgerAccountRepository ledgerAccountRepository,
+            @Autowired(required = false) LedgerEntryRepository ledgerEntryRepository) {
+        this.accountRepository = accountRepository;
+        this.customerRepository = customerRepository;
+        this.staffUsersRepository = staffUsersRepository;
+        this.cusEmailService = cusEmailService;
+        this.accountSignatoriesRepository = accountSignatoriesRepository;
+        this.customerCredentialsRepository = customerCredentialsRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.companyInfoRepository = companyInfoRepository;
+        this.corporateUserRepository = corporateUserRepository;
+        this.corporateCredentialRepository = corporateCredentialRepository;
+        this.corporateAccountAccessRepository = corporateAccountAccessRepository;
+        this.bankTransactionRepository = bankTransactionRepository;
+        this.auditTrailService = auditTrailService;
+        this.ledgerAccountRepository = ledgerAccountRepository;
+        this.ledgerEntryRepository = ledgerEntryRepository;
+    }
+
+    public AccountService(
+            AccountRepository accountRepository,
+            CustomerRepository customerRepository,
+            StaffUsersRepository staffUsersRepository,
+            CusEmailService cusEmailService,
+            AccountSignatoriesRepository accountSignatoriesRepository,
+            CustomerCredentialsRepository customerCredentialsRepository,
+            PasswordEncoder passwordEncoder,
+            CompanyInfoRepository companyInfoRepository,
+            CorporateUserRepository corporateUserRepository,
+            CorporateCredentialRepository corporateCredentialRepository,
+            CorporateAccountAccessRepository corporateAccountAccessRepository,
+            BankTransactionRepository bankTransactionRepository,
+            AuditTrailService auditTrailService) {
+        this(accountRepository, customerRepository, staffUsersRepository, cusEmailService,
+                accountSignatoriesRepository, customerCredentialsRepository, passwordEncoder,
+                companyInfoRepository, corporateUserRepository, corporateCredentialRepository,
+                corporateAccountAccessRepository, bankTransactionRepository, auditTrailService,
+                null, null);
+    }
+
     @Transactional
     public AccountResponseDTO createAccount(AccountCreateDTO dto) {
         // Customer ရှိမရှိ စစ်ဆေးခြင်း
@@ -741,8 +804,67 @@ public class AccountService {
                 .build();
 
         BankTransactions savedTxn = bankTransactionRepository.save(transaction);
+        BankTransactions effectiveTxn = (savedTxn != null) ? savedTxn : transaction;
+
+        // Record General Ledger double-entry entries (Line 1: Debit Vault Cash, Line 2: Credit Customer Deposit)
+        recordInitialDepositLedgerEntries(effectiveTxn, account, amount);
         if (customer != null && asyncNotificationService != null) {
             asyncNotificationService.sendDepositNotificationAsync(customer, account, savedTxn);
+        }
+    }
+
+    /**
+     * Records double-entry General Ledger (GL) entries for the initial account opening deposit:
+     * - Line 1: Debit Vault Cash Ledger (GL-VAULT-CASH / GL-CASH-ON-HAND) - Cash asset physically received
+     * - Line 2: Credit Customer Deposit Ledger (GL-CUSTOMER-DEPOSITS) - Bank liability to customer increases
+     */
+    private void recordInitialDepositLedgerEntries(BankTransactions txn, Accounts account, BigDecimal amount) {
+        if (ledgerAccountRepository == null || ledgerEntryRepository == null) {
+            return;
+        }
+
+        String currency = (txn != null && txn.getCurrency() != null && !txn.getCurrency().isBlank())
+                ? txn.getCurrency()
+                : (account != null && account.getCurrency() != null ? account.getCurrency() : DEFAULT_CURRENCY);
+
+        // Line 1: Debit Vault Cash GL Account (Cash physically received into bank vault)
+        LedgerAccounts vaultCashLedger = ledgerAccountRepository.findByLedgerCode("GL-VAULT-CASH")
+                .or(() -> ledgerAccountRepository.findByLedgerCode("GL-CASH-ON-HAND"))
+                .orElseGet(() -> ledgerAccountRepository.findAll().stream().findFirst().orElse(null));
+
+        if (vaultCashLedger != null) {
+            LedgerEntries vaultEntry = LedgerEntries.builder()
+                    .transaction(txn)
+                    .lineNo(1)
+                    .ledgerAccount(vaultCashLedger)
+                    .entryType(EntryType.DEBIT)
+                    .amount(amount)
+                    .currency(currency)
+                    .balanceBefore(BigDecimal.ZERO)
+                    .balanceAfter(amount)
+                    .narration("Cash received for initial opening deposit of Acc: " + account.getAccountNumber())
+                    .build();
+            ledgerEntryRepository.save(vaultEntry);
+        }
+
+        // Line 2: Credit Customer Deposit Ledger (Bank liability to customer increases by initial deposit)
+        LedgerAccounts customerLedger = ledgerAccountRepository.findByCustomerAccount(account)
+                .orElseGet(() -> ledgerAccountRepository.findByLedgerCode("GL-CUSTOMER-DEPOSITS")
+                        .orElse(vaultCashLedger));
+
+        if (customerLedger != null) {
+            LedgerEntries customerEntry = LedgerEntries.builder()
+                    .transaction(txn)
+                    .lineNo(2)
+                    .ledgerAccount(customerLedger)
+                    .entryType(EntryType.CREDIT)
+                    .amount(amount)
+                    .currency(currency)
+                    .balanceBefore(BigDecimal.ZERO)
+                    .balanceAfter(amount)
+                    .narration("Initial opening deposit credited to Acc: " + account.getAccountNumber())
+                    .build();
+            ledgerEntryRepository.save(customerEntry);
         }
     }
 

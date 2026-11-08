@@ -13,12 +13,10 @@ import type {
 } from '../../../types/api.types';
 import { formatDateTime, formatDate } from '../../../utils/formatDate';
 import type { AxiosError } from 'axios';
-import { useAuth } from '../../auth/hooks/useAuth';
 
 type ActiveTab = 'parameters' | 'fees';
 
 export default function SystemRulesPage() {
-  const { isAuditor } = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>('parameters');
 
   // Data states
@@ -172,8 +170,8 @@ export default function SystemRulesPage() {
   const parameterColumns = [
     {
       key: 'parameterKey',
-      header: 'Parameter Key & Scope',
-      className: isAuditor ? 'w-[45%]' : 'w-[36%]',
+      header: 'Parameter Key',
+      className: 'w-[36%]',
       render: (row: SystemParameterResponse) => (
         <div>
           <span className="font-mono text-xs font-bold text-[#1E1B4B] block">
@@ -187,8 +185,8 @@ export default function SystemRulesPage() {
     },
     {
       key: 'parameterValue',
-      header: 'Configured Value',
-      className: isAuditor ? 'w-[30%]' : 'w-[28%]',
+      header: 'Value',
+      className: 'w-[28%]',
       render: (row: SystemParameterResponse) => (
         <span className="rounded-xl bg-purple-900/5 border border-purple-900/10 px-3 py-1 text-xs font-mono font-bold text-[#1E1B4B]">
           {row.parameterValue}
@@ -198,7 +196,7 @@ export default function SystemRulesPage() {
     {
       key: 'updatedAt',
       header: 'Last Updated',
-      className: isAuditor ? 'w-[25%]' : 'w-[22%]',
+      className: 'w-[22%]',
       render: (row: SystemParameterResponse) => (
         <div className="text-xs text-zinc-500 font-medium">
           <p>{formatDateTime(row.updatedAt)}</p>
@@ -208,42 +206,38 @@ export default function SystemRulesPage() {
         </div>
       ),
     },
-    ...(!isAuditor
-      ? [
-          {
-            key: 'actions',
-            header: 'Actions',
-            align: 'right' as const,
-            className: 'w-[14%]',
-            render: (row: SystemParameterResponse) => (
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedParam(row);
-                    setIsEditParamOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-purple-950/15 bg-white/80 px-3.5 py-1 text-xs font-bold text-[#1E1B4B] shadow-xs hover:bg-[#1E1B4B] hover:text-white transition-all cursor-pointer"
-                >
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                  <span>Edit</span>
-                </button>
-              </div>
-            ),
-          },
-        ]
-      : []),
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right' as const,
+      className: 'w-[14%]',
+      render: (row: SystemParameterResponse) => (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedParam(row);
+              setIsEditParamOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-full border border-purple-950/15 bg-white/80 px-3.5 py-1 text-xs font-bold text-[#1E1B4B] shadow-xs hover:bg-[#1E1B4B] hover:text-white transition-all"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            <span>Edit</span>
+          </button>
+        </div>
+      ),
+    },
   ];
 
   // Fee table columns
   const feeColumns = [
     {
       key: 'feeCode',
-      header: 'Fee Code / Operation',
+      header: 'Fee Operation',
       align: 'left' as const,
-      className: isAuditor ? 'w-[32%]' : 'w-[28%]',
+      className: 'w-[28%]',
       render: (row: FeeScheduleResponse) => (
         <div>
           <span className="font-mono text-xs font-bold text-[#1E1B4B] block">
@@ -257,9 +251,9 @@ export default function SystemRulesPage() {
     },
     {
       key: 'feeValue',
-      header: 'Fee Rate / Formula',
+      header: 'Fee Rate',
       align: 'left' as const,
-      className: isAuditor ? 'w-[28%]' : 'w-[24%]',
+      className: 'w-[24%]',
       render: (row: FeeScheduleResponse) => (
         <div>
           <span className="font-bold text-[#1E1B4B] text-xs font-mono">
@@ -284,7 +278,7 @@ export default function SystemRulesPage() {
       key: 'activePeriod',
       header: 'Active Schedule',
       align: 'left' as const,
-      className: isAuditor ? 'w-[26%]' : 'w-[24%]',
+      className: 'w-[24%]',
       render: (row: FeeScheduleResponse) => (
         <div className="text-xs text-zinc-500 font-medium">
           <p>From: {formatDate(row.activeFrom)}</p>
@@ -298,7 +292,7 @@ export default function SystemRulesPage() {
       key: 'active',
       header: 'Status',
       align: 'center' as const,
-      className: isAuditor ? 'w-[14%]' : 'w-[12%]',
+      className: 'w-[12%]',
       render: (row: FeeScheduleResponse) => (
         <span
           className={
@@ -311,51 +305,47 @@ export default function SystemRulesPage() {
         </span>
       ),
     },
-    ...(!isAuditor
-      ? [
-          {
-            key: 'actions',
-            header: 'Actions',
-            align: 'right' as const,
-            render: (row: FeeScheduleResponse) => (
-              <div className="flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedFee(row);
-                    setIsEditFeeOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1 rounded-full border border-purple-950/15 bg-white/80 px-3 py-1 text-xs font-bold text-[#1E1B4B] shadow-xs hover:bg-[#1E1B4B] hover:text-white transition-all cursor-pointer"
-                >
-                  Edit
-                </button>
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right' as const,
+      render: (row: FeeScheduleResponse) => (
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedFee(row);
+              setIsEditFeeOpen(true);
+            }}
+            className="inline-flex items-center gap-1 rounded-full border border-purple-950/15 bg-white/80 px-3 py-1 text-xs font-bold text-[#1E1B4B] shadow-xs hover:bg-[#1E1B4B] hover:text-white transition-all"
+          >
+            Edit
+          </button>
 
-                {row.active ? (
-                  <button
-                    onClick={() => {
-                      setSelectedFee(row);
-                      setIsDeactivateFeeOpen(true);
-                    }}
-                    className="rounded-full px-3 py-1 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                  >
-                    Deactivate
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setSelectedFee(row);
-                      setIsActivateFeeOpen(true);
-                    }}
-                    className="rounded-full px-3 py-1 text-xs font-bold text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
-                  >
-                    Activate
-                  </button>
-                )}
-              </div>
-            ),
-          },
-        ]
-      : []),
+          {row.active ? (
+            <button
+              onClick={() => {
+                setSelectedFee(row);
+                setIsDeactivateFeeOpen(true);
+              }}
+              className="rounded-full px-3 py-1 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors"
+            >
+              Deactivate
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                setSelectedFee(row);
+                setIsActivateFeeOpen(true);
+              }}
+              className="rounded-full px-3 py-1 text-xs font-bold text-emerald-600 hover:bg-emerald-50 transition-colors"
+            >
+              Activate
+            </button>
+          )}
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -365,18 +355,11 @@ export default function SystemRulesPage() {
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
           <div>
-            <h2 className="text-2xl sm:text-[28px] font-black text-[#1E1B4B] tracking-tight flex items-center gap-2.5">
-              <span>System Rules & Fee Matrix</span>
-              {isAuditor && (
-                <span className="status-pill-amber text-[10px] uppercase font-bold tracking-wider">
-                  Read-Only Audit Mode
-                </span>
-              )}
+            <h2 className="text-2xl sm:text-[28px] font-black text-[#1E1B4B] tracking-tight">
+              System Rules & Fee Schedules
             </h2>
             <p className="mt-0.5 text-xs sm:text-sm text-zinc-500 font-medium">
-              {isAuditor
-                ? 'Compliance Inspection: System operating parameters, liquidity reserve thresholds, and active fee schedules'
-                : 'Ekaraj Bank Core Controls: Operating parameters, liquidity reserve thresholds, and dynamic fee schedules'}
+              Ekaraj Bank Controls: Operating parameters and Dynamic fee schedules
             </p>
           </div>
 
@@ -387,7 +370,7 @@ export default function SystemRulesPage() {
                 else loadFees();
               }}
               disabled={activeTab === 'parameters' ? isLoadingParams : isLoadingFees}
-              className="flex items-center gap-2 rounded-full border border-purple-950/15 bg-white/80 px-4 py-2 text-xs font-bold text-[#1E1B4B] hover:bg-white shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+              className="flex items-center gap-2 rounded-full border border-purple-950/15 bg-white/80 px-4 py-2 text-xs font-bold text-[#1E1B4B] hover:bg-white shadow-xs transition-colors disabled:opacity-50"
             >
               <svg
                 className={[
@@ -404,36 +387,11 @@ export default function SystemRulesPage() {
               <span>Refresh</span>
             </button>
 
-            {!isAuditor && (
-              activeTab === 'parameters' ? (
-                <button
-                  type="button"
-                  onClick={() => setIsCreateParamOpen(true)}
-                  className="btn-liquid-gold px-5 py-2 text-xs flex items-center gap-2 cursor-pointer"
-                >
-                  <svg className="h-4 w-4 text-[#1E1B4B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span>New Parameter</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsCreateFeeOpen(true)}
-                  className="btn-liquid-gold px-5 py-2 text-xs flex items-center gap-2 cursor-pointer"
-                >
-                  <svg className="h-4 w-4 text-[#1E1B4B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span>New Fee Schedule</span>
-                </button>
-              )
-            )}
           </div>
         </div>
 
-        {/* 3 Summary KPI Cards (Liquid Glass) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        {/* Summary KPI Cards (Liquid Glass) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div className="liquid-glass-card rounded-3xl p-6">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               System Parameters
@@ -443,7 +401,7 @@ export default function SystemRulesPage() {
                 {parameters.length}
               </span>
               <span className="status-pill-emerald text-[11px]">
-                Enforced Core
+                Active Parameters
               </span>
             </div>
           </div>
@@ -457,21 +415,7 @@ export default function SystemRulesPage() {
                 {activeFeesCount}
               </span>
               <span className="status-pill-amber text-[11px]">
-                Active Tariffs
-              </span>
-            </div>
-          </div>
-
-          <div className="liquid-glass-card rounded-3xl p-6">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Security Protocol
-            </span>
-            <div className="flex items-baseline justify-between mt-3">
-              <span className="text-xl sm:text-2xl font-bold text-slate-900">
-                Pessimistic Locks
-              </span>
-              <span className="status-pill-purple text-[11px]">
-                Double Spending Guard
+                Active Fee Rates
               </span>
             </div>
           </div>
@@ -648,69 +592,65 @@ export default function SystemRulesPage() {
         )}
 
         {/* Modals */}
-        {!isAuditor && (
-          <>
-            <ParameterCreateModal
-              isOpen={isCreateParamOpen}
-              onClose={() => setIsCreateParamOpen(false)}
-              onSuccess={() => {
-                handleShowSuccess('System parameter created successfully.');
-                loadParameters();
-              }}
-            />
+        <ParameterCreateModal
+          isOpen={isCreateParamOpen}
+          onClose={() => setIsCreateParamOpen(false)}
+          onSuccess={() => {
+            handleShowSuccess('System parameter created successfully.');
+            loadParameters();
+          }}
+        />
 
-            <ParameterEditModal
-              isOpen={isEditParamOpen}
-              onClose={() => setIsEditParamOpen(false)}
-              parameter={selectedParam}
-              onSuccess={() => {
-                handleShowSuccess('System parameter updated successfully.');
-                loadParameters();
-              }}
-            />
+        <ParameterEditModal
+          isOpen={isEditParamOpen}
+          onClose={() => setIsEditParamOpen(false)}
+          parameter={selectedParam}
+          onSuccess={() => {
+            handleShowSuccess('System parameter updated successfully.');
+            loadParameters();
+          }}
+        />
 
-            <FeeScheduleCreateModal
-              isOpen={isCreateFeeOpen}
-              onClose={() => setIsCreateFeeOpen(false)}
-              onSuccess={() => {
-                handleShowSuccess('Fee schedule created successfully.');
-                loadFees();
-              }}
-            />
+        <FeeScheduleCreateModal
+          isOpen={isCreateFeeOpen}
+          onClose={() => setIsCreateFeeOpen(false)}
+          onSuccess={() => {
+            handleShowSuccess('Fee schedule created successfully.');
+            loadFees();
+          }}
+        />
 
-            <FeeScheduleEditModal
-              isOpen={isEditFeeOpen}
-              onClose={() => setIsEditFeeOpen(false)}
-              feeSchedule={selectedFee}
-              onSuccess={() => {
-                handleShowSuccess('Fee schedule updated successfully.');
-                loadFees();
-              }}
-            />
+        <FeeScheduleEditModal
+          isOpen={isEditFeeOpen}
+          onClose={() => setIsEditFeeOpen(false)}
+          feeSchedule={selectedFee}
+          onSuccess={() => {
+            handleShowSuccess('Fee schedule updated successfully.');
+            loadFees();
+          }}
+        />
 
-            <ConfirmModal
-              isOpen={isDeactivateFeeOpen}
-              onClose={() => setIsDeactivateFeeOpen(false)}
-              onConfirm={handleConfirmDeactivateFee}
-              title="Deactivate Fee Schedule"
-              message={`Are you sure you want to deactivate fee schedule "${selectedFee?.feeCode}"? Transactions will no longer apply this fee rule.`}
-              confirmText="Deactivate"
-              variant="danger"
-              isLoading={actionLoading}
-            />
+        <ConfirmModal
+          isOpen={isDeactivateFeeOpen}
+          onClose={() => setIsDeactivateFeeOpen(false)}
+          onConfirm={handleConfirmDeactivateFee}
+          title="Deactivate Fee Schedule"
+          message={`Are you sure you want to deactivate fee schedule "${selectedFee?.feeCode}"? Transactions will no longer apply this fee rule.`}
+          confirmText="Deactivate"
+          variant="danger"
+          isLoading={actionLoading}
+        />
 
-            <ConfirmModal
-              isOpen={isActivateFeeOpen}
-              onClose={() => setIsActivateFeeOpen(false)}
-              onConfirm={handleConfirmActivateFee}
-              title="Activate Fee Schedule"
-              message={`Are you sure you want to activate fee schedule "${selectedFee?.feeCode}"? It will become active according to its configured schedule.`}
-              confirmText="Activate"
-              variant="primary"
-              isLoading={actionLoading}
-            />
-          </>
-        )}
+        <ConfirmModal
+          isOpen={isActivateFeeOpen}
+          onClose={() => setIsActivateFeeOpen(false)}
+          onConfirm={handleConfirmActivateFee}
+          title="Activate Fee Schedule"
+          message={`Are you sure you want to activate fee schedule "${selectedFee?.feeCode}"? It will become active according to its configured schedule.`}
+          confirmText="Activate"
+          variant="primary"
+          isLoading={actionLoading}
+        />
       </div>
     </AdminLayout>
   );
