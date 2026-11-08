@@ -25,6 +25,16 @@ public class StaffPasswordSetupController {
 
     /**
      * Public endpoint:
+     * Validates setup token when staff clicks setup link on frontend.
+     */
+    @GetMapping("/api/auth/staff-password-setup/validate")
+    public ResponseEntity<Map<String, Object>> validateSetupToken(
+            @RequestParam("token") String token) {
+        return ResponseEntity.ok(staffPasswordSetupService.validateSetupToken(token));
+    }
+
+    /**
+     * Public endpoint:
      * Staff uses the emailed token to set their password.
      */
     @PostMapping("/api/auth/staff-password-setup/complete")

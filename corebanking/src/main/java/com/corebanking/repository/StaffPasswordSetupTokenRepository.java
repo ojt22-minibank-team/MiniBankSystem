@@ -1,4 +1,3 @@
-
 package com.corebanking.repository;
 
 import com.corebanking.entity.StaffPasswordSetupToken;
@@ -17,6 +16,8 @@ import java.util.UUID;
 
 public interface StaffPasswordSetupTokenRepository
         extends JpaRepository<StaffPasswordSetupToken, Long> {
+
+    Optional<StaffPasswordSetupToken> findByTokenHash(String tokenHash);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

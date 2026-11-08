@@ -1,10 +1,12 @@
 {
   "customerPortal": "Customer Portal",
   "sections": {
-    "banking": "Banking",
+    "banking": "E-Banking",
     "account": "Account"
   },
   "navigation": {
+    "banking": "E-Banking",
+    "account": "Account",
     "dashboard": "Dashboard",
     "accounts": "My Accounts",
     "transfer": "Transfer",
