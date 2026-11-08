@@ -1,4 +1,6 @@
+
 import { useState, type FC } from "react";
+import { useTranslation } from "react-i18next";
 import {
   CheckCircle2,
   FileDown,
@@ -31,6 +33,8 @@ export const StatementDownload: FC<StatementDownloadProps> = ({
   account,
   onChangeDetails,
 }) => {
+  const { t } = useTranslation("statement");
+
   const [downloadingFormat, setDownloadingFormat] = useState<"pdf" | "csv" | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
@@ -56,7 +60,7 @@ export const StatementDownload: FC<StatementDownloadProps> = ({
     } catch (err) {
       const message = await parseBlobErrorMessage(
         err,
-        "Unable to download the PDF statement. Please try again."
+        t("download.errors.pdf")
       );
       setDownloadError(message);
     } finally {
@@ -78,7 +82,7 @@ export const StatementDownload: FC<StatementDownloadProps> = ({
     } catch (err) {
       const message = await parseBlobErrorMessage(
         err,
-        "Unable to download the CSV statement. Please try again."
+        t("download.errors.csv")
       );
       setDownloadError(message);
     } finally {
@@ -94,10 +98,12 @@ export const StatementDownload: FC<StatementDownloadProps> = ({
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
             <CheckCircle2 size={18} />
           </div>
-          <h2 className="text-base font-bold text-[#0A192F] dark:text-white">Statement Ready</h2>
+          <h2 className="text-base font-bold text-[#0A192F] dark:text-white">
+            {t("download.ready.title")}
+          </h2>
         </div>
         <p className="text-xs text-slate-500 mt-1">
-          Your statement criteria have been confirmed. Choose your preferred export format below.
+          {t("download.ready.description")}
         </p>
       </div>
 
@@ -107,7 +113,7 @@ export const StatementDownload: FC<StatementDownloadProps> = ({
           <div>
             <span className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
               <Wallet size={13} className="text-[#00A3C4]" />
-              Account
+              {t("download.account")}
             </span>
             <span className="text-sm font-bold text-slate-900 mt-1 block">
               {confirmedForm.accountNumber}
@@ -120,23 +126,27 @@ export const StatementDownload: FC<StatementDownloadProps> = ({
           <div>
             <span className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
               <Calendar size={13} className="text-[#00A3C4]" />
-              From Date
+              {t("form.fromDate")}
             </span>
             <span className="text-sm font-bold text-slate-900 mt-1 block">
               {isoToDisplay(confirmedForm.fromDate)}
             </span>
-            <span className="text-[11px] text-slate-400">DD-MM-YYYY</span>
+            <span className="text-[11px] text-slate-400">
+              {t("form.dateFormat")}
+            </span>
           </div>
 
           <div>
             <span className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
               <Calendar size={13} className="text-[#00A3C4]" />
-              To Date
+              {t("form.toDate")}
             </span>
             <span className="text-sm font-bold text-slate-900 mt-1 block">
               {isoToDisplay(confirmedForm.toDate)}
             </span>
-            <span className="text-[11px] text-slate-400">DD-MM-YYYY</span>
+            <span className="text-[11px] text-slate-400">
+              {t("form.dateFormat")}
+            </span>
           </div>
         </div>
       </div>
@@ -151,7 +161,7 @@ export const StatementDownload: FC<StatementDownloadProps> = ({
             <AlertCircle className="h-5 w-5 shrink-0 text-red-600 mt-0.5" />
             <div className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-wider text-red-800">
-                Download Failed
+                {t("download.errors.title")}
               </p>
               <p className="text-sm font-medium text-red-900 mt-0.5">
                 {downloadError}
@@ -162,7 +172,7 @@ export const StatementDownload: FC<StatementDownloadProps> = ({
             type="button"
             onClick={() => setDownloadError(null)}
             className="shrink-0 p-1 rounded-lg text-red-600 hover:bg-red-100 transition-colors"
-            aria-label="Dismiss error"
+            aria-label={t("download.errors.dismiss")}
           >
             <X size={16} />
           </button>
@@ -172,7 +182,7 @@ export const StatementDownload: FC<StatementDownloadProps> = ({
       {/* Download Options */}
       <div className="mb-6 space-y-3">
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-          Export Formats
+          {t("download.exportFormats")}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* PDF Download Button */}
@@ -200,14 +210,20 @@ export const StatementDownload: FC<StatementDownloadProps> = ({
               </div>
               <div>
                 <p className="text-sm font-bold text-slate-900">
-                  {isPdfLoading ? "Downloading PDF..." : "PDF Document"}
+                  {isPdfLoading
+                    ? t("download.pdf.downloading")
+                    : t("download.pdf.title")}
                 </p>
-                <p className="text-xs text-slate-400">Official statement with bank letterhead</p>
+                <p className="text-xs text-slate-400">
+                  {t("download.pdf.description")}
+                </p>
               </div>
             </div>
             <div className="text-[#00A3C4] opacity-80 group-hover:opacity-100">
               {isPdfLoading ? (
-                <span className="text-xs font-semibold text-[#00A3C4]">Preparing...</span>
+                <span className="text-xs font-semibold text-[#00A3C4]">
+                  {t("download.preparing")}
+                </span>
               ) : (
                 <Download size={18} />
               )}
@@ -239,14 +255,20 @@ export const StatementDownload: FC<StatementDownloadProps> = ({
               </div>
               <div>
                 <p className="text-sm font-bold text-slate-900">
-                  {isCsvLoading ? "Downloading CSV..." : "CSV Spreadsheet"}
+                  {isCsvLoading
+                    ? t("download.csv.downloading")
+                    : t("download.csv.title")}
                 </p>
-                <p className="text-xs text-slate-400">Raw transaction data for spreadsheets</p>
+                <p className="text-xs text-slate-400">
+                  {t("download.csv.description")}
+                </p>
               </div>
             </div>
             <div className="text-emerald-600 opacity-80 group-hover:opacity-100">
               {isCsvLoading ? (
-                <span className="text-xs font-semibold text-emerald-700">Preparing...</span>
+                <span className="text-xs font-semibold text-emerald-700">
+                  {t("download.preparing")}
+                </span>
               ) : (
                 <Download size={18} />
               )}
@@ -258,9 +280,7 @@ export const StatementDownload: FC<StatementDownloadProps> = ({
       {/* Information Tip */}
       <div className="mb-6 flex items-start gap-2.5 rounded-xl bg-cyan-50/60 p-3.5 text-xs text-[#0A192F]">
         <CheckCircle2 size={16} className="shrink-0 text-[#00A3C4] mt-0.5" />
-        <p>
-          You can download both PDF and CSV formats for your records. Click either button above to start your download.
-        </p>
+        <p>{t("download.informationTip")}</p>
       </div>
 
       {/* Action to change details and return to form */}
@@ -272,7 +292,7 @@ export const StatementDownload: FC<StatementDownloadProps> = ({
           className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <RotateCcw size={16} />
-          Change Details
+          {t("download.changeDetails")}
         </button>
       </div>
     </section>

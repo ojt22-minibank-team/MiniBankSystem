@@ -1,5 +1,7 @@
+
 import { useRef, type ChangeEvent, type FormEvent, type FC } from "react";
 import { Calendar, ChevronDown, Wallet, Info, AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { CustomerAccount } from "../../accounts/types/accountTypes";
 import type {
   StatementAccountType,
@@ -44,6 +46,7 @@ function ControlledDateField({
   hasError?: boolean;
   onChangeIso: (iso: string) => void;
 }) {
+  const { t } = useTranslation("statement");
   const hiddenDateRef = useRef<HTMLInputElement>(null);
   const displayValue = isoToDisplay(isoValue);
 
@@ -92,9 +95,9 @@ function ControlledDateField({
           type="text"
           value={displayValue}
           onChange={handleTextChange}
-          placeholder="DD-MM-YYYY"
+          placeholder={t("form.datePlaceholder")}
           maxLength={10}
-className={`w-full rounded-xl border ${
+          className={`w-full rounded-xl border ${
             hasError
               ? "border-red-300 focus:border-red-500 focus:ring-red-500/20"
               : "border-slate-200 focus:border-[#00A3C4] focus:ring-[#00A3C4]/20"
@@ -115,13 +118,15 @@ className={`w-full rounded-xl border ${
           type="button"
           onClick={openNativePicker}
           className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-[#00A3C4] hover:bg-slate-50 rounded-lg transition-colors"
-          title="Open calendar"
-          aria-label={`Open calendar for ${label}`}
+          title={t("form.openCalendar")}
+          aria-label={t("form.openCalendarFor", { label })}
         >
           <Calendar size={18} />
         </button>
       </div>
-      <p className="mt-1.5 text-[11px] text-slate-400">Display format: DD-MM-YYYY</p>
+      <p className="mt-1.5 text-[11px] text-slate-400">
+        {t("form.displayFormat")}
+      </p>
     </div>
   );
 }
@@ -138,6 +143,8 @@ export const StatementForm: FC<StatementFormProps> = ({
   isContinueDisabled = false,
   validationError = null,
 }) => {
+  const { t } = useTranslation("statement");
+
   // Filter active accounts of selected type
   const activeAccounts = accounts.filter(
     (acc) => acc.accountType === form.accountType && acc.status === "ACTIVE"
@@ -184,7 +191,7 @@ export const StatementForm: FC<StatementFormProps> = ({
         {/* Field 1: Account Type Selection */}
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-            Account Type <span className="text-red-500">*</span>
+            {t("form.accountType")} <span className="text-red-500">*</span>
           </label>
           <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-[#0f2445] rounded-xl border border-slate-200 dark:border-slate-700/60">
             <button
@@ -196,7 +203,7 @@ export const StatementForm: FC<StatementFormProps> = ({
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
-              Current Account
+              {t("form.currentAccount")}
             </button>
             <button
               type="button"
@@ -207,18 +214,18 @@ export const StatementForm: FC<StatementFormProps> = ({
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
-              Savings Account
+              {t("form.savingsAccount")}
             </button>
           </div>
           <p className="mt-1.5 text-[11px] text-slate-400">
-            Filter accounts by category
+            {t("form.filterAccounts")}
           </p>
         </div>
 
         {/* Field 2: Account Number Dropdown */}
         <div>
           <label htmlFor="accountNumberSelect" className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-            Account Number <span className="text-red-500">*</span>
+            {t("form.accountNumber")} <span className="text-red-500">*</span>
           </label>
           <div className="relative">
             <select
@@ -226,14 +233,18 @@ export const StatementForm: FC<StatementFormProps> = ({
               value={form.accountNumber}
               onChange={(e) => onAccountNumberChange(e.target.value)}
               disabled={activeAccounts.length === 0}
-className={`w-full appearance-none rounded-xl border ${
+              className={`w-full appearance-none rounded-xl border ${
                 isAccountInvalid
                   ? "border-red-300 focus:border-red-500 focus:ring-red-500/20"
                   : "border-slate-200 focus:border-[#00A3C4] focus:ring-[#00A3C4]/20"
               } bg-white px-4 py-2.5 pr-10 text-sm font-medium text-slate-800 transition-colors focus:outline-none focus:ring-2 disabled:bg-slate-50 disabled:text-slate-400`}
             >
               {activeAccounts.length === 0 ? (
-                <option value="">No active {form.accountType} accounts found</option>
+                <option value="">
+                  {t("form.noActiveAccounts", {
+                    accountType: form.accountType,
+                  })}
+                </option>
               ) : (
                 activeAccounts.map((acc) => (
                   <option key={acc.accountNumber} value={acc.accountNumber}>
@@ -247,14 +258,16 @@ className={`w-full appearance-none rounded-xl border ${
             </div>
           </div>
           <p className="mt-1.5 text-[11px] text-slate-400">
-            Only active {form.accountType.toLowerCase()} accounts are selectable
+            {t("form.onlyActiveAccounts", {
+              accountType: form.accountType.toLowerCase(),
+            })}
           </p>
         </div>
 
         {/* Field 3: From Date */}
         <ControlledDateField
           id="fromDate"
-          label="From Date"
+          label={t("form.fromDate")}
           isoValue={form.fromDate}
           maxIso={todayIso}
           hasError={isFromDateInvalid}
@@ -264,7 +277,7 @@ className={`w-full appearance-none rounded-xl border ${
         {/* Field 4: To Date */}
         <ControlledDateField
           id="toDate"
-          label="To Date"
+          label={t("form.toDate")}
           isoValue={form.toDate}
           maxIso={todayIso}
           hasError={isToDateInvalid}
@@ -283,20 +296,22 @@ className={`w-full appearance-none rounded-xl border ${
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-slate-900">{selectedAccount.accountNumber}</span>
                 <span className="inline-flex items-center rounded-md bg-cyan-100 dark:bg-cyan-500/20 px-2.5 py-0.5 text-[11px] font-bold text-[#007088] dark:text-cyan-300 border border-cyan-200/60 dark:border-cyan-500/30">
-                  {selectedAccount.accountType}
+                  {t(`accountType.${selectedAccount.accountType}`)}
                 </span>
                 <span className="inline-flex items-center rounded-md bg-emerald-100 dark:bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-500/30">
-                  {selectedAccount.status}
+                  {t(`accountStatus.${selectedAccount.status}`)}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Opened: {isoToDisplay(selectedAccount.openedAt ? selectedAccount.openedAt.substring(0, 10) : "")}
+                {t("form.opened")}: {isoToDisplay(selectedAccount.openedAt ? selectedAccount.openedAt.substring(0, 10) : "")}
               </p>
             </div>
           </div>
 
           <div className="sm:text-right">
-            <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Available Balance</p>
+            <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+              {t("form.availableBalance")}
+            </p>
             <p className="text-sm font-bold text-slate-900">
               {Number(selectedAccount.availableBalance || 0).toLocaleString()} {selectedAccount.currency}
             </p>
@@ -308,8 +323,7 @@ className={`w-full appearance-none rounded-xl border ${
       <div className="flex items-start gap-2.5 rounded-xl bg-cyan-50/60 p-3.5 text-xs text-[#0A192F]">
         <Info size={16} className="shrink-0 text-[#00A3C4] mt-0.5" />
         <p>
-          Statements can be generated for any date range between account opening date and today.
-          You will have the option to verify your criteria before downloading.
+          {t("form.informationTip")}
         </p>
       </div>
 
@@ -317,10 +331,10 @@ className={`w-full appearance-none rounded-xl border ${
       <div className="flex justify-end pt-2">
         <button
           type="submit"
-disabled={isContinueDisabled || Boolean(validationError)}
+          disabled={isContinueDisabled || Boolean(validationError)}
           className="inline-flex items-center justify-center rounded-xl bg-[#00A3C4] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0891B2] focus:outline-none focus:ring-2 focus:ring-[#00A3C4] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Continue
+          {t("form.continue")}
         </button>
       </div>
     </form>

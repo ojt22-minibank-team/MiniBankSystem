@@ -1,11 +1,9 @@
 import React from 'react';
 import type { StaffTransactionStats } from '../../../types/transactions.types';
-import { formatCurrency } from '../../../utils/formatCurrency';
 import {
   Activity,
   CheckCircle2,
   XCircle,
-  Coins,
   AlertTriangle,
 } from 'lucide-react';
 
@@ -15,27 +13,11 @@ interface Props {
   onFilterStatus?: (status: string) => void;
 }
 
-function formatCompactVolume(amount: number, currency = 'MMK'): string {
-  if (Math.abs(amount) < 1_000_000) {
-    return formatCurrency(amount, currency);
-  }
-  try {
-    const compact = new Intl.NumberFormat('en-US', {
-      notation: 'compact',
-      compactDisplay: 'short',
-      maximumFractionDigits: 2,
-    }).format(amount);
-    return `${currency} ${compact}`;
-  } catch {
-    return formatCurrency(amount, currency);
-  }
-}
-
 export default React.memo(function TransactionStatsCards({ stats, isLoading, onFilterStatus }: Props) {
   if (isLoading || !stats) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-6">
-        {[...Array(5)].map((_, i) => (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
+        {[...Array(4)].map((_, i) => (
           <div
             key={i}
             className="p-4 rounded-2xl liquid-glass animate-pulse border border-slate-200/50 bg-white/40 h-24 flex flex-col justify-between"
@@ -85,19 +67,10 @@ export default React.memo(function TransactionStatsCards({ stats, isLoading, onF
       badgeBg: 'bg-rose-50 text-rose-600 border border-rose-200/60',
       status: 'FAILED',
     },
-    {
-      label: 'Settled Volume',
-      value: formatCompactVolume(stats.totalCompletedVolume, 'MMK'),
-      tooltip: formatCurrency(stats.totalCompletedVolume, 'MMK'),
-      icon: Coins,
-      textColor: 'text-indigo-800',
-      badgeBg: 'bg-indigo-50 text-indigo-600 border border-indigo-200/60',
-      status: undefined,
-    },
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-6">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
       {cards.map((c) => {
         const Icon = c.icon;
         const isClickable = Boolean(onFilterStatus && c.status);

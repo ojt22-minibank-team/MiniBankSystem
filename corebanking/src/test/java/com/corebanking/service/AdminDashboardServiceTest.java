@@ -11,6 +11,7 @@ import com.corebanking.entity.enums.StaffUserStatus;
 import com.corebanking.repository.AccountRepository;
 import com.corebanking.repository.AnnouncementsRepository;
 import com.corebanking.repository.CustomerRepository;
+import com.corebanking.repository.LedgerEntryRepository;
 import com.corebanking.repository.StaffUsersRepository;
 import com.corebanking.repository.SystemParametersRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -26,6 +27,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -52,6 +54,9 @@ class AdminDashboardServiceTest {
 
     @Mock
     private AnnouncementsRepository announcementsRepository;
+
+    @Mock
+    private LedgerEntryRepository ledgerEntryRepository;
 
     @Mock
     private StaffManagementService staffManagementService;
@@ -83,6 +88,10 @@ class AdminDashboardServiceTest {
         when(accountRepository.countByStatus(AccountStatus.ACTIVE)).thenReturn(85L);
         when(systemParametersRepository.count()).thenReturn(12L);
         when(announcementsRepository.countByIsActiveTrue()).thenReturn(3L);
+        when(ledgerEntryRepository.sumByLedgerCodeAndAccountClassAndEntryType(any(), any(), any()))
+                .thenReturn(BigDecimal.valueOf(1000));
+        when(ledgerEntryRepository.sumByLedgerCodeAndAccountClassAndEntryTypeAndDateRange(any(), any(), any(), any(), any()))
+                .thenReturn(BigDecimal.valueOf(100));
     }
 
     @Nested
@@ -139,6 +148,8 @@ class AdminDashboardServiceTest {
             assertThat(result.getActiveAccounts()).isEqualTo(85L);
             assertThat(result.getTotalParameters()).isEqualTo(12L);
             assertThat(result.getActiveAnnouncements()).isEqualTo(3L);
+            assertThat(result.getTodayFeeRevenue()).isEqualByComparingTo(BigDecimal.valueOf(100));
+            assertThat(result.getAllTimeFeeRevenue()).isEqualByComparingTo(BigDecimal.valueOf(1000));
 
             assertThat(result.getRecentStaff()).hasSize(1);
             assertThat(result.getRecentStaff().get(0).getStaffNo()).isEqualTo("STF001");
@@ -181,6 +192,8 @@ class AdminDashboardServiceTest {
             assertThat(result.getActiveStaff()).isEqualTo(9L);
             assertThat(result.getRecentStaff()).isEmpty();
             assertThat(result.getRecentAnnouncements()).isEmpty();
+            assertThat(result.getTodayFeeRevenue()).isEqualByComparingTo(BigDecimal.valueOf(100));
+            assertThat(result.getAllTimeFeeRevenue()).isEqualByComparingTo(BigDecimal.valueOf(1000));
 
             verify(staffUsersRepository).count();
             verify(announcementsRepository).findTop4ByOrderByCreatedAtDesc();

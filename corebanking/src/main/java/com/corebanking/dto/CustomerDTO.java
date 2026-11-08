@@ -3,6 +3,8 @@ package com.corebanking.dto;
 import java.time.LocalDate;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,6 +21,11 @@ public class CustomerDTO {
 
     // Common Fields
     private String customerType; // PERSONAL or COMPANY
+    @NotBlank(message = "Phone number is required")
+    @Pattern(
+        regexp = "^09\\d{9}$",
+        message = "Phone number must be exactly 11 digits starting with 09"
+    )
     private String phone;
 
     @NotBlank(message = "Email is required")
@@ -28,6 +35,7 @@ public class CustomerDTO {
     )
     private String email;
 
+    @NotBlank(message = "Address is required")
     private String address;
     private String status;
 
@@ -36,6 +44,9 @@ public class CustomerDTO {
     private String firstName;
     private String lastName;
     private String gender; // MALE, FEMALE, OTHER
+
+    @NotNull(message = "Date of birth is required")
+    @Past(message = "Date of birth must be a past date")
     private LocalDate dateOfBirth;
 
     @Pattern(

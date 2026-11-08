@@ -30,6 +30,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.corebanking.exception.CustomValidationException;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -52,6 +53,7 @@ public class CustomerService {
     private final EmailVerificationService emailVerificationService;
     private final AuditTrailService auditTrailService;
     private AuditLogsRepository auditLogsRepository;
+    private static final SecureRandom secureRandom = new SecureRandom();
 
     @Autowired
     public CustomerService(
@@ -251,6 +253,19 @@ public class CustomerService {
             }
         }
 
+        // Business Rule Enforcement for PERSONAL customers
+        if (customerType == CustomerType.PERSONAL) {
+            if (dto.getDateOfBirth() == null) {
+                throw new CustomValidationException("Date of birth is mandatory for personal customers.");
+            }
+            if (!dto.getDateOfBirth().isBefore(LocalDate.now())) {
+                throw new CustomValidationException("Date of birth must be a date in the past.");
+            }
+            if (dto.getOccupation() == null || dto.getOccupation().isBlank()) {
+                throw new CustomValidationException("Occupation is mandatory for personal customers.");
+            }
+        }
+
         // Unique Customer Code ထုတ်ယူခြင်း (Personal: CUST-YYYYMMDD-XXXX, Company: COMP-YYYYMMDD-XXXX)
         String customerCode = generateUniqueCustomerCode(customerType);
 
@@ -265,11 +280,14 @@ public class CustomerService {
                 .email(dto.getEmail())
                 .phone(dto.getPhone())
                 .address(dto.getAddress())
+                .occupation(dto.getOccupation())
                 .status(CustomerStatus.ACTIVE)
                 .createdAt(now)
                 .updatedAt(now)
                 .isNew(true)
                 .build();
+
+        customer.setOccupation(dto.getOccupation());
 
         // PersonalInfo သို့မဟုတ် CompanyInfo ထည့်သွင်းခြင်း
         if (customerType == CustomerType.PERSONAL) {
@@ -371,6 +389,39 @@ public class CustomerService {
     }
 
     /**
+     * လုံခြုံရေးစည်းမျဉ်းနှင့် ကိုက်ညီသော ယာယီ Password အား Auto-Generate ထုတ်ပေးသော Helper
+     */
+    private String generateSecureTemporaryPassword() {
+        String upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        String lower = "abcdefghijklmnopqrstuvwxyz";
+        String digits = "0123456789";
+        String special = "@#$%!&*";
+        String allChars = upper + lower + digits + special;
+
+        SecureRandom random = new SecureRandom();
+        StringBuilder password = new StringBuilder();
+
+        password.append(upper.charAt(random.nextInt(upper.length())));
+        password.append(lower.charAt(random.nextInt(lower.length())));
+        password.append(digits.charAt(random.nextInt(digits.length())));
+        password.append(special.charAt(random.nextInt(special.length())));
+
+        for (int i = 4; i < 8; i++) {
+            password.append(allChars.charAt(random.nextInt(allChars.length())));
+        }
+
+        char[] array = password.toString().toCharArray();
+        for (int i = array.length - 1; i > 0; i--) {
+            int j = random.nextInt(i + 1);
+            char temp = array[i];
+            array[i] = array[j];
+            array[j] = temp;
+        }
+
+        return new String(array);
+    }
+
+	/**
      * ၂။ Customer စာရင်းအားလုံးကို ရယူပြသသော Method
      */
     @Transactional(readOnly = true)
@@ -559,57 +610,38 @@ public class CustomerService {
     }
 
     /**
-     * Unique Customer Code အလိုအလျောက် ထုတ်ပေးသော Method
-     * Personal Customer Code format: CUST-YYYYMMDD-XXXX
-     * Company Customer Code format: COMP-YYYYMMDD-XXXX
+     * ခုနှစ်/ရက်စွဲ မပါဝင်သော True Random Customer Code ထုတ်ပေးသည့် Method
+     * Personal: CUST-XXXXXXXX-XXXX (e.g., CUST-58392014-7291)
+     * Company:  COMP-XXXXXXXX-XXXX (e.g., COMP-91823746-8302)
      */
-    private String generateUniqueCustomerCode(CustomerType customerType) {
+    public String generateUniqueCustomerCode(CustomerType customerType) {
         String prefix = (customerType == CustomerType.COMPANY) ? "COMP-" : "CUST-";
-        String datePart = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        SecureRandom secureRandom = new SecureRandom();
-        String code;
+        String customerCode;
+        boolean exists;
+        int maxAttempts = 10;
+        int attempts = 0;
+
         do {
-            int randomDigits = 1000 + secureRandom.nextInt(9000);
-            code = prefix + datePart + "-" + randomDigits;
-        } while (customerRepository.existsByCustomerCode(code));
-        return code;
-    }
+            // ၁။ ဂဏန်း ၈ လုံး အတိအကျ ထုတ်ယူခြင်း (10,000,000 မှ 99,999,999 ကြား)
+            // ရက်စွဲ မဟုတ်ဘဲ pure random ဂဏန်း ဖြစ်ပါသည်
+            int random8 = 10_000_000 + secureRandom.nextInt(90_000_000);
 
-    private String generateUniqueCustomerCode() {
-        return generateUniqueCustomerCode(CustomerType.PERSONAL);
-    }
+            // ၂။ ဂဏန်း ၄ လုံး အတိအကျ ထုတ်ယူခြင်း (1,000 မှ 9,999 ကြား)
+            int random4 = 1_000 + secureRandom.nextInt(9_000);
 
-    /**
-     * လုံခြုံရေးစည်းမျဉ်းနှင့် ကိုက်ညီသော ယာယီ Password အား Auto-Generate ထုတ်ပေးသော Helper
-     */
-    private String generateSecureTemporaryPassword() {
-        String upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        String lower = "abcdefghijklmnopqrstuvwxyz";
-        String digits = "0123456789";
-        String special = "@#$%!&*";
-        String allChars = upper + lower + digits + special;
+            // ၃။ Prefix ဖြင့် ပေါင်းစပ်ခြင်း
+            customerCode = prefix + random8 + "-" + random4;
 
-        SecureRandom random = new SecureRandom();
-        StringBuilder password = new StringBuilder();
+            // ၄။ Database ထဲတွင် ထပ်မထပ် စစ်ဆေးခြင်း
+            exists = customerRepository.existsByCustomerCode(customerCode);
+            attempts++;
 
-        password.append(upper.charAt(random.nextInt(upper.length())));
-        password.append(lower.charAt(random.nextInt(lower.length())));
-        password.append(digits.charAt(random.nextInt(digits.length())));
-        password.append(special.charAt(random.nextInt(special.length())));
+            if (attempts >= maxAttempts && exists) {
+                throw new RuntimeException("Failed to generate unique customer code after multiple attempts.");
+            }
+        } while (exists);
 
-        for (int i = 4; i < 8; i++) {
-            password.append(allChars.charAt(random.nextInt(allChars.length())));
-        }
-
-        char[] array = password.toString().toCharArray();
-        for (int i = array.length - 1; i > 0; i--) {
-            int j = random.nextInt(i + 1);
-            char temp = array[i];
-            array[i] = array[j];
-            array[j] = temp;
-        }
-
-        return new String(array);
+        return customerCode;
     }
 
     /**

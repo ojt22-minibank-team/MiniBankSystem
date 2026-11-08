@@ -1,4 +1,6 @@
+
 import { Inbox, RotateCcw, ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { CusTransactionHistoryItemDTO } from "../types/transactionHistoryTypes";
 import {
   formatTransactionDateTime,
@@ -22,6 +24,8 @@ export default function TransactionTable({
   onClearFilters,
   onSelectTransaction,
 }: TransactionTableProps) {
+  const { t } = useTranslation("transaction");
+
   return (
     <div
       data-testid="transaction-list-container"
@@ -61,10 +65,10 @@ export default function TransactionTable({
           {hasFiltersApplied ? (
             <div>
               <p className="text-sm font-semibold text-slate-800">
-                No transactions found matching your criteria.
+                {t("table.empty.filteredTitle")}
               </p>
               <p className="mt-1 text-xs text-slate-500">
-                Try modifying or clearing your filter criteria to see more transactions.
+                {t("table.empty.filteredDescription")}
               </p>
               <button
                 type="button"
@@ -72,16 +76,16 @@ export default function TransactionTable({
                 className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
               >
                 <RotateCcw size={13} aria-hidden="true" />
-                Clear Filters
+                {t("table.empty.clearFilters")}
               </button>
             </div>
           ) : (
             <div>
               <p className="text-sm font-semibold text-slate-800">
-                No transaction history is available for this account.
+                {t("table.empty.noHistoryTitle")}
               </p>
               <p className="mt-1 text-xs text-slate-500">
-                When transactions occur on this account, they will appear here.
+                {t("table.empty.noHistoryDescription")}
               </p>
             </div>
           )}
@@ -118,7 +122,10 @@ export default function TransactionTable({
                   }
                 }}
                 className="group flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-6 p-4 sm:p-5 transition-colors hover:bg-slate-50/90 active:bg-slate-100/80 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0878E8]"
-                aria-label={`View details for transaction ${tx.transactionRef}, ${primaryTitle}`}
+                aria-label={t("table.viewDetails", {
+                  reference: tx.transactionRef,
+                  title: primaryTitle,
+                })}
               >
                 {/* LEFT SECTION */}
                 <div className="min-w-0 flex-1 space-y-1">

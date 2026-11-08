@@ -1,0 +1,99 @@
+
+{
+  "pageTitle": "Account Statement",
+  "common": {
+    "breadcrumb": "Breadcrumb",
+    "dashboard": "Dashboard"
+  },
+  "loading": {
+    "ariaLabel": "Loading account statement"
+  },
+  "error": {
+    "title": "Unable to Load Statement",
+    "description": "Something went wrong while loading your account statement.",
+    "retry": "Try Again"
+  },
+  "steps": {
+    "formDescription": "Select account and date range",
+    "verifyDescription": "Review your statement details",
+    "downloadDescription": "Download your statement"
+  },
+  "criteria": {
+    "title": "Statement Criteria",
+    "description": "Choose an account and date range to generate your account statement."
+  },
+  "validation": {
+    "fromDateFuture": "From date cannot be in the future.",
+    "toDateFuture": "To date cannot be in the future.",
+    "fromDateAfterToDate": "From date cannot be later than to date.",
+    "beforeOpeningDate": "The selected date range cannot be before the account opening date."
+  },
+  "form": {
+    "datePlaceholder": "DD-MM-YYYY",
+    "openCalendar": "Open calendar",
+    "openCalendarFor": "Open calendar for {{label}}",
+    "displayFormat": "Display format: DD-MM-YYYY",
+    "dateFormat": "DD-MM-YYYY",
+    "accountType": "Account Type",
+    "currentAccount": "Current Account",
+    "savingsAccount": "Savings Account",
+    "filterAccounts": "Filter accounts by category",
+    "accountNumber": "Account Number",
+    "noActiveAccounts": "No active {{accountType}} accounts found",
+    "onlyActiveAccounts": "Only active {{accountType}} accounts are selectable",
+    "fromDate": "From Date",
+    "toDate": "To Date",
+    "opened": "Opened",
+    "availableBalance": "Available Balance",
+    "informationTip": "Statements can be generated for any date range between account opening date and today. You will have the option to verify your criteria before downloading.",
+    "continue": "Continue"
+  },
+  "accountType": {
+    "CURRENT": "Current",
+    "SAVINGS": "Savings"
+  },
+  "accountStatus": {
+    "ACTIVE": "Active",
+    "DORMANT": "Dormant",
+    "FROZEN": "Frozen",
+    "CLOSED": "Closed"
+  },
+  "verify": {
+    "title": "Verify Statement Details",
+    "description": "Please review your statement details before confirming.",
+    "accountSelection": "Account Selection",
+    "currency": "Currency",
+    "balance": "Balance",
+    "statementPeriod": "Statement Period",
+    "confirmationNote": "Confirming these details will prepare your account statement for download. You can still return to make changes if needed.",
+    "change": "Change",
+    "confirm": "Confirm"
+  },
+  "download": {
+    "ready": {
+      "title": "Statement Ready",
+      "description": "Your statement criteria have been confirmed. Choose your preferred export format below."
+    },
+    "account": "Account",
+    "errors": {
+      "title": "Download Failed",
+      "dismiss": "Dismiss error",
+      "pdf": "Unable to download the PDF statement. Please try again.",
+      "csv": "Unable to download the CSV statement. Please try again."
+    },
+    "exportFormats": "Export Formats",
+    "pdf": {
+      "downloading": "Downloading PDF...",
+      "title": "PDF Document",
+      "description": "Official statement with bank letterhead"
+    },
+    "csv": {
+      "downloading": "Downloading CSV...",
+      "title": "CSV Spreadsheet",
+      "description": "Raw transaction data for spreadsheets"
+    },
+    "preparing": "Preparing...",
+    "informationTip": "You can download both PDF and CSV formats for your records. Click either button above to start your download.",
+    "changeDetails": "Change Details"
+  }
+}

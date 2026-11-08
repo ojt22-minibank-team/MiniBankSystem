@@ -118,7 +118,8 @@ class CustomerServiceTest {
 	void testRegisterPersonalCustomer_Success() {
 		CustomerDTO personalDto = CustomerDTO.builder().fullName("Daw Yoon").nrc("12/DAGANA(N)123456")
 				.email("yoon@test.com").phone("09123456789").customerType("PERSONAL")
-				.address("No. 123, Bogyoke Road, Yangon").occupation("Software Engineer").build();
+				.address("No. 123, Bogyoke Road, Yangon").occupation("Software Engineer")
+				.dateOfBirth(LocalDate.of(1995, 5, 20)).build();
 
 		when(customerRepository.existsByPhoneAndCustomerType("09123456789", CustomerType.PERSONAL)).thenReturn(false);
 		when(customerRepository.existsByEmailAndCustomerType("yoon@test.com", CustomerType.PERSONAL)).thenReturn(false);
@@ -295,7 +296,8 @@ class CustomerServiceTest {
 	void testRegisterSameEmail_AllowedForPersonalAndCompany() {
 		CustomerDTO personalDto = CustomerDTO.builder().fullName("Daw Yoon").nrc("12/DAGANA(N)123456")
 				.email("shared@bank.com").phone("09111111111").customerType("PERSONAL")
-				.address("Yangon").occupation("Engineer").build();
+				.address("Yangon").occupation("Engineer")
+				.dateOfBirth(LocalDate.of(1995, 5, 20)).build();
 
 		when(customerRepository.existsByPhoneAndCustomerType("09111111111", CustomerType.PERSONAL)).thenReturn(false);
 		when(customerRepository.existsByEmailAndCustomerType("shared@bank.com", CustomerType.PERSONAL)).thenReturn(false);
@@ -489,5 +491,89 @@ class CustomerServiceTest {
 
 		verify(customerRepository, never()).save(any(Customers.class));
 		verify(auditLogsRepository, never()).save(any(AuditLogs.class));
+	}
+
+	@Test
+	@DisplayName("testRegisterPersonalCustomer_FutureDOB_ThrowsCustomValidationException")
+	void testRegisterPersonalCustomer_FutureDOB_ThrowsCustomValidationException() {
+		CustomerDTO futureDobDto = CustomerDTO.builder()
+				.fullName("Ko Min")
+				.email("komin@gmail.com")
+				.phone("09123456789")
+				.customerType("PERSONAL")
+				.address("No. 10, Main Road, Yangon")
+				.occupation("Student")
+				.dateOfBirth(LocalDate.now().plusDays(1))
+				.build();
+
+		com.corebanking.exception.CustomValidationException ex = assertThrows(
+				com.corebanking.exception.CustomValidationException.class,
+				() -> customerService.createCustomer(futureDobDto));
+
+		assertEquals("Date of birth must be a date in the past.", ex.getMessage());
+		verify(customerRepository, never()).saveAndFlush(any(Customers.class));
+	}
+
+	@Test
+	@DisplayName("testRegisterPersonalCustomer_TodayDOB_ThrowsCustomValidationException")
+	void testRegisterPersonalCustomer_TodayDOB_ThrowsCustomValidationException() {
+		CustomerDTO todayDobDto = CustomerDTO.builder()
+				.fullName("Ko Min")
+				.email("komin@gmail.com")
+				.phone("09123456789")
+				.customerType("PERSONAL")
+				.address("No. 10, Main Road, Yangon")
+				.occupation("Student")
+				.dateOfBirth(LocalDate.now())
+				.build();
+
+		com.corebanking.exception.CustomValidationException ex = assertThrows(
+				com.corebanking.exception.CustomValidationException.class,
+				() -> customerService.createCustomer(todayDobDto));
+
+		assertEquals("Date of birth must be a date in the past.", ex.getMessage());
+		verify(customerRepository, never()).saveAndFlush(any(Customers.class));
+	}
+
+	@Test
+	@DisplayName("testRegisterPersonalCustomer_NullDOB_ThrowsCustomValidationException")
+	void testRegisterPersonalCustomer_NullDOB_ThrowsCustomValidationException() {
+		CustomerDTO nullDobDto = CustomerDTO.builder()
+				.fullName("Ko Min")
+				.email("komin@gmail.com")
+				.phone("09123456789")
+				.customerType("PERSONAL")
+				.address("No. 10, Main Road, Yangon")
+				.occupation("Student")
+				.dateOfBirth(null)
+				.build();
+
+		com.corebanking.exception.CustomValidationException ex = assertThrows(
+				com.corebanking.exception.CustomValidationException.class,
+				() -> customerService.createCustomer(nullDobDto));
+
+		assertEquals("Date of birth is mandatory for personal customers.", ex.getMessage());
+		verify(customerRepository, never()).saveAndFlush(any(Customers.class));
+	}
+
+	@Test
+	@DisplayName("testRegisterPersonalCustomer_MissingOccupation_ThrowsCustomValidationException")
+	void testRegisterPersonalCustomer_MissingOccupation_ThrowsCustomValidationException() {
+		CustomerDTO missingOccDto = CustomerDTO.builder()
+				.fullName("Ko Min")
+				.email("komin@gmail.com")
+				.phone("09123456789")
+				.customerType("PERSONAL")
+				.address("No. 10, Main Road, Yangon")
+				.occupation("   ")
+				.dateOfBirth(LocalDate.of(1995, 1, 1))
+				.build();
+
+		com.corebanking.exception.CustomValidationException ex = assertThrows(
+				com.corebanking.exception.CustomValidationException.class,
+				() -> customerService.createCustomer(missingOccDto));
+
+		assertEquals("Occupation is mandatory for personal customers.", ex.getMessage());
+		verify(customerRepository, never()).saveAndFlush(any(Customers.class));
 	}
 }

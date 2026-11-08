@@ -18,6 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -79,6 +80,8 @@ class AdminDashboardControllerTest {
                 .activeAccounts(280)
                 .totalParameters(15)
                 .activeAnnouncements(2)
+                .todayFeeRevenue(BigDecimal.valueOf(150.00))
+                .allTimeFeeRevenue(BigDecimal.valueOf(5000.00))
                 .recentStaff(List.of(staffResponse))
                 .recentAnnouncements(List.of(announcementResponse))
                 .build();
@@ -96,6 +99,8 @@ class AdminDashboardControllerTest {
                 .andExpect(jsonPath("$.activeAccounts", is(280)))
                 .andExpect(jsonPath("$.totalParameters", is(15)))
                 .andExpect(jsonPath("$.activeAnnouncements", is(2)))
+                .andExpect(jsonPath("$.todayFeeRevenue", is(150.0)))
+                .andExpect(jsonPath("$.allTimeFeeRevenue", is(5000.0)))
                 .andExpect(jsonPath("$.recentStaff", hasSize(1)))
                 .andExpect(jsonPath("$.recentStaff[0].staffNo", is("STF001")))
                 .andExpect(jsonPath("$.recentStaff[0].fullName", is("Super Admin")))

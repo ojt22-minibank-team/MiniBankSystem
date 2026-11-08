@@ -3,6 +3,7 @@ import Modal from '../../../components/common/Modal';
 import Input from '../../../components/common/Input';
 import Button from '../../../components/common/Button';
 import { systemRulesApi } from '../../../services/apiClient';
+import { formatParameterValue } from '../../../utils/formatCurrency';
 import type { SystemParameterResponse, SystemParameterUpdateRequest } from '../../../types/api.types';
 import type { AxiosError } from 'axios';
 
@@ -125,18 +126,25 @@ export default function ParameterEditModal({
           <span className="font-mono font-bold text-gray-800 text-sm">{parameter.parameterKey}</span>
         </div>
 
-        <Input
-          label="Parameter Value"
-          placeholder="New parameter value"
-          value={formData.parameterValue}
-          onChange={(e) => {
-            setFormData({ ...formData, parameterValue: e.target.value });
-            if (errors.parameterValue) setErrors({ ...errors, parameterValue: '' });
-          }}
-          error={errors.parameterValue}
-          disabled={isLoading}
-          required
-        />
+        <div>
+          <Input
+            label="Parameter Value"
+            placeholder="New parameter value"
+            value={formData.parameterValue}
+            onChange={(e) => {
+              setFormData({ ...formData, parameterValue: e.target.value });
+              if (errors.parameterValue) setErrors({ ...errors, parameterValue: '' });
+            }}
+            error={errors.parameterValue}
+            disabled={isLoading}
+            required
+          />
+          {formData.parameterValue && /^-?\d+(\.\d+)?$/.test(formData.parameterValue.trim()) && (
+            <p className="mt-1 text-xs text-slate-500 font-mono">
+              Formatted Preview: <span className="font-bold text-[#1E1B4B]">{formatParameterValue(formData.parameterValue)}</span>
+            </p>
+          )}
+        </div>
 
         <div className="flex flex-col gap-1">
           <label htmlFor="edit-param-desc" className="text-sm font-medium text-gray-700">

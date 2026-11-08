@@ -72,6 +72,8 @@ class CustomerControllerTest {
                     "nrc": "12/DAGANA(N)123456",
                     "email": "yoon@gmail.com",
                     "phone": "09123456789",
+                    "dateOfBirth": "1995-05-20",
+                    "address": "No. 123, Bogyoke Road, Yangon",
                     "customerType": "PERSONAL"
                 }
                 """;
@@ -109,6 +111,8 @@ class CustomerControllerTest {
                     "businessType": "FINTECH",
                     "email": "info.acetech@gmail.com",
                     "phone": "09123456789",
+                    "dateOfBirth": "1995-05-20",
+                    "address": "Tower A, Level 15, Hledan Centre, Yangon",
                     "customerType": "COMPANY"
                 }
                 """;
@@ -127,15 +131,13 @@ class CustomerControllerTest {
     @Test
     @DisplayName("testCreateCustomer_InvalidPhone_Returns400: 9-digit phone triggers validation error and 400 Bad Request")
     void testCreateCustomer_InvalidPhone_Returns400() throws Exception {
-        when(customerService.createCustomer(any(CustomerDTO.class)))
-                .thenThrow(new IllegalArgumentException("Phone number must be exactly 11 digits long: 091234567"));
-
         String jsonPayload = """
                 {
                     "fullName": "Daw Yoon",
                     "nrc": "12/DAGANA(N)123456",
                     "email": "yoon@gmail.com",
                     "phone": "091234567",
+                    "address": "No. 123, Bogyoke Road, Yangon",
                     "customerType": "PERSONAL"
                 }
                 """;
@@ -144,8 +146,8 @@ class CustomerControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonPayload))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
-                .andExpect(jsonPath("$.message", containsString("Phone number must be exactly 11 digits long")));
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message", containsString("Phone number must be exactly 11 digits starting with 09")));
     }
 
    
@@ -161,6 +163,8 @@ class CustomerControllerTest {
                     "nrc": "12/DAGANA(N)123456",
                     "email": "duplicate@gmail.com",
                     "phone": "09123456789",
+                    "dateOfBirth": "1995-05-20",
+                    "address": "No. 123, Bogyoke Road, Yangon",
                     "customerType": "PERSONAL"
                 }
                 """;
@@ -182,6 +186,7 @@ class CustomerControllerTest {
                     "nrc": "12/DAGANA(N)123456",
                     "email": "user@yahoo.com",
                     "phone": "09123456789",
+                    "address": "No. 123, Bogyoke Road, Yangon",
                     "customerType": "PERSONAL"
                 }
                 """;
@@ -206,6 +211,8 @@ class CustomerControllerTest {
                     "nrc": "12/DAGANA(N)123456",
                     "email": "nonexistent@gmail.com",
                     "phone": "09123456789",
+                    "dateOfBirth": "1995-05-20",
+                    "address": "No. 123, Bogyoke Road, Yangon",
                     "customerType": "PERSONAL"
                 }
                 """;
@@ -227,6 +234,8 @@ class CustomerControllerTest {
                     "nrc": "99/INVALID(X)123",
                     "email": "yoon@gmail.com",
                     "phone": "09123456789",
+                    "dateOfBirth": "1995-05-20",
+                    "address": "No. 123, Bogyoke Road, Yangon",
                     "customerType": "PERSONAL"
                 }
                 """;
@@ -237,6 +246,51 @@ class CustomerControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
                 .andExpect(jsonPath("$.message", containsString("Invalid Myanmar NRC format")));
+    }
+
+    @Test
+    @DisplayName("testCreateCustomer_MissingDateOfBirth_Returns400ValidationError: Null dateOfBirth is rejected by @NotNull")
+    void testCreateCustomer_MissingDateOfBirth_Returns400ValidationError() throws Exception {
+        String jsonPayload = """
+                {
+                    "fullName": "Daw Yoon",
+                    "nrc": "12/DAGANA(N)123456",
+                    "email": "yoon@gmail.com",
+                    "phone": "09123456789",
+                    "address": "No. 123, Bogyoke Road, Yangon",
+                    "customerType": "PERSONAL"
+                }
+                """;
+
+        mockMvc.perform(post("/api/customers/personal")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message", containsString("Date of birth is required")));
+    }
+
+    @Test
+    @DisplayName("testCreateCustomer_FutureDateOfBirth_Returns400ValidationError: Future dateOfBirth is rejected by @Past")
+    void testCreateCustomer_FutureDateOfBirth_Returns400ValidationError() throws Exception {
+        String jsonPayload = """
+                {
+                    "fullName": "Daw Yoon",
+                    "nrc": "12/DAGANA(N)123456",
+                    "email": "yoon@gmail.com",
+                    "phone": "09123456789",
+                    "dateOfBirth": "2099-01-01",
+                    "address": "No. 123, Bogyoke Road, Yangon",
+                    "customerType": "PERSONAL"
+                }
+                """;
+
+        mockMvc.perform(post("/api/customers/personal")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message", containsString("Date of birth must be a past date")));
     }
 
     @Test

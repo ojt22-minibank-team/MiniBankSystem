@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
 import AdminLayout from '../../../components/layout/AdminLayout';
 import { adminDashboardApi } from '../../../services/apiClient';
 import type { AdminDashboardSummaryResponse, AnnouncementResponse } from '../../../types/api.types';
 import type { AxiosError } from 'axios';
 import { formatDate } from '../../../utils/formatDate';
+import { formatCurrency } from '../../../utils/formatCurrency';
 
 // ============================================================
 // Liquid Glass Stat Card Component
@@ -38,6 +39,7 @@ interface LiquidStatCardProps {
   gradient: string;
   iconBg: string;
   onClick?: () => void;
+  headerAction?: React.ReactNode;
 }
 
 function LiquidStatCard({
@@ -50,6 +52,7 @@ function LiquidStatCard({
   gradient,
   iconBg,
   onClick,
+  headerAction,
 }: LiquidStatCardProps) {
   const badgeClasses = {
     emerald: 'status-pill-emerald',
@@ -72,18 +75,21 @@ function LiquidStatCard({
       />
 
       <div className="relative z-10 flex items-start justify-between">
-        <div className="space-y-1">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-            {title}
-          </p>
-          <div className="flex items-baseline gap-2 pt-1">
-            <span className="text-3xl font-black text-slate-900 tracking-tight font-mono tabular-nums">
+        <div className="space-y-1 min-w-0 pr-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              {title}
+            </p>
+            {headerAction}
+          </div>
+          <div className="flex items-baseline gap-2 pt-1 flex-wrap">
+            <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-mono tabular-nums">
               {value}
             </span>
             {badge && <span className={`${badgeClasses} text-[10px]`}>{badge}</span>}
           </div>
           {subtitle && (
-            <p className="text-xs font-medium text-slate-400 pt-0.5">{subtitle}</p>
+            <p className="text-xs font-medium text-slate-400 pt-0.5 truncate">{subtitle}</p>
           )}
         </div>
 
@@ -119,11 +125,14 @@ function LiquidStatCard({
 export default function AdminDashboardPage() {
   const { user, isAdmin, isAuditor, isTeller } = useAuth();
   const navigate = useNavigate();
-  const baseRoute = isAuditor ? '/auditor' : '/admin';
+  const location = useLocation();
+  const isAuditorView = isAuditor || location.pathname.startsWith('/auditor');
+  const baseRoute = isAuditorView ? '/auditor' : '/admin';
 
   const [summary, setSummary] = useState<AdminDashboardSummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [feeTimeframe, setFeeTimeframe] = useState<'today' | 'all'>('today');
 
   useEffect(() => {
     setLoading(true);
@@ -148,6 +157,10 @@ export default function AdminDashboardPage() {
 
   const recentStaff = summary?.recentStaff ?? [];
   const recentAnnouncements = summary?.recentAnnouncements ?? [];
+
+  const todayFee = summary?.todayFeeRevenue ?? 0;
+  const allTimeFee = summary?.allTimeFeeRevenue ?? 0;
+  const displayedFee = feeTimeframe === 'today' ? todayFee : allTimeFee;
 
   return (
     <AdminLayout pageTitle="Dashboard">
@@ -260,9 +273,10 @@ export default function AdminDashboardPage() {
         {/* ========================================================
             3. Liquid Glass High-Impact KPI Stat Cards
            ======================================================== */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-          {/* Card 1: Staff Workforce */}
-          <LiquidStatCard
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {/* Card 1: Staff Workforce (Hidden for Auditor) */}
+          {!isAuditorView && (
+            <LiquidStatCard
             title="Staff Workforce"
             value={loading ? '—' : isTeller ? 'Directory' : (summary?.totalStaff ?? 0)}
             subtitle={
@@ -283,6 +297,7 @@ export default function AdminDashboardPage() {
               </svg>
             }
           />
+          )}
 
           {/* Card 2: Customers & Portfolios */}
           <LiquidStatCard
@@ -336,7 +351,67 @@ export default function AdminDashboardPage() {
             }
           />
 
-          {/* Card 5: Operational Analytics (Admin & Auditor) */}
+          {/* Card 5: Fee Revenue (GL-FEE-REVENUE) */}
+          {(isAdmin || isAuditor) && (
+            <LiquidStatCard
+              title="Fee Revenue"
+              value={loading ? '—' : formatCurrency(displayedFee, 'MMK')}
+              subtitle={
+                loading
+                  ? 'Calculating ledger fees…'
+                  : feeTimeframe === 'today'
+                  ? `All-Time: ${formatCurrency(allTimeFee, 'MMK')}`
+                  : `Today: ${formatCurrency(todayFee, 'MMK')}`
+              }
+              badge={feeTimeframe === 'today' ? 'Today' : 'All-Time'}
+              badgeColor="emerald"
+              gradient="bg-emerald-400"
+              iconBg="bg-gradient-to-br from-emerald-500 to-teal-700 text-white"
+              onClick={() => navigate(`${baseRoute}/reporting`)}
+              headerAction={
+                <div
+                  className="inline-flex p-0.5 rounded-xl bg-slate-200/80 border border-slate-300/60 shadow-xs"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFeeTimeframe('today');
+                    }}
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                      feeTimeframe === 'today'
+                        ? 'bg-white text-emerald-700 shadow-xs ring-1 ring-slate-900/5'
+                        : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFeeTimeframe('all');
+                    }}
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                      feeTimeframe === 'all'
+                        ? 'bg-white text-emerald-700 shadow-xs ring-1 ring-slate-900/5'
+                        : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                  >
+                    All Time
+                  </button>
+                </div>
+              }
+              icon={
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              }
+            />
+          )}
+
+          {/* Card 6: Operational Analytics (Admin & Auditor) */}
           {(isAdmin || isAuditor) && (
             <LiquidStatCard
               title="Operational Reports"

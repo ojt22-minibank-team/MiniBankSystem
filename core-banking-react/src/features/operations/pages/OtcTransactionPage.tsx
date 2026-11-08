@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 import AdminLayout from '../../../components/layout/AdminLayout';
 import Button from '../../../components/common/Button';
 import Input from '../../../components/common/Input';
@@ -500,7 +500,7 @@ export default function OtcTransactionPage() {
     setPrintMode(targetMode);
     setTimeout(() => {
       window.print();
-    }, 60);
+    }, 120);
   };
 
   const renderSlip = (copyType: 'CUSTOMER' | 'BANK') => {
@@ -518,170 +518,177 @@ export default function OtcTransactionPage() {
           <img src={ekarajCrown} alt="" className="h-32 w-32 object-contain" />
         </div>
 
-        {/* Header Row: Bank Logo & Clean Branch Info + Plain Status Badges & QR */}
-        <div className="flex items-start justify-between gap-3 border-b border-gray-200 pb-2">
-          <div className="flex items-center gap-2.5">
-            <img src={ekarajCrown} alt="EKARAJ BANK" className="h-8.5 w-auto object-contain shrink-0" />
+        {/* Main Slip Body */}
+        <div className="slip-main-content space-y-2">
+          {/* Header Row: Bank Logo & Clean Branch Info + Plain Status Badges & QR */}
+          <div className="flex items-start justify-between gap-3 border-b border-gray-200 pb-2">
+            <div className="flex items-center gap-2.5">
+              <img src={ekarajCrown} alt="EKARAJ BANK" className="h-8.5 w-auto object-contain shrink-0" />
+              <div>
+                <h1 className="text-sm sm:text-base font-black tracking-tight text-gray-900 uppercase leading-none">
+                  EKARAJ BANK
+                </h1>
+                <p className="text-[10px] text-gray-600 font-semibold leading-tight mt-1">
+                  Yangon Main Branch (Code: BR-001)
+                </p>
+                <p className="text-[9px] text-gray-400 font-mono leading-tight mt-0.5">
+                  Counter #01 • Licensed Commercial Bank
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              {/* Digital Security Verification QR Code (Always Masked Account Number) */}
+              <div
+                className="flex items-center justify-center bg-white p-1 rounded-md border border-gray-200 shadow-2xs"
+                title="Scan to verify transaction"
+              >
+                <QRCodeSVG
+                  value={formatReceiptQrText(receipt)}
+                  size={72}
+                  level="L"
+                  includeMargin={false}
+                  style={{ shapeRendering: 'crispEdges' }}
+                />
+              </div>
+
+              {/* Plain Unbordered/Uncolored Typography for Voucher & Receipt Labels */}
+              <div className="text-right">
+                <span className="block text-xs font-black uppercase tracking-wider text-gray-900 leading-tight">
+                  {isDeposit ? 'Deposit Voucher' : 'Withdrawal Voucher'}
+                </span>
+                <span className="block text-[10.5px] font-bold uppercase tracking-wider text-gray-600 leading-tight mt-0.5">
+                  {isCustomer ? 'Customer Receipt' : 'Branch Voucher'}
+                </span>
+                <p className="mt-1 text-[8.5px] text-gray-500 font-mono leading-tight">
+                  {formatTransactionDateTime(receipt.transactedAt)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Reference Bar: Txn Ref, Counter Slip No, Processed By + Staff No (NO CHANNEL) */}
+          <div className="grid grid-cols-3 gap-2 bg-gray-50 rounded-lg p-2 text-[10.5px] border border-gray-200">
             <div>
-              <h1 className="text-sm sm:text-base font-black tracking-tight text-gray-900 uppercase leading-none">
-                EKARAJ BANK
-              </h1>
-              <p className="text-[10px] text-gray-600 font-semibold leading-tight mt-1">
-                Yangon Main Branch (Code: BR-001)
-              </p>
-              <p className="text-[9px] text-gray-400 font-mono leading-tight mt-0.5">
-                Counter #01 • Licensed Commercial Bank
-              </p>
+              <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">Transaction Ref</span>
+              <span className="font-mono font-bold text-gray-900 block truncate">{receipt.transactionRef}</span>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            {/* Digital Security Verification QR Code (Always Masked Account Number) */}
-            <div className="flex flex-col items-center justify-center bg-white p-1 rounded-md border border-gray-200 shadow-2xs">
-              <QRCodeSVG
-                value={formatReceiptQrText(receipt)}
-                size={58}
-                level="M"
-                includeMargin={true}
-              />
-              <span className="text-[7.5px] font-mono font-bold text-gray-500 mt-0.5 uppercase tracking-wider">
-                Scan Verify
-              </span>
-            </div>
-
-            {/* Plain Unbordered/Uncolored Typography for Voucher & Receipt Labels */}
-            <div className="text-right">
-              <span className="block text-xs font-black uppercase tracking-wider text-gray-900 leading-tight">
-                {isDeposit ? 'Deposit Voucher' : 'Withdrawal Voucher'}
-              </span>
-              <span className="block text-[10.5px] font-bold uppercase tracking-wider text-gray-600 leading-tight mt-0.5">
-                {isCustomer ? 'Customer Receipt' : 'Branch Voucher'}
-              </span>
-              <p className="mt-1 text-[8.5px] text-gray-500 font-mono leading-tight">
-                {formatTransactionDateTime(receipt.transactedAt)}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Reference Bar: Txn Ref, Counter Slip No, Processed By + Staff No (NO CHANNEL) */}
-        <div className="grid grid-cols-3 gap-2 bg-gray-50 rounded-lg p-2 text-[10.5px] border border-gray-200">
-          <div>
-            <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">Transaction Ref</span>
-            <span className="font-mono font-bold text-gray-900 block truncate">{receipt.transactionRef}</span>
-          </div>
-          <div>
-            <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">Counter Slip No</span>
-            <span className="font-mono font-bold text-blue-800 block truncate">{receipt.manualReferenceId || '—'}</span>
-          </div>
-          <div>
-            <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">Processed By</span>
-            <span className="font-mono font-bold text-gray-900 block truncate">
-              {receipt.tellerUsername} {staffNoLabel}
-            </span>
-          </div>
-        </div>
-
-        {/* Customer & Account Particulars: Bank Account Number, Account Holder Name, NRC ID (Masked on Customer Receipt) */}
-        <div className="grid grid-cols-3 gap-2 border border-gray-200 rounded-lg p-2 bg-white text-[10.5px]">
-          <div>
-            <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">Bank Account Number</span>
-            <span className="font-mono font-black text-gray-900 text-xs sm:text-[13px] block mt-0.5 tracking-wide">
-              {isCustomer ? maskAccountNumber(receipt.accountNumber) : receipt.accountNumber}
-            </span>
-          </div>
-          <div>
-            <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">Account Holder Name</span>
-            <span className="font-bold text-gray-900 block truncate mt-0.5">{receipt.customerName}</span>
-            <span className="text-[9px] font-mono text-gray-400 block">{receipt.customerCode}</span>
-          </div>
-          <div>
-            <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">NRC ID</span>
-            <span className="font-semibold text-gray-800 font-mono block mt-0.5 truncate">
-              {isCustomer
-                ? maskNrcLastThree(verifiedAccount?.nrc || receipt.nrc)
-                : (verifiedAccount?.nrc || receipt.nrc || '—')}
-            </span>
-          </div>
-        </div>
-
-        {/* Financial Settlement Card */}
-        <div className="rounded-lg border border-gray-900/80 p-2 bg-gray-50/60 space-y-1">
-          <div className="flex items-baseline justify-between border-b border-gray-200 pb-1">
-            <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Net Cash Amount:</span>
-            <span className="text-base sm:text-lg font-black font-mono text-gray-900 tracking-tight">
-              {formatCurrency(receipt.amount, curr)}
-            </span>
-          </div>
-
-          {/* Amount in Words */}
-          <div className="text-[9.5px] text-gray-700 bg-white px-2 py-0.5 rounded border border-gray-200 flex items-baseline gap-1">
-            <span className="font-bold text-gray-500 uppercase tracking-wide text-[8.5px] shrink-0">In Words:</span>
-            <span className="font-serif italic font-semibold text-gray-900 truncate">
-              "{formatAmountToWords(receipt.amount, curr)}"
-            </span>
-          </div>
-
-          {/* Balances Summary */}
-          <div className="grid grid-cols-3 gap-1 pt-0.5 text-center divide-x divide-gray-200 text-[10px]">
             <div>
-              <span className="text-gray-500 block text-[8.5px]">Balance Before</span>
-              <span className="font-mono font-medium text-gray-700 block mt-0.5">
-                {formatCurrency(receipt.balanceBefore, curr)}
+              <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">Counter Slip No</span>
+              <span className="font-mono font-bold text-blue-800 block truncate">{receipt.manualReferenceId || '—'}</span>
+            </div>
+            <div>
+              <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">Processed By</span>
+              <span className="font-mono font-bold text-gray-900 block truncate">
+                {receipt.tellerUsername} {staffNoLabel}
+              </span>
+            </div>
+          </div>
+
+          {/* Customer & Account Particulars: Bank Account Number, Account Holder Name, NRC ID (Masked on Customer Receipt) */}
+          <div className="grid grid-cols-3 gap-2 border border-gray-200 rounded-lg p-2 bg-white text-[10.5px]">
+            <div>
+              <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">Bank Account Number</span>
+              <span className="font-mono font-black text-gray-900 text-xs sm:text-[13px] block mt-0.5 tracking-wide">
+                {isCustomer ? maskAccountNumber(receipt.accountNumber) : receipt.accountNumber}
               </span>
             </div>
             <div>
-              <span className="text-gray-500 block text-[8.5px]">Service Fee</span>
-              <span className="font-mono font-medium text-gray-700 block mt-0.5">
-                {formatCurrency(receipt.serviceFee ?? 0, curr)}
-              </span>
+              <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">Account Holder Name</span>
+              <span className="font-bold text-gray-900 block truncate mt-0.5">{receipt.customerName}</span>
+              <span className="text-[9px] font-mono text-gray-400 block">{receipt.customerCode}</span>
             </div>
             <div>
-              <span className="text-gray-500 block text-[8.5px] font-bold">New Available Balance</span>
-              <span className="font-mono font-black text-blue-900 block mt-0.5">
-                {formatCurrency(receipt.balanceAfter, curr)}
+              <span className="text-gray-500 block text-[9px] uppercase font-bold tracking-wider">NRC ID</span>
+              <span className="font-semibold text-gray-800 font-mono block mt-0.5 truncate">
+                {isCustomer
+                  ? maskNrcLastThree(verifiedAccount?.nrc || receipt.nrc)
+                  : (verifiedAccount?.nrc || receipt.nrc || '—')}
               </span>
             </div>
           </div>
-        </div>
 
-        {/* Customer Statement Narration */}
-        {receipt.description && (
-          <div className="text-[10px] border border-gray-200 rounded-md px-2 py-1 bg-white">
-            <span className="text-gray-500 font-bold block text-[8.5px] uppercase tracking-wider">Customer Statement Narration:</span>
-            <p className="font-medium text-gray-800 truncate mt-0.5">{receipt.description}</p>
-          </div>
-        )}
-
-        {/* Internal Audit Note (Branch Voucher Only) */}
-        {!isCustomer && auditNote && (
-          <div className="text-[10px] border border-gray-200 rounded-md px-2 py-1 bg-white">
-            <span className="text-gray-500 font-bold block text-[8.5px] uppercase tracking-wider">Internal Audit Note:</span>
-            <p className="font-medium text-gray-800 truncate mt-0.5">{auditNote}</p>
-          </div>
-        )}
-
-        {/* Dual Signatures Section */}
-        <div className="pt-2 border-t border-gray-200">
-          <div className="grid grid-cols-2 gap-6 text-[9.5px]">
-            <div>
-              <div className="border-b border-gray-400 w-full mb-1"></div>
-              <span className="font-bold text-gray-900 block">Customer Signature</span>
-              <span className="text-[8px] text-gray-500 block">Date: ____________________</span>
-            </div>
-            <div className="text-right">
-              <div className="border-b border-gray-400 w-full mb-1"></div>
-              <span className="font-bold text-gray-900 block">Authorized Bank Teller & Stamp</span>
-              <span className="text-[8px] text-gray-500 block">
-                Processed by: {receipt.tellerUsername} {staffNoLabel} • {receipt.transactedAt ? formatDate(receipt.transactedAt) : '—'}
+          {/* Financial Settlement Card */}
+          <div className="rounded-lg border border-gray-900/80 p-2 bg-gray-50/60 space-y-1">
+            <div className="flex items-baseline justify-between border-b border-gray-200 pb-1">
+              <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wider">Net Cash Amount:</span>
+              <span className="text-base sm:text-lg font-black font-mono text-gray-900 tracking-tight">
+                {formatCurrency(receipt.amount, curr)}
               </span>
             </div>
+
+            {/* Amount in Words */}
+            <div className="text-[9.5px] text-gray-700 bg-white px-2 py-0.5 rounded border border-gray-200 flex items-baseline gap-1">
+              <span className="font-bold text-gray-500 uppercase tracking-wide text-[8.5px] shrink-0">In Words:</span>
+              <span className="font-serif italic font-semibold text-gray-900 truncate">
+                "{formatAmountToWords(receipt.amount, curr)}"
+              </span>
+            </div>
+
+            {/* Balances Summary */}
+            <div className="grid grid-cols-3 gap-1 pt-0.5 text-center divide-x divide-gray-200 text-[10px]">
+              <div>
+                <span className="text-gray-500 block text-[8.5px]">Balance Before</span>
+                <span className="font-mono font-medium text-gray-700 block mt-0.5">
+                  {formatCurrency(receipt.balanceBefore, curr)}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 block text-[8.5px]">Service Fee</span>
+                <span className="font-mono font-medium text-gray-700 block mt-0.5">
+                  {formatCurrency(receipt.serviceFee ?? 0, curr)}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 block text-[8.5px] font-bold">New Available Balance</span>
+                <span className="font-mono font-black text-blue-900 block mt-0.5">
+                  {formatCurrency(receipt.balanceAfter, curr)}
+                </span>
+              </div>
+            </div>
           </div>
+
+          {/* Customer Statement Narration */}
+          {receipt.description && (
+            <div className="text-[10px] border border-gray-200 rounded-md px-2 py-1 bg-white">
+              <span className="text-gray-500 font-bold block text-[8.5px] uppercase tracking-wider">Customer Statement Narration:</span>
+              <p className="font-medium text-gray-800 truncate mt-0.5">{receipt.description}</p>
+            </div>
+          )}
+
+          {/* Internal Audit Note (Branch Voucher Only) */}
+          {!isCustomer && auditNote && (
+            <div className="text-[10px] border border-gray-200 rounded-md px-2 py-1 bg-white">
+              <span className="text-gray-500 font-bold block text-[8.5px] uppercase tracking-wider">Internal Audit Note:</span>
+              <p className="font-medium text-gray-800 truncate mt-0.5">{auditNote}</p>
+            </div>
+          )}
         </div>
 
-        {/* Compact Footer */}
-        <div className="border-t border-gray-100 pt-0.5 text-[8px] text-gray-400 text-center leading-tight">
-          EKARAJ BANK Official Counter Transaction Voucher • Licensed Commercial Bank
+        {/* Dual Signatures & Compact Footer Section */}
+        <div className="slip-bottom-content pt-1.5 space-y-1 mt-auto">
+          {/* Dual Signatures Section */}
+          <div className="pt-1.5 border-t border-gray-200">
+            <div className="grid grid-cols-2 gap-6 text-[9.5px]">
+              <div>
+                <div className="border-b border-gray-400 w-full mb-1"></div>
+                <span className="font-bold text-gray-900 block">Customer Signature</span>
+                <span className="text-[8px] text-gray-500 block">Date: ____________________</span>
+              </div>
+              <div className="text-right">
+                <div className="border-b border-gray-400 w-full mb-1"></div>
+                <span className="font-bold text-gray-900 block">Authorized Bank Teller & Stamp</span>
+                <span className="text-[8px] text-gray-500 block">
+                  Processed by: {receipt.tellerUsername} {staffNoLabel} • {receipt.transactedAt ? formatDate(receipt.transactedAt) : '—'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Compact Footer */}
+          <div className="border-t border-gray-100 pt-0.5 text-[8px] text-gray-400 text-center leading-tight">
+            EKARAJ BANK Official Counter Transaction Voucher • Licensed Commercial Bank
+          </div>
         </div>
       </div>
     );
@@ -701,8 +708,8 @@ export default function OtcTransactionPage() {
       {/* Print Specific CSS Styles */}
       <style>{`
         @page {
-          size: A4 portrait;
-          margin: 10mm;
+          size: ${printMode === 'DUAL' ? 'A4 portrait' : 'A5 landscape'};
+          margin: 5mm 6mm;
         }
         @media print {
           * {
@@ -723,7 +730,7 @@ export default function OtcTransactionPage() {
             display: none !important;
           }
           /* Reset root layout hierarchy so nothing offsets printable content */
-          #root, #root > div, #root > div > div, main {
+          #root, #root > div, #root > div > div, main, main > div, [class*="max-w-4xl"] {
             display: block !important;
             position: static !important;
             margin: 0 !important;
@@ -745,7 +752,7 @@ export default function OtcTransactionPage() {
             position: relative !important;
             width: 100% !important;
             max-width: 100% !important;
-            margin: 0 auto !important;
+            margin: 0 !important;
             padding: 0 !important;
             background: transparent !important;
             border: none !important;
@@ -759,6 +766,43 @@ export default function OtcTransactionPage() {
             box-sizing: border-box !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 6px !important;
+            box-shadow: none !important;
+            background: #ffffff !important;
+            padding: 10px 14px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+          }
+          /* In Dual 2-in-1 Mode (A4 Portrait): Each voucher fills half A4 cleanly */
+          .dual-container {
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+            width: 100% !important;
+          }
+          .dual-container .slip-container {
+            min-height: 132mm !important;
+            max-height: 135mm !important;
+          }
+          .dual-cut-line {
+            margin: 3mm 0 !important;
+            padding: 1mm 0 !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          /* In Single Mode (A5 Landscape): Fills standard A5 voucher dimensions */
+          .single-mode-slip .slip-container {
+            min-height: 135mm !important;
+            max-height: 137mm !important;
+          }
+          .slip-main-content {
+            flex: 1 1 auto !important;
+          }
+          .slip-bottom-content {
+            flex-shrink: 0 !important;
+            margin-top: auto !important;
           }
         }
       `}</style>
@@ -852,13 +896,16 @@ export default function OtcTransactionPage() {
           </div>
 
           {/* OFFICIAL COMMERCIAL BANK VOUCHER SHEET (PRINTABLE) */}
-          <div id="printable-voucher" className="w-full space-y-3">
+          <div
+            id="printable-voucher"
+            className={`w-full ${printMode === 'DUAL' ? 'dual-voucher-mode space-y-3' : 'single-mode-slip'}`}
+          >
             {printMode === 'CUSTOMER' && renderSlip('CUSTOMER')}
             {printMode === 'BANK' && renderSlip('BANK')}
             {printMode === 'DUAL' && (
-              <div className="space-y-2.5">
+              <div className="dual-container space-y-2.5">
                 {renderSlip('BANK')}
-                <div className="relative py-1 flex items-center justify-center my-0.5">
+                <div className="dual-cut-line relative py-1 flex items-center justify-center my-0.5">
                   <div className="w-full border-t-2 border-dashed border-gray-400"></div>
                   <span className="absolute bg-white px-3 py-0.5 text-[8.5px] font-mono font-bold text-gray-500 uppercase tracking-widest border border-gray-300 rounded-full shadow-2xs flex items-center gap-1">
                     ✂ Cut Here
@@ -1046,7 +1093,7 @@ export default function OtcTransactionPage() {
                       {/* Customer Identity Info Grid */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3.5 text-xs flex-1 min-w-0 w-full">
                         <div className="min-w-0">
-                          <span className="text-gray-500 block text-[11px] font-medium">Account Holder</span>
+                          <span className="text-gray-500 block text-[11px] font-medium">Account Holder Name</span>
                           <span className="font-bold text-gray-900 text-sm block truncate mt-0.5">
                             {verifiedAccount.customerName}
                           </span>

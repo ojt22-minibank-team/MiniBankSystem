@@ -3,11 +3,14 @@ package com.corebanking.service;
 import com.corebanking.dto.AdminDashboardResponseDTO;
 import com.corebanking.dto.AnnouncementResponse;
 import com.corebanking.dto.StaffResponse;
+import com.corebanking.entity.enums.AccountClass;
 import com.corebanking.entity.enums.AccountStatus;
+import com.corebanking.entity.enums.EntryType;
 import com.corebanking.entity.enums.StaffUserStatus;
 import com.corebanking.repository.AccountRepository;
 import com.corebanking.repository.AnnouncementsRepository;
 import com.corebanking.repository.CustomerRepository;
+import com.corebanking.repository.LedgerEntryRepository;
 import com.corebanking.repository.StaffUsersRepository;
 import com.corebanking.repository.SystemParametersRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +19,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
@@ -28,6 +34,7 @@ public class AdminDashboardService {
     private final AccountRepository accountRepository;
     private final SystemParametersRepository systemParametersRepository;
     private final AnnouncementsRepository announcementsRepository;
+    private final LedgerEntryRepository ledgerEntryRepository;
     private final StaffManagementService staffManagementService;
     private final AnnouncementService announcementService;
 
@@ -74,6 +81,15 @@ public class AdminDashboardService {
                     .toList();
         }
 
+        LocalDate today = LocalDate.now();
+        LocalDateTime startOfDay = today.atStartOfDay();
+        LocalDateTime endOfDay = today.atTime(23, 59, 59, 999999999);
+
+        BigDecimal allTimeFeeRevenue = ledgerEntryRepository.sumByLedgerCodeAndAccountClassAndEntryType(
+                "GL-FEE-REVENUE", AccountClass.REVENUE, EntryType.CREDIT);
+        BigDecimal todayFeeRevenue = ledgerEntryRepository.sumByLedgerCodeAndAccountClassAndEntryTypeAndDateRange(
+                "GL-FEE-REVENUE", AccountClass.REVENUE, EntryType.CREDIT, startOfDay, endOfDay);
+
         return AdminDashboardResponseDTO.builder()
                 .totalStaff(totalStaff)
                 .activeStaff(activeStaff)
@@ -82,6 +98,8 @@ public class AdminDashboardService {
                 .activeAccounts(activeAccounts)
                 .totalParameters(totalParameters)
                 .activeAnnouncements(activeAnnouncements)
+                .todayFeeRevenue(todayFeeRevenue != null ? todayFeeRevenue : BigDecimal.ZERO)
+                .allTimeFeeRevenue(allTimeFeeRevenue != null ? allTimeFeeRevenue : BigDecimal.ZERO)
                 .recentStaff(recentStaff)
                 .recentAnnouncements(recentAnnouncements)
                 .build();

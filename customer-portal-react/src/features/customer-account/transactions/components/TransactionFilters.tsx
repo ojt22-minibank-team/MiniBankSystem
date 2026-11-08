@@ -1,4 +1,6 @@
+
 import { useId, useRef, useState, type ChangeEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { Filter, X, AlertCircle, Calendar } from "lucide-react";
 import type { CustomerAccount } from "../../accounts/types/accountTypes";
 import type { TransactionFilterDraft } from "../types/transactionHistoryTypes";
@@ -43,6 +45,8 @@ function ControlledDateField({
   hasError?: boolean;
   onChangeIso: (iso: string) => void;
 }) {
+  const { t } = useTranslation("transaction");
+
   const hiddenDateRef = useRef<HTMLInputElement>(null);
   const [typedValue, setTypedValue] = useState<string | null>(null);
   const [prevIsoValue, setPrevIsoValue] = useState<string>(isoValue);
@@ -72,7 +76,7 @@ function ControlledDateField({
   };
 
   const handleNativePickerChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const picked = e.target.value; // YYYY-MM-DD
+    const picked = e.target.value;
     setTypedValue(null);
     onChangeIso(picked || "");
   };
@@ -114,6 +118,7 @@ function ControlledDateField({
               : "border-slate-200 focus:border-[#0878E8] focus:ring-[#0878E8]/20"
           } bg-white px-4 py-2.5 pr-11 text-sm font-medium text-slate-800 placeholder-slate-400 transition-colors focus:outline-none focus:ring-2`}
         />
+
         {/* Native Hidden Date Picker Overlay Trigger */}
         <input
           ref={hiddenDateRef}
@@ -125,12 +130,13 @@ function ControlledDateField({
           className="sr-only"
           aria-hidden="true"
         />
+
         <button
           type="button"
           onClick={openNativePicker}
           className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-[#0878E8] hover:bg-slate-50 rounded-lg transition-colors"
-          title="Open calendar"
-          aria-label={`Open calendar for ${label}`}
+          title={t("filters.openCalendar")}
+          aria-label={t("filters.openCalendarFor", { label })}
         >
           <Calendar size={18} />
         </button>
@@ -152,6 +158,8 @@ export default function TransactionFilters({
   isApplying = false,
   validationError,
 }: TransactionFiltersProps) {
+  const { t } = useTranslation("transaction");
+
   const accountSelectId = useId();
   const typeSelectId = useId();
   const statusSelectId = useId();
@@ -162,20 +170,29 @@ export default function TransactionFilters({
 
   const activeAccounts = accounts.filter((acc) => acc.status === "ACTIVE");
   const todayIso = getTodayLocalIso();
+
   const isDateRangeInvalid = Boolean(
     draftFilters.fromDate &&
     draftFilters.toDate &&
     draftFilters.fromDate > draftFilters.toDate
   );
-  const isFromFuture = Boolean(draftFilters.fromDate && draftFilters.fromDate > todayIso);
-  const isToFuture = Boolean(draftFilters.toDate && draftFilters.toDate > todayIso);
+
+  const isFromFuture = Boolean(
+    draftFilters.fromDate && draftFilters.fromDate > todayIso
+  );
+
+  const isToFuture = Boolean(
+    draftFilters.toDate && draftFilters.toDate > todayIso
+  );
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
       <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-[#00A3C4]" aria-hidden="true" />
-          <h2 className="text-sm font-bold text-slate-800">Filter Transactions</h2>
+          <h2 className="text-sm font-bold text-slate-800">
+            {t("filters.title")}
+          </h2>
         </div>
       </div>
 
@@ -206,8 +223,9 @@ export default function TransactionFilters({
               htmlFor={accountSelectId}
               className="mb-1.5 block text-xs font-semibold text-slate-700"
             >
-              Account <span className="text-red-500">*</span>
+              {t("filters.account")} <span className="text-red-500">*</span>
             </label>
+
             <select
               id={accountSelectId}
               value={selectedAccountNumber}
@@ -215,10 +233,15 @@ export default function TransactionFilters({
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 shadow-sm transition hover:border-slate-400 focus:border-[#00A3C4] focus:outline-none focus:ring-1 focus:ring-[#00A3C4]"
             >
               {activeAccounts.length === 0 ? (
-                <option value="">No active accounts</option>
+                <option value="">
+                  {t("filters.noActiveAccounts")}
+                </option>
               ) : (
                 activeAccounts.map((account) => (
-                  <option key={account.accountNumber} value={account.accountNumber}>
+                  <option
+                    key={account.accountNumber}
+                    value={account.accountNumber}
+                  >
                     {account.accountNumber} • {account.accountType}
                   </option>
                 ))
@@ -232,15 +255,19 @@ export default function TransactionFilters({
               htmlFor={typeSelectId}
               className="mb-1.5 block text-xs font-semibold text-slate-700"
             >
-              Transaction Type
+              {t("filters.transactionType")}
             </label>
+
             <select
               id={typeSelectId}
               value={draftFilters.transactionType}
-              onChange={(e) => onDraftChange("transactionType", e.target.value)}
+              onChange={(e) =>
+                onDraftChange("transactionType", e.target.value)
+              }
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 shadow-sm transition hover:border-slate-400 focus:border-[#00A3C4] focus:outline-none focus:ring-1 focus:ring-[#00A3C4]"
             >
-              <option value="">All Types</option>
+              <option value="">{t("filters.allTypes")}</option>
+
               {availableTypes.map((type) => (
                 <option key={type} value={type}>
                   {formatTypeLabel(type)}
@@ -255,15 +282,17 @@ export default function TransactionFilters({
               htmlFor={statusSelectId}
               className="mb-1.5 block text-xs font-semibold text-slate-700"
             >
-              Status
+              {t("filters.status")}
             </label>
+
             <select
               id={statusSelectId}
               value={draftFilters.status}
               onChange={(e) => onDraftChange("status", e.target.value)}
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 shadow-sm transition hover:border-slate-400 focus:border-[#00A3C4] focus:outline-none focus:ring-1 focus:ring-[#00A3C4]"
             >
-              <option value="">All Statuses</option>
+              <option value="">{t("filters.allStatuses")}</option>
+
               {availableStatuses.map((st) => (
                 <option key={st} value={st}>
                   {formatStatusLabel(st)}
@@ -273,10 +302,9 @@ export default function TransactionFilters({
           </div>
 
           {/* 4. Date From */}
-
           <ControlledDateField
             id={fromDateId}
-            label="From Date"
+            label={t("filters.fromDate")}
             isoValue={draftFilters.fromDate}
             maxIso={todayIso}
             hasError={isFromFuture || isDateRangeInvalid}
@@ -286,13 +314,12 @@ export default function TransactionFilters({
           {/* 5. Date To */}
           <ControlledDateField
             id={toDateId}
-            label="To Date"
+            label={t("filters.toDate")}
             isoValue={draftFilters.toDate}
             maxIso={todayIso}
             hasError={isToFuture || isDateRangeInvalid}
             onChangeIso={(val) => onDraftChange("toDate", val)}
           />
-
 
           {/* 6. Amount Range */}
           <div>
@@ -300,28 +327,35 @@ export default function TransactionFilters({
               htmlFor={minAmountId}
               className="mb-1.5 block text-xs font-semibold text-slate-700"
             >
-              Amount Range (MMK)
+              {t("filters.amountRange")}
             </label>
+
             <div className="flex items-center gap-2">
               <input
                 id={minAmountId}
                 type="number"
                 min="0"
                 step="any"
-                placeholder="Min"
+                placeholder={t("filters.minimum")}
                 value={draftFilters.minAmount}
-                onChange={(e) => onDraftChange("minAmount", e.target.value)}
+                onChange={(e) =>
+                  onDraftChange("minAmount", e.target.value)
+                }
                 className="w-1/2 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-sm transition hover:border-slate-400 focus:border-[#00A3C4] focus:outline-none focus:ring-1 focus:ring-[#00A3C4]"
               />
+
               <span className="text-slate-400 text-xs font-bold">-</span>
+
               <input
                 id={maxAmountId}
                 type="number"
                 min="0"
                 step="any"
-                placeholder="Max"
+                placeholder={t("filters.maximum")}
                 value={draftFilters.maxAmount}
-                onChange={(e) => onDraftChange("maxAmount", e.target.value)}
+                onChange={(e) =>
+                  onDraftChange("maxAmount", e.target.value)
+                }
                 className="w-1/2 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-sm transition hover:border-slate-400 focus:border-[#00A3C4] focus:outline-none focus:ring-1 focus:ring-[#00A3C4]"
               />
             </div>
@@ -337,8 +371,9 @@ export default function TransactionFilters({
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300 disabled:opacity-50"
           >
             <X size={14} aria-hidden="true" />
-            Clear Filters
+            {t("filters.clear")}
           </button>
+
           <button
             type="submit"
             disabled={Boolean(validationError) || isApplying}
@@ -347,10 +382,10 @@ export default function TransactionFilters({
             {isApplying ? (
               <>
                 <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                Applying...
+                {t("filters.applying")}
               </>
             ) : (
-              "Apply Filters"
+              t("filters.apply")
             )}
           </button>
         </div>

@@ -1,5 +1,7 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { toBlob } from "html-to-image";
 import {
   CheckCircle2,
@@ -142,6 +144,8 @@ export default function TransactionDetailContent({
   transaction,
   onBack,
 }: TransactionDetailContentProps) {
+  const { t } = useTranslation("transaction");
+
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const routeAccountNumber = searchParams.get("accountNumber");
@@ -163,14 +167,12 @@ export default function TransactionDetailContent({
   const [imageCopied, setImageCopied] = useState<boolean>(false);
   const [imageSaved, setImageSaved] = useState<boolean>(false);
 
-  // Clean up print isolation class if unmounted while printing
   useEffect(() => {
     return () => {
       document.body.classList.remove("printing-transaction-history-receipt");
     };
   }, []);
 
-  // Clean up object URL when component unmounts
   useEffect(() => {
     return () => {
       if (shareImageUrl) {
@@ -181,10 +183,6 @@ export default function TransactionDetailContent({
 
   const viewMode = getViewMode(transaction.status);
   const isCompleted = viewMode === "SUCCESS_RECEIPT";
-  // const isFailed = Boolean(
-  //   transaction &&
-  //   ["FAILED", "REJECTED", "CANCELLED", "DECLINED"].includes((transaction.status || "").toUpperCase())
-  // );
   const isInternalTransfer = transaction.transactionType === "INTERNAL_TRANSFER";
   const isExternalPayment = transaction.transactionType === "EXTERNAL_PAYMENT";
   const isRefund = transaction.transactionType === "REFUND";
@@ -192,20 +190,21 @@ export default function TransactionDetailContent({
   const isWithdrawal = transaction.transactionType === "OTC_WITHDRAWAL";
   const isLedger = transaction.transactionType === "LEDGER_ADJUSTMENT";
 
-  // Date Resolution: completedAt for COMPLETED, otherwise initiatedAt
   const displayRawDate = isCompleted
     ? transaction.completedAt || transaction.initiatedAt || transaction.transactionDate
     : transaction.initiatedAt || transaction.transactionDate;
-  const displayFormattedDate = formatTransactionDateTime(displayRawDate);
-  const dateLabel = isCompleted ? "Completed Date & Time" : "Initiated Date & Time";
 
-  // Primary title resolution
+  const displayFormattedDate = formatTransactionDateTime(displayRawDate);
+  const dateLabel = isCompleted
+    ? t("detailContent.completedDateTime")
+    : t("detailContent.initiatedDateTime");
+
   const primaryTitle =
     transaction.displayTitle && transaction.displayTitle.trim().length > 0
       ? transaction.displayTitle.trim()
       : transaction.description && transaction.description.trim().length > 0
         ? transaction.description.trim()
-        : formatTypeLabel(transaction.transactionType) || "Transaction";
+        : formatTypeLabel(transaction.transactionType) || t("detailContent.transaction");
 
   const handleCopyRef = async () => {
     try {
@@ -232,7 +231,7 @@ export default function TransactionDetailContent({
     return blob;
   };
 
-    const handleDownloadImage = () => {
+  const handleDownloadImage = () => {
     if (!shareImageUrl && !shareImageBlob) return;
     const url = shareImageUrl || (shareImageBlob ? URL.createObjectURL(shareImageBlob) : null);
     if (!url) return;
@@ -274,8 +273,11 @@ export default function TransactionDetailContent({
         try {
           await navigator.share({
             files: [file],
-            title: "EKARAJ BANK Transfer Receipt",
-            text: `Official EKARAJ BANK Transfer Receipt\nRef: ${transaction.transactionRef}\nAmount: ${Number(transaction.amount).toLocaleString()} ${transaction.currency || "MMK"}`,
+            title: t("detailContent.share.title"),
+            text: t("detailContent.share.message", {
+              reference: transaction.transactionRef,
+              amount: `${Number(transaction.amount).toLocaleString()} ${transaction.currency || "MMK"}`,
+            }),
           });
           return;
         } catch (shareErr: unknown) {
@@ -299,8 +301,11 @@ export default function TransactionDetailContent({
       if (typeof navigator !== "undefined" && navigator.share) {
         try {
           await navigator.share({
-            title: "EKARAJ BANK Transfer Receipt",
-            text: `EKARAJ BANK Transfer Receipt\nRef: ${transaction.transactionRef}\nAmount: ${Number(transaction.amount).toLocaleString()} ${transaction.currency || "MMK"}`,
+            title: t("detailContent.share.title"),
+            text: t("detailContent.share.message", {
+              reference: transaction.transactionRef,
+              amount: `${Number(transaction.amount).toLocaleString()} ${transaction.currency || "MMK"}`,
+            }),
           });
         } catch {
           // User cancelled
@@ -364,59 +369,57 @@ export default function TransactionDetailContent({
     setTimeout(cleanup, 1000);
   };
 
-  // Status-specific banner headings and icons
   let statusHeading: string;
   let statusIcon: React.ReactNode;
   let statusIconWrapper: string;
 
   switch (viewMode) {
     case "SUCCESS_RECEIPT":
-      statusHeading = "Transaction Successful";
+      statusHeading = t("detailContent.status.success");
       statusIcon = <CheckCircle2 className="h-6 w-6 text-emerald-600" aria-hidden="true" />;
       statusIconWrapper = "bg-emerald-50 border-emerald-200";
       break;
     case "FAILED":
-      statusHeading = "Transaction Failed";
+      statusHeading = t("detailContent.status.failed");
       statusIcon = <AlertCircle className="h-6 w-6 text-rose-600" aria-hidden="true" />;
       statusIconWrapper = "bg-rose-50 border-rose-200";
       break;
     case "REJECTED":
-      statusHeading = "Transaction Rejected";
+      statusHeading = t("detailContent.status.rejected");
       statusIcon = <XCircle className="h-6 w-6 text-rose-600" aria-hidden="true" />;
       statusIconWrapper = "bg-rose-50 border-rose-200";
       break;
     case "CANCELLED":
-      statusHeading = "Transaction Cancelled";
+      statusHeading = t("detailContent.status.cancelled");
       statusIcon = <XCircle className="h-6 w-6 text-slate-500" aria-hidden="true" />;
       statusIconWrapper = "bg-slate-100 border-slate-200";
       break;
     case "REVERSED":
-      statusHeading = "Transaction Reversed & Refunded";
+      statusHeading = t("detailContent.status.reversed");
       statusIcon = <RotateCcw className="h-6 w-6 text-indigo-600" aria-hidden="true" />;
       statusIconWrapper = "bg-indigo-50 border-indigo-200";
       break;
     case "PROCESSING":
     default:
       if (transaction.status === "PENDING_AUTHORIZATION") {
-        statusHeading = "Pending Authorization";
+        statusHeading = t("detailContent.status.pendingAuthorization");
         statusIcon = <Clock className="h-6 w-6 text-amber-600" aria-hidden="true" />;
         statusIconWrapper = "bg-amber-50 border-amber-200";
       } else if (transaction.status === "HELD") {
-        statusHeading = "Transaction On Hold";
+        statusHeading = t("detailContent.status.onHold");
         statusIcon = <AlertCircle className="h-6 w-6 text-purple-600" aria-hidden="true" />;
         statusIconWrapper = "bg-purple-50 border-purple-200";
       } else {
-        statusHeading = "Transaction Initiated";
+        statusHeading = t("detailContent.status.initiated");
         statusIcon = <Clock className="h-6 w-6 text-blue-600" aria-hidden="true" />;
         statusIconWrapper = "bg-blue-50 border-blue-200";
       }
       break;
   }
 
-  // Calculate Total Debited for outgoing completed transactions
   const isOutgoing = transaction.direction === "OUT";
   const serviceFeeNum = Number(transaction.serviceFee || 0);
-  const totalDebitedNum = isOutgoing && isCompleted ? Number(transaction.amount || 0) + serviceFeeNum : null;
+  const totalDebitedNum = isOutgoing && isCompleted ? Number(transaction.amount || 0) + (isExternalPayment ? 0 : serviceFeeNum) : null;
 
   // For COMPLETED EXTERNAL_PAYMENT, reuse the official PaymentReceipt
   if (isCompleted && isExternalPayment) {
@@ -438,30 +441,32 @@ export default function TransactionDetailContent({
     );
   }
 
-  // For COMPLETED INTERNAL_TRANSFER, reuse the official TransferReceiptView
   if (isCompleted && (isInternalTransfer || isDeposit || isWithdrawal)) {
     const isCompany =
       profile?.customerType?.toUpperCase() === "COMPANY" ||
       profile?.customerType?.toUpperCase() === "CORPORATE";
+
     const customerName = isCompany
-      ? profile?.companyName || "Company Customer"
-      : `${profile?.firstName || ""} ${profile?.lastName || ""}`.trim() || "Customer";
+      ? profile?.companyName || t("detailContent.companyCustomer")
+      : `${profile?.firstName || ""} ${profile?.lastName || ""}`.trim() ||
+        t("detailContent.customer");
 
     const targetAccNo = isDeposit
-      ? (transaction.destinationAccountNumber || transaction.sourceAccountNumber || "")
-      : (transaction.sourceAccountNumber || transaction.destinationAccountNumber || "");
+      ? transaction.destinationAccountNumber || transaction.sourceAccountNumber || ""
+      : transaction.sourceAccountNumber || transaction.destinationAccountNumber || "";
 
     const matchedAccount = userAccounts?.find((a) => a.accountNumber === targetAccNo);
+
     const accountType = matchedAccount?.accountType
-      ? `${matchedAccount.accountType.charAt(0).toUpperCase() + matchedAccount.accountType.slice(1).toLowerCase()} Account`
-      : "Savings Account";
+      ? `${matchedAccount.accountType.charAt(0).toUpperCase() + matchedAccount.accountType.slice(1).toLowerCase()} ${t("detailContent.account")}`
+      : t("detailContent.savingsAccount");
 
     const availBal = matchedAccount?.availableBalance;
     const prevBal =
       availBal != null
         ? isDeposit
           ? Math.max(0, availBal - Number(transaction.amount || 0))
-          : availBal + Number(transaction.amount || 0) + Number(transaction.serviceFee || 0)
+          : availBal + Number(transaction.amount || 0) + (isExternalPayment ? 0 : Number(transaction.serviceFee || 0))
         : null;
 
     const receiptData = mapHistoryItemToTransferReceiptData(transaction, {
@@ -480,62 +485,57 @@ export default function TransactionDetailContent({
           className="transaction-history-receipt-print shadow-xl rounded-3xl"
           actions={
             <div className="space-y-3 pt-1">
-              {/* Row of 3 Primary Action Buttons: [ Share Receipt ] [ Download PDF ] [ Copy Ref ] */}
               <div className="grid grid-cols-3 gap-2">
-                {/* 1. Share Receipt */}
                 <button
                   type="button"
                   onClick={handleShare}
                   disabled={isSharing}
                   className="flex items-center justify-center gap-1.5 py-2.5 px-1.5 sm:px-2 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100 font-bold text-xs text-slate-700 transition shadow-2xs disabled:opacity-75 disabled:cursor-wait cursor-pointer"
-                  title="Share Receipt (opens social apps & copies slip to clipboard)"
+                  title={t("detailContent.actions.shareReceiptTitle")}
                 >
                   {isSharing ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin text-[#00A3C4] shrink-0" />
-                      <span className="truncate">Sharing...</span>
+                      <span className="truncate">{t("detailContent.actions.sharing")}</span>
                     </>
                   ) : (
                     <>
                       <Share2 className="w-3.5 h-3.5 text-[#00A3C4] shrink-0" />
-                      <span className="truncate">Share Receipt</span>
+                      <span className="truncate">{t("detailContent.actions.shareReceipt")}</span>
                     </>
                   )}
                 </button>
 
-                {/* 2. Download PDF */}
                 <button
                   type="button"
                   onClick={handlePrint}
                   className="flex items-center justify-center gap-1.5 py-2.5 px-1.5 sm:px-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 font-bold text-xs text-slate-700 transition shadow-2xs cursor-pointer"
-                  title="Download or Print PDF receipt"
+                  title={t("detailContent.actions.downloadPrintTitle")}
                 >
                   <Download className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                  <span className="truncate">Download PDF</span>
+                  <span className="truncate">{t("detailContent.actions.downloadPdf")}</span>
                 </button>
 
-                {/* 3. Copy Ref */}
                 <button
                   type="button"
                   onClick={handleCopyRef}
                   className="flex items-center justify-center gap-1.5 py-2.5 px-1.5 sm:px-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 font-bold text-xs text-slate-700 transition shadow-2xs cursor-pointer"
-                  title="Copy transaction reference code"
+                  title={t("detailContent.actions.copyReferenceTitle")}
                 >
                   {copied ? (
                     <>
                       <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span className="text-emerald-700 truncate">Copied!</span>
+                      <span className="text-emerald-700 truncate">{t("detailContent.actions.copied")}</span>
                     </>
                   ) : (
                     <>
                       <Copy className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                      <span className="truncate">Copy Ref</span>
+                      <span className="truncate">{t("detailContent.actions.copyRef")}</span>
                     </>
                   )}
                 </button>
               </div>
 
-              {/* Secondary Return / Navigation Buttons */}
               <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
                 <button
                   type="button"
@@ -543,7 +543,7 @@ export default function TransactionDetailContent({
                   className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-slate-200 bg-white font-bold text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer"
                 >
                   <Home className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Dashboard</span>
+                  <span>{t("detailContent.dashboard")}</span>
                 </button>
                 <button
                   type="button"
@@ -551,14 +551,13 @@ export default function TransactionDetailContent({
                   className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-slate-200 bg-white font-bold text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer"
                 >
                   <History className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Transaction History</span>
+                  <span>{t("detailContent.transactionHistory")}</span>
                 </button>
               </div>
             </div>
           }
         />
 
-        {/* Interactive Desktop Share Modal */}
         {showShareModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div
@@ -566,7 +565,6 @@ export default function TransactionDetailContent({
               onClick={() => setShowShareModal(false)}
             />
             <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-4 sm:p-5 text-slate-800 animate-in zoom-in-95 border border-slate-100 max-h-[92vh] overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-              {/* Modal Header */}
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-xl bg-cyan-50 text-[#00A3C4] flex items-center justify-center">
@@ -574,10 +572,10 @@ export default function TransactionDetailContent({
                   </div>
                   <div>
                     <h3 className="text-sm font-black text-slate-900 leading-tight">
-                      Share Transfer Receipt
+                      {t("detailContent.shareModal.title")}
                     </h3>
                     <p className="text-[10px] font-medium text-slate-400">
-                      EKARAJ BANK Official Slip
+                      {t("detailContent.shareModal.subtitle")}
                     </p>
                   </div>
                 </div>
@@ -585,34 +583,31 @@ export default function TransactionDetailContent({
                   type="button"
                   onClick={() => setShowShareModal(false)}
                   className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
-                  aria-label="Close modal"
+                  aria-label={t("detailContent.shareModal.close")}
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Receipt Preview Thumbnail */}
               {shareImageUrl && (
                 <div className="mb-3 p-1.5 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-center overflow-hidden">
                   <img
                     src={shareImageUrl}
-                    alt="Receipt Preview"
+                    alt={t("detailContent.shareModal.previewAlt")}
                     className="max-h-32 sm:max-h-36 w-auto object-contain rounded-xl shadow-2xs"
                   />
                 </div>
               )}
 
-              {/* Status Banner */}
               {imageCopied && (
                 <div className="mb-3 p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl flex items-center gap-2 text-xs font-bold animate-in fade-in">
                   <Check className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span>
-                    Slip image copied! Press <strong>Ctrl + V</strong> in your chat to paste.
+                    {t("detailContent.shareModal.copiedNotice")}
                   </span>
                 </div>
               )}
 
-              {/* Quick Actions (Copy Slip Image + Save Image to Device) */}
               <div className="mb-2.5 space-y-2">
                 <button
                   type="button"
@@ -631,12 +626,12 @@ export default function TransactionDetailContent({
                   {imageCopied ? (
                     <>
                       <Check className="w-4 h-4 shrink-0" />
-                      <span>Slip Image Copied to Clipboard!</span>
+                      <span>{t("detailContent.shareModal.imageCopied")}</span>
                     </>
                   ) : (
                     <>
                       <Copy className="w-4 h-4 shrink-0" />
-                      <span>Copy Slip Image</span>
+                      <span>{t("detailContent.shareModal.copyImage")}</span>
                     </>
                   )}
                 </button>
@@ -653,30 +648,28 @@ export default function TransactionDetailContent({
                   {imageSaved ? (
                     <>
                       <Check className="w-4 h-4 shrink-0 text-emerald-600" />
-                      <span>Saved to Device (Downloads)!</span>
+                      <span>{t("detailContent.shareModal.saved")}</span>
                     </>
                   ) : (
                     <>
                       <Download className="w-4 h-4 shrink-0 text-slate-500" />
-                      <span>Save Image to Device (Download PNG)</span>
+                      <span>{t("detailContent.shareModal.saveImage")}</span>
                     </>
                   )}
                 </button>
               </div>
 
-              {/* Social / Chat Share Apps */}
               <div className="pt-2.5 border-t border-slate-100">
                 <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">
-                  Open Chat App to Paste
+                  {t("detailContent.shareModal.openChatApp")}
                 </p>
 
                 <div className="grid grid-cols-4 gap-2">
-                  {/* Telegram */}
                   <button
                     type="button"
                     onClick={handleShareToTelegram}
                     className="flex flex-col items-center justify-center p-2 rounded-2xl border border-slate-200 hover:border-[#229ED9] hover:bg-[#229ED9]/5 transition group cursor-pointer"
-                    title="Open Telegram Web"
+                    title={t("detailContent.shareModal.openTelegram")}
                   >
                     <div className="w-8 h-8 rounded-xl bg-[#229ED9]/10 text-[#229ED9] flex items-center justify-center group-hover:scale-110 transition">
                       <TelegramIcon className="w-4 h-4" />
@@ -684,12 +677,11 @@ export default function TransactionDetailContent({
                     <span className="text-[10px] font-bold text-slate-700 mt-1">Telegram</span>
                   </button>
 
-                  {/* Viber */}
                   <button
                     type="button"
                     onClick={handleShareToViber}
                     className="flex flex-col items-center justify-center p-2 rounded-2xl border border-slate-200 hover:border-[#7360F2] hover:bg-[#7360F2]/5 transition group cursor-pointer"
-                    title="Open Viber App"
+                    title={t("detailContent.shareModal.openViber")}
                   >
                     <div className="w-8 h-8 rounded-xl bg-[#7360F2]/10 text-[#7360F2] flex items-center justify-center group-hover:scale-110 transition">
                       <ViberIcon className="w-4 h-4" />
@@ -697,12 +689,11 @@ export default function TransactionDetailContent({
                     <span className="text-[10px] font-bold text-slate-700 mt-1">Viber</span>
                   </button>
 
-                  {/* Messenger */}
                   <button
                     type="button"
                     onClick={handleShareToMessenger}
                     className="flex flex-col items-center justify-center p-2 rounded-2xl border border-slate-200 hover:border-[#0084FF] hover:bg-[#0084FF]/5 transition group cursor-pointer"
-                    title="Open Messenger"
+                    title={t("detailContent.shareModal.openMessenger")}
                   >
                     <div className="w-8 h-8 rounded-xl bg-[#0084FF]/10 text-[#0084FF] flex items-center justify-center group-hover:scale-110 transition">
                       <MessengerIcon className="w-4 h-4" />
@@ -710,12 +701,11 @@ export default function TransactionDetailContent({
                     <span className="text-[10px] font-bold text-slate-700 mt-1">Messenger</span>
                   </button>
 
-                  {/* WhatsApp */}
                   <button
                     type="button"
                     onClick={handleShareToWhatsApp}
                     className="flex flex-col items-center justify-center p-2 rounded-2xl border border-slate-200 hover:border-[#25D366] hover:bg-[#25D366]/5 transition group cursor-pointer"
-                    title="Open WhatsApp Web"
+                    title={t("detailContent.shareModal.openWhatsApp")}
                   >
                     <div className="w-8 h-8 rounded-xl bg-[#25D366]/10 text-[#25D366] flex items-center justify-center group-hover:scale-110 transition">
                       <WhatsAppIcon className="w-4 h-4" />
@@ -734,13 +724,14 @@ export default function TransactionDetailContent({
   return (
     <div className="w-full max-w-xl mx-auto">
       <div className="transaction-history-receipt-print relative w-full overflow-hidden rounded-3xl bg-white shadow-xl border border-slate-200 flex flex-col print-receipt-container">
-        {/* Bank Header */}
         <div className="bg-[#EFF6FF] dark:bg-[#071328] px-6 py-4 text-[#001D77] dark:text-white flex items-center justify-between border-b border-blue-100 dark:border-slate-800 shrink-0">
           <div className="flex items-center gap-2.5">
             <EkarajCrown size={32} className="shrink-0" />
             <div>
               <h2 className="text-xs font-black tracking-wider uppercase text-[#001D77] dark:text-blue-300">EKARAJ BANK</h2>
-              <p className="text-[10px] text-[#4B5869] dark:text-slate-400 font-medium">Transaction Activity Detail</p>
+              <p className="text-[10px] text-[#4B5869] dark:text-slate-400 font-medium">
+                {t("detailContent.transactionActivityDetail")}
+              </p>
             </div>
           </div>
 
@@ -753,8 +744,8 @@ export default function TransactionDetailContent({
                 type="button"
                 onClick={onBack}
                 className="no-print p-1.5 -mr-1.5 sm:-mr-2 rounded-lg text-slate-400 hover:text-[#001D77] hover:bg-blue-100/60 dark:hover:bg-slate-800 dark:hover:text-blue-300 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-slate-700 cursor-pointer"
-                aria-label="Close"
-                title="Close"
+                aria-label={t("detailContent.close")}
+                title={t("detailContent.close")}
               >
                 <X className="w-5 h-5 stroke-[2.2]" />
               </button>
@@ -762,7 +753,6 @@ export default function TransactionDetailContent({
           </div>
         </div>
 
-        {/* Status & Amount Summary Banner */}
         <div className="bg-white px-6 py-5 text-center border-b border-slate-100 shrink-0">
           <div
             className={`inline-flex items-center justify-center w-12 h-12 rounded-full border mb-2.5 shadow-xs ${statusIconWrapper}`}
@@ -783,23 +773,22 @@ export default function TransactionDetailContent({
           </div>
         </div>
 
-        {/* Card Body */}
         <div className="p-6 space-y-5 flex-1">
-          {/* Status-specific Alerts / Notice Banners */}
           {viewMode === "REVERSED" && (
             <div className="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-800 space-y-1">
               <div className="flex items-center gap-1.5 font-bold">
                 <RotateCcw className="w-4 h-4 shrink-0 text-indigo-600" />
                 <span>
-                  {transaction.failureMessage?.trim() || "This transfer was automatically reversed and refunded."}
+                  {transaction.failureMessage?.trim() ||
+                    t("detailContent.messages.reversed")}
                 </span>
               </div>
               <p className="text-[11px] text-indigo-700 pl-5">
-                Funds have been credited back to your account.
+                {t("detailContent.messages.refunded")}
               </p>
               {transaction.failureCode?.trim() && (
                 <p className="text-[11px] font-mono text-indigo-700 pl-5">
-                  Reversal Code: {transaction.failureCode.trim()}
+                  {t("detailContent.labels.reversalCode")}: {transaction.failureCode.trim()}
                 </p>
               )}
             </div>
@@ -810,12 +799,13 @@ export default function TransactionDetailContent({
               <div className="flex items-center gap-1.5 font-bold">
                 <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
                 <span>
-                  {transaction.failureMessage?.trim() || "The transaction could not be completed."}
+                  {transaction.failureMessage?.trim() ||
+                    t("detailContent.messages.failed")}
                 </span>
               </div>
               {transaction.failureCode?.trim() && (
                 <p className="text-[11px] font-mono text-rose-700 pl-5">
-                  Reference Code: {transaction.failureCode.trim()}
+                  {t("detailContent.labels.referenceCode")}: {transaction.failureCode.trim()}
                 </p>
               )}
             </div>
@@ -826,12 +816,13 @@ export default function TransactionDetailContent({
               <div className="flex items-center gap-1.5 font-bold">
                 <XCircle className="w-4 h-4 shrink-0 text-rose-600" />
                 <span>
-                  {transaction.failureMessage?.trim() || "The transaction was rejected by policy rules."}
+                  {transaction.failureMessage?.trim() ||
+                    t("detailContent.messages.rejected")}
                 </span>
               </div>
               {transaction.failureCode?.trim() && (
                 <p className="text-[11px] font-mono text-rose-700 pl-5">
-                  Reason Code: {transaction.failureCode.trim()}
+                  {t("detailContent.labels.reasonCode")}: {transaction.failureCode.trim()}
                 </p>
               )}
             </div>
@@ -842,12 +833,13 @@ export default function TransactionDetailContent({
               <div className="flex items-center gap-1.5 font-medium">
                 <Info className="w-4 h-4 shrink-0 text-slate-500" />
                 <span>
-                  {transaction.failureMessage?.trim() || "This transaction was cancelled prior to settlement."}
+                  {transaction.failureMessage?.trim() ||
+                    t("detailContent.messages.cancelled")}
                 </span>
               </div>
               {transaction.failureCode?.trim() && (
                 <p className="text-[11px] font-mono text-slate-600 pl-5">
-                  Cancellation Code: {transaction.failureCode.trim()}
+                  {t("detailContent.labels.cancellationCode")}: {transaction.failureCode.trim()}
                 </p>
               )}
             </div>
@@ -858,54 +850,51 @@ export default function TransactionDetailContent({
               <Clock className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
               <span>
                 {transaction.status === "PENDING_AUTHORIZATION"
-                  ? "This transaction is currently awaiting authorization or signatory approval."
+                  ? t("detailContent.messages.pendingAuthorization")
                   : transaction.status === "HELD"
-                    ? "This transaction is temporarily on hold pending review."
-                    : "This transaction is currently being processed by the core banking engine."}
+                    ? t("detailContent.messages.onHold")
+                    : t("detailContent.messages.processing")}
               </span>
             </div>
           )}
 
-          {/* Accounts & Parties Visual Section */}
           {isInternalTransfer && (
             <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* From Box */}
                 <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
                   <span className="text-[10px] font-extrabold uppercase text-slate-400 block mb-1">
                     {transaction.isOwnAccount
-                      ? "From: Own Account"
+                      ? t("detailContent.parties.fromOwnAccount")
                       : transaction.direction === "IN"
-                        ? "From (Sender)"
-                        : "From (My Account)"}
+                        ? t("detailContent.parties.fromSender")
+                        : t("detailContent.parties.fromMyAccount")}
                   </span>
                   <p className="text-xs font-semibold text-slate-900 truncate">
                     {transaction.isOwnAccount
-                      ? "Own Source Account"
+                      ? t("detailContent.parties.ownSourceAccount")
                       : transaction.direction === "IN"
-                        ? transaction.counterpartyName || "External Sender"
-                        : "My Account"}
+                        ? transaction.counterpartyName || t("detailContent.parties.externalSender")
+                        : t("detailContent.parties.myAccount")}
                   </p>
                   <p className="text-[11px] font-mono font-medium text-slate-600 mt-0.5">
                     {maskAccount(transaction.sourceAccountNumber)}
                   </p>
                 </div>
 
-                {/* To Box */}
                 <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
                   <span className="text-[10px] font-extrabold uppercase text-slate-400 block mb-1">
                     {transaction.isOwnAccount
-                      ? "To: Own Account"
+                      ? t("detailContent.parties.toOwnAccount")
                       : transaction.direction === "IN"
-                        ? "To (My Account)"
-                        : "To (Recipient)"}
+                        ? t("detailContent.parties.toMyAccount")
+                        : t("detailContent.parties.toRecipient")}
                   </span>
                   <p className="text-xs font-semibold text-slate-900 truncate">
                     {transaction.isOwnAccount
-                      ? "Own Destination Account"
+                      ? t("detailContent.parties.ownDestinationAccount")
                       : transaction.direction === "IN"
-                        ? "My Account"
-                        : transaction.counterpartyName || "Recipient"}
+                        ? t("detailContent.parties.myAccount")
+                        : transaction.counterpartyName || t("detailContent.parties.recipient")}
                   </p>
                   <p className="text-[11px] font-mono font-medium text-slate-600 mt-0.5">
                     {maskAccount(transaction.destinationAccountNumber)}
@@ -920,9 +909,11 @@ export default function TransactionDetailContent({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
                   <span className="text-[10px] font-extrabold uppercase text-slate-400 block mb-1">
-                    Paid From (Account)
+                    {t("detailContent.parties.paidFrom")}
                   </span>
-                  <p className="text-xs font-semibold text-slate-900">My Account</p>
+                  <p className="text-xs font-semibold text-slate-900">
+                    {t("detailContent.parties.myAccount")}
+                  </p>
                   <p className="text-[11px] font-mono font-medium text-slate-600 mt-0.5">
                     {maskAccount(transaction.sourceAccountNumber)}
                   </p>
@@ -930,12 +921,14 @@ export default function TransactionDetailContent({
 
                 <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
                   <span className="text-[10px] font-extrabold uppercase text-slate-400 block mb-1">
-                    Paid To (Merchant)
+                    {t("detailContent.parties.paidTo")}
                   </span>
                   <p className="text-xs font-semibold text-slate-900 truncate">
-                    {transaction.counterpartyName || "Verified Merchant"}
+                    {transaction.counterpartyName || t("detailContent.parties.verifiedMerchant")}
                   </p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Commercial Settlement</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    {t("detailContent.parties.commercialSettlement")}
+                  </p>
                 </div>
               </div>
             </div>
@@ -945,9 +938,11 @@ export default function TransactionDetailContent({
             <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
               <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
                 <span className="text-[10px] font-extrabold uppercase text-slate-400 block mb-1">
-                  Credited To Account
+                  {t("detailContent.parties.creditedToAccount")}
                 </span>
-                <p className="text-xs font-semibold text-slate-900">My Account</p>
+                <p className="text-xs font-semibold text-slate-900">
+                  {t("detailContent.parties.myAccount")}
+                </p>
                 <p className="text-[11px] font-mono font-medium text-slate-600 mt-0.5">
                   {maskAccount(transaction.destinationAccountNumber)}
                 </p>
@@ -959,9 +954,13 @@ export default function TransactionDetailContent({
             <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
               <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-xs">
                 <span className="text-[10px] font-extrabold uppercase text-slate-400 block mb-1">
-                  {isDeposit ? "Credited Account" : "Debited Account"}
+                  {isDeposit
+                    ? t("detailContent.parties.creditedAccount")
+                    : t("detailContent.parties.debitedAccount")}
                 </span>
-                <p className="text-xs font-semibold text-slate-900">My Account</p>
+                <p className="text-xs font-semibold text-slate-900">
+                  {t("detailContent.parties.myAccount")}
+                </p>
                 <p className="text-[11px] font-mono font-medium text-slate-600 mt-0.5">
                   {maskAccount(transaction.sourceAccountNumber || transaction.destinationAccountNumber)}
                 </p>
@@ -969,11 +968,11 @@ export default function TransactionDetailContent({
             </div>
           )}
 
-          {/* Detailed Breakdown */}
           <div className="rounded-2xl border border-slate-200/80 bg-white p-4 space-y-2.5 text-xs">
-            {/* Reference with copy */}
             <div className="flex justify-between items-center py-1 border-b border-slate-100">
-              <span className="text-slate-500 font-medium">Transaction Reference</span>
+              <span className="text-slate-500 font-medium">
+                {t("detailContent.labels.transactionReference")}
+              </span>
               <div className="flex items-center gap-1.5">
                 <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md">
                   {transaction.transactionRef}
@@ -982,8 +981,8 @@ export default function TransactionDetailContent({
                   type="button"
                   onClick={handleCopyRef}
                   className="no-print text-slate-400 hover:text-blue-600 transition-colors p-1 rounded-md hover:bg-slate-100"
-                  title="Copy Reference"
-                  aria-label="Copy transaction reference"
+                  title={t("detailContent.actions.copyReferenceTitle")}
+                  aria-label={t("detailContent.actions.copyReferenceTitle")}
                 >
                   {copied ? (
                     <Check className="w-3.5 h-3.5 text-emerald-600" />
@@ -994,58 +993,64 @@ export default function TransactionDetailContent({
               </div>
             </div>
 
-            {/* Date & Time */}
             <div className="flex justify-between items-center py-1 border-b border-slate-100">
               <span className="text-slate-500 font-medium">{dateLabel}</span>
               <span className="font-medium text-slate-800">{displayFormattedDate}</span>
             </div>
 
-            {/* Transaction Type */}
             <div className="flex justify-between items-center py-1 border-b border-slate-100">
-              <span className="text-slate-500 font-medium">Transaction Type</span>
+              <span className="text-slate-500 font-medium">
+                {t("detailContent.labels.transactionType")}
+              </span>
               <span className="font-medium text-slate-800">
                 {formatTypeLabel(transaction.transactionType)}
               </span>
             </div>
 
-            {/* Base Amount */}
             <div className="flex justify-between items-center py-1 border-b border-slate-100">
-              <span className="text-slate-500 font-medium">Amount</span>
+              <span className="text-slate-500 font-medium">
+                {t("detailContent.labels.amount")}
+              </span>
               <span className="font-bold text-slate-900 tabular-nums">
                 {formatTransactionAmount(transaction.amount, transaction.currency, "NONE")}
               </span>
             </div>
 
             {/* Service Fee: Only shown for sender / outgoing transactions, hidden for recipient */}
-            {transaction.direction !== "IN" && (
+            {transaction.direction !== "IN" && !isExternalPayment && (
               <div className="flex justify-between items-center py-1 border-b border-slate-100">
-                <span className="text-slate-500 font-medium">Service Fee</span>
+                <span className="text-slate-500 font-medium">
+                  {t("detailContent.labels.serviceFee")}
+                </span>
                 <span className="font-medium text-slate-800 tabular-nums">
                   {formatTransactionAmount(transaction.serviceFee, transaction.currency, "NONE")}
                 </span>
               </div>
             )}
 
-            {/* Total Debited: For outgoing completed only */}
             {totalDebitedNum !== null && (
               <div className="flex justify-between items-center py-1 border-b border-slate-100">
-                <span className="text-slate-700 font-semibold">Total Debited</span>
+                <span className="text-slate-700 font-semibold">
+                  {t("detailContent.labels.totalDebited")}
+                </span>
                 <span className="font-bold text-slate-900 tabular-nums">
                   -{formatTransactionAmount(totalDebitedNum, transaction.currency, "NONE")}
                 </span>
               </div>
             )}
 
-            {/* Status Badge */}
             <div className="flex justify-between items-center py-1">
-              <span className="text-slate-500 font-medium">Status</span>
+              <span className="text-slate-500 font-medium">
+                {t("detailContent.labels.status")}
+              </span>
               <TransactionStatusBadge status={transaction.status} />
             </div>
 
-            {/* Note / Memo: Only when description is nonblank */}
             {transaction.description && transaction.description.trim().length > 0 && (
               <div className="pt-2 border-t border-slate-100">
-                <span className="text-slate-500 font-medium block mb-1">Note</span>
+                <span className="text-slate-500 font-medium block mb-1">
+                  {t("detailContent.labels.note")}
+                </span>
                 <div className="rounded-xl bg-slate-50 p-2.5 text-xs text-slate-700 italic border border-slate-100">
                   "{transaction.description.trim()}"
                 </div>
@@ -1054,7 +1059,6 @@ export default function TransactionDetailContent({
           </div>
         </div>
 
-        {/* Footer / Actions */}
         {isCompleted && (
           <div className="no-print p-4 sm:p-5 bg-slate-50/80 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-3 shrink-0">
             <button
@@ -1063,7 +1067,7 @@ export default function TransactionDetailContent({
               className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-[#0878E8]"
             >
               <Printer className="w-3.5 h-3.5 text-slate-500" />
-              <span>Print Receipt</span>
+              <span>{t("detailContent.actions.printReceipt")}</span>
             </button>
           </div>
         )}

@@ -151,6 +151,11 @@ public ResponseEntity<Map<String, Object>> handleAccountLocked(
             .status(HttpStatus.LOCKED)
             .body(body);
 }
+@ExceptionHandler(CustomValidationException.class)
+public ResponseEntity<Map<String, Object>> handleCustomValidationException(CustomValidationException ex) {
+    return buildErrorResponse(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage());
+}
+
 @ExceptionHandler(CusValidationException.class)
 public ResponseEntity<Map<String, Object>>
         handleCusValidationException(

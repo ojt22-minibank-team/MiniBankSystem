@@ -367,6 +367,7 @@ export interface P2PTransferResponseDto {
   amount: number;
   fee: number;
   totalDebited: number;
+  netCreditAmount?: number | null;
   status: string;
   transactedAt: string;
   remark?: string;
@@ -449,6 +450,9 @@ export interface AdminDashboardSummaryResponse {
   activeAccounts: number;
   totalParameters: number;
   activeAnnouncements: number;
+  todayFeeRevenue?: number;
+  allTimeFeeRevenue?: number;
   recentStaff: StaffResponse[];
   recentAnnouncements: AnnouncementResponse[];
 }
+
