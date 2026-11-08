@@ -1,4 +1,6 @@
+
 import type { FC } from "react";
+import { useTranslation } from "react-i18next";
 import { CheckCircle2, ArrowLeft, ArrowRight, Wallet, Calendar, ShieldCheck } from "lucide-react";
 import type { CustomerAccount } from "../../accounts/types/accountTypes";
 import type { StatementFilterForm } from "../types/statementTypes";
@@ -17,6 +19,8 @@ export const StatementVerify: FC<StatementVerifyProps> = ({
   onChange,
   onConfirm,
 }) => {
+  const { t } = useTranslation("statement");
+
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 md:p-8 shadow-sm">
       {/* Verify Section Header */}
@@ -25,10 +29,12 @@ export const StatementVerify: FC<StatementVerifyProps> = ({
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-50/70 text-[#00A3C4]">
             <CheckCircle2 size={18} />
           </div>
-          <h2 className="text-base font-bold text-[#0A192F]">Verify Statement Details</h2>
+          <h2 className="text-base font-bold text-[#0A192F]">
+            {t("verify.title")}
+          </h2>
         </div>
         <p className="text-xs text-slate-500 mt-1">
-          Please review your statement details before confirming.
+          {t("verify.description")}
         </p>
       </div>
 
@@ -38,12 +44,14 @@ export const StatementVerify: FC<StatementVerifyProps> = ({
         <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
             <Wallet size={15} className="text-[#00A3C4]" />
-            <span>Account Selection</span>
+            <span>{t("verify.accountSelection")}</span>
           </div>
 
           <div className="space-y-3">
             <div>
-              <span className="text-xs text-slate-400 block font-medium">Account Type</span>
+              <span className="text-xs text-slate-400 block font-medium">
+                {t("form.accountType")}
+              </span>
               <span className="text-sm font-bold text-slate-900 inline-flex items-center gap-1.5 mt-0.5">
                 <span className="inline-flex items-center rounded-md bg-cyan-100 dark:bg-cyan-500/20 px-2.5 py-0.5 text-xs font-bold text-[#007088] dark:text-cyan-300 border border-cyan-200/60 dark:border-cyan-500/30">
                   {form.accountType}
@@ -52,15 +60,17 @@ export const StatementVerify: FC<StatementVerifyProps> = ({
             </div>
 
             <div>
-              <span className="text-xs text-slate-400 block font-medium">Account Number</span>
+              <span className="text-xs text-slate-400 block font-medium">
+                {t("form.accountNumber")}
+              </span>
               <span className="text-sm font-bold text-slate-900 mt-0.5 block tracking-wide">
                 {form.accountNumber}
               </span>
               {account?.currency && (
                 <span className="text-xs text-slate-500 mt-0.5 block">
-                  Currency: {account.currency}
+                  {t("verify.currency")}: {account.currency}
                   {account.availableBalance !== undefined && (
-                    <> &bull; Balance: {Number(account.availableBalance).toLocaleString()} {account.currency}</>
+                    <> &bull; {t("verify.balance")}: {Number(account.availableBalance).toLocaleString()} {account.currency}</>
                   )}
                 </span>
               )}
@@ -72,24 +82,32 @@ export const StatementVerify: FC<StatementVerifyProps> = ({
         <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
             <Calendar size={15} className="text-[#00A3C4]" />
-            <span>Statement Period</span>
+            <span>{t("verify.statementPeriod")}</span>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <span className="text-xs text-slate-400 block font-medium">From Date</span>
+              <span className="text-xs text-slate-400 block font-medium">
+                {t("form.fromDate")}
+              </span>
               <span className="text-sm font-bold text-slate-900 mt-0.5 block">
                 {isoToDisplay(form.fromDate)}
               </span>
-              <span className="text-[11px] text-slate-400">DD-MM-YYYY</span>
+              <span className="text-[11px] text-slate-400">
+                {t("form.dateFormat")}
+              </span>
             </div>
 
             <div>
-              <span className="text-xs text-slate-400 block font-medium">To Date</span>
+              <span className="text-xs text-slate-400 block font-medium">
+                {t("form.toDate")}
+              </span>
               <span className="text-sm font-bold text-slate-900 mt-0.5 block">
                 {isoToDisplay(form.toDate)}
               </span>
-              <span className="text-[11px] text-slate-400">DD-MM-YYYY</span>
+              <span className="text-[11px] text-slate-400">
+                {t("form.dateFormat")}
+              </span>
             </div>
           </div>
         </div>
@@ -98,9 +116,7 @@ export const StatementVerify: FC<StatementVerifyProps> = ({
       {/* Confirmation Note */}
       <div className="mb-8 flex items-start gap-2.5 rounded-xl bg-cyan-50/60 p-3.5 text-xs text-[#0A192F]">
         <ShieldCheck size={16} className="shrink-0 text-[#00A3C4] mt-0.5" />
-        <p>
-          Confirming these details will prepare your account statement for download. You can still return to make changes if needed.
-        </p>
+        <p>{t("verify.confirmationNote")}</p>
       </div>
 
       {/* Action Buttons: [Change] (Secondary) and [Confirm] (Primary) */}
@@ -111,7 +127,7 @@ export const StatementVerify: FC<StatementVerifyProps> = ({
           className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300"
         >
           <ArrowLeft size={16} />
-          Change
+          {t("verify.change")}
         </button>
 
         <button
@@ -119,7 +135,7 @@ export const StatementVerify: FC<StatementVerifyProps> = ({
           onClick={onConfirm}
           className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-[#00A3C4] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0891B2] focus:outline-none focus:ring-2 focus:ring-[#00A3C4] focus:ring-offset-2"
         >
-          Confirm
+          {t("verify.confirm")}
           <ArrowRight size={16} />
         </button>
       </div>

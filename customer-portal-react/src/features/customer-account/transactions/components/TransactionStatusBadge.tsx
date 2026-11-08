@@ -1,4 +1,5 @@
-import { formatStatusLabel } from "../types/transactionHistoryTypes";
+
+import { useTranslation } from "react-i18next";
 
 interface TransactionStatusBadgeProps {
   status: string;
@@ -23,17 +24,31 @@ const STATUS_STYLES: Record<string, string> = {
     "bg-slate-100 text-slate-600 ring-slate-500/20 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700/50",
 };
 
-export default function TransactionStatusBadge({ status }: TransactionStatusBadgeProps) {
+export default function TransactionStatusBadge({
+  status,
+}: TransactionStatusBadgeProps) {
+  const { t } = useTranslation("transaction");
+
   const normalizedStatus = (status || "").toUpperCase();
   const badgeClass =
     STATUS_STYLES[normalizedStatus] ||
     "bg-slate-50 text-slate-700 ring-slate-400/20 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700/50";
-  const displayLabel = formatStatusLabel(status) || "Unknown";
+
+  const displayLabel = t(
+    `detailContent.status.${normalizedStatus}`,
+    {
+      defaultValue: t("detailContent.status.unknown", {
+        defaultValue: "Unknown",
+      }),
+    },
+  );
 
   return (
     <span
       className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${badgeClass}`}
-      aria-label={`Transaction status: ${displayLabel}`}
+      aria-label={t("statusBadge.ariaLabel", {
+        status: displayLabel,
+      })}
     >
       <span
         className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current"
