@@ -1,5 +1,6 @@
 package com.corebanking.service;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
@@ -15,11 +16,15 @@ import lombok.extern.slf4j.Slf4j;
 public class CusEmailService {
 
     private final JavaMailSender mailSender;
+    @Value
+    ("${spring.mail.username:ekarajbank@gmail.com}")
+    private String fromEmail;
 
     @Async("mailTaskExecutor")
     public void sendCorporateLoginOtp(String email, String otp) {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom("EKARAJ BANKING <" + fromEmail + ">");
             message.setTo(email);
             message.setSubject("Corporate Banking Login OTP");
             message.setText(
@@ -82,6 +87,8 @@ public class CusEmailService {
         try {
             SimpleMailMessage message =
                     new SimpleMailMessage();
+            
+            message.setFrom("EKARAJ BANKING <" + fromEmail + ">");
 
             message.setTo(
                     toEmail
@@ -119,6 +126,8 @@ public class CusEmailService {
         try {
             SimpleMailMessage message =
                     new SimpleMailMessage();
+            
+            message.setFrom("EKARAJ BANKING <" + fromEmail + ">");
 
             message.setTo(
                     toEmail
@@ -153,6 +162,8 @@ public class CusEmailService {
         try {
             SimpleMailMessage message =
                     new SimpleMailMessage();
+            
+            message.setFrom("EKARAJ BANKING <" + fromEmail + ">");
 
             message.setTo(
                     toEmail
@@ -184,6 +195,7 @@ public class CusEmailService {
         java.util.concurrent.CompletableFuture.runAsync(() -> {
             try {
                 SimpleMailMessage message = new SimpleMailMessage();
+                message.setFrom("EKARAJ BANKING <" + fromEmail + ">");
                 message.setTo(toEmail);
                 message.setSubject("🏦 Core Banking - Customer Registration & Login Credentials");
                 message.setText(
@@ -230,6 +242,7 @@ public class CusEmailService {
         java.util.concurrent.CompletableFuture.runAsync(() -> {
             try {
                 SimpleMailMessage message = new SimpleMailMessage();
+                message.setFrom("EKARAJ BANKING <" + fromEmail + ">");
                 message.setTo(toEmail);
                 message.setSubject("🏦 Core Banking - Account Credentials & Temporary Password");
                 
@@ -270,6 +283,7 @@ public class CusEmailService {
         java.util.concurrent.CompletableFuture.runAsync(() -> {
             try {
                 SimpleMailMessage message = new SimpleMailMessage();
+                message.setFrom("EKARAJ BANKING <" + fromEmail + ">");
                 message.setTo(toEmail);
                 message.setSubject("Core Banking - Corporate Account Credentials (" + companyName + ")");
                 message.setText(
