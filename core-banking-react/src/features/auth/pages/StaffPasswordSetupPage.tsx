@@ -5,6 +5,7 @@ import type { AppDispatch } from '../../../lib/redux';
 import { forceLogout, broadcastLogout } from '../authSlice';
 import { authApi } from '../../../services/apiClient';
 import Input from '../../../components/common/Input';
+import { validatePasswordPolicy } from '../../../utils/validation';
 import hirokiEmblem from '../../../assets/hiroki-emblem.png';
 import hirokiHeroCard from '../../../assets/hiroki-hero-card.png';
 import type { AxiosError } from 'axios';
@@ -37,10 +38,9 @@ export default function StaffPasswordSetupPage() {
     if (!token.trim()) {
       errors.token = 'Setup token is required.';
     }
-    if (!newPassword) {
-      errors.newPassword = 'Password is required.';
-    } else if (newPassword.length < 8 || newPassword.length > 72) {
-      errors.newPassword = 'Password must be between 8 and 72 characters.';
+    const pwdError = validatePasswordPolicy(newPassword);
+    if (pwdError) {
+      errors.newPassword = pwdError;
     }
     if (!confirmPassword) {
       errors.confirmPassword = 'Confirmation password is required.';

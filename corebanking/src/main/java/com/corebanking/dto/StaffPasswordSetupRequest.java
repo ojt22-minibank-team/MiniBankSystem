@@ -1,4 +1,3 @@
-
 package com.corebanking.dto;
 
 import jakarta.validation.constraints.NotBlank;
@@ -16,9 +15,9 @@ public class StaffPasswordSetupRequest {
 
     @NotBlank(message = "Password is required")
     @Size(
-        min = 8,
-        max = 72,
-        message = "Password must contain between 8 and 72 characters"
+        min = 6,
+        max = 12,
+        message = "Password must contain between 6 and 12 characters"
     )
     private String newPassword;
 

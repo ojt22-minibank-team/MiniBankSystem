@@ -191,6 +191,8 @@ public class StaffPasswordSetupService {
                     "This staff account is not active");
         }
 
+        com.corebanking.util.StaffPasswordValidator.validate(request.getNewPassword(), staff.getUsername(), staff.getEmail());
+
         staff.setPasswordHash(
                 passwordEncoder.encode(request.getNewPassword())
         );

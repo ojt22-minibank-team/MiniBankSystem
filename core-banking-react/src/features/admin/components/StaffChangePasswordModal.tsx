@@ -4,6 +4,8 @@ import Input from '../../../components/common/Input';
 import Button from '../../../components/common/Button';
 import { staffProfileApi } from '../../../services/apiClient';
 import type { AxiosError } from 'axios';
+import { useAuth } from '../../auth/hooks/useAuth';
+import { validatePasswordPolicy } from '../../../utils/validation';
 
 interface StaffChangePasswordModalProps {
   isOpen: boolean;
@@ -16,6 +18,7 @@ export default function StaffChangePasswordModal({
   onClose,
   onSuccess,
 }: StaffChangePasswordModalProps) {
+  const { user } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -42,10 +45,11 @@ export default function StaffChangePasswordModal({
     if (!currentPassword) {
       errs.currentPassword = 'Current password is required.';
     }
-    if (!newPassword) {
-      errs.newPassword = 'New password is required.';
-    } else if (newPassword.length < 8) {
-      errs.newPassword = 'New password must be at least 8 characters long.';
+    const pwdError = validatePasswordPolicy(newPassword, {
+      username: user?.username,
+    });
+    if (pwdError) {
+      errs.newPassword = pwdError;
     }
     if (!confirmPassword) {
       errs.confirmPassword = 'Confirmation password is required.';
@@ -99,7 +103,7 @@ export default function StaffChangePasswordModal({
         <div className="rounded-xl bg-purple-50/70 border border-purple-100 p-3 text-xs text-purple-900">
           <p className="font-semibold">Security Requirement</p>
           <p className="mt-0.5 text-purple-700">
-            New password must be at least 8 characters. Changing your password updates your credentials immediately.
+            Password must be 6-12 characters with at least 1 uppercase letter and 1 special character. It must not contain your username or Gmail.
           </p>
         </div>
 
@@ -127,7 +131,7 @@ export default function StaffChangePasswordModal({
               setNewPassword(e.target.value);
               if (errors.newPassword) setErrors({ ...errors, newPassword: '' });
             }}
-            placeholder="Enter minimum 8 characters"
+            placeholder="6-12 chars, 1 uppercase, 1 special char"
             error={errors.newPassword}
             required
           />

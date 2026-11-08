@@ -4,6 +4,7 @@ import { useDispatch } from 'react-redux';
 import type { AppDispatch } from '../../../lib/redux';
 import { forceLogout, broadcastLogout } from '../authSlice';
 import { authApi } from '../../../services/apiClient';
+import { validatePasswordPolicy } from '../../../utils/validation';
 import ekarajCrown from '../../../assets/ekaraj-crown-transparent.png';
 import ekarajHeroCard from '../../../assets/ekaraj-showcase-full.png';
 import type { AxiosError } from 'axios';
@@ -48,10 +49,9 @@ export default function SignupPage() {
       setApiError('Setup token is missing or invalid. Please use the activation link sent to your email.');
       return false;
     }
-    if (!staffPassword) {
-      errors.staffPassword = 'Password is required.';
-    } else if (staffPassword.length < 8 || staffPassword.length > 72) {
-      errors.staffPassword = 'Password must be between 8 and 72 characters.';
+    const pwdError = validatePasswordPolicy(staffPassword);
+    if (pwdError) {
+      errors.staffPassword = pwdError;
     }
     if (!staffConfirmPassword) {
       errors.staffConfirmPassword = 'Confirmation password is required.';
