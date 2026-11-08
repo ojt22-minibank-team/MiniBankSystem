@@ -10,6 +10,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import type { RootState, AppDispatch } from '../../lib/redux';
 import { forceLogout, broadcastLogout } from '../../features/auth/authSlice';
 import { clearBankingMemoryCache } from '../../hooks/useBankingData';
+import { staffProfileApi } from '../../services/apiClient';
 import SessionTimeoutModal from '../../components/common/SessionTimeoutModal';
 
 interface SessionTimeoutProviderProps {
@@ -34,6 +35,7 @@ export default function SessionTimeoutProvider({
   const isAuthenticated = useSelector(
     (state: RootState) => state.auth.isAuthenticated,
   );
+  const currentUser = useSelector((state: RootState) => state.auth.user);
 
   const [isWarningOpen, setIsWarningOpen] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(
@@ -50,12 +52,15 @@ export default function SessionTimeoutProvider({
   }, [isWarningOpen]);
 
   const handleLogout = useCallback(() => {
+    sessionStorage.setItem('cb_logout_reason', 'idle_timeout');
     setIsWarningOpen(false);
     clearBankingMemoryCache();
-    broadcastLogout();
+    if (currentUser?.username) {
+      broadcastLogout(currentUser.username, 'idle_timeout');
+    }
     dispatch(forceLogout());
     navigate('/login?reason=idle_timeout', { replace: true });
-  }, [dispatch, navigate]);
+  }, [dispatch, navigate, currentUser?.username]);
 
   const handleStayLoggedIn = useCallback(() => {
     lastActivityRef.current = Date.now();
@@ -128,6 +133,43 @@ export default function SessionTimeoutProvider({
       });
     };
   }, [isAuthenticated, timeoutMs, warningMs, recordActivity, handleLogout]);
+
+  // Periodic heartbeat to detect role updates or revoked sessions from backend
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    let isMounted = true;
+    const checkRoleAndSession = async () => {
+      try {
+        const res = await staffProfileApi.getMe();
+        if (!isMounted) return;
+        const profile = res.data;
+        if (profile?.roleCode && currentUser?.roles?.length) {
+          const cleanCurrentRoles = currentUser.roles.map((r) =>
+            r.replace(/^ROLE_/, '').toUpperCase(),
+          );
+          const cleanNewRole = profile.roleCode.replace(/^ROLE_/, '').toUpperCase();
+          if (!cleanCurrentRoles.includes(cleanNewRole)) {
+            sessionStorage.setItem('cb_logout_reason', 'role_changed');
+            if (currentUser.username) {
+              broadcastLogout(currentUser.username, 'role_changed');
+            }
+            clearBankingMemoryCache();
+            dispatch(forceLogout());
+            navigate('/login?reason=role_changed', { replace: true });
+          }
+        }
+      } catch {
+        // Handled automatically by axios interceptor
+      }
+    };
+
+    const intervalId = window.setInterval(checkRoleAndSession, 10000);
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+    };
+  }, [isAuthenticated, currentUser?.username, currentUser?.roles, dispatch, navigate]);
 
   return (
     <>

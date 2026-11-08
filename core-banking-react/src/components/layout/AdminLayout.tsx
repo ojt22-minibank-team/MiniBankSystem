@@ -1,7 +1,8 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
-import { forceLogout } from '../../features/auth/authSlice';
+import { forceLogout, isLogoutTargetingCurrentUser, getLogoutTargetInfo } from '../../features/auth/authSlice';
+import { useAuth } from '../../features/auth/hooks/useAuth';
 import type { AppDispatch } from '../../lib/redux';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
@@ -15,23 +16,33 @@ export default function AdminLayout({ children, pageTitle }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
+  const { user } = useAuth();
 
   useEffect(() => {
-    const handleLogoutSync = () => {
+    const handleLogoutSync = (reason?: string | null) => {
+      if (reason) {
+        sessionStorage.setItem('cb_logout_reason', reason);
+      }
       dispatch(forceLogout());
-      navigate('/login', { replace: true });
+      const query = reason ? `?reason=${encodeURIComponent(reason)}` : '';
+      navigate(`/login${query}`, { replace: true });
     };
 
     const channel = new BroadcastChannel('staff_auth_sync');
     channel.onmessage = (event: MessageEvent) => {
-      if (event.data === 'LOGOUT') {
-        handleLogoutSync();
+      if (isLogoutTargetingCurrentUser(event.data, user?.username)) {
+        const { reason } = getLogoutTargetInfo(event.data);
+        handleLogoutSync(reason);
       }
     };
 
     const handleStorage = (event: StorageEvent) => {
-      if (event.key === 'staff_auth_logout_trigger') {
-        handleLogoutSync();
+      if (
+        event.key === 'staff_auth_logout_trigger' &&
+        isLogoutTargetingCurrentUser(event.newValue, user?.username)
+      ) {
+        const { reason } = getLogoutTargetInfo(event.newValue);
+        handleLogoutSync(reason);
       }
     };
 
@@ -41,7 +52,7 @@ export default function AdminLayout({ children, pageTitle }: AdminLayoutProps) {
       channel.close();
       window.removeEventListener('storage', handleStorage);
     };
-  }, [dispatch, navigate]);
+  }, [dispatch, navigate, user?.username]);
 
   return (
     <div className="relative flex h-screen w-full overflow-hidden bg-[#F4F7FC] text-slate-900 font-sans selection:bg-sky-500 selection:text-white">

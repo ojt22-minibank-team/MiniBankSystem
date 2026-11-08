@@ -2,7 +2,7 @@ import { useState, type FormEvent, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import type { AppDispatch } from '../../../lib/redux';
-import { forceLogout, broadcastLogout } from '../authSlice';
+import { forceLogout } from '../authSlice';
 import { authApi } from '../../../services/apiClient';
 import Input from '../../../components/common/Input';
 import { validatePasswordPolicy } from '../../../utils/validation';
@@ -126,7 +126,6 @@ export default function StaffPasswordSetupPage() {
       });
 
       // Clear any stale local session so user can log in freshly
-      broadcastLogout();
       dispatch(forceLogout());
 
       setIsSuccess(true);

@@ -108,9 +108,12 @@ axiosInstance.interceptors.response.use(
         originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
         return axiosInstance(originalRequest);
       } catch (refreshError) {
+        const currentUsername = sessionStorage.getItem(STORAGE_KEYS.USERNAME) || '';
         processQueue(refreshError, null);
         clearBankingMemoryCache();
-        broadcastLogout();
+        if (currentUsername) {
+          broadcastLogout(currentUsername);
+        }
 
         if (store) {
           store.dispatch(forceLogout());
@@ -120,7 +123,8 @@ axiosInstance.interceptors.response.use(
           sessionStorage.removeItem(STORAGE_KEYS.USERNAME);
           sessionStorage.removeItem(STORAGE_KEYS.ROLES);
         }
-        window.location.href = '/login';
+        const pendingReason = sessionStorage.getItem('cb_logout_reason') || 'role_changed';
+        window.location.href = `/login?reason=${encodeURIComponent(pendingReason)}`;
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

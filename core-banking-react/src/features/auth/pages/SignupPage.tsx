@@ -2,7 +2,7 @@ import { useState, type FormEvent, useEffect, type KeyboardEvent } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import type { AppDispatch } from '../../../lib/redux';
-import { forceLogout, broadcastLogout } from '../authSlice';
+import { forceLogout } from '../authSlice';
 import { authApi } from '../../../services/apiClient';
 import { validatePasswordPolicy } from '../../../utils/validation';
 import ekarajCrown from '../../../assets/ekaraj-crown-transparent.png';
@@ -135,7 +135,6 @@ export default function SignupPage() {
         confirmPassword: staffConfirmPassword,
       });
 
-      broadcastLogout();
       dispatch(forceLogout());
       setStaffSuccess(true);
     } catch (err) {

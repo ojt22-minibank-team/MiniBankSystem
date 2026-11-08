@@ -5,6 +5,7 @@ import { staffApi } from '../../../services/apiClient';
 import type { StaffResponse, StaffRoleOption } from '../../../types/api.types';
 import type { AxiosError } from 'axios';
 import { useAuth } from '../../auth/hooks/useAuth';
+import { broadcastLogout } from '../../auth/authSlice';
 
 interface StaffRoleModalProps {
   isOpen: boolean;
@@ -133,6 +134,9 @@ export default function StaffRoleModal({
 
     try {
       await staffApi.changeRole(staff.staffId, { roleId: selectedRoleId });
+      if (staff.username) {
+        broadcastLogout(staff.username, 'role_changed');
+      }
       onSuccess();
       onClose();
     } catch (err) {

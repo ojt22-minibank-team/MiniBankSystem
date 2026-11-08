@@ -1,5 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../features/auth/hooks/useAuth';
+import { broadcastLogout } from '../../features/auth/authSlice';
+import { STORAGE_KEYS } from '../../config/api.config';
 import Button from './Button';
 
 export default function UnauthorizedPage() {
@@ -7,10 +9,12 @@ export default function UnauthorizedPage() {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
+    const currentUsername =
+      user?.username || sessionStorage.getItem(STORAGE_KEYS.USERNAME) || '';
+    if (currentUsername) {
+      broadcastLogout(currentUsername);
+    }
     await logout();
-    const channel = new BroadcastChannel('staff_auth_sync');
-    channel.postMessage('LOGOUT');
-    channel.close();
     navigate('/login', { replace: true });
   };
 

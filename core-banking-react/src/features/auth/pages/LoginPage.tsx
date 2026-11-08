@@ -53,6 +53,7 @@ export default function LoginPage() {
 
   // Common error state
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [reasonNotice, setReasonNotice] = useState<string | null>(null);
 
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -60,13 +61,30 @@ export default function LoginPage() {
 
   const handleDismissError = () => {
     setErrorMessage(null);
+    setReasonNotice(null);
     if (error) dismissError();
   };
 
-  // Check for session timeout reason in query params
+  // Check for session timeout / role change reason in query params or sessionStorage
   useEffect(() => {
-    if (searchParams.get('reason') === 'idle_timeout') {
-      setErrorMessage('Your session has expired due to inactivity. Please sign in again.');
+    const reason =
+      searchParams.get('reason') ||
+      sessionStorage.getItem('cb_logout_reason');
+
+    if (reason) {
+      sessionStorage.removeItem('cb_logout_reason');
+      let msg = '';
+      if (reason === 'idle_timeout' || reason === 'session_expired') {
+        msg = 'Your session has expired due to inactivity. Please sign in again.';
+      } else if (reason === 'role_changed') {
+        msg = 'Your account role has been updated by an administrator. Please sign in again.';
+      } else if (reason === 'deactivated') {
+        msg = 'Your staff account has been deactivated. Please contact an administrator.';
+      } else {
+        msg = 'Your session has ended. Please sign in again.';
+      }
+      setReasonNotice(msg);
+      setErrorMessage(msg);
     }
   }, [searchParams]);
 
@@ -404,8 +422,34 @@ export default function LoginPage() {
               </p>
             </div>
 
+            {/* Session / Role Change Reason Notice Banner */}
+            {reasonNotice && (
+              <div className="mt-5 rounded-xl border border-amber-300 bg-amber-50/95 p-4 flex items-start justify-between gap-3 animate-in fade-in duration-200 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="p-1 rounded-lg bg-amber-100 text-amber-700 shrink-0 mt-0.5">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-amber-900 tracking-wide uppercase">Notice</h4>
+                    <p className="text-xs font-medium text-amber-800 leading-relaxed mt-0.5">
+                      {reasonNotice}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReasonNotice(null)}
+                  className="text-amber-500 hover:text-amber-700 focus:outline-none cursor-pointer text-sm font-semibold"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             {/* Error Message Banner */}
-            {displayError && (
+            {displayError && displayError !== reasonNotice && (
               <div className="mt-5 rounded-xl border border-red-200 bg-red-50/90 p-3.5 flex items-start justify-between gap-3 animate-in fade-in duration-200 shadow-xs">
                 <div className="flex items-start gap-2.5">
                   <svg className="h-4 w-4 text-red-600 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">

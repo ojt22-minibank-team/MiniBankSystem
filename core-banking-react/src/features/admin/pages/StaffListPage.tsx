@@ -12,11 +12,19 @@ import { staffApi } from '../../../services/apiClient';
 import type { StaffResponse, StaffUserStatus } from '../../../types/api.types';
 import type { AxiosError } from 'axios';
 import { useAuth } from '../../auth/hooks/useAuth';
+import { broadcastLogout } from '../../auth/authSlice';
+import {
+  getCachedStaff,
+  setCachedStaff,
+  invalidateStaffCache,
+} from '../../../hooks/useBankingData';
 
 export default function StaffListPage() {
   const { user } = useAuth();
-  const [staffList, setStaffList] = useState<StaffResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [staffList, setStaffList] = useState<StaffResponse[]>(
+    () => getCachedStaff() || [],
+  );
+  const [isLoading, setIsLoading] = useState(() => !getCachedStaff()?.length);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -108,18 +116,26 @@ export default function StaffListPage() {
     };
   }, []);
 
-  const loadStaff = async () => {
-    setIsLoading(true);
+  const loadStaff = async (forceFresh = false) => {
+    const hasCache = !!getCachedStaff()?.length;
+    if (!hasCache || forceFresh) {
+      if (!staffList.length) {
+        setIsLoading(true);
+      }
+    }
     setError(null);
     try {
       const res = await staffApi.getAll();
       setStaffList(res.data);
+      setCachedStaff(res.data);
     } catch (err) {
       const axErr = err as AxiosError<{ message?: string }>;
       if (axErr.response?.status === 403) {
         setError('Access denied. You do not have permission to view staff records.');
       } else {
-        setError('Failed to load staff list. Please verify the backend service is running.');
+        if (!staffList.length && !hasCache) {
+          setError('Failed to load staff list. Please verify the backend service is running.');
+        }
       }
     } finally {
       setIsLoading(false);
@@ -221,10 +237,14 @@ export default function StaffListPage() {
     setDeactivateLoading(true);
     try {
       await staffApi.deactivate(selectedStaff.staffId);
+      if (selectedStaff.username) {
+        broadcastLogout(selectedStaff.username, 'deactivated');
+      }
       handleShowSuccess(`Staff account "${selectedStaff.username}" has been deactivated.`);
       setIsDeactivateConfirmOpen(false);
       setSelectedStaff(null);
-      loadStaff();
+      invalidateStaffCache();
+      loadStaff(true);
     } catch (err) {
       const axErr = err as AxiosError<{ message?: string }>;
       setError(axErr.response?.data?.message || 'Failed to deactivate staff account.');
@@ -389,7 +409,7 @@ export default function StaffListPage() {
 
           <div className="flex items-center gap-3">
             <button
-              onClick={loadStaff}
+              onClick={() => loadStaff(true)}
               disabled={isLoading}
               className="flex items-center gap-2 rounded-full border border-purple-950/15 bg-white/80 px-4 py-2 text-xs font-bold text-[#1E1B4B] hover:bg-white shadow-xs transition-colors disabled:opacity-50"
             >
@@ -666,8 +686,9 @@ export default function StaffListPage() {
           isOpen={isCreateOpen}
           onClose={() => setIsCreateOpen(false)}
           onSuccess={() => {
+            invalidateStaffCache();
             handleShowSuccess('Staff account created successfully.');
-            loadStaff();
+            loadStaff(true);
           }}
         />
 
@@ -694,8 +715,9 @@ export default function StaffListPage() {
           onClose={() => setIsEditOpen(false)}
           staff={selectedStaff}
           onSuccess={() => {
+            invalidateStaffCache();
             handleShowSuccess('Staff information updated successfully.');
-            loadStaff();
+            loadStaff(true);
           }}
         />
 
@@ -704,8 +726,9 @@ export default function StaffListPage() {
           onClose={() => setIsRoleOpen(false)}
           staff={selectedStaff}
           onSuccess={() => {
+            invalidateStaffCache();
             handleShowSuccess('Staff role and Staff No. updated successfully.');
-            loadStaff();
+            loadStaff(true);
           }}
         />
 
@@ -714,8 +737,9 @@ export default function StaffListPage() {
           onClose={() => setIsResetPasswordOpen(false)}
           staff={selectedStaff}
           onSuccess={() => {
+            invalidateStaffCache();
             handleShowSuccess('Password setup link has been sent to staff email.');
-            loadStaff();
+            loadStaff(true);
           }}
         />
 
