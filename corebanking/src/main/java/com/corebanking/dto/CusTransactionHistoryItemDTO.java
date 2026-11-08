@@ -40,4 +40,5 @@ public class CusTransactionHistoryItemDTO {
     private String counterpartyName;
     private Boolean isOwnAccount;
     private String displayTitle;
+    private String externalReference;
 }
