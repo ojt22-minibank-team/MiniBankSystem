@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { EkarajCrown } from "../../../components/common/EkarajLogo";
 import { isAxiosError } from "axios";
 import {
   Bell,
@@ -15,7 +16,6 @@ import {
   User,
   Store,
   CreditCard,
-  Landmark,
 } from "lucide-react";
 import {
   getMyNotifications,
@@ -460,7 +460,7 @@ export const NotificationDropdown: React.FC = () => {
     if (meta.isDeposit) {
       return (
         <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100 shadow-xs">
-          <Landmark className="w-5 h-5" />
+          <EkarajCrown size={22} className="drop-shadow-xs" />
         </div>
       );
     }
@@ -468,7 +468,7 @@ export const NotificationDropdown: React.FC = () => {
     if (meta.isWithdrawal) {
       return (
         <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-100 shadow-xs">
-          <Landmark className="w-5 h-5" />
+          <EkarajCrown size={22} className="drop-shadow-xs" />
         </div>
       );
     }
@@ -689,7 +689,7 @@ export const NotificationDropdown: React.FC = () => {
                             {/* Sub-line: Counterparty or Account Details */}
                             {meta.isDeposit ? (
                               <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                                <Landmark className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                <EkarajCrown size={15} className="shrink-0" />
                                 <span className="truncate">
                                   {t("creditedTo", "Credited to:")} {meta.targetAccount ? maskAccountNumber(meta.targetAccount) : t("myAccount", "My Account")}
                                 </span>
@@ -699,7 +699,7 @@ export const NotificationDropdown: React.FC = () => {
                               </div>
                             ) : meta.isWithdrawal ? (
                               <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                                <Landmark className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                <EkarajCrown size={15} className="shrink-0" />
                                 <span className="truncate">
                                   {t("debitedFrom", "Debited from:")} {meta.targetAccount ? maskAccountNumber(meta.targetAccount) : t("myAccount", "My Account")}
                                 </span>
