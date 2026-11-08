@@ -157,7 +157,7 @@ public class CusTransactionHistoryRepository {
 
         String sql = "SELECT bt.transaction_ref, bt.initiated_at AS transaction_date, bt.transaction_type, bt.status, " +
                      "CASE WHEN bt.source_account_id = ? THEN 'SOURCE' ELSE 'DESTINATION' END AS account_side, " +
-                     "bt.amount, bt.currency, bt.service_fee, bt.description, " +
+                     "bt.amount, bt.currency, bt.service_fee, bt.description, bt.external_reference, " +
                      "COALESCE(sa.account_number, CASE " +
                      "  WHEN le_src.narration LIKE 'P2P Transfer Debit from Acc: %' THEN TRIM(SUBSTRING(le_src.narration, LENGTH('P2P Transfer Debit from Acc: ') + 1)) " +
                      "  WHEN le_src.narration LIKE '%Acc: %' THEN TRIM(SUBSTRING_INDEX(le_src.narration, 'Acc: ', -1)) " +
@@ -233,6 +233,7 @@ public class CusTransactionHistoryRepository {
                         .counterpartyName(counterpartyName)
                         .isOwnAccount(isOwnAccount)
                         .displayTitle(displayTitle)
+                        .externalReference(rs.getString("external_reference"))
                         .build();
             },
             accountId, accountId, accountId, transactionRef, accountId, accountId
