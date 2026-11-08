@@ -172,8 +172,8 @@ export default function SystemRulesPage() {
   const parameterColumns = [
     {
       key: 'parameterKey',
-      header: 'Parameter Key & Scope',
-      className: isAuditor ? 'w-[45%]' : 'w-[36%]',
+      header: 'Parameter Key',
+      className: 'w-[36%]',
       render: (row: SystemParameterResponse) => (
         <div>
           <span className="font-mono text-xs font-bold text-[#1E1B4B] block">
@@ -187,8 +187,8 @@ export default function SystemRulesPage() {
     },
     {
       key: 'parameterValue',
-      header: 'Configured Value',
-      className: isAuditor ? 'w-[30%]' : 'w-[28%]',
+      header: 'Value',
+      className: 'w-[28%]',
       render: (row: SystemParameterResponse) => (
         <span className="rounded-xl bg-purple-900/5 border border-purple-900/10 px-3 py-1 text-xs font-mono font-bold text-[#1E1B4B]">
           {row.parameterValue}
@@ -241,7 +241,7 @@ export default function SystemRulesPage() {
   const feeColumns = [
     {
       key: 'feeCode',
-      header: 'Fee Code / Operation',
+      header: 'Fee Operation',
       align: 'left' as const,
       className: isAuditor ? 'w-[32%]' : 'w-[28%]',
       render: (row: FeeScheduleResponse) => (
@@ -257,7 +257,7 @@ export default function SystemRulesPage() {
     },
     {
       key: 'feeValue',
-      header: 'Fee Rate / Formula',
+      header: 'Fee Rate',
       align: 'left' as const,
       className: isAuditor ? 'w-[28%]' : 'w-[24%]',
       render: (row: FeeScheduleResponse) => (
@@ -366,7 +366,7 @@ export default function SystemRulesPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
           <div>
             <h2 className="text-2xl sm:text-[28px] font-black text-[#1E1B4B] tracking-tight flex items-center gap-2.5">
-              <span>System Rules & Fee Matrix</span>
+              <span>System Rules & Fee Schedules</span>
               {isAuditor && (
                 <span className="status-pill-amber text-[10px] uppercase font-bold tracking-wider">
                   Read-Only Audit Mode
@@ -404,36 +404,11 @@ export default function SystemRulesPage() {
               <span>Refresh</span>
             </button>
 
-            {!isAuditor && (
-              activeTab === 'parameters' ? (
-                <button
-                  type="button"
-                  onClick={() => setIsCreateParamOpen(true)}
-                  className="btn-liquid-gold px-5 py-2 text-xs flex items-center gap-2 cursor-pointer"
-                >
-                  <svg className="h-4 w-4 text-[#1E1B4B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span>New Parameter</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsCreateFeeOpen(true)}
-                  className="btn-liquid-gold px-5 py-2 text-xs flex items-center gap-2 cursor-pointer"
-                >
-                  <svg className="h-4 w-4 text-[#1E1B4B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span>New Fee Schedule</span>
-                </button>
-              )
-            )}
           </div>
         </div>
 
-        {/* 3 Summary KPI Cards (Liquid Glass) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        {/* Summary KPI Cards (Liquid Glass) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div className="liquid-glass-card rounded-3xl p-6">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               System Parameters
@@ -443,7 +418,7 @@ export default function SystemRulesPage() {
                 {parameters.length}
               </span>
               <span className="status-pill-emerald text-[11px]">
-                Enforced Core
+                Active Parameters
               </span>
             </div>
           </div>
@@ -457,21 +432,7 @@ export default function SystemRulesPage() {
                 {activeFeesCount}
               </span>
               <span className="status-pill-amber text-[11px]">
-                Active Tariffs
-              </span>
-            </div>
-          </div>
-
-          <div className="liquid-glass-card rounded-3xl p-6">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Security Protocol
-            </span>
-            <div className="flex items-baseline justify-between mt-3">
-              <span className="text-xl sm:text-2xl font-bold text-slate-900">
-                Pessimistic Locks
-              </span>
-              <span className="status-pill-purple text-[11px]">
-                Double Spending Guard
+                Active Fee Rates
               </span>
             </div>
           </div>

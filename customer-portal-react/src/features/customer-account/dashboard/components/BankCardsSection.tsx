@@ -34,7 +34,6 @@ export default function BankCardsSection({
   const [canScrollRight, setCanScrollRight] = useState(false);
 
   const hasMultipleCards = accounts.length > 2;
-  const hasExactlyTwoCards = accounts.length === 2;
 
   const checkScroll = useCallback(() => {
     const el = scrollContainerRef.current;
@@ -155,11 +154,7 @@ export default function BankCardsSection({
         {accounts.map((account, index) => (
           <div
             key={account.accountNumber}
-            className={
-              hasExactlyTwoCards
-                ? "min-w-[320px] flex-1 basis-0"
-                : "w-[330px] shrink-0 sm:w-[370px]"
-            }
+            className="w-[340px] shrink-0 sm:w-[380px]"
           >
             <BankCard
               account={account}

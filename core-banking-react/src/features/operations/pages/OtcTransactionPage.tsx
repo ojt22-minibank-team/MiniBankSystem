@@ -530,7 +530,7 @@ export default function OtcTransactionPage() {
                 Yangon Main Branch (Code: BR-001)
               </p>
               <p className="text-[9px] text-gray-400 font-mono leading-tight mt-0.5">
-                Counter #02 • Licensed Commercial Bank
+                Counter #01 • Licensed Commercial Bank
               </p>
             </div>
           </div>

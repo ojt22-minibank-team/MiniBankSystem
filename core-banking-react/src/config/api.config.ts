@@ -9,6 +9,7 @@ export const API_ENDPOINTS = {
     RESEND_OTP: "/api/auth/resend-otp",
     LOGOUT: "/api/auth/logout",
     REFRESH: "/api/auth/refresh",
+    STAFF_PASSWORD_SETUP_VALIDATE: "/api/auth/staff-password-setup/validate",
     STAFF_PASSWORD_SETUP_COMPLETE: "/api/auth/staff-password-setup/complete",
   },
 

@@ -45,16 +45,6 @@ const TYPE_OPTIONS = [
   { value: 'REFUND', label: 'Refund' },
 ];
 
-const CHANNEL_OPTIONS = [
-  { value: 'ALL', label: 'All Channels' },
-  { value: 'WEB', label: 'Customer Web Portal' },
-  { value: 'MOBILE', label: 'Mobile App' },
-  { value: 'STAFF_PORTAL', label: 'Staff Portal' },
-  { value: 'BRANCH', label: 'Branch OTC Counter' },
-  { value: 'ATM', label: 'ATM Network' },
-  { value: 'API', label: 'Payment Gateway (API)' },
-];
-
 export default React.memo(function TransactionFilterBar({
   onFilterChange,
   isLoading,
@@ -191,7 +181,6 @@ export default React.memo(function TransactionFilterBar({
     searchTerm.trim() !== '' ||
     status !== 'ALL' ||
     type !== 'ALL' ||
-    channel !== 'ALL' ||
     timePreset !== 'TODAY' ||
     customStart !== '' ||
     customEnd !== '' ||
@@ -300,7 +289,7 @@ export default React.memo(function TransactionFilterBar({
             type="button"
             onClick={() => setShowAdvanced(!showAdvanced)}
             className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border transition-all cursor-pointer ${
-              showAdvanced || channel !== 'ALL' || minAmount || maxAmount
+              showAdvanced || minAmount || maxAmount
                 ? 'bg-blue-50 border-blue-200 text-blue-600'
                 : 'bg-white/80 border-slate-200 text-slate-600 hover:bg-slate-50'
             }`}
@@ -326,32 +315,7 @@ export default React.memo(function TransactionFilterBar({
 
       {/* Advanced Filter Row (Expandable) */}
       {showAdvanced && (
-        <div className="mt-3.5 pt-3.5 border-t border-slate-200/60 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 animate-fadeIn">
-          {/* Channel Dropdown */}
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
-              Transaction Channel
-            </label>
-            <div className="relative">
-              <select
-                value={channel}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setChannel(val);
-                  emitFilterChange({ channel: val });
-                }}
-                className="w-full appearance-none pl-3 pr-8 py-2 text-xs rounded-xl border border-slate-200 bg-white/90 text-slate-700 font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
-              >
-                {CHANNEL_OPTIONS.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-          </div>
-
+        <div className="mt-3.5 pt-3.5 border-t border-slate-200/60 grid grid-cols-1 sm:grid-cols-3 gap-3 animate-fadeIn">
           {/* Custom Date Range Pickers */}
           <div>
             <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">

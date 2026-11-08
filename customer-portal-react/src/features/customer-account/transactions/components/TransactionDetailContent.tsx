@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toBlob } from "html-to-image";
 import {
   CheckCircle2,
@@ -26,8 +26,10 @@ import {
 } from "../types/transactionHistoryTypes";
 import TransactionStatusBadge from "./TransactionStatusBadge";
 import TransferReceiptView from "../../../transfer/components/TransferReceiptView";
+import { PaymentReceipt } from "../../../merchant-payment/components/PaymentReceipt";
 import { EkarajCrown } from "../../../../components/common/EkarajLogo";
 import { mapHistoryItemToTransferReceiptData } from "../utils/transactionReceiptAdapter";
+import { mapHistoryItemToPaymentReceiptProps } from "../utils/merchantReceiptAdapter";
 import { useAppDispatch, useAppSelector } from "../../../../lib/redux";
 import { fetchMyAccounts } from "../../accounts/stores/accountsSlice";
 
@@ -141,6 +143,8 @@ export default function TransactionDetailContent({
   onBack,
 }: TransactionDetailContentProps) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const routeAccountNumber = searchParams.get("accountNumber");
   const dispatch = useAppDispatch();
   const profile = useAppSelector((state) => state.profile?.profile);
   const userAccounts = useAppSelector((state) => state.accounts?.accounts);
@@ -413,6 +417,26 @@ export default function TransactionDetailContent({
   const isOutgoing = transaction.direction === "OUT";
   const serviceFeeNum = Number(transaction.serviceFee || 0);
   const totalDebitedNum = isOutgoing && isCompleted ? Number(transaction.amount || 0) + serviceFeeNum : null;
+
+  // For COMPLETED EXTERNAL_PAYMENT, reuse the official PaymentReceipt
+  if (isCompleted && isExternalPayment) {
+    const fallbackAccNo =
+      transaction.sourceAccountNumber?.trim() ||
+      routeAccountNumber?.trim() ||
+      "";
+    const receiptProps = mapHistoryItemToPaymentReceiptProps(transaction, fallbackAccNo);
+
+    return (
+      <div className="w-full max-w-xl mx-auto print:max-w-none print:m-0">
+        <PaymentReceipt
+          receipt={receiptProps.receipt}
+          details={receiptProps.details}
+          selectedAccount={receiptProps.selectedAccount}
+          onClose={onBack}
+        />
+      </div>
+    );
+  }
 
   // For COMPLETED INTERNAL_TRANSFER, reuse the official TransferReceiptView
   if (isCompleted && (isInternalTransfer || isDeposit || isWithdrawal)) {
