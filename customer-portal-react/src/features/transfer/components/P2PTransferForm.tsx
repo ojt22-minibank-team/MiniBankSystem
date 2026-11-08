@@ -240,6 +240,7 @@ interface FormStepProps {
   setRecipientName: (val: string) => void;
   lookupLoading: boolean;
   lookupError: string;
+  setLookupError: (val: string) => void;
   amount: string;
   setAmount: (val: string) => void;
   description: string;
@@ -264,6 +265,7 @@ function FormStep({
   setRecipientName,
   lookupLoading,
   lookupError,
+  setLookupError,
   amount,
   setAmount,
   description,
@@ -287,6 +289,14 @@ function FormStep({
     }
     return beneficiaries.length > 0 && !destinationAccount ? "beneficiaries" : "manual";
   });
+
+  const handleTabChange = (newTab: "own" | "beneficiaries" | "manual") => {
+    if (newTab === recipientTab) return;
+    setRecipientTab(newTab);
+    setDestinationAccount("");
+    setRecipientName("");
+    setLookupError("");
+  };
 
   // Reset destination if user selects the same account as source
   useEffect(() => {
@@ -362,7 +372,7 @@ function FormStep({
       {/* 1. From Account Selector */}
       <div>
         <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">{t("fromAccount", "FROM ACCOUNT")}</label>
-        {accountsLoading ? (
+        {accountsLoading && accounts.length === 0 ? (
           <div className="flex items-center gap-2 py-3 text-sm text-slate-400">
             <Loader2 className="w-4 h-4 animate-spin text-cyan-500" /> Loading your accounts...
           </div>
@@ -415,7 +425,7 @@ function FormStep({
             {ownDestinationAccounts.length > 0 && (
               <button
                 type="button"
-                onClick={() => setRecipientTab("own")}
+                onClick={() => handleTabChange("own")}
                 className={`px-3 py-1.5 rounded-lg transition font-bold ${
                   recipientTab === "own"
                     ? "bg-white dark:bg-[#00A3C4] text-[#00A3C4] dark:text-white shadow-xs"
@@ -428,7 +438,7 @@ function FormStep({
             {beneficiaries.length > 0 && (
               <button
                 type="button"
-                onClick={() => setRecipientTab("beneficiaries")}
+                onClick={() => handleTabChange("beneficiaries")}
                 className={`px-3 py-1.5 rounded-lg transition font-bold ${
                   recipientTab === "beneficiaries"
                     ? "bg-white dark:bg-[#00A3C4] text-[#00A3C4] dark:text-white shadow-xs"
@@ -440,7 +450,7 @@ function FormStep({
             )}
             <button
               type="button"
-              onClick={() => setRecipientTab("manual")}
+              onClick={() => handleTabChange("manual")}
               className={`px-3 py-1.5 rounded-lg transition font-bold ${
                 recipientTab === "manual"
                   ? "bg-white dark:bg-[#00A3C4] text-[#00A3C4] dark:text-white shadow-xs"
@@ -541,25 +551,29 @@ function FormStep({
               pattern="[0-9]*"
               list="recent-destinations"
               value={destinationAccount}
-              onChange={(e) => setDestinationAccount(e.target.value.replace(/\D/g, ""))}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, "");
+                setDestinationAccount(val);
+                setLookupError("");
+                if (val.length < 10) {
+                  setRecipientName("");
+                }
+              }}
               placeholder={t("destinationAccountNumber", "Enter 10 to 16 digit recipient account number")}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder-slate-400 focus:border-[#00A3C4] focus:bg-white focus:ring-2 focus:ring-cyan-100 outline-none transition"
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder-slate-400 focus:border-[#00A3C4] focus:bg-white focus:ring-2 focus:ring-cyan-100 outline-none transition pr-10"
               maxLength={34}
               required
             />
+            {lookupLoading && (
+              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-xs text-slate-400 pointer-events-none">
+                <Loader2 className="w-4 h-4 animate-spin text-[#00A3C4]" />
+              </div>
+            )}
             <datalist id="recent-destinations">
               {recentAccounts.map((acc, i) => (
                 <option key={i} value={acc} />
               ))}
             </datalist>
-          </div>
-        )}
-
-        {/* Recipient Verification Status Badge */}
-        {lookupLoading && (
-          <div className="flex items-center gap-2 mt-2 px-3.5 py-2 bg-cyan-50/80 border border-cyan-100 rounded-xl text-xs text-[#00A3C4] font-medium">
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-500" />
-            <span>Verifying recipient account with Core Banking...</span>
           </div>
         )}
 
@@ -1673,14 +1687,9 @@ export const P2PTransferForm = () => {
     }
   }, [sourceAccount]);
 
-  // Load beneficiaries on mount and window focus (auto-sync if added in another tab/page)
+  // Load beneficiaries on mount
   useEffect(() => {
     loadBeneficiaries();
-    const handleFocus = () => loadBeneficiaries();
-    window.addEventListener("focus", handleFocus);
-    return () => {
-      window.removeEventListener("focus", handleFocus);
-    };
   }, []);
 
   // Update destination account and sync beneficiaries if navigated with router state
@@ -1759,59 +1768,105 @@ export const P2PTransferForm = () => {
     };
   }, [dispatch, currentCustomerId]);
 
-  // Debounced recipient account lookup
+    // Cache for verified accounts in this session to eliminate redundant network calls and loaders
+  const lookupCacheRef = useRef<Map<string, string>>(new Map());
+  const beneficiariesRef = useRef(beneficiaries);
+  beneficiariesRef.current = beneficiaries;
+  const accountsRef = useRef(accounts);
+  accountsRef.current = accounts;
+
+  // Debounced recipient account lookup (strictly 10 to 16 digits)
   useEffect(() => {
     const acc = destinationAccount.trim();
-    if (!acc || acc.length < 5) {
+
+    // In Ekaraj Core Banking, valid account numbers are 10 to 16 digits.
+    // If fewer than 10 digits, account number is incomplete (user is typing or editing).
+    // Do NOT call backend, do NOT show error, do NOT show loading.
+    if (!acc || acc.length < 10) {
       setRecipientName("");
       setLookupError("");
+      setLookupLoading(false);
       return;
     }
 
-    // Check if it matches a known saved beneficiary immediately to prevent flicker
-    const matchedBeneficiary = beneficiaries.find(
+    // 1. Check if same as source account
+    if (sourceAccount && acc === sourceAccount) {
+      setRecipientName("");
+      setLookupError("Cannot transfer to the same account.");
+      setLookupLoading(false);
+      return;
+    }
+
+    // 2. Check if it matches user's own destination account
+    const matchedOwn = accountsRef.current.find((a) => a.accountNumber === acc);
+    if (matchedOwn) {
+      setRecipientName(`${matchedOwn.accountType || "Own Account"} (My Account)`);
+      setLookupError("");
+      setLookupLoading(false);
+      return;
+    }
+
+    // 3. Check if it matches a known saved beneficiary
+    const matchedBeneficiary = beneficiariesRef.current.find(
       (b) => b.beneficiaryAccountNumber?.trim() === acc
     );
     if (matchedBeneficiary) {
       setRecipientName(
         matchedBeneficiary.nickname ||
         matchedBeneficiary.beneficiaryAccountName ||
-        ""
+        "Beneficiary"
       );
       setLookupError("");
-    } else {
-      setRecipientName("");
-      setLookupError("");
+      setLookupLoading(false);
+      return;
     }
 
+    // 4. Check lookup cache
+    if (lookupCacheRef.current.has(acc)) {
+      setRecipientName(lookupCacheRef.current.get(acc)!);
+      setLookupError("");
+      setLookupLoading(false);
+      return;
+    }
+
+    // 5. Debounce backend lookup for manual 10-16 digit account
+    let isCancelled = false;
     const timer = setTimeout(async () => {
       try {
         setLookupLoading(true);
         setLookupError("");
         const res = await lookupDestinationAccount(acc);
+        if (isCancelled) return;
         if (res && res.accountName) {
           setRecipientName(res.accountName);
+          lookupCacheRef.current.set(acc, res.accountName);
+          setLookupError("");
         } else {
-          setLookupError("Account not found");
+          setRecipientName("");
+          setLookupError("Account not found. Please verify the account number.");
         }
       } catch (err: any) {
+        if (isCancelled) return;
+        setRecipientName("");
         if (!err.response) {
           setLookupError("Cannot connect to server. Please ensure backend is running.");
         } else if (err.response.status === 401) {
           setLookupError("Session expired. Please log in again.");
         } else {
           setLookupError(err.response?.data?.message || "Account not found or inactive.");
-          if (!matchedBeneficiary) {
-            setRecipientName("");
-          }
         }
       } finally {
-        setLookupLoading(false);
+        if (!isCancelled) {
+          setLookupLoading(false);
+        }
       }
-    }, 400);
+    }, 500);
 
-    return () => clearTimeout(timer);
-  }, [destinationAccount, beneficiaries]);
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [destinationAccount, sourceAccount]);
 
   // Step transition on success
   useEffect(() => {
@@ -2213,6 +2268,7 @@ export const P2PTransferForm = () => {
                 setRecipientName={setRecipientName}
                 lookupLoading={lookupLoading}
                 lookupError={lookupError}
+                setLookupError={setLookupError}
                 amount={amount}
                 setAmount={setAmount}
                 description={description}
