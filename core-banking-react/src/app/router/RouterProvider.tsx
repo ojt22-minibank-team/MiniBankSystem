@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from '../../features/auth/pages/LoginPage';
 import SignupPage from '../../features/auth/pages/SignupPage';
-import StaffPasswordSetupPage from '../../features/auth/pages/StaffPasswordSetupPage';
+// StaffPasswordSetupPage replaced by unified SignupPage
 import AdminDashboardPage from '../../features/admin/pages/AdminDashboardPage';
 import TellerDashboardPage from '../../features/teller/pages/TellerDashboardPage';
 import StaffListPage from '../../features/admin/pages/StaffListPage';
@@ -31,7 +31,7 @@ export default function RouterProvider() {
         <Route path="/register" element={<SignupPage />} />
         <Route path="/setup-password" element={<SignupPage />} />
         <Route path="/set-password" element={<SignupPage />} />
-        <Route path="/staff-setup" element={<StaffPasswordSetupPage />} />
+        <Route path="/staff-setup" element={<SignupPage />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
         {/* ========================================================
