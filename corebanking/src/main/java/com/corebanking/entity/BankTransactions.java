@@ -8,6 +8,8 @@ import com.corebanking.entity.enums.UpdatedByType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
 
@@ -41,10 +43,12 @@ public class BankTransactions {
     @Column(name = "status", nullable = false)
     private TransactionStatus status;
 
+    @NotFound(action = NotFoundAction.IGNORE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "source_account_id", foreignKey = @ForeignKey(name = "fk_transactions_source"))
     private Accounts sourceAccount;
 
+    @NotFound(action = NotFoundAction.IGNORE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "destination_account_id", foreignKey = @ForeignKey(name = "fk_transactions_destination"))
     private Accounts destinationAccount;

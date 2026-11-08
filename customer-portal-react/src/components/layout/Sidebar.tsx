@@ -197,7 +197,7 @@ export default function Sidebar() {
               ring-1 ring-white/10
             "
           >
-            <EkarajCrown size={28} />
+            <EkarajCrown size={32} />
           </div>
 
           {/* Brand */}
@@ -244,7 +244,7 @@ export default function Sidebar() {
             "
           >
             {t("navigation.banking", {
-              defaultValue: "Banking",
+              defaultValue: "E-Banking",
             })}
           </p>
 

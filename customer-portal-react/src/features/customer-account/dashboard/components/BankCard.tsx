@@ -553,7 +553,7 @@ export default function BankCard({
   }
 
   // FULL CARD
-  const cardClasses = `group relative flex h-[225px] sm:h-[235px] w-full min-w-[320px] max-w-none flex-col justify-between overflow-hidden rounded-[26px] p-5 sm:p-6 select-none transition-all duration-300 ${
+  const cardClasses = `group relative flex h-[215px] sm:h-[225px] w-full max-w-[380px] sm:max-w-[390px] min-w-[290px] flex-col justify-between overflow-hidden rounded-[22px] sm:rounded-[24px] p-5 select-none transition-all duration-300 ${
     isLink
       ? "hover:-translate-y-1.5 hover:shadow-2xl cursor-pointer"
       : ""
