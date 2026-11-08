@@ -19,7 +19,7 @@ type SortField = 'createdAt' | 'customerCode';
 type SortDir = 'asc' | 'desc';
 
 export default function CustomersPage() {
-  const { isTeller, isAuditor } = useAuth();
+  const { isTeller } = useAuth();
   // ── High-Performance Parallel Data Fetching & SWR In-Memory Cache ─────────
   const {
     customers,
@@ -220,7 +220,7 @@ export default function CustomersPage() {
           </button>
 
           {/* Edit Profile Action */}
-          {!isAuditor && (
+          {isTeller && (
             <button
               onClick={() => handleOpenEdit(row)}
               className="inline-flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50/80 px-2.5 py-1 text-xs font-semibold text-sky-700 shadow-xs hover:bg-sky-100 hover:border-sky-300 transition-all cursor-pointer"
@@ -506,7 +506,7 @@ export default function CustomersPage() {
           }}
           customer={selectedCustomer}
           isLoading={isDetailLoading}
-          onEdit={!isAuditor ? ((cust: CustomerDetailResponse) => {
+          onEdit={isTeller ? ((cust: CustomerDetailResponse) => {
             setSelectedCustomer(null);
             setIsDetailModalOpen(false);
             setSelectedEditCustomer(cust);
@@ -515,7 +515,8 @@ export default function CustomersPage() {
         />
 
         {/* Customer Profile Edit Modal */}
-        <CustomerEditModal
+        {isTeller && (
+          <CustomerEditModal
           isOpen={isEditModalOpen}
           onClose={() => {
             setIsEditModalOpen(false);
@@ -526,6 +527,7 @@ export default function CustomersPage() {
             refresh();
           }}
         />
+        )}
       </div>
     </AdminLayout>
   );
