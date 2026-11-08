@@ -778,7 +778,7 @@ public class AccountService {
         LocalDateTime now = LocalDateTime.now();
         String dateStr = now.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         String randSuffix = String.format("%04d", ThreadLocalRandom.current().nextInt(1000, 9999));
-        String txnRef = "TXN-DEP-" + dateStr + "-" + randSuffix;
+        String txnRef = "EKB-DEP-" + dateStr + "-" + randSuffix;
 
         BankTransactions transaction = BankTransactions.builder()
                 .transactionRef(txnRef)
