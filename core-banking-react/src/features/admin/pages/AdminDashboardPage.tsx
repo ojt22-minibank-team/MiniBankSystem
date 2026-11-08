@@ -6,7 +6,6 @@ import { adminDashboardApi } from '../../../services/apiClient';
 import type { AdminDashboardSummaryResponse, AnnouncementResponse } from '../../../types/api.types';
 import type { AxiosError } from 'axios';
 import { formatDate } from '../../../utils/formatDate';
-import ekarajCrown from '../../../assets/ekaraj-crown-transparent.png';
 
 // ============================================================
 // Liquid Glass Stat Card Component
@@ -146,7 +145,6 @@ export default function AdminDashboardPage() {
       });
   }, []);
 
-  const currentRole = user?.roles?.[0]?.replace('ROLE_', '') ?? 'ADMIN';
   const recentStaff = summary?.recentStaff ?? [];
   const recentAnnouncements = summary?.recentAnnouncements ?? [];
 
@@ -157,50 +155,24 @@ export default function AdminDashboardPage() {
             1. Liquid Glass Welcome Hero Banner
            ======================================================== */}
         <div className="liquid-glass-hero relative overflow-hidden rounded-3xl p-7 text-white shadow-xl">
-          {/* Frosted Crown Watermark with Specular Glow */}
-          <div className="pointer-events-none absolute -right-6 -bottom-6 opacity-20 sm:opacity-25 transition-transform duration-700 hover:scale-105">
-            <img
-              src={ekarajCrown}
-              alt="EKARAJ Crown"
-              className="h-56 w-auto object-contain filter drop-shadow-[0_10px_20px_rgba(255,255,255,0.4)]"
-            />
-          </div>
-
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-2 max-w-xl">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-white/15 backdrop-blur-md border border-white/20 text-white shadow-xs">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  System Operational · Node 01
-                </span>
-                <span className="text-xs text-sky-200/90 font-medium">
-                  {formatDate(new Date())}
-                </span>
-              </div>
-
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-tight">
-                Welcome back, {user?.username ?? 'Administrator'}
-              </h2>
-
-              <p className="text-xs sm:text-sm text-sky-100/90 font-medium leading-relaxed">
-                Welcome to the EKARAJ BANK Core Banking Operating System. Audit logging engine, account ledgers, and customer management services are operating smoothly.
-              </p>
+          <div className="relative z-10 space-y-2 max-w-2xl">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-white/15 backdrop-blur-md border border-white/20 text-white shadow-xs">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                System Operational · Node 01
+              </span>
+              <span className="text-xs text-sky-200/90 font-medium">
+                {formatDate(new Date())}
+              </span>
             </div>
 
-            {/* Live Session Badges */}
-            <div className="flex flex-wrap md:flex-col items-start md:items-end gap-2.5 shrink-0">
-              <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white/15 backdrop-blur-xl border border-white/25 shadow-xs">
-                <div className="h-2 w-2 rounded-full bg-sky-300 animate-ping" />
-                <span className="text-xs font-bold text-white uppercase tracking-wider">
-                  Role: {currentRole}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20">
-                <span className="text-[11px] font-medium text-sky-200">
-                  Audit Logging: <strong className="text-emerald-300 font-bold">ACTIVE</strong>
-                </span>
-              </div>
-            </div>
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white leading-tight">
+              Welcome back, {user?.username ?? 'Administrator'}
+            </h2>
+
+            <p className="text-xs sm:text-sm text-sky-100/90 font-medium leading-relaxed">
+              Welcome to the EKARAJ BANK Core Banking Operating System. Audit logging engine, account ledgers, and customer management services are operating smoothly.
+            </p>
           </div>
         </div>
 
