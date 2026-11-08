@@ -142,7 +142,7 @@ export default function CustomersPage() {
     },
     {
       key: 'fullName',
-      header: 'Full Name / Entity',
+      header: 'Full Name',
       render: (row: CustomerResponse) => (
         <div>
           <p className="font-bold text-slate-900 leading-snug">{row.fullName}</p>

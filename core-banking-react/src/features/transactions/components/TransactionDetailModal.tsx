@@ -174,20 +174,41 @@ export default function TransactionDetailModal({
                 </div>
                 {transaction.serviceFee > 0 && (
                   <div className="text-xs text-slate-500 mt-1">
-                    Service Fee: +{formatCurrency(transaction.serviceFee, transaction.currency)}
+                    {transaction.transactionType === 'EXTERNAL_PAYMENT' ? (
+                      <span>
+                        Service Fee: {formatCurrency(transaction.serviceFee, transaction.currency)}{' '}
+                        <span className="text-amber-600 font-semibold">(By Merchant)</span>
+                      </span>
+                    ) : (
+                      <span>Service Fee: +{formatCurrency(transaction.serviceFee, transaction.currency)}</span>
+                    )}
                   </div>
                 )}
               </div>
 
-              {transaction.totalDebited > 0 && (
+              {transaction.transactionType === 'EXTERNAL_PAYMENT' ? (
                 <div className="sm:text-right">
                   <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    Total Ledger Debit
+                    Merchant Net
                   </span>
-                  <div className="text-lg font-bold text-slate-800">
-                    {formatCurrency(transaction.totalDebited, transaction.currency)}
+                  <div className="text-2xl font-black text-emerald-600 tracking-tight mt-0.5">
+                    {formatCurrency(
+                      transaction.netCreditAmount ?? (transaction.amount - transaction.serviceFee),
+                      transaction.currency
+                    )}
                   </div>
                 </div>
+              ) : (
+                transaction.totalDebited > 0 && (
+                  <div className="sm:text-right">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Total Ledger Debit
+                    </span>
+                    <div className="text-lg font-bold text-slate-800">
+                      {formatCurrency(transaction.totalDebited, transaction.currency)}
+                    </div>
+                  </div>
+                )
               )}
             </div>
 
@@ -238,6 +259,14 @@ export default function TransactionDetailModal({
                       <span className="text-[11px] text-slate-400 block font-mono">
                         Customer: {transaction.destCustomerCode}
                       </span>
+                    )}
+                    {transaction.transactionType === 'EXTERNAL_PAYMENT' && transaction.serviceFee > 0 && (
+                      <div className="mt-2 pt-2 border-t border-slate-200/80 flex items-center justify-between text-xs">
+                        <span className="text-slate-500 font-medium">Net Credited:</span>
+                        <span className="font-bold text-emerald-600 font-mono">
+                          {formatCurrency(transaction.netCreditAmount ?? (transaction.amount - transaction.serviceFee), transaction.currency)}
+                        </span>
+                      </div>
                     )}
                   </div>
                 ) : (
