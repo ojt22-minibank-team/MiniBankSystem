@@ -185,7 +185,7 @@
                 <textElement textAlignment="Center" verticalAlignment="Middle">
                     <font fontName="SansSerif" size="8"/>
                 </textElement>
-                <textFieldExpression><![CDATA[$F{reportDate} != null ? $F{reportDate}.toString() : ""]]></textFieldExpression>
+                <textFieldExpression><![CDATA[$F{reportDate} != null ? ($F{reportDate} instanceof java.time.LocalDate ? ((java.time.LocalDate)$F{reportDate}).format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")) : ($F{reportDate} instanceof java.util.Date ? new java.text.SimpleDateFormat("dd/MM/yyyy").format((java.util.Date)$F{reportDate}) : ($F{reportDate} instanceof java.time.temporal.TemporalAccessor ? java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy").format((java.time.temporal.TemporalAccessor)$F{reportDate}) : $F{reportDate}.toString()))) : ""]]></textFieldExpression>
             </textField>
             <textField pattern="#,##0" isBlankWhenNull="true">
                 <reportElement x="250" y="0" width="55" height="18" forecolor="#334155" uuid="a1122334-0001-4000-8000-000000000024"/>

@@ -145,7 +145,7 @@ class ReportServiceTest {
         assertThat(csvBytes).isNotEmpty();
         String csv = new String(csvBytes, StandardCharsets.UTF_8);
         assertThat(csv).contains("No,Transaction Type,Report Date,Count,Total Amount,Total Fee,Currency");
-        assertThat(csv).contains("1,INTERNAL_TRANSFER,2026-09-15,120,1500000.00,250.00,MMK");
+        assertThat(csv).contains("1,INTERNAL_TRANSFER,15/09/2026,120,1500000.00,250.00,MMK");
     }
 
     @Test
@@ -276,7 +276,7 @@ class ReportServiceTest {
         assertThat(csvBytes).isNotEmpty();
         String csv = new String(csvBytes, StandardCharsets.UTF_8);
         assertThat(csv).contains("Log ID,Actor Type,Category,Staff ID,Staff Username,Staff Full Name,Action Type,Entity Type,Entity ID,IP Address,Description,Created At");
-        assertThat(csv).contains("1,STAFF,SECURITY,STF-001,admin_user,Admin User,LOGIN,AUTH,AUTH-001,127.0.0.1,Staff logged in successfully,2026-09-15 10:30:00");
+        assertThat(csv).contains("1,STAFF,SECURITY,STF-001,admin_user,Admin User,LOGIN,AUTH,AUTH-001,127.0.0.1,Staff logged in successfully,15/09/2026 10:30:00");
     }
 
     @Test

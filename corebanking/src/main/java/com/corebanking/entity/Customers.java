@@ -45,6 +45,9 @@ public class Customers implements Persistable<UUID> {
     private String phone;
     
     private String address;
+    
+    @Transient
+    private String occupation;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 10)
@@ -91,6 +94,13 @@ public class Customers implements Persistable<UUID> {
     @Override
     public boolean isNew() {
         return this.isNew;
+    }
+
+    public void setOccupation(String occupation) {
+        this.occupation = occupation;
+        if (this.personalInfo != null) {
+            this.personalInfo.setOccupation(occupation);
+        }
     }
 
     public void setPersonalInfo(PersonalInfo personalInfo) {

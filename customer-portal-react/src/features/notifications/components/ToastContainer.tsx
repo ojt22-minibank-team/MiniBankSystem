@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { EkarajCrown } from "../../../components/common/EkarajLogo";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -10,7 +11,6 @@ import {
   ExternalLink,
   Store,
   CreditCard,
-  Landmark,
 } from "lucide-react";
 import type { NotificationItem } from "../types/notificationTypes";
 import {
@@ -320,10 +320,8 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
               : "bg-slate-100 text-slate-600"
           }`}
         >
-          {meta.isDeposit ? (
-            <Landmark className="w-5 h-5" />
-          ) : meta.isWithdrawal ? (
-            <Landmark className="w-5 h-5" />
+          {meta.isDeposit || meta.isWithdrawal ? (
+            <EkarajCrown size={22} className="drop-shadow-xs" />
           ) : isPayment && isReceived ? (
             <Store className="w-5 h-5" />
           ) : isPayment && isSent ? (

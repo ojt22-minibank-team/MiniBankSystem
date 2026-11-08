@@ -111,7 +111,7 @@
             </staticText>
             <textField isBlankWhenNull="true">
                 <reportElement x="120" y="90" width="480" height="15" uuid="550e8400-e29b-41d4-a716-446655440014"/>
-                <textFieldExpression><![CDATA[$P{FROM_DATE} instanceof java.time.LocalDate ? ((java.time.LocalDate)$P{FROM_DATE}).format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")) : String.valueOf($P{FROM_DATE})]]></textFieldExpression>
+                <textFieldExpression><![CDATA[$P{FROM_DATE} instanceof java.time.LocalDate ? ((java.time.LocalDate)$P{FROM_DATE}).format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")) : String.valueOf($P{FROM_DATE})]]></textFieldExpression>
             </textField>
 
             <!-- Row 8: To Date -->
@@ -121,7 +121,7 @@
             </staticText>
             <textField isBlankWhenNull="true">
                 <reportElement x="120" y="105" width="480" height="15" uuid="550e8400-e29b-41d4-a716-446655440016"/>
-                <textFieldExpression><![CDATA[$P{TO_DATE} instanceof java.time.LocalDate ? ((java.time.LocalDate)$P{TO_DATE}).format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")) : String.valueOf($P{TO_DATE})]]></textFieldExpression>
+                <textFieldExpression><![CDATA[$P{TO_DATE} instanceof java.time.LocalDate ? ((java.time.LocalDate)$P{TO_DATE}).format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")) : String.valueOf($P{TO_DATE})]]></textFieldExpression>
             </textField>
 
             <!-- Row 9: Opening Balance -->
@@ -171,7 +171,7 @@
         <band height="15" splitType="Stretch">
             <textField isBlankWhenNull="true">
                 <reportElement x="0" y="0" width="120" height="15" uuid="550e8400-e29b-41d4-a716-446655440025"/>
-                <textFieldExpression><![CDATA[$F{transactionDate} != null ? $F{transactionDate}.format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss")) : ""]]></textFieldExpression>
+                <textFieldExpression><![CDATA[$F{transactionDate} != null ? $F{transactionDate}.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")) : ""]]></textFieldExpression>
             </textField>
             <textField isBlankWhenNull="true">
                 <reportElement x="120" y="0" width="100" height="15" uuid="550e8400-e29b-41d4-a716-446655440026"/>

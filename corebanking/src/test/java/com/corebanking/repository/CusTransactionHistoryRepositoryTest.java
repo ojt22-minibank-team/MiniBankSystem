@@ -163,4 +163,14 @@ class CusTransactionHistoryRepositoryTest {
         );
         assertEquals("Payment Received", titleIncoming);
     }
+
+    @Test
+    @DisplayName("Transaction item DTO preserves external reference")
+    void cusTransactionHistoryItemDTO_preservesExternalReference() {
+        com.corebanking.dto.CusTransactionHistoryItemDTO item = com.corebanking.dto.CusTransactionHistoryItemDTO.builder()
+                .transactionRef("TXN-ECOM-20261108-001")
+                .externalReference("ORD-20261108-001")
+                .build();
+        assertEquals("ORD-20261108-001", item.getExternalReference());
+    }
 }

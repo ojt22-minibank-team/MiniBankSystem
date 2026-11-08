@@ -60,6 +60,7 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
     : 'Staff');
 
   const userRole = user?.roles?.[0]?.replace('ROLE_', '') || 'ADMIN';
+  const baseRoute = isTeller ? '/teller' : isAuditor ? '/auditor' : '/admin';
 
   // Role-Aware Navigation Links
   const navItems: NavItem[] = isTeller
@@ -114,14 +115,25 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
           label: 'Announcements',
           icon: (
             <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="m11 6a13 13 0 0 0 8.4-2.8A1 1 0 0 1 21 4v12a1 1 0 0 1-1.6.8A13 13 0 0 0 11 14H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 14a12 12 0 0 0 2.4 7.2 2 2 0 0 0 3.2-2.4A8 8 0 0 1 10 14" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 6v8" />
+            </svg>
+          ),
+        },
+        {
+          to: '/teller/profile',
+          label: 'Profile',
+          icon: (
+            <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
             </svg>
           ),
         },
       ]
     : [
         {
-          to: '/admin/dashboard',
+          to: `${baseRoute}/dashboard`,
           label: 'Dashboard',
           icon: (
             <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -130,7 +142,7 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
           ),
         },
         {
-          to: '/admin/accounts',
+          to: `${baseRoute}/accounts`,
           label: 'Customer Accounts',
           icon: (
             <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -139,7 +151,7 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
           ),
         },
         {
-          to: '/admin/customers',
+          to: `${baseRoute}/customers`,
           label: 'Customers',
           icon: (
             <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -148,7 +160,7 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
           ),
         },
         {
-          to: '/admin/transactions',
+          to: `${baseRoute}/transactions`,
           label: 'Transaction Details',
           icon: (
             <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -156,7 +168,7 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
             </svg>
           ),
         },
-        ...(isAdmin || isAuditor
+        ...(isAdmin
           ? [
               {
                 to: '/admin/staff',
@@ -169,10 +181,10 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
               },
             ]
           : []),
-        ...(isAdmin
+        ...((isAdmin || isAuditor)
           ? [
               {
-                to: '/admin/system-rules',
+                to: `${baseRoute}/system-rules`,
                 label: 'System Rules',
                 icon: (
                   <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -184,18 +196,20 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
             ]
           : []),
         {
-          to: '/admin/announcements',
+          to: `${baseRoute}/announcements`,
           label: 'Announcements',
           icon: (
             <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="m11 6a13 13 0 0 0 8.4-2.8A1 1 0 0 1 21 4v12a1 1 0 0 1-1.6.8A13 13 0 0 0 11 14H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 14a12 12 0 0 0 2.4 7.2 2 2 0 0 0 3.2-2.4A8 8 0 0 1 10 14" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 6v8" />
             </svg>
           ),
         },
         ...(isAdmin || isAuditor
           ? [
               {
-                to: '/admin/reporting',
+                to: `${baseRoute}/reporting`,
                 label: 'Operational Analytics',
                 icon: (
                   <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -204,7 +218,7 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
                 ),
               },
               {
-                to: '/admin/audit-logs',
+                to: `${baseRoute}/audit-logs`,
                 label: 'Audit Logs',
                 icon: (
                   <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -215,7 +229,7 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
             ]
           : []),
         {
-          to: '/admin/profile',
+          to: `${baseRoute}/profile`,
           label: 'Profile',
           icon: (
             <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -251,62 +265,49 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
                 EKARAJ BANK
               </span>
               <span className="text-[10px] font-bold text-sky-600 block tracking-wider uppercase mt-0.5">
-                {isTeller ? 'Counter Banking · Terminal' : 'Core Banking Portal · Enterprise'}
+                {isTeller ? 'Counter Banking · Terminal' : isAuditor ? 'Audit & Compliance · Portal' : 'Core Banking Portal · Enterprise'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* User Badge: Div for Teller (no profile page), NavLink for Admin */}
+        {/* User Badge: NavLink to profile for all staff roles */}
         <div className="px-4 py-3 shrink-0">
-          {isTeller ? (
-            <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-white/70 backdrop-blur-md border border-white/90 shadow-[0_4px_15px_-3px_rgba(15,23,42,0.04)] select-none">
-              <div className="relative">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl font-bold text-xs shadow-md bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/20">
-                  {displayName.charAt(0).toUpperCase()}
-                </div>
-                <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white animate-pulse" />
+          <NavLink
+            to={`${baseRoute}/profile`}
+            className="flex items-center gap-3 p-2.5 rounded-2xl bg-white/70 backdrop-blur-md border border-white/90 shadow-[0_4px_15px_-3px_rgba(15,23,42,0.04)] hover:bg-white/95 hover:shadow-md transition-all group cursor-pointer"
+          >
+            <div className="relative">
+              <div className={`flex h-9 w-9 items-center justify-center rounded-xl font-bold text-xs shadow-md ${
+                isTeller
+                  ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/20'
+                  : isAuditor
+                  ? 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-amber-500/20'
+                  : 'bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-sky-500/20'
+              }`}>
+                {displayName.charAt(0).toUpperCase()}
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-1">
-                  <h3 className="text-xs font-bold text-slate-900 truncate">
-                    {displayName}
-                  </h3>
-                  <span className="status-pill-emerald text-[9px] py-0 px-1.5 font-bold uppercase">
-                    {userRole}
-                  </span>
-                </div>
+              <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white animate-pulse" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-1">
+                <h3 className={`text-xs font-bold text-slate-900 truncate transition-colors ${
+                  isTeller ? 'group-hover:text-emerald-700' : isAuditor ? 'group-hover:text-amber-700' : 'group-hover:text-sky-700'
+                }`}>
+                  {displayName}
+                </h3>
+                <span className={`${isTeller ? 'status-pill-emerald' : isAuditor ? 'status-pill-amber' : 'status-pill-sky'} text-[9px] py-0 px-1.5 font-bold uppercase`}>
+                  {userRole}
+                </span>
               </div>
             </div>
-          ) : (
-            <NavLink
-              to="/admin/profile"
-              className="flex items-center gap-3 p-2.5 rounded-2xl bg-white/70 backdrop-blur-md border border-white/90 shadow-[0_4px_15px_-3px_rgba(15,23,42,0.04)] hover:bg-white/95 hover:shadow-md transition-all group cursor-pointer"
-            >
-              <div className="relative">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl font-bold text-xs shadow-md bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-sky-500/20">
-                  {displayName.charAt(0).toUpperCase()}
-                </div>
-                <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white animate-pulse" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-1">
-                  <h3 className="text-xs font-bold text-slate-900 truncate">
-                    {displayName}
-                  </h3>
-                  <span className="status-pill-sky text-[9px] py-0 px-1.5 font-bold uppercase">
-                    {userRole}
-                  </span>
-                </div>
-              </div>
-            </NavLink>
-          )}
+          </NavLink>
         </div>
 
         {/* Navigation Links */}
         <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
           <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            {isTeller ? 'Counter Operations' : 'Administration'}
+            {isTeller ? 'Counter Operations' : isAuditor ? 'Compliance & Audit' : 'Administration'}
           </p>
           {navItems.map((item) => (
             <NavLink
@@ -318,7 +319,7 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
                   isActive
                     ? isTeller
                       ? 'bg-gradient-to-r from-emerald-500/15 via-emerald-400/10 to-transparent border-l-[3px] border-emerald-500 text-emerald-700 font-bold shadow-xs'
-                      : 'bg-gradient-to-r from-sky-500/15 via-sky-400/10 to-transparent border-l-[3px] border-sky-500 text-sky-700 font-bold shadow-xs'
+                      : isAuditor ? 'bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent border-l-[3px] border-amber-500 text-amber-700 font-bold shadow-xs' : 'bg-gradient-to-r from-sky-500/15 via-sky-400/10 to-transparent border-l-[3px] border-sky-500 text-sky-700 font-bold shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 hover:backdrop-blur-md hover:translate-x-0.5 font-medium',
                 ].join(' ')
               }

@@ -38,14 +38,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * ReportService — Group 2 Reporting Subsystem.
+ * ReportService â€” Group 2 Reporting Subsystem.
  * Handles report data fetching, streamed CSV / Excel exports, and JasperReports PDF exports.
  */
 @Service
 public class ReportService {
 
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter DT_FMT   = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter DT_FMT   = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
     private final ReportRepository reportRepository;
     private final JasperReportService jasperReportService;
@@ -390,8 +390,8 @@ public class ReportService {
         
         LargeTransactionReportDTO report = getLargeTransactionSummary(startDate, endDate, threshold, txType);
         Map<String, Object> params = new HashMap<>();
-        params.put("StartDate", startDate.toString());
-        params.put("EndDate", endDate.toString());
+        params.put("StartDate", startDate != null ? startDate.format(DATE_FMT) : "ALL");
+        params.put("EndDate", endDate != null ? endDate.format(DATE_FMT) : "ALL");
         params.put("Threshold", report.getThresholdAmount().toPlainString());
         params.put("TxType", report.getTransactionType());
         List<LargeTransactionItemDTO> pdfItems = report.getItems().size() > 5000
@@ -412,7 +412,7 @@ public class ReportService {
                 writer.printf("%d,%s,%s,%s,%s,%.2f,%s,%s,%s,%s,%s%n",
                         no++,
                         item.getTransactionRef(),
-                        item.getTransactionTime(),
+                        fmt(item.getTransactionTime()),
                         item.getTransactionType(),
                         item.getChannel(),
                         item.getAmount(),
@@ -443,7 +443,7 @@ public class ReportService {
                 org.apache.poi.ss.usermodel.Row row = sheet.createRow(rowIdx++);
                 row.createCell(0).setCellValue(no++);
                 row.createCell(1).setCellValue(item.getTransactionRef());
-                row.createCell(2).setCellValue(item.getTransactionTime() != null ? item.getTransactionTime().toString() : "");
+                row.createCell(2).setCellValue(item.getTransactionTime() != null ? fmt(item.getTransactionTime()) : "");
                 row.createCell(3).setCellValue(item.getTransactionType());
                 row.createCell(4).setCellValue(item.getChannel());
                 row.createCell(5).setCellValue(item.getAmount().doubleValue());
@@ -501,8 +501,8 @@ public class ReportService {
     public byte[] exportFeeRevenuePdf(LocalDate startDate, LocalDate endDate, String channel) {
         FeeRevenueReportDTO report = getFeeRevenueSummary(startDate, endDate, channel);
         Map<String, Object> params = new HashMap<>();
-        params.put("StartDate", startDate.toString());
-        params.put("EndDate", endDate.toString());
+        params.put("StartDate", startDate != null ? startDate.format(DATE_FMT) : "ALL");
+        params.put("EndDate", endDate != null ? endDate.format(DATE_FMT) : "ALL");
         params.put("FilterChannel", report.getChannel());
         return jasperReportService.exportToPdf("reports/fee_revenue_report.jrxml", report.getItems(), params);
     }
@@ -657,12 +657,14 @@ public class ReportService {
         List<TransactionDetailReportDTO> rows = getTransactionDetails(
                 startDate, endDate, status, type, channel, minAmount, maxAmount);
         // Safety guard: Limit PDF to top 5,000 records to prevent JVM OutOfMemory
-        if (rows != null && rows.size() > 5000) {
-            rows = rows.subList(0, 5000);
+        if (rows == null) {
+            rows = java.util.Collections.emptyList();
+        } else if (rows.size() > 5000) {
+            rows = new java.util.ArrayList<>(rows.subList(0, 5000));
         }
         Map<String, Object> params = new HashMap<>();
-        params.put("StartDate", startDate.toString());
-        params.put("EndDate", endDate.toString());
+        params.put("StartDate", startDate != null ? startDate.format(DATE_FMT) : "ALL");
+        params.put("EndDate", endDate != null ? endDate.format(DATE_FMT) : "ALL");
         params.put("Status", status != null && !status.isBlank() ? status : "ALL");
         params.put("Type", type != null && !type.isBlank() ? type : "ALL");
         params.put("Channel", channel != null && !channel.isBlank() ? channel : "ALL");

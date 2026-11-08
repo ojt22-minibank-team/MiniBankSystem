@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Getter
@@ -26,6 +27,9 @@ public class AdminDashboardResponseDTO {
     private long totalParameters;
 
     private long activeAnnouncements;
+
+    private BigDecimal todayFeeRevenue;
+    private BigDecimal allTimeFeeRevenue;
 
     private List<StaffResponse> recentStaff;
     private List<AnnouncementResponse> recentAnnouncements;

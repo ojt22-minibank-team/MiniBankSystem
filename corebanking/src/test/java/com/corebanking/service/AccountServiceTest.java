@@ -26,6 +26,12 @@ import com.corebanking.entity.enums.CorporateRole;
 import com.corebanking.repository.AccountRepository;
 import com.corebanking.repository.AccountSignatoriesRepository;
 import com.corebanking.repository.BankTransactionRepository;
+import com.corebanking.repository.LedgerAccountRepository;
+import com.corebanking.repository.LedgerEntryRepository;
+import com.corebanking.entity.BankTransactions;
+import com.corebanking.entity.LedgerAccounts;
+import com.corebanking.entity.LedgerEntries;
+import com.corebanking.entity.enums.EntryType;
 import com.corebanking.repository.CompanyInfoRepository;
 import com.corebanking.repository.CorporateAccountAccessRepository;
 import com.corebanking.repository.CorporateCredentialRepository;
@@ -95,6 +101,12 @@ class AccountServiceTest {
 
     @Mock
     private BankTransactionRepository bankTransactionRepository;
+
+    @Mock
+    private LedgerAccountRepository ledgerAccountRepository;
+
+    @Mock
+    private LedgerEntryRepository ledgerEntryRepository;
 
     @InjectMocks
     private AccountService accountService;
@@ -326,6 +338,58 @@ class AccountServiceTest {
                 eq("SAVINGS"),
                 eq(generatedRawPassword)
         );
+    }
+
+    @Test
+    @DisplayName("Create Retail Account records double-entry General Ledger entries for initial deposit")
+    void testCreateRetailAccount_RecordsGeneralLedgerDoubleEntries() {
+        AccountCreateDTO dto = new AccountCreateDTO();
+        dto.setCustomerCode("CUST-1001");
+        dto.setAccountType(AccountType.SAVINGS);
+        dto.setInitialDeposit(new BigDecimal("25000.00"));
+        dto.setCurrency("MMK");
+
+        LedgerAccounts vaultGl = LedgerAccounts.builder()
+                .ledgerAccountId(1)
+                .ledgerCode("GL-VAULT-CASH")
+                .ledgerName("Vault Cash")
+                .build();
+        LedgerAccounts customerGl = LedgerAccounts.builder()
+                .ledgerAccountId(2)
+                .ledgerCode("GL-CUSTOMER-DEPOSITS")
+                .ledgerName("Customer Deposits")
+                .build();
+
+        when(customerRepository.findByCustomerCode("CUST-1001")).thenReturn(Optional.of(mockCustomer));
+        when(accountRepository.findByCustomerCustomerCode("CUST-1001")).thenReturn(Collections.emptyList());
+        when(accountRepository.save(any(Accounts.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(customerCredentialsRepository.findByCustomerId(mockCustomer.getId())).thenReturn(Optional.empty());
+        when(passwordEncoder.encode(anyString())).thenReturn("hashed_password");
+        when(ledgerAccountRepository.findByLedgerCode("GL-VAULT-CASH")).thenReturn(Optional.of(vaultGl));
+        when(ledgerAccountRepository.findByCustomerAccount(any(Accounts.class))).thenReturn(Optional.of(customerGl));
+        when(bankTransactionRepository.save(any(BankTransactions.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AccountResponseDTO response = accountService.createAccount(dto);
+
+        assertThat(response).isNotNull();
+
+        ArgumentCaptor<LedgerEntries> entryCaptor = ArgumentCaptor.forClass(LedgerEntries.class);
+        verify(ledgerEntryRepository, times(2)).save(entryCaptor.capture());
+
+        List<LedgerEntries> entries = entryCaptor.getAllValues();
+        assertThat(entries).hasSize(2);
+
+        // Line 1: Debit Vault Cash
+        LedgerEntries debitEntry = entries.stream().filter(e -> e.getLineNo() == 1).findFirst().orElseThrow();
+        assertThat(debitEntry.getEntryType()).isEqualTo(EntryType.DEBIT);
+        assertThat(debitEntry.getAmount()).isEqualByComparingTo(new BigDecimal("25000.00"));
+        assertThat(debitEntry.getLedgerAccount().getLedgerCode()).isEqualTo("GL-VAULT-CASH");
+
+        // Line 2: Credit Customer Deposit
+        LedgerEntries creditEntry = entries.stream().filter(e -> e.getLineNo() == 2).findFirst().orElseThrow();
+        assertThat(creditEntry.getEntryType()).isEqualTo(EntryType.CREDIT);
+        assertThat(creditEntry.getAmount()).isEqualByComparingTo(new BigDecimal("25000.00"));
+        assertThat(creditEntry.getLedgerAccount().getLedgerCode()).isEqualTo("GL-CUSTOMER-DEPOSITS");
     }
 
     @Test

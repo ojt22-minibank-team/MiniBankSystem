@@ -19,6 +19,7 @@ export interface CusTransactionHistoryItemDTO {
   counterpartyName: string | null;
   isOwnAccount: boolean;
   displayTitle: string;
+  externalReference?: string | null;
 }
 
 export interface CusTransactionHistoryResponseDTO {
