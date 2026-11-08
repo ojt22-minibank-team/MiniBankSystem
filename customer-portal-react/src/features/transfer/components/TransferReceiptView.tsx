@@ -405,7 +405,7 @@ export default function TransferReceiptView({
             </div>
 
             <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-              <EkarajCrown size={34} className="drop-shadow-md print:w-8 print:h-8" />
+              <EkarajCrown size={38} className="drop-shadow-md print:w-9 print:h-9" />
               {onClose && (
                 <button
                   type="button"
