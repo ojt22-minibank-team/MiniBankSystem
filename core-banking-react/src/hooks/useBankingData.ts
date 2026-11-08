@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { customersApi, accountsApi } from '../services/apiClient';
-import type { CustomerResponse, AccountResponse } from '../types/api.types';
+import type { CustomerResponse, AccountResponse, StaffResponse } from '../types/api.types';
 
 // ============================================================
 // In-Memory Stale-While-Revalidate (SWR) Cache
@@ -14,12 +14,30 @@ const memoryCache = new Map<string, CacheEntry<unknown>>();
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds cache TTL
 const STRICT_SLA_TIMEOUT_MS = 2800; // 2.8s guard to guarantee sub-3-second UI response
 
+let staffCache: CacheEntry<StaffResponse[]> | null = null;
+
+export function getCachedStaff(): StaffResponse[] | null {
+  if (staffCache && Date.now() - staffCache.timestamp < CACHE_TTL_MS) {
+    return staffCache.data;
+  }
+  return null;
+}
+
+export function setCachedStaff(data: StaffResponse[]): void {
+  staffCache = { data, timestamp: Date.now() };
+}
+
+export function invalidateStaffCache(): void {
+  staffCache = null;
+}
+
 /**
  * Purges the entire in-memory SWR cache.
  * Must be invoked on user logout or session termination to prevent cross-session data leakage.
  */
 export function clearBankingMemoryCache(): void {
   memoryCache.clear();
+  staffCache = null;
 }
 
 export interface PaginationParams {

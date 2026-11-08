@@ -1,4 +1,6 @@
+
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface TransactionPaginationProps {
   page: number; // 0-indexed
@@ -23,6 +25,8 @@ export default function TransactionPagination({
   onSizeChange,
   disabled = false,
 }: TransactionPaginationProps) {
+  const { t } = useTranslation("transaction");
+
   if (totalElements === 0) {
     return null;
   }
@@ -37,16 +41,16 @@ export default function TransactionPagination({
       {/* Total summary and page size selector */}
       <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm text-slate-600">
         <span>
-          Showing{" "}
-          <span className="font-semibold text-slate-900">{startItem}</span> to{" "}
-          <span className="font-semibold text-slate-900">{endItem}</span> of{" "}
-          <span className="font-semibold text-slate-900">{totalElements}</span>{" "}
-          transactions
+          {t("pagination.showing", {
+            start: startItem,
+            end: endItem,
+            total: totalElements,
+          })}
         </span>
 
         <div className="flex items-center gap-2">
           <label htmlFor="pageSizeSelect" className="text-xs text-slate-500">
-            Per page:
+            {t("pagination.perPage")}
           </label>
           <select
             id="pageSizeSelect"
@@ -65,7 +69,10 @@ export default function TransactionPagination({
       {/* Navigation controls */}
       <div className="flex items-center justify-between sm:justify-end gap-2">
         <span className="text-xs sm:text-sm font-medium text-slate-600 mr-2">
-          Page {currentPageNumber} of {displayTotalPages}
+          {t("pagination.page", {
+            current: currentPageNumber,
+            total: displayTotalPages,
+          })}
         </span>
 
         <div className="inline-flex items-center gap-1">
@@ -73,21 +80,25 @@ export default function TransactionPagination({
             type="button"
             onClick={() => onPageChange(page - 1)}
             disabled={!hasPrevious || disabled}
-            aria-label="Previous page"
+            aria-label={t("pagination.previous")}
             className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#00A3C4] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ChevronLeft size={16} aria-hidden="true" />
-            <span className="hidden sm:inline">Previous</span>
+            <span className="hidden sm:inline">
+              {t("pagination.previous")}
+            </span>
           </button>
 
           <button
             type="button"
             onClick={() => onPageChange(page + 1)}
             disabled={!hasNext || disabled}
-            aria-label="Next page"
+            aria-label={t("pagination.next")}
             className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#00A3C4] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <span className="hidden sm:inline">Next</span>
+            <span className="hidden sm:inline">
+              {t("pagination.next")}
+            </span>
             <ChevronRight size={16} aria-hidden="true" />
           </button>
         </div>

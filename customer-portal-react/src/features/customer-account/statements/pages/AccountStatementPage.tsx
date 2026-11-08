@@ -1,6 +1,8 @@
+
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { FileText, AlertCircle, RefreshCw } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAppDispatch, useAppSelector } from "../../../../lib/redux";
 import { fetchMyAccounts } from "../../accounts/stores/accountsSlice";
 import { StatementForm } from "../components/StatementForm";
@@ -14,8 +16,10 @@ import {
 } from "../types/statementTypes";
 
 function StatementPageSkeleton() {
+  const { t } = useTranslation("statement");
+
   return (
-    <div className="space-y-6 animate-pulse" aria-busy="true" aria-label="Loading account statement form">
+    <div className="space-y-6 animate-pulse" aria-busy="true" aria-label={t("loading.ariaLabel")}>
       {/* Header skeleton */}
       <div className="flex items-center gap-3.5">
         <div className="h-12 w-12 rounded-2xl bg-slate-200" />
@@ -40,6 +44,8 @@ function StatementPageSkeleton() {
 }
 
 function StatementPageError({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation("statement");
+
   return (
     <section
       className="flex flex-col items-center justify-center rounded-2xl border border-red-200 bg-white p-8 text-center shadow-sm sm:p-10"
@@ -48,9 +54,11 @@ function StatementPageError({ onRetry }: { onRetry: () => void }) {
       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-red-600 mb-4" aria-hidden="true">
         <AlertCircle size={24} />
       </div>
-      <h2 className="text-base font-bold text-slate-900">Unable to Load Customer Accounts</h2>
+      <h2 className="text-base font-bold text-slate-900">
+        {t("error.title")}
+      </h2>
       <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
-        We couldn't retrieve your bank account details to generate a statement. Please try again.
+        {t("error.description")}
       </p>
       <button
         type="button"
@@ -58,13 +66,15 @@ function StatementPageError({ onRetry }: { onRetry: () => void }) {
         className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-[#00A3C4] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0891B2]"
       >
         <RefreshCw size={15} aria-hidden="true" />
-        Try Again
+        {t("error.retry")}
       </button>
     </section>
   );
 }
 
 export default function AccountStatementPage() {
+  const { t } = useTranslation("statement");
+
   const dispatch = useAppDispatch();
   const { accounts, loading, error } = useAppSelector((state) => state.accounts);
 
@@ -138,18 +148,18 @@ export default function AccountStatementPage() {
 
     // Instant date errors (reactive like Transaction History)
     if (form.fromDate && form.fromDate > todayIso) {
-      return "From Date cannot be in the future.";
+      return t("validation.fromDateFuture");
     }
     if (form.toDate && form.toDate > todayIso) {
-      return "To Date cannot be in the future.";
+      return t("validation.toDateFuture");
     }
     if (form.fromDate && form.toDate && form.fromDate > form.toDate) {
-      return "From Date cannot be later than To Date.";
+      return t("validation.fromDateAfterToDate");
     }
     if (form.fromDate && selectedAccount?.openedAt) {
       const openingDate = normalizeAccountOpeningDate(selectedAccount.openedAt);
       if (openingDate && form.fromDate < openingDate) {
-        return "From Date cannot be earlier than the account opening date.";
+        return t("validation.beforeOpeningDate");
       }
     }
 
@@ -159,7 +169,7 @@ export default function AccountStatementPage() {
     }
 
     return null;
-  }, [form, selectedAccount, hasAttemptedSubmit]);
+  }, [form, selectedAccount, hasAttemptedSubmit, t]);
 
   // Manual Account Type change handler (Rule 6)
   const handleAccountTypeChange = (newType: StatementAccountType) => {
@@ -238,24 +248,26 @@ export default function AccountStatementPage() {
 
           <div className="min-w-0">
             {/* Breadcrumb Navigation */}
-            <nav aria-label="Breadcrumb" className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold">
+            <nav aria-label={t("common.breadcrumb")} className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold">
               <Link
                 to="/dashboard"
                 className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
               >
-                Dashboard
+                {t("common.dashboard")}
               </Link>
               <span className="text-slate-300" aria-hidden="true">/</span>
-              <span className="text-[#00A3C4]" aria-current="page">Account Statement</span>
+              <span className="text-[#00A3C4]" aria-current="page">
+                {t("pageTitle")}
+              </span>
             </nav>
 
             <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[#0A192F] dark:text-white">
-              Account Statement
+              {t("pageTitle")}
             </h1>
             <p className="text-xs md:text-sm text-slate-500 mt-0.5">
-              {currentStep === "form" && "Select an account and date range to prepare your statement."}
-              {currentStep === "verify" && "Please review your statement details before confirming."}
-              {currentStep === "download" && "Your statement criteria have been confirmed."}
+              {currentStep === "form" && t("steps.formDescription")}
+              {currentStep === "verify" && t("steps.verifyDescription")}
+              {currentStep === "download" && t("steps.downloadDescription")}
             </p>
           </div>
         </div>
@@ -272,9 +284,11 @@ export default function AccountStatementPage() {
           {currentStep === "form" && (
             <section className="rounded-2xl border border-slate-200 bg-white p-6 md:p-8 shadow-sm">
               <div className="mb-6 border-b border-slate-100 pb-4">
-                <h2 className="text-base font-bold text-slate-900">Statement Criteria</h2>
+                <h2 className="text-base font-bold text-slate-900">
+                  {t("criteria.title")}
+                </h2>
                 <p className="text-xs text-slate-500 mt-1">
-                  Choose your account and transaction time period below.
+                  {t("criteria.description")}
                 </p>
               </div>
 

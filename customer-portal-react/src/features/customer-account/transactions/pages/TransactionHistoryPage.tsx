@@ -1,5 +1,7 @@
+
 import { useEffect, useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import axios from "axios";
 import { History, AlertCircle, RefreshCw, AlertTriangle } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../../../../lib/redux";
@@ -42,6 +44,8 @@ const INITIAL_APPLIED_FILTERS: TransactionFilterApplied = {
 };
 
 export default function TransactionHistoryPage() {
+  const { t } = useTranslation("transaction");
+
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { accounts, loading: accountsLoading, error: accountsError } = useAppSelector(
@@ -92,30 +96,30 @@ export default function TransactionHistoryPage() {
     const todayIso = getTodayLocalIso();
 
     if ((fromDate && fromDate > todayIso) || (toDate && toDate > todayIso)) {
-      return "Future dates are not allowed.";
+      return t("history.validation.futureDates");
     }
 
     if (fromDate && toDate && fromDate > toDate) {
-      return "From Date cannot be later than To Date.";
+      return t("history.validation.dateRange");
     }
 
     const minNum = minAmount.trim() !== "" ? Number(minAmount) : NaN;
     const maxNum = maxAmount.trim() !== "" ? Number(maxAmount) : NaN;
 
     if (!Number.isNaN(minNum) && minNum < 0) {
-      return "Minimum amount must be greater than or equal to 0.";
+      return t("history.validation.minAmountNegative");
     }
 
     if (!Number.isNaN(maxNum) && maxNum < 0) {
-      return "Maximum amount must be greater than or equal to 0.";
+      return t("history.validation.maxAmountNegative");
     }
 
     if (!Number.isNaN(minNum) && !Number.isNaN(maxNum) && minNum > maxNum) {
-      return "Minimum amount cannot be greater than Maximum amount.";
+      return t("history.validation.amountRange");
     }
 
     return null;
-  }, [draftFilters]);
+  }, [draftFilters, t]);
 
   // Check if any filters are currently applied
   const hasFiltersApplied = useMemo(() => {
@@ -194,7 +198,7 @@ export default function TransactionHistoryPage() {
         ) {
           return;
         }
-        let errorMsg = "Failed to load transaction history. Please try again.";
+        let errorMsg = t("history.errors.loadFailed");
         if (axios.isAxiosError(err)) {
           errorMsg = err.response?.data?.message || err.message || errorMsg;
         }
@@ -207,7 +211,7 @@ export default function TransactionHistoryPage() {
     return () => {
       controller.abort();
     };
-  }, [activeAccountNumber, appliedFilters, page, size, retryTrigger]);
+  }, [activeAccountNumber, appliedFilters, page, size, retryTrigger, t]);
 
   // Handle Account Change
   const handleAccountChange = (newAccNo: string) => {
@@ -291,148 +295,153 @@ export default function TransactionHistoryPage() {
             </div>
             <div className="min-w-0">
               {/* Breadcrumb Navigation */}
-              <nav aria-label="Breadcrumb" className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold">
+              <nav aria-label={t("history.breadcrumb")} className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold">
                 <Link
                   to="/dashboard"
                   className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
                 >
-                  Dashboard
+                  {t("history.dashboard")}
                 </Link>
                 <span className="text-slate-300" aria-hidden="true">/</span>
-                <span className="text-[#00A3C4]" aria-current="page">Transaction History</span>
+                <span className="text-[#00A3C4]" aria-current="page">
+                  {t("history.title")}
+                </span>
               </nav>
 
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-                Transaction History
+                {t("history.title")}
               </h1>
               <p className="text-xs sm:text-sm text-slate-500">
-                Review and filter real-time transaction activity across your accounts.
+                {t("history.description")}
               </p>
             </div>
           </div>
         </div>
 
-      {/* Account Loading Skeleton */}
-      {accountsLoading && (
-        <div className="animate-pulse space-y-4">
-          <div className="h-32 rounded-2xl bg-slate-200" />
-          <div className="h-64 rounded-2xl bg-slate-200" />
-        </div>
-      )}
-
-      {/* Accounts Fetch Error */}
-      {!accountsLoading && accountsError && (
-        <section
-          role="alert"
-          className="flex flex-col items-center justify-center rounded-2xl border border-red-200 bg-white p-8 text-center shadow-sm"
-        >
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-red-600 mb-4">
-            <AlertCircle size={24} aria-hidden="true" />
+        {/* Account Loading Skeleton */}
+        {accountsLoading && (
+          <div className="animate-pulse space-y-4">
+            <div className="h-32 rounded-2xl bg-slate-200" />
+            <div className="h-64 rounded-2xl bg-slate-200" />
           </div>
-          <h2 className="text-base font-bold text-slate-900">Unable to Load Customer Accounts</h2>
-          <p className="mt-2 max-w-md text-sm text-slate-500">
-            {accountsError || "Could not retrieve your bank accounts. Please try again."}
-          </p>
-          <button
-            type="button"
-            onClick={() => void dispatch(fetchMyAccounts())}
-            className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-[#00A3C4] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#0891B2]"
+        )}
+
+        {/* Accounts Fetch Error */}
+        {!accountsLoading && accountsError && (
+          <section
+            role="alert"
+            className="flex flex-col items-center justify-center rounded-2xl border border-red-200 bg-white p-8 text-center shadow-sm"
           >
-            <RefreshCw size={15} aria-hidden="true" />
-            Try Again
-          </button>
-        </section>
-      )}
-
-      {/* Case A Empty State: No Active Account Available */}
-      {!accountsLoading && !accountsError && !hasActiveAccounts && (
-        <div
-          role="alert"
-          className="flex flex-col items-center justify-center rounded-2xl border border-amber-200 bg-amber-50/50 p-8 text-center shadow-sm"
-        >
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 text-amber-700 mb-4">
-            <AlertTriangle size={24} aria-hidden="true" />
-          </div>
-          <h2 className="text-base font-bold text-slate-900">No Active Account Available</h2>
-          <p className="mt-2 max-w-md text-xs sm:text-sm text-slate-600">
-            No active bank account is available to view transaction history. Please contact customer
-            support or open an active account.
-          </p>
-        </div>
-      )}
-
-      {/* Main Content Area */}
-      {!accountsLoading && !accountsError && hasActiveAccounts && (
-        <>
-          {/* Filters Form */}
-          <TransactionFilters
-            accounts={accounts}
-            selectedAccountNumber={activeAccountNumber}
-            onAccountChange={handleAccountChange}
-            availableStatuses={availableStatuses}
-            availableTypes={availableTypes}
-            draftFilters={draftFilters}
-            onDraftChange={handleDraftChange}
-            onApply={handleApplyFilters}
-            onClear={handleClearFilters}
-            isApplying={isLoadingHistory}
-            validationError={validationError}
-          />
-
-          {/* History Error Banner */}
-          {historyError && (
-            <div
-              role="alert"
-              className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800"
-            >
-              <div className="flex items-center gap-3">
-                <AlertCircle size={20} className="shrink-0 text-red-600" aria-hidden="true" />
-                <span className="text-xs sm:text-sm font-medium">{historyError}</span>
-              </div>
-              <button
-                type="button"
-                onClick={handleRetry}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-red-700"
-              >
-                <RefreshCw size={14} aria-hidden="true" />
-                Try Again
-              </button>
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-red-600 mb-4">
+              <AlertCircle size={24} aria-hidden="true" />
             </div>
-          )}
+            <h2 className="text-base font-bold text-slate-900">
+              {t("history.accountsError.title")}
+            </h2>
+            <p className="mt-2 max-w-md text-sm text-slate-500">
+              {accountsError || t("history.accountsError.description")}
+            </p>
+            <button
+              type="button"
+              onClick={() => void dispatch(fetchMyAccounts())}
+              className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-[#00A3C4] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#0891B2]"
+            >
+              <RefreshCw size={15} aria-hidden="true" />
+              {t("history.tryAgain")}
+            </button>
+          </section>
+        )}
 
-          {/* Transaction Table */}
-          <TransactionTable
-            transactions={historyData?.content || []}
-            isLoading={isLoadingHistory}
-            hasFiltersApplied={hasFiltersApplied}
-            onClearFilters={handleClearFilters}
-            onSelectTransaction={(tx: CusTransactionHistoryItemDTO) => {
-              navigate(
-                `/transaction/${encodeURIComponent(tx.transactionRef)}?accountNumber=${encodeURIComponent(activeAccountNumber)}`,
-                {
-                  state: {
-                    transaction: tx,
-                    from: "/transaction",
-                  },
-                }
-              );
-            }}
-          />
+        {/* Case A Empty State: No Active Account Available */}
+        {!accountsLoading && !accountsError && !hasActiveAccounts && (
+          <div
+            role="alert"
+            className="flex flex-col items-center justify-center rounded-2xl border border-amber-200 bg-amber-50/50 p-8 text-center shadow-sm"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 text-amber-700 mb-4">
+              <AlertTriangle size={24} aria-hidden="true" />
+            </div>
+            <h2 className="text-base font-bold text-slate-900">
+              {t("history.empty.title")}
+            </h2>
+            <p className="mt-2 max-w-md text-xs sm:text-sm text-slate-600">
+              {t("history.empty.description")}
+            </p>
+          </div>
+        )}
 
-          {/* Pagination */}
-          <TransactionPagination
-            page={page}
-            size={size}
-            totalPages={historyData?.totalPages || 0}
-            totalElements={historyData?.totalElements || 0}
-            hasNext={Boolean(historyData?.hasNext)}
-            hasPrevious={Boolean(historyData?.hasPrevious)}
-            onPageChange={handlePageChange}
-            onSizeChange={handleSizeChange}
-            disabled={isLoadingHistory}
-          />
-        </>
-      )}
+        {/* Main Content Area */}
+        {!accountsLoading && !accountsError && hasActiveAccounts && (
+          <>
+            {/* Filters Form */}
+            <TransactionFilters
+              accounts={accounts}
+              selectedAccountNumber={activeAccountNumber}
+              onAccountChange={handleAccountChange}
+              availableStatuses={availableStatuses}
+              availableTypes={availableTypes}
+              draftFilters={draftFilters}
+              onDraftChange={handleDraftChange}
+              onApply={handleApplyFilters}
+              onClear={handleClearFilters}
+              isApplying={isLoadingHistory}
+              validationError={validationError}
+            />
+
+            {/* History Error Banner */}
+            {historyError && (
+              <div
+                role="alert"
+                className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800"
+              >
+                <div className="flex items-center gap-3">
+                  <AlertCircle size={20} className="shrink-0 text-red-600" aria-hidden="true" />
+                  <span className="text-xs sm:text-sm font-medium">{historyError}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-red-700"
+                >
+                  <RefreshCw size={14} aria-hidden="true" />
+                  {t("history.tryAgain")}
+                </button>
+              </div>
+            )}
+
+            {/* Transaction Table */}
+            <TransactionTable
+              transactions={historyData?.content || []}
+              isLoading={isLoadingHistory}
+              hasFiltersApplied={hasFiltersApplied}
+              onClearFilters={handleClearFilters}
+              onSelectTransaction={(tx: CusTransactionHistoryItemDTO) => {
+                navigate(
+                  `/transaction/${encodeURIComponent(tx.transactionRef)}?accountNumber=${encodeURIComponent(activeAccountNumber)}`,
+                  {
+                    state: {
+                      transaction: tx,
+                      from: "/transaction",
+                    },
+                  }
+                );
+              }}
+            />
+
+            {/* Pagination */}
+            <TransactionPagination
+              page={page}
+              size={size}
+              totalPages={historyData?.totalPages || 0}
+              totalElements={historyData?.totalElements || 0}
+              hasNext={Boolean(historyData?.hasNext)}
+              hasPrevious={Boolean(historyData?.hasPrevious)}
+              onPageChange={handlePageChange}
+              onSizeChange={handleSizeChange}
+              disabled={isLoadingHistory}
+            />
+          </>
+        )}
       </div>
     </div>
   );
