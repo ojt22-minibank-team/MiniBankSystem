@@ -53,6 +53,12 @@ export const authApi = {
   refresh: (refreshToken: string) =>
     axiosInstance.post<LoginResponse>(API_ENDPOINTS.AUTH.REFRESH, { refreshToken }),
 
+    validatePasswordSetupToken: (token: string) =>
+    axiosInstance.get<{ valid: boolean; username?: string; email?: string }>(
+      API_ENDPOINTS.AUTH.STAFF_PASSWORD_SETUP_VALIDATE,
+      { params: { token } },
+    ),
+
   completePasswordSetup: (data: StaffPasswordSetupRequest) =>
     axiosInstance.post<{ message: string }>(
       API_ENDPOINTS.AUTH.STAFF_PASSWORD_SETUP_COMPLETE,

@@ -19,8 +19,8 @@ public class StaffChangePasswordRequest {
     @NotBlank(message = "New password is required")
     @Size(
         min = 6,
-        max = 12,
-        message = "Password must contain between 6 and 12 characters"
+        max = 16,
+        message = "Password must contain between 6 and 16 characters"
     )
     private String newPassword;
 

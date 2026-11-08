@@ -26,7 +26,7 @@ export interface PasswordPolicyOptions {
 
 /**
  * Password Policy Validator:
- * 1. Length between 6 and 12 characters
+ * 1. Length between 6 and 16 characters
  * 2. At least 1 uppercase letter (A-Z)
  * 3. At least 1 special character
  * 4. Cannot contain username
@@ -37,9 +37,9 @@ export function validatePasswordPolicy(password: string, options: PasswordPolicy
     return 'Password is required.';
   }
 
-  // 1. Length rule: between 6 and 12 characters
-  if (password.length < 6 || password.length > 12) {
-    return 'Password must be between 6 and 12 characters.';
+  // 1. Length rule: between 6 and 16 characters
+  if (password.length < 6 || password.length > 16) {
+    return 'Password must be between 6 and 16 characters.';
   }
 
   // 2. Uppercase letter rule: at least 1 uppercase

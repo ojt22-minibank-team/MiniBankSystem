@@ -4,7 +4,7 @@ public class StaffPasswordValidator {
 
     /**
      * Enforces the Core Banking staff password security policy:
-     * 1. Length between 6 and 12 characters
+     * 1. Length between 6 and 16 characters
      * 2. At least 1 uppercase letter (A-Z)
      * 3. At least 1 special character
      * 4. Must not contain the staff's username
@@ -15,9 +15,9 @@ public class StaffPasswordValidator {
             throw new IllegalArgumentException("Password is required");
         }
 
-        // 1. Length check: between 6 and 12 characters
-        if (password.length() < 6 || password.length() > 12) {
-            throw new IllegalArgumentException("Password must be between 6 and 12 characters");
+        // 1. Length check: between 6 and 16 characters
+        if (password.length() < 6 || password.length() > 16) {
+            throw new IllegalArgumentException("Password must be between 6 and 16 characters");
         }
 
         // 2. Uppercase letter check: at least 1 uppercase (A-Z)

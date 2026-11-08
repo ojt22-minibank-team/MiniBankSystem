@@ -103,7 +103,7 @@ export default function StaffChangePasswordModal({
         <div className="rounded-xl bg-purple-50/70 border border-purple-100 p-3 text-xs text-purple-900">
           <p className="font-semibold">Security Requirement</p>
           <p className="mt-0.5 text-purple-700">
-            Password must be 6-12 characters with at least 1 uppercase letter and 1 special character. It must not contain your username or Gmail.
+            Password must be 6-16 characters with at least 1 uppercase letter and 1 special character. It must not contain your username or Gmail.
           </p>
         </div>
 
@@ -131,7 +131,7 @@ export default function StaffChangePasswordModal({
               setNewPassword(e.target.value);
               if (errors.newPassword) setErrors({ ...errors, newPassword: '' });
             }}
-            placeholder="6-12 chars, 1 uppercase, 1 special char"
+            placeholder="6-16 chars, 1 uppercase, 1 special char"
             error={errors.newPassword}
             required
           />

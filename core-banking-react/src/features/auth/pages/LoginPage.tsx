@@ -355,7 +355,11 @@ export default function LoginPage() {
             {/* Header: Royal Crown + Bank Title */}
             <div className="flex items-center gap-3">
               <img
-                src={ekarajCrown}
+                src={ekarajCrown || '/ekaraj-crown-transparent.png'}
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = '/ekaraj-crown-transparent.png';
+                }}
                 alt="EKARAJ BANK"
                 className="h-9 w-auto object-contain drop-shadow-sm select-none"
               />
@@ -663,12 +667,16 @@ export default function LoginPage() {
         {/* ============================================================ */}
         {/* RIGHT COLUMN: Pristine Full-Res Showcase Card */}
         {/* ============================================================ */}
-        <div className="hidden lg:col-span-5 lg:flex relative p-6 sm:p-7 items-center justify-center bg-slate-50/20">
-          <div className="relative w-full h-full max-h-[520px] rounded-[28px] overflow-hidden shadow-[0_20px_50px_-12px_rgba(26,58,110,0.18)] border border-[#dfba61]/70 ring-1 ring-[#caa13b]/30 flex items-center justify-center bg-white">
+        <div className="hidden lg:col-span-5 lg:flex relative p-6 sm:p-7 items-center justify-center bg-slate-50/50">
+          <div className="relative w-full h-full min-h-[460px] max-h-[520px] rounded-[28px] overflow-hidden shadow-[0_20px_50px_-12px_rgba(26,58,110,0.18)] border border-[#dfba61]/70 ring-1 ring-[#caa13b]/30">
             <img
-              src={ekarajShowcase}
-              alt="Welcome to Ekaraj Bank - Empowering your financial future with royal security"
-              className="w-full h-full object-cover object-center select-none"
+              src={ekarajShowcase || '/ekaraj-showcase-full.png'}
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = '/ekaraj-showcase-full.png';
+              }}
+              alt="Welcome to Ekaraj Bank"
+              className="w-full h-full object-cover object-center select-none block"
             />
           </div>
         </div>

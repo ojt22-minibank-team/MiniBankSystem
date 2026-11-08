@@ -1,4 +1,3 @@
-
 package com.corebanking.service;
 
 import com.corebanking.dto.StaffPasswordSetupRequest;
@@ -27,6 +26,7 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -152,6 +152,48 @@ public class StaffPasswordSetupService {
     }
 
     /**
+     * Validates a staff setup token on link click / page load.
+     * Does not consume the token or modify database state.
+     */
+    public Map<String, Object> validateSetupToken(String rawToken) {
+        if (rawToken == null || rawToken.isBlank()) {
+            throw new IllegalArgumentException("Setup token is required");
+        }
+
+        String tokenHash = sha256(rawToken);
+        StaffPasswordSetupToken setupToken = setupTokenRepository.findByTokenHash(tokenHash)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired setup link"));
+
+        LocalDateTime now = LocalDateTime.now();
+
+        if (setupToken.getUsedAt() != null) {
+            throw new IllegalArgumentException("This password setup link has already been used");
+        }
+
+        if (setupToken.getRevokedAt() != null) {
+            throw new IllegalArgumentException("This password setup link has been revoked");
+        }
+
+        if (!setupToken.getExpiresAt().isAfter(now)) {
+            throw new IllegalArgumentException("This password setup link has expired");
+        }
+
+        StaffUsers staff = staffUsersRepository.findById(
+                setupToken.getStaff().getStaffId()
+        ).orElseThrow(() -> new IllegalArgumentException("Staff account not found"));
+
+        if (staff.getStatus() != StaffUserStatus.ACTIVE) {
+            throw new IllegalStateException("This staff account is not active");
+        }
+
+        return Map.of(
+                "valid", true,
+                "username", staff.getUsername() != null ? staff.getUsername() : "",
+                "email", staff.getEmail() != null ? staff.getEmail() : ""
+        );
+    }
+
+    /**
      * Validates the single-use token and sets the staff password.
      */
     @Transactional
@@ -222,7 +264,7 @@ public class StaffPasswordSetupService {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
 
             byte[] hash = digest.digest(
-                    value.getBytes(StandardCharsets.UTF_8)
+                value.getBytes(StandardCharsets.UTF_8)
             );
 
             return HexFormat.of().formatHex(hash);
