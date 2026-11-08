@@ -20,7 +20,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin/system-rules")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
 public class SystemRulesConfigController {
 
     private final SystemRulesConfigService systemRulesConfigService;
@@ -31,6 +30,7 @@ public class SystemRulesConfigController {
     // =========================================================
 
     @PostMapping("/parameters")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SystemParameterResponse> createParameter(
             @Valid @RequestBody SystemParameterCreateRequest request) {
 
@@ -44,6 +44,7 @@ public class SystemRulesConfigController {
 
 
     @GetMapping("/parameters")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUDITOR')")
     public ResponseEntity<List<SystemParameterResponse>> getAllParameters() {
 
         return ResponseEntity.ok(
@@ -53,6 +54,7 @@ public class SystemRulesConfigController {
 
 
     @GetMapping("/parameters/{parameterKey}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUDITOR')")
     public ResponseEntity<SystemParameterResponse> getParameterByKey(
             @PathVariable String parameterKey) {
 
@@ -64,6 +66,7 @@ public class SystemRulesConfigController {
 
 
     @PutMapping("/parameters/{parameterKey}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SystemParameterResponse> updateParameter(
             @PathVariable String parameterKey,
             @Valid @RequestBody SystemParameterUpdateRequest request) {
@@ -80,6 +83,7 @@ public class SystemRulesConfigController {
     // =========================================================
 
     @PostMapping("/fees")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<FeeScheduleResponse> createFee(
             @Valid @RequestBody FeeScheduleCreateRequest request) {
 
@@ -93,6 +97,7 @@ public class SystemRulesConfigController {
 
 
     @GetMapping("/fees")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUDITOR')")
     public ResponseEntity<List<FeeScheduleResponse>> getAllFees() {
 
         return ResponseEntity.ok(
@@ -102,6 +107,7 @@ public class SystemRulesConfigController {
 
 
     @GetMapping("/fees/{feeScheduleId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AUDITOR')")
     public ResponseEntity<FeeScheduleResponse> getFeeById(
             @PathVariable Integer feeScheduleId) {
 
@@ -113,6 +119,7 @@ public class SystemRulesConfigController {
 
 
     @PutMapping("/fees/{feeScheduleId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<FeeScheduleResponse> updateFee(
             @PathVariable Integer feeScheduleId,
             @Valid @RequestBody FeeScheduleUpdateRequest request) {
@@ -128,6 +135,7 @@ public class SystemRulesConfigController {
 
 
     @PatchMapping("/fees/{feeScheduleId}/activate")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<FeeScheduleResponse> activateFee(
             @PathVariable Integer feeScheduleId) {
 
@@ -139,6 +147,7 @@ public class SystemRulesConfigController {
 
 
     @PatchMapping("/fees/{feeScheduleId}/deactivate")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<FeeScheduleResponse> deactivateFee(
             @PathVariable Integer feeScheduleId) {
 

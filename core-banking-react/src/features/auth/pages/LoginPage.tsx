@@ -166,7 +166,13 @@ export default function LoginPage() {
         } else {
           // Direct login (if MFA wasn't required)
           const isTellerRole = payload?.roles?.some((r: string) => r === 'ROLE_TELLER' || r === 'TELLER');
-          navigate(isTellerRole ? '/teller/dashboard' : '/admin/dashboard', { replace: true });
+          const isAuditorRole = payload?.roles?.some((r: string) => r === 'ROLE_AUDITOR' || r === 'AUDITOR');
+          const targetDashboard = isTellerRole
+            ? '/teller/dashboard'
+            : isAuditorRole
+            ? '/auditor/dashboard'
+            : '/admin/dashboard';
+          navigate(targetDashboard, { replace: true });
         }
       } else if (loginThunk.rejected.match(result)) {
         const backendMessage =
@@ -259,7 +265,13 @@ export default function LoginPage() {
 
       if (verifyOtpThunk.fulfilled.match(result)) {
         const isTellerRole = result.payload?.roles?.some((r: string) => r === 'ROLE_TELLER' || r === 'TELLER');
-        navigate(isTellerRole ? '/teller/dashboard' : '/admin/dashboard', { replace: true });
+        const isAuditorRole = result.payload?.roles?.some((r: string) => r === 'ROLE_AUDITOR' || r === 'AUDITOR');
+        const targetDashboard = isTellerRole
+          ? '/teller/dashboard'
+          : isAuditorRole
+          ? '/auditor/dashboard'
+          : '/admin/dashboard';
+        navigate(targetDashboard, { replace: true });
       } else if (verifyOtpThunk.rejected.match(result)) {
         const backendMessage =
           (result.payload as string) ||
