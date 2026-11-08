@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
 import AdminLayout from '../../../components/layout/AdminLayout';
 import { adminDashboardApi } from '../../../services/apiClient';
@@ -125,7 +125,9 @@ function LiquidStatCard({
 export default function AdminDashboardPage() {
   const { user, isAdmin, isAuditor, isTeller } = useAuth();
   const navigate = useNavigate();
-  const baseRoute = isAuditor ? '/auditor' : '/admin';
+  const location = useLocation();
+  const isAuditorView = isAuditor || location.pathname.startsWith('/auditor');
+  const baseRoute = isAuditorView ? '/auditor' : '/admin';
 
   const [summary, setSummary] = useState<AdminDashboardSummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -272,8 +274,9 @@ export default function AdminDashboardPage() {
             3. Liquid Glass High-Impact KPI Stat Cards
            ======================================================== */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {/* Card 1: Staff Workforce */}
-          <LiquidStatCard
+          {/* Card 1: Staff Workforce (Hidden for Auditor) */}
+          {!isAuditorView && (
+            <LiquidStatCard
             title="Staff Workforce"
             value={loading ? '—' : isTeller ? 'Directory' : (summary?.totalStaff ?? 0)}
             subtitle={
@@ -294,6 +297,7 @@ export default function AdminDashboardPage() {
               </svg>
             }
           />
+          )}
 
           {/* Card 2: Customers & Portfolios */}
           <LiquidStatCard
@@ -363,7 +367,7 @@ export default function AdminDashboardPage() {
               badgeColor="emerald"
               gradient="bg-emerald-400"
               iconBg="bg-gradient-to-br from-emerald-500 to-teal-700 text-white"
-              onClick={() => navigate('/admin/reporting')}
+              onClick={() => navigate(`${baseRoute}/reporting`)}
               headerAction={
                 <div
                   className="inline-flex p-0.5 rounded-xl bg-slate-200/80 border border-slate-300/60 shadow-xs"

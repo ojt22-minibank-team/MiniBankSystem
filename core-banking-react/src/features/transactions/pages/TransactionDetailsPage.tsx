@@ -212,13 +212,13 @@ export default function TransactionDetailsPage() {
   };
 
   return (
-    <AdminLayout pageTitle="Transaction Explorer & Overrides">
+    <AdminLayout pageTitle="Transaction Explorer & Details">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header Title & Refresh */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-black tracking-tight text-slate-900">
-              Transaction Explorer & Overrides
+              Transaction Explorer & Details
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
               Search, inspect, review suspicious activity, and execute managerial overrides across all ledger transactions.
