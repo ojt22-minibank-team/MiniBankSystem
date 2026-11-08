@@ -73,7 +73,7 @@ function getAnnouncementStatus(a: AnnouncementResponse): { label: string; classN
 }
 
 export default function AnnouncementsPage() {
-  const { isTeller } = useAuth();
+  const { isTeller, isAdmin } = useAuth();
   const [announcements, setAnnouncements] = useState<AnnouncementResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -259,7 +259,7 @@ export default function AnnouncementsPage() {
               <span>Refresh</span>
             </button>
 
-            {!isTeller && (
+            {isAdmin && (
               <button
                 type="button"
                 disabled={expiredCount === 0 || bulkDeleting}
@@ -273,7 +273,7 @@ export default function AnnouncementsPage() {
               </button>
             )}
 
-            {!isTeller && (
+            {isAdmin && (
               <button
                 type="button"
                 onClick={() => {
@@ -374,7 +374,7 @@ export default function AnnouncementsPage() {
               ðŸ“¢
             </div>
             <p className="text-sm font-bold text-zinc-700">No announcements published yet.</p>
-            {!isTeller && (
+            {isAdmin && (
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="btn-liquid-gold px-5 py-2 text-xs inline-flex items-center gap-1.5"
@@ -434,7 +434,7 @@ export default function AnnouncementsPage() {
                       </div>
 
                       {/* Action buttons */}
-                      {!isTeller && (
+                      {isAdmin && (
                         <div className="flex items-center gap-2 shrink-0">
                           {active && (
                             <button

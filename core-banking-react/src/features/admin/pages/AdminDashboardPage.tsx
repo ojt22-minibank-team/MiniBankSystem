@@ -119,6 +119,7 @@ function LiquidStatCard({
 export default function AdminDashboardPage() {
   const { user, isAdmin, isAuditor, isTeller } = useAuth();
   const navigate = useNavigate();
+  const baseRoute = isAuditor ? '/auditor' : '/admin';
 
   const [summary, setSummary] = useState<AdminDashboardSummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -190,7 +191,7 @@ export default function AdminDashboardPage() {
           {/* Quick 1: Customer Registry */}
           <button
             type="button"
-            onClick={() => navigate('/admin/customers')}
+            onClick={() => navigate(`${baseRoute}/customers`)}
             className="liquid-glass-card rounded-2xl p-3.5 flex items-center gap-3 text-left group hover:border-sky-300/80 transition-all cursor-pointer"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 border border-sky-500/20 group-hover:scale-105 transition-transform">
@@ -207,7 +208,7 @@ export default function AdminDashboardPage() {
           {/* Quick 2: Open Bank Account */}
           <button
             type="button"
-            onClick={() => navigate('/admin/accounts')}
+            onClick={() => navigate(`${baseRoute}/accounts`)}
             className="liquid-glass-card rounded-2xl p-3.5 flex items-center gap-3 text-left group hover:border-emerald-300/80 transition-all cursor-pointer"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 group-hover:scale-105 transition-transform">
@@ -224,7 +225,7 @@ export default function AdminDashboardPage() {
           {/* Quick 3: Announcements */}
           <button
             type="button"
-            onClick={() => navigate('/admin/announcements')}
+            onClick={() => navigate(`${baseRoute}/announcements`)}
             className="liquid-glass-card rounded-2xl p-3.5 flex items-center gap-3 text-left group hover:border-purple-300/80 transition-all cursor-pointer"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 border border-purple-500/20 group-hover:scale-105 transition-transform">
@@ -241,7 +242,7 @@ export default function AdminDashboardPage() {
           {/* Quick 4: Audit Logs */}
           <button
             type="button"
-            onClick={() => navigate('/admin/audit-logs')}
+            onClick={() => navigate(`${baseRoute}/audit-logs`)}
             className="liquid-glass-card rounded-2xl p-3.5 flex items-center gap-3 text-left group hover:border-amber-300/80 transition-all cursor-pointer"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 border border-amber-500/20 group-hover:scale-105 transition-transform">
@@ -275,7 +276,7 @@ export default function AdminDashboardPage() {
             badgeColor="sky"
             gradient="bg-sky-400"
             iconBg="bg-gradient-to-br from-sky-400 to-blue-600 text-white"
-            onClick={() => (!isTeller ? navigate('/admin/staff') : undefined)}
+            onClick={() => (isAdmin ? navigate('/admin/staff') : undefined)}
             icon={
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
@@ -292,7 +293,7 @@ export default function AdminDashboardPage() {
             badgeColor="emerald"
             gradient="bg-emerald-400"
             iconBg="bg-gradient-to-br from-emerald-400 to-teal-600 text-white"
-            onClick={() => navigate('/admin/customers')}
+            onClick={() => navigate(`${baseRoute}/customers`)}
             icon={
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
@@ -309,7 +310,7 @@ export default function AdminDashboardPage() {
             badgeColor="purple"
             gradient="bg-indigo-400"
             iconBg="bg-gradient-to-br from-indigo-400 to-purple-600 text-white"
-            onClick={() => navigate('/admin/accounts')}
+            onClick={() => navigate(`${baseRoute}/accounts`)}
             icon={
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm6 0a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -326,7 +327,7 @@ export default function AdminDashboardPage() {
             badgeColor="amber"
             gradient="bg-amber-400"
             iconBg="bg-gradient-to-br from-amber-400 to-orange-500 text-white"
-            onClick={() => navigate('/admin/system-rules')}
+            onClick={() => ((isAdmin || isAuditor) ? navigate(`${baseRoute}/system-rules`) : undefined)}
             icon={
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
@@ -345,7 +346,7 @@ export default function AdminDashboardPage() {
               badgeColor="purple"
               gradient="bg-purple-400"
               iconBg="bg-gradient-to-br from-purple-500 to-indigo-600 text-white"
-              onClick={() => navigate('/admin/reporting')}
+              onClick={() => navigate(`${baseRoute}/reporting`)}
               icon={
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
@@ -374,7 +375,7 @@ export default function AdminDashboardPage() {
                     <p className="text-[11px] text-slate-400 font-medium">Bank workforce directory</p>
                   </div>
                 </div>
-                {!isTeller && (
+                {isAdmin && (
                   <button
                     onClick={() => navigate('/admin/staff')}
                     className="text-xs font-bold text-sky-600 hover:text-sky-700 hover:underline flex items-center gap-1 cursor-pointer"
@@ -439,7 +440,9 @@ export default function AdminDashboardPage() {
                 <div className="flex items-center gap-2.5">
                   <div className="h-8 w-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-xs border border-purple-100">
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m11 6a13 13 0 0 0 8.4-2.8A1 1 0 0 1 21 4v12a1 1 0 0 1-1.6.8A13 13 0 0 0 11 14H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 14a12 12 0 0 0 2.4 7.2 2 2 0 0 0 3.2-2.4A8 8 0 0 1 10 14" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 6v8" />
                     </svg>
                   </div>
                   <div>
@@ -449,7 +452,7 @@ export default function AdminDashboardPage() {
                 </div>
                 {!isTeller && (
                   <button
-                    onClick={() => navigate('/admin/announcements')}
+                    onClick={() => navigate(`${baseRoute}/announcements`)}
                     className="text-xs font-bold text-purple-600 hover:text-purple-700 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <span>Manage</span>
@@ -520,7 +523,7 @@ export default function AdminDashboardPage() {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => navigate('/admin/audit-logs')}
+                onClick={() => navigate(`${baseRoute}/audit-logs`)}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
               >
                 <span>Audit Logs</span>

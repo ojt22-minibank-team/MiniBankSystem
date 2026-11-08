@@ -3,7 +3,7 @@ import { useAuth } from '../../features/auth/hooks/useAuth';
 import Button from './Button';
 
 export default function UnauthorizedPage() {
-  const { user, isTeller, logout } = useAuth();
+  const { user, isTeller, isAuditor, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -14,7 +14,7 @@ export default function UnauthorizedPage() {
     navigate('/login', { replace: true });
   };
 
-  const dashboardPath = isTeller ? '/teller/dashboard' : '/admin/dashboard';
+  const dashboardPath = isTeller ? '/teller/dashboard' : isAuditor ? '/auditor/dashboard' : '/admin/dashboard';
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 text-center">
