@@ -5,6 +5,8 @@ import com.corebanking.entity.enums.UpdatedByType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
@@ -34,6 +36,7 @@ public class Notifications {
             foreignKey = @ForeignKey(name = "fk_notifications_corporate_user"))
     private CorporateUser corporateUser;
 
+    @NotFound(action = NotFoundAction.IGNORE)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "transaction_id",
             foreignKey = @ForeignKey(name = "fk_notifications_transaction"))

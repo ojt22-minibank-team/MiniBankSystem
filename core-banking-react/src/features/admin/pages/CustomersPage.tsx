@@ -9,6 +9,7 @@ import { formatDate } from '../../../utils/formatDate';
 import CustomerCreateModal from '../components/CustomerCreateModal';
 import CustomerDetailModal from '../components/CustomerDetailModal';
 import CustomerEditModal from '../components/CustomerEditModal';
+import { useAuth } from '../../auth/hooks/useAuth';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10;
@@ -18,6 +19,7 @@ type SortField = 'createdAt' | 'customerCode';
 type SortDir = 'asc' | 'desc';
 
 export default function CustomersPage() {
+  const { isTeller } = useAuth();
   // ── High-Performance Parallel Data Fetching & SWR In-Memory Cache ─────────
   const {
     customers,
@@ -273,16 +275,18 @@ export default function CustomersPage() {
               </svg>
               <span>Refresh</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 text-xs font-semibold shadow-xs transition-all duration-200 ease-in-out hover:-translate-y-0.5 cursor-pointer"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              <span>Register Customer</span>
-            </button>
+            {isTeller && (
+              <button
+                type="button"
+                onClick={() => setIsCreateModalOpen(true)}
+                className="inline-flex items-center gap-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 text-xs font-semibold shadow-xs transition-all duration-200 ease-in-out hover:-translate-y-0.5 cursor-pointer"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Register Customer</span>
+              </button>
+            )}
           </div>
         </div>
 
