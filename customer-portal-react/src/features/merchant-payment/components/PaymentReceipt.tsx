@@ -9,9 +9,10 @@ interface Props {
   receipt: ReceiptType;
   details: PaymentDetails;
   selectedAccount: string;
+  onClose?: () => void;
 }
 
-export const PaymentReceipt: React.FC<Props> = ({ receipt, details, selectedAccount }) => {
+export const PaymentReceipt: React.FC<Props> = ({ receipt, details, selectedAccount, onClose }) => {
   const { t } = useTranslation('payment');
   const navigate = useNavigate();
 
@@ -93,7 +94,13 @@ export const PaymentReceipt: React.FC<Props> = ({ receipt, details, selectedAcco
         <div className="space-y-3">
           <button 
             type="button"
-            onClick={() => navigate('/dashboard')} 
+            onClick={() => {
+              if (onClose) {
+                onClose();
+              } else {
+                navigate('/dashboard');
+              }
+            }} 
             className="w-full flex items-center justify-center gap-2 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-[#00A3C4] to-[#0284C7] hover:from-[#0891B2] hover:to-[#0369A1] shadow-md shadow-cyan-500/25 active:scale-[0.98] py-3.5 transition-all cursor-pointer"
           >
             <LayoutDashboard className="h-4 w-4" />
