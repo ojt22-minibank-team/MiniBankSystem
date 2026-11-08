@@ -143,12 +143,6 @@ export default function StaffDetailsModal({
             </span>
           </div>
           <div>
-            <span className="block text-xs font-medium text-gray-500">Staff ID (UUID)</span>
-            <span className="font-mono text-xs text-gray-600 truncate block" title={staff.staffId}>
-              {staff.staffId}
-            </span>
-          </div>
-          <div>
             <span className="block text-xs font-medium text-gray-500">Email Address</span>
             <span className="font-medium text-gray-800">{staff.email || '—'}</span>
           </div>
