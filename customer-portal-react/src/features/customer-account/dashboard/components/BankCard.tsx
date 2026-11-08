@@ -2,6 +2,7 @@
 import { useState, type MouseEvent } from "react";
 import { Link } from "react-router-dom";
 import { Check, Copy, Eye, EyeOff } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import type { DashboardAccount } from "../types/dashboardTypes";
 import type { AccountStatus as AccountStatusType } from "../../accounts/types/accountTypes";
@@ -189,7 +190,11 @@ export default function BankCard({
   onClick,
   compact = false,
 }: BankCardProps) {
-  const [copied, setCopied] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<
+    "success" | "error" | null
+  >(null);
+
+  const { t } = useTranslation("dashboard");
 
   // Local fallback for standalone usage.
   // Dashboard usage is controlled by the parent visibility state.
@@ -227,15 +232,15 @@ export default function BankCard({
     accountName ||
     (account as unknown as { accountName?: string }).accountName ||
     reduxFullName ||
-    "EKARAJ CUSTOMER"
+    t("customerFallback")
   ).toUpperCase();
 
   const theme = EKARAJ_CARD_THEMES[index % EKARAJ_CARD_THEMES.length];
 
   const accountTypeLabel =
     account.accountType?.toUpperCase() === "SAVINGS"
-      ? "SAVINGS ACCOUNT"
-      : "CURRENT ACCOUNT";
+      ? t("accountTypeSavings")
+      : t("accountTypeCurrent");
 
   const accountStatus = normalizeAccountStatus(account.status);
 
@@ -243,27 +248,8 @@ export default function BankCard({
     account.accountNumber,
   );
 
-  // Available Balance = Current Balance - Minimum Reserve.
-  const effectiveAvailableBalance = (() => {
-    const minReserve =
-      (account as { minimumBalance?: number }).minimumBalance ?? 10000;
-
-    if (
-      account.currentBalance !== undefined &&
-      account.currentBalance !== null
-    ) {
-      if (
-        account.availableBalance !== undefined &&
-        account.availableBalance < account.currentBalance
-      ) {
-        return account.availableBalance;
-      }
-
-      return Math.max(0, account.currentBalance - minReserve);
-    }
-
-    return account.availableBalance ?? 0;
-  })();
+  // Use the available balance provided by the backend.
+  const effectiveAvailableBalance = account.availableBalance;
 
   const handleToggleEye = (e: MouseEvent) => {
     e.preventDefault();
@@ -277,17 +263,27 @@ export default function BankCard({
     setInternalVisibility((currentVisibility) => !currentVisibility);
   };
 
-  const handleCopy = (e: MouseEvent) => {
+  const handleCopy = async (e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
-    void navigator.clipboard.writeText(account.accountNumber);
+    try {
+      await navigator.clipboard.writeText(account.accountNumber);
 
-    setCopied(true);
+      setCopyStatus("success");
 
-    setTimeout(() => {
-      setCopied(false);
-    }, 1500);
+      setTimeout(() => {
+        setCopyStatus(null);
+      }, 2000);
+    } catch (error) {
+      console.error("Failed to copy account number:", error);
+
+      setCopyStatus("error");
+
+      setTimeout(() => {
+        setCopyStatus(null);
+      }, 2000);
+    }
   };
 
   // Reuse the same AccountStatus component and exact design.
@@ -313,7 +309,7 @@ export default function BankCard({
                 fontFamily: "system-ui, -apple-system, sans-serif",
               }}
             >
-              EKARAJ BANK
+              {t("bankName")}
             </h3>
           </div>
         </div>
@@ -330,7 +326,7 @@ export default function BankCard({
           <span
             className={`text-[10px] sm:text-[11px] uppercase tracking-wider ${theme.balanceLabelClass}`}
           >
-            Available Balance
+            {t("availableBalance")}
           </span>
 
           <button
@@ -339,13 +335,13 @@ export default function BankCard({
             className={`rounded-lg p-1 transition-colors ${theme.actionBtnClass} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400`}
             title={
               isBalanceVisible
-                ? "Hide balance and account number"
-                : "Show balance and account number"
+                ? t("hideBalanceAndAccountNumber")
+                : t("showBalanceAndAccountNumber")
             }
             aria-label={
               isBalanceVisible
-                ? "Hide balance and account number"
-                : "Show balance and account number"
+                ? t("hideBalanceAndAccountNumber")
+                : t("showBalanceAndAccountNumber")
             }
             aria-pressed={isBalanceVisible}
           >
@@ -391,19 +387,40 @@ export default function BankCard({
           </p>
 
           {/* Copy Account Number */}
-          <button
-            type="button"
-            onClick={handleCopy}
-            className={`rounded-md p-1 opacity-0 transition-opacity group-hover:opacity-100 ${theme.actionBtnClass}`}
-            title="Copy account number"
-            aria-label="Copy account number"
-          >
-            {copied ? (
-              <Check size={13} className="text-emerald-500 font-bold" />
-            ) : (
-              <Copy size={13} />
+          <div className="flex items-center gap-2">
+            {copyStatus && (
+              <span
+                role="status"
+                aria-live="polite"
+                className={`text-xs font-semibold ${
+                  copyStatus === "success"
+                    ? "text-emerald-500"
+                    : "text-red-500"
+                }`}
+              >
+                {copyStatus === "success"
+                  ? t("copied")
+                  : t("copyFailed")}
+              </span>
             )}
-          </button>
+
+            <button
+              type="button"
+              onClick={handleCopy}
+              className={`rounded-md p-1 opacity-0 transition-opacity group-hover:opacity-100 ${theme.actionBtnClass}`}
+              title={t("copyAccountNumber")}
+              aria-label={t("copyAccountNumber")}
+            >
+              {copyStatus === "success" ? (
+                <Check
+                  size={13}
+                  className="text-emerald-500 font-bold"
+                />
+              ) : (
+                <Copy size={13} />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Account Holder Name */}
@@ -449,7 +466,7 @@ export default function BankCard({
             <span
               className={`text-[10px] font-black tracking-wide leading-none ${theme.bankTitleClass}`}
             >
-              EKARAJ BANK
+              {t("bankName")}
             </span>
           </div>
 
@@ -524,7 +541,7 @@ export default function BankCard({
       <Link
         to="/accounts"
         state={{ accountNumber: account.accountNumber }}
-        title="Click to view full account details"
+        title={t("clickToViewAccountDetails")}
         data-bank-card="true"
         data-keep-light="true"
         className={compactClasses}
@@ -561,7 +578,7 @@ export default function BankCard({
     <Link
       to="/accounts"
       state={{ accountNumber: account.accountNumber }}
-      title="Click to view full account details"
+      title={t("clickToViewAccountDetails")}
       data-bank-card="true"
       data-keep-light="true"
       className={cardClasses}

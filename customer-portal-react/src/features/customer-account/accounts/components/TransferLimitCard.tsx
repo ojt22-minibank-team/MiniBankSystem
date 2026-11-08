@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   ShieldCheck,
   Sliders,
@@ -37,6 +38,7 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
   returnTo,
   returnState,
 }) => {
+  const { t } = useTranslation("transfer");
   const navigate = useNavigate();
   const [limits, setLimits] = useState<TransferLimitInfo | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -60,7 +62,7 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
       setLimits(data);
       onLimitsLoaded?.(data);
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Failed to load transfer limits.");
+      setError(err?.response?.data?.message || t("couldNotRetrieveLimits", "Failed to load transfer limits."));
     } finally {
       setLoading(false);
     }
@@ -74,7 +76,6 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
 
   const handleOpenModal = () => {
     if (!limits) return;
-    // Start clean with empty inputs so placeholders are shown and no false validation errors occur
     setCustomOneTime("");
     setCustomDaily("");
     setPinDigits(Array(6).fill(""));
@@ -193,12 +194,12 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
 
     const transactionPin = pinDigits.join("");
     if (!transactionPin || transactionPin.length !== 6) {
-      setModalError("Please enter your 6-digit transaction PIN.");
+      setModalError(t("pinRequired", "Please enter your complete 6-digit PIN"));
       return;
     }
 
     if (!hasChanges) {
-      setModalError("Please enter a new limit to update.");
+      setModalError(t("enterPinToAuthorize", "Please enter a new limit to update."));
       setPinDigits(Array(6).fill(""));
       pinInputRefs.current[0]?.focus();
       return;
@@ -206,13 +207,13 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
 
     if (hasValidationError) {
       if (oneTimeExceedsCeiling) {
-        setModalError(`Custom one-time limit cannot exceed Bank ceiling of ${formatAmount(limits?.bankMaxOneTimeLimit)} ${currency}.`);
+        setModalError(t("cannotExceedBankCeiling", { amount: formatAmount(limits?.bankMaxOneTimeLimit), currency, defaultValue: `Custom one-time limit cannot exceed Bank ceiling of ${formatAmount(limits?.bankMaxOneTimeLimit)} ${currency}.` }));
       } else if (dailyExceedsCeiling) {
-        setModalError(`Custom daily limit cannot exceed Bank ceiling of ${formatAmount(limits?.bankMaxDailyLimit)} ${currency}.`);
+        setModalError(t("cannotExceedBankCeiling", { amount: formatAmount(limits?.bankMaxDailyLimit), currency, defaultValue: `Custom daily limit cannot exceed Bank ceiling of ${formatAmount(limits?.bankMaxDailyLimit)} ${currency}.` }));
       } else if (oneTimeExceedsDaily) {
-        setModalError("One-time limit cannot be greater than the daily limit.");
+        setModalError(t("cannotExceedDailyLimit", "One-time limit cannot be greater than the daily limit."));
       } else if (dailyBelowTodayTransferred) {
-        setModalError(`Custom daily limit cannot be less than today's already transferred amount of ${formatAmount(limits?.todayTransferredAmount)} ${currency}.`);
+        setModalError(t("cannotBeLessThanToday", { amount: formatAmount(limits?.todayTransferredAmount), currency, defaultValue: `Custom daily limit cannot be less than today's already transferred amount of ${formatAmount(limits?.todayTransferredAmount)} ${currency}.` }));
       } else if (isOneTimeInvalidNumber || isDailyInvalidNumber) {
         setModalError("Limits must be greater than zero.");
       }
@@ -230,10 +231,9 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
       });
 
       setLimits(updated);
-      setModalSuccess("Transfer limits updated successfully!");
+      setModalSuccess(t("limitsUpdatedSuccess", "Transfer limits updated successfully!"));
       if (onLimitsUpdated) onLimitsUpdated();
 
-      // Navigation behavior:
       if (returnTo === "/transfer") {
         setTimeout(() => {
           setIsModalOpen(false);
@@ -250,7 +250,7 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
       setModalError(
         err?.response?.data?.message ||
           err?.message ||
-          "Failed to update transfer limits. Please check your PIN."
+          t("checkPinError", "Failed to update transfer limits. Please check your PIN.")
       );
       setPinDigits(Array(6).fill(""));
       pinInputRefs.current[0]?.focus();
@@ -263,7 +263,7 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex items-center justify-center gap-3 py-10 text-slate-400">
         <Loader2 className="w-5 h-5 animate-spin text-[#00A3C4]" />
-        <span className="text-sm font-medium">Loading transfer limits...</span>
+        <span className="text-sm font-medium">{t("loadingLimits", "Loading transfer limits...")}</span>
       </div>
     );
   }
@@ -272,7 +272,7 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
     return (
       <div className="rounded-2xl border border-red-100 bg-red-50/50 p-4 text-xs text-red-600 flex items-center gap-2">
         <AlertCircle className="w-4 h-4 shrink-0" />
-        <span>{error || "Could not retrieve limit data."}</span>
+        <span>{error || t("couldNotRetrieveLimits", "Could not retrieve limit data.")}</span>
       </div>
     );
   }
@@ -297,13 +297,13 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-[#0A192F] flex items-center gap-2">
-                Transfer Limits & Safety
+                {t("transferLimitsAndSafety", "Transfer Limits & Safety")}
                 <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  Protected
+                  {t("protected", "Protected")}
                 </span>
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Bank limits, custom safety ceilings & real-time daily usage
+                {t("limitsCardSubtitle", "Bank limits, custom safety ceilings & real-time daily usage")}
               </p>
             </div>
           </div>
@@ -314,14 +314,14 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
             className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-[#00A3C4] to-[#0284C7] hover:from-[#0891B2] hover:to-[#0369A1] shadow-sm shadow-cyan-500/25 transition cursor-pointer"
           >
             <Sliders className="w-3.5 h-3.5" />
-            <span>Customize Limits</span>
+            <span>{t("customizeLimits", "Customize Limits")}</span>
           </button>
         </div>
 
         {/* Daily Cumulative Progress */}
         <div className="mt-5 p-4 rounded-xl bg-slate-50/70 border border-slate-100">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold text-slate-700">Today's Daily Transfer</span>
+            <span className="font-semibold text-slate-700">{t("todaysDailyTransfer", "Today's Daily Transfer")}</span>
             <span className="font-bold text-[#0A192F]">
               {formatAmount(limits.todayTransferredAmount)} /{" "}
               {formatAmount(limits.effectiveDailyLimit)} {currency}
@@ -343,9 +343,9 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
           </div>
 
           <div className="flex items-center justify-between mt-2 text-[11px] text-slate-500">
-            <span>{usedPercentage}% used today</span>
+            <span>{t("usedToday", { percent: usedPercentage, defaultValue: `${usedPercentage}% used today` })}</span>
             <span className="font-medium text-emerald-700">
-              Remaining: <strong>{formatAmount(limits.remainingDailyLimit)} {currency}</strong>
+              {t("remaining", "Remaining")}: <strong>{formatAmount(limits.remainingDailyLimit)} {currency}</strong>
             </span>
           </div>
         </div>
@@ -356,17 +356,17 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
           <div className="p-3.5 rounded-xl border border-slate-100 bg-white">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500">
-                To Beneficiary (One-Time)
+                {t("toBeneficiaryOneTime", "To Beneficiary (One-Time)")}
               </span>
               <span className="text-[10px] font-semibold text-[#00A3C4] bg-cyan-50 px-1.5 py-0.5 rounded">
-                Saved Payee
+                {t("savedPayee", "Saved Payee")}
               </span>
             </div>
             <p className="text-base font-bold text-[#0A192F] mt-1">
               {formatAmount(limits.effectiveOneTimeLimitBeneficiary)} {currency}
             </p>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              Bank Max: {formatAmount(limits.bankMaxOneTimeLimit)} {currency}
+              {t("bankMax", { amount: formatAmount(limits.bankMaxOneTimeLimit), currency, defaultValue: `Bank Max: ${formatAmount(limits.bankMaxOneTimeLimit)} ${currency}` })}
             </p>
           </div>
 
@@ -374,17 +374,17 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
           <div className="p-3.5 rounded-xl border border-slate-100 bg-white">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500">
-                To Stranger (One-Time)
+                {t("toStrangerOneTime", "To Stranger (One-Time)")}
               </span>
               <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
-                Anti-Scam
+                {t("antiScam", "Anti-Scam")}
               </span>
             </div>
             <p className="text-base font-bold text-[#0A192F] mt-1">
               {formatAmount(limits.effectiveOneTimeLimitStranger)} {currency}
             </p>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              Unsaved accounts are capped for protection
+              {t("unsavedCapped", "Unsaved accounts are capped for protection")}
             </p>
           </div>
         </div>
@@ -395,7 +395,7 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
             <div className="flex items-center gap-2">
               <Info className="w-4 h-4 text-[#00A3C4] shrink-0" />
               <span>
-                User-defined custom limits are currently active on this account.
+                {t("customLimitsActive", "User-defined custom limits are currently active on this account.")}
               </span>
             </div>
           </div>
@@ -417,7 +417,7 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
               onClick={handleCloseModal}
               disabled={submitting}
               className="absolute top-3.5 right-3.5 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
-              title="Close modal"
+              title={t("cancel", "Cancel")}
               aria-label="Close modal"
             >
               <X className="w-4 h-4" />
@@ -430,10 +430,10 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
               </div>
               <div>
                 <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-tight">
-                  Customize Transfer Limits
+                  {t("customizeModalTitle", "Customize Transfer Limits")}
                 </h3>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  Account: <span className="font-mono font-medium text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">{accountNumber}</span>
+                  {t("accountLabel", "Account")}: <span className="font-mono font-medium text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">{accountNumber}</span>
                 </p>
               </div>
             </div>
@@ -446,8 +446,8 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
                 <p className="text-sm font-bold text-emerald-800">{modalSuccess}</p>
                 <p className="text-[11px] text-slate-500">
                   {returnTo === "/transfer"
-                    ? "Redirecting back to your transfer form..."
-                    : "Your new transfer limits are now securely applied."}
+                    ? t("redirectingBack", "Redirecting back to your transfer form...")
+                    : t("newLimitsApplied", "Your new transfer limits are now securely applied.")}
                 </p>
               </div>
             ) : (
@@ -463,10 +463,10 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-[11px] font-bold text-slate-700">
-                      Custom One-Time Limit ({currency})
+                      {t("customOneTimeLimit", "Custom One-Time Limit")} ({currency})
                     </label>
                     <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
-                      Current: <strong className="text-slate-800 font-bold">{formatAmount(currentOneTime)} {currency}</strong>
+                      {t("current", "Current")}: <strong className="text-slate-800 font-bold">{formatAmount(currentOneTime)} {currency}</strong>
                     </span>
                   </div>
                   <input
@@ -492,16 +492,16 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
                     {oneTimeExceedsCeiling ? (
                       <span className="text-red-500 font-medium flex items-center gap-1">
                         <AlertCircle className="w-3 h-3 shrink-0" />
-                        Cannot exceed Bank ceiling of {formatAmount(limits.bankMaxOneTimeLimit)} {currency}
+                        {t("cannotExceedBankCeiling", { amount: formatAmount(limits.bankMaxOneTimeLimit), currency, defaultValue: `Cannot exceed Bank ceiling of ${formatAmount(limits.bankMaxOneTimeLimit)} ${currency}` })}
                       </span>
                     ) : oneTimeExceedsDaily ? (
                       <span className="text-red-500 font-medium flex items-center gap-1">
                         <AlertCircle className="w-3 h-3 shrink-0" />
-                        Cannot exceed daily limit
+                        {t("cannotExceedDailyLimit", "Cannot exceed daily limit")}
                       </span>
                     ) : (
                       <span className="text-slate-400">
-                        Bank ceiling: {formatAmount(limits.bankMaxOneTimeLimit)} {currency}
+                        {t("bankCeiling", { amount: formatAmount(limits.bankMaxOneTimeLimit), currency, defaultValue: `Bank ceiling: ${formatAmount(limits.bankMaxOneTimeLimit)} ${currency}` })}
                       </span>
                     )}
                   </div>
@@ -511,10 +511,10 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-[11px] font-bold text-slate-700">
-                      Custom Daily Limit ({currency})
+                      {t("customDailyLimit", "Custom Daily Limit")} ({currency})
                     </label>
                     <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
-                      Current: <strong className="text-slate-800 font-bold">{formatAmount(currentDaily)} {currency}</strong>
+                      {t("current", "Current")}: <strong className="text-slate-800 font-bold">{formatAmount(currentDaily)} {currency}</strong>
                     </span>
                   </div>
                   <input
@@ -540,16 +540,16 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
                     {dailyExceedsCeiling ? (
                       <span className="text-red-500 font-medium flex items-center gap-1">
                         <AlertCircle className="w-3 h-3 shrink-0" />
-                        Cannot exceed Bank ceiling of {formatAmount(limits.bankMaxDailyLimit)} {currency}
+                        {t("cannotExceedBankCeiling", { amount: formatAmount(limits.bankMaxDailyLimit), currency, defaultValue: `Cannot exceed Bank ceiling of ${formatAmount(limits.bankMaxDailyLimit)} ${currency}` })}
                       </span>
                     ) : dailyBelowTodayTransferred ? (
                       <span className="text-red-500 font-medium flex items-center gap-1">
                         <AlertCircle className="w-3 h-3 shrink-0" />
-                        Cannot be less than today's transferred ({formatAmount(limits.todayTransferredAmount)} {currency})
+                        {t("cannotBeLessThanToday", { amount: formatAmount(limits.todayTransferredAmount), currency, defaultValue: `Cannot be less than today's transferred (${formatAmount(limits.todayTransferredAmount)} ${currency})` })}
                       </span>
                     ) : (
                       <span className="text-slate-400">
-                        Bank ceiling: {formatAmount(limits.bankMaxDailyLimit)} {currency}
+                        {t("bankCeiling", { amount: formatAmount(limits.bankMaxDailyLimit), currency, defaultValue: `Bank ceiling: ${formatAmount(limits.bankMaxDailyLimit)} ${currency}` })}
                       </span>
                     )}
                   </div>
@@ -560,10 +560,10 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
                   <div className="flex items-center justify-between text-[10px] font-bold text-slate-600 mb-1.5">
                     <span className="flex items-center gap-1">
                       <Sliders className="w-3 h-3 text-[#00A3C4]" />
-                      Limit Changes Summary
+                      {t("limitChangesSummary", "Limit Changes Summary")}
                     </span>
                     <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">
-                      Preview
+                      {t("preview", "Preview")}
                     </span>
                   </div>
 
@@ -571,7 +571,7 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
                     {/* One-Time Summary */}
                     <div className="p-2 rounded-lg bg-white border border-slate-100 shadow-2xs">
                       <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider block">
-                        One-Time
+                        {t("oneTime", "One-Time")}
                       </span>
                       <div className="mt-0.5 flex items-center gap-1 font-semibold truncate">
                         {parsedOneTime !== null ? (
@@ -595,7 +595,7 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
                     {/* Daily Summary */}
                     <div className="p-2 rounded-lg bg-white border border-slate-100 shadow-2xs">
                       <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider block">
-                        Daily
+                        {t("daily", "Daily")}
                       </span>
                       <div className="mt-0.5 flex items-center gap-1 font-semibold truncate">
                         {parsedDaily !== null ? (
@@ -623,9 +623,9 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
                       <KeyRound className="w-3 h-3 text-[#00A3C4]" />
-                      6-Digit Transaction PIN
+                      {t("sixDigitPin", "6-Digit Transaction PIN")}
                     </label>
-                    <span className="text-[9px] text-slate-400">Security Verification</span>
+                    <span className="text-[9px] text-slate-400">{t("securityVerification", "Security Verification")}</span>
                   </div>
 
                   <div className="flex justify-between items-center gap-1.5 sm:gap-2">
@@ -651,7 +651,7 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
                     ))}
                   </div>
                   <p className="text-[9px] text-slate-400 mt-1 text-center">
-                    Enter your 6-digit PIN to authorize the limit change
+                    {t("enterPinToAuthorize", "Enter your 6-digit PIN to authorize the limit change")}
                   </p>
                 </div>
 
@@ -663,7 +663,7 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
                     disabled={submitting}
                     className="flex-1 h-[40px] rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
                   >
-                    Cancel
+                    {t("cancel", "Cancel")}
                   </button>
                   <button
                     type="submit"
@@ -673,12 +673,12 @@ export const TransferLimitCard: React.FC<TransferLimitCardProps> = ({
                     {submitting ? (
                       <>
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>Verifying...</span>
+                        <span>{t("verifying", "Verifying...")}</span>
                       </>
                     ) : (
                       <>
                         <Lock className="w-3.5 h-3.5" />
-                        <span>Confirm Update</span>
+                        <span>{t("confirmUpdate", "Confirm Update")}</span>
                       </>
                     )}
                   </button>

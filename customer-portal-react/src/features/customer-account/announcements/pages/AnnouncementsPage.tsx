@@ -1,9 +1,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   AlertCircle,
   CheckCheck,
+  Megaphone,
   RefreshCw,
 } from "lucide-react";
 
@@ -28,19 +30,19 @@ import AnnouncementList from "../components/AnnouncementList";
 import type { AnnouncementFilter } from "../types/announcementTypes";
 
 // Tracks the initial auto-fetch attempt for each authentication session.
-// Persists across component unmounts and remounts within this application runtime.
 let lastAutoFetchGeneration: number | null = null;
 
 const filters: {
   value: AnnouncementFilter;
-  label: string;
 }[] = [
-  { value: "ALL", label: "All" },
-  { value: "UNREAD", label: "Unread" },
-  { value: "READ", label: "Read" },
+  { value: "ALL" },
+  { value: "UNREAD" },
+  { value: "READ" },
 ];
 
 export default function AnnouncementsPage() {
+  const { t } = useTranslation("announcement");
+
   const dispatch = useAppDispatch();
 
   const {
@@ -71,7 +73,6 @@ export default function AnnouncementsPage() {
       setAuthenticationGeneration(getAuthenticationGeneration());
     });
 
-    // Synchronize in case authentication changed before subscription.
     setAuthenticationGeneration(getAuthenticationGeneration());
 
     return unsubscribe;
@@ -94,8 +95,7 @@ export default function AnnouncementsPage() {
       return;
     }
 
-    // Mark the attempt before dispatch to prevent duplicate requests
-    // from React Strict Mode or component remounts.
+    // Prevent duplicate requests from Strict Mode or remounts.
     lastAutoFetchGeneration = generation;
 
     void dispatch(fetchAnnouncements());
@@ -151,8 +151,7 @@ export default function AnnouncementsPage() {
     void dispatch(markAllAnnouncementsRead());
   };
 
-  // Manual refresh is intentionally independent of the auto-fetch attempt.
-  // It can retry after a failed initial request within the same session.
+  // Manual refresh can retry after a failed initial request.
   const handleRefresh = () => {
     if (loading) return;
 
@@ -169,46 +168,62 @@ export default function AnnouncementsPage() {
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
+      {/* Page Header */}
       <header className="mb-6">
         <div className="flex items-center justify-between gap-4">
-          <div className="min-w-0">
-            {/* Breadcrumb Navigation */}
-            <nav
-              aria-label="Breadcrumb"
-              className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold"
-            >
-              <Link
-                to="/dashboard"
-                className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
+          <div className="flex min-w-0 items-center gap-3">
+            {/* Announcement Icon */}
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-[#00A3C4]">
+              <Megaphone
+                size={23}
+                strokeWidth={1.8}
+                aria-hidden="true"
+              />
+            </div>
+
+            <div className="min-w-0">
+              {/* Breadcrumb Navigation */}
+              <nav
+                aria-label={t("breadcrumb")}
+                className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold"
               >
-                Dashboard
-              </Link>
+                <Link
+                  to="/dashboard"
+                  className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
+                >
+                  {t("dashboard")}
+                </Link>
 
-              <span className="text-slate-300" aria-hidden="true">
-                /
-              </span>
+                <span className="text-slate-300" aria-hidden="true">
+                  /
+                </span>
 
-              <span className="text-[#00A3C4]" aria-current="page">
-                Announcements
-              </span>
-            </nav>
+                <span
+                  className="text-[#00A3C4]"
+                  aria-current="page"
+                >
+                  {t("title")}
+                </span>
+              </nav>
 
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Announcements
-            </h1>
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+                {t("title")}
+              </h1>
 
-            <p className="mt-1 text-sm text-slate-500">
-              Important bank updates and service notices.
-            </p>
+              <p className="mt-1 text-xs text-slate-500 sm:text-sm">
+                {t("description")}
+              </p>
+            </div>
           </div>
 
+          {/* Refresh Button */}
           <button
             type="button"
             onClick={handleRefresh}
             disabled={loading}
-            aria-label="Refresh announcements"
-            title="Refresh announcements"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-[#00A3C4] disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label={t("refreshAnnouncements")}
+            title={t("refreshAnnouncements")}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-[#00A3C4] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <RefreshCw
               size={16}
@@ -219,17 +234,26 @@ export default function AnnouncementsPage() {
         </div>
       </header>
 
+      {/* Action Error */}
       {!loading && actionError && (
         <div
           role="alert"
-          className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700"
+          className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700"
         >
-          <AlertCircle size={17} className="mt-0.5 shrink-0" />
+          <AlertCircle
+            size={17}
+            className="mt-0.5 shrink-0"
+            aria-hidden="true"
+          />
           <p>{actionError}</p>
         </div>
       )}
 
-      <section aria-label="Announcement filters" className="mb-4">
+      {/* Announcement Filters */}
+      <section
+        aria-label={t("announcementFilters")}
+        className="mb-4"
+      >
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
           <div className="flex items-center gap-1">
             {filters.map((item) => {
@@ -247,7 +271,7 @@ export default function AnnouncementsPage() {
                       : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
                   }`}
                 >
-                  {item.label}
+                  {t(item.value.toLowerCase())}
 
                   {item.value !== "ALL" && (
                     <span
@@ -265,6 +289,7 @@ export default function AnnouncementsPage() {
             })}
           </div>
 
+          {/* Mark All as Read */}
           <button
             type="button"
             onClick={handleMarkAllAsRead}
@@ -282,25 +307,39 @@ export default function AnnouncementsPage() {
               <CheckCheck size={15} />
             )}
 
-            {isMarkingAllRead ? "Updating..." : "Mark all as read"}
+            {isMarkingAllRead
+              ? t("updating")
+              : t("markAllAsRead")}
           </button>
         </div>
       </section>
 
+      {/* Loading State */}
       {loading && announcements.length === 0 ? (
         <div
-          className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white"
-          aria-label="Loading announcements"
+          className="space-y-3"
+          aria-label={t("loadingAnnouncements")}
         >
           {[1, 2, 3].map((item) => (
-            <div key={item} className="animate-pulse px-4 py-5">
-              <div className="h-4 w-2/5 rounded bg-slate-200" />
-              <div className="mt-3 h-3 w-full rounded bg-slate-100" />
-              <div className="mt-2 h-3 w-3/5 rounded bg-slate-100" />
+            <div
+              key={item}
+              className="animate-pulse rounded-2xl border border-slate-200 bg-white p-5"
+            >
+              <div className="flex gap-3">
+                <div className="h-11 w-11 shrink-0 rounded-xl bg-slate-200" />
+
+                <div className="flex-1">
+                  <div className="h-4 w-2/5 rounded bg-slate-200" />
+                  <div className="mt-3 h-3 w-1/4 rounded bg-slate-100" />
+                  <div className="mt-4 h-3 w-full rounded bg-slate-100" />
+                  <div className="mt-2 h-3 w-3/5 rounded bg-slate-100" />
+                </div>
+              </div>
             </div>
           ))}
         </div>
       ) : error && announcements.length === 0 ? (
+        /* Error State */
         <div
           role="alert"
           className="rounded-xl border border-red-200 bg-white p-5"
@@ -314,7 +353,7 @@ export default function AnnouncementsPage() {
 
             <div>
               <h2 className="text-sm font-semibold text-slate-900">
-                Unable to load announcements
+                {t("unableToLoadAnnouncements")}
               </h2>
 
               <p className="mt-1 text-sm text-slate-500">
@@ -325,15 +364,16 @@ export default function AnnouncementsPage() {
                 type="button"
                 onClick={handleRefresh}
                 disabled={loading}
-                className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#00A3C4] px-3 py-2 text-sm font-medium text-white hover:bg-[#0891B2] disabled:opacity-50"
+                className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#00A3C4] px-3 py-2 text-sm font-medium text-white transition hover:bg-[#0891B2] disabled:opacity-50"
               >
                 <RefreshCw size={14} />
-                Try again
+                {t("tryAgain")}
               </button>
             </div>
           </div>
         </div>
       ) : (
+        /* Announcement List */
         <AnnouncementList
           announcements={filteredAnnouncements}
           filter={filter}
@@ -343,10 +383,13 @@ export default function AnnouncementsPage() {
         />
       )}
 
+      {/* Footer */}
       {!loading && !error && announcements.length > 0 && (
         <p className="mt-4 text-center text-xs text-slate-400">
-          Showing {filteredAnnouncements.length} of{" "}
-          {announcements.length} announcements
+          {t("showingAnnouncements", {
+            filtered: filteredAnnouncements.length,
+            total: announcements.length,
+          })}
         </p>
       )}
     </main>

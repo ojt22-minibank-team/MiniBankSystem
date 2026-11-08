@@ -1,8 +1,16 @@
+
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { resetCustomerState, useAppDispatch, type AppDispatch } from "../../../lib/redux";
+
+import {
+  resetCustomerState,
+  useAppDispatch,
+  type AppDispatch,
+} from "../../../lib/redux";
+
 import { logoutCustomer } from "../../../services/authService";
 import { clearPendingPaymentRedirect } from "../utils/pendingPaymentRedirect";
+
 import {
   clearTokens,
   getAccessToken,
@@ -10,25 +18,42 @@ import {
   invalidateAuthenticationGeneration,
 } from "../../../utils/tokenStorage";
 
+import i18n from "../../../i18n";
+
 // Only consumers ending the same authentication generation share an operation.
-let logoutLock: { generation: number; promise: Promise<number | null> } | null = null;
+let logoutLock: {
+  generation: number;
+  promise: Promise<number | null>;
+} | null = null;
 
 export const isIndividualLogoutInProgress = () =>
   logoutLock?.generation === getAuthenticationGeneration();
 
-function logoutIndividualCustomer(dispatch: AppDispatch): Promise<number | null> {
-  if (logoutLock?.generation === getAuthenticationGeneration()) return logoutLock.promise;
+function logoutIndividualCustomer(
+  dispatch: AppDispatch,
+): Promise<number | null> {
+  if (
+    logoutLock?.generation === getAuthenticationGeneration()
+  ) {
+    return logoutLock.promise;
+  }
 
   const accessToken = getAccessToken();
+
   // End the old intent immediately, even while backend revocation is pending.
   clearPendingPaymentRedirect();
+
   // Invalidate synchronously, while retaining credentials for backend revocation.
   const generation = invalidateAuthenticationGeneration();
+
   // Clear customer data once, before awaiting revocation of the captured session.
   dispatch(resetCustomerState());
 
+  // Reset language for the unauthenticated state.
+  void i18n.changeLanguage("en");
+
   // Reset balance visibility for the next login session.
-sessionStorage.removeItem("customer-portal:balance-visible");
+  sessionStorage.removeItem("customer-portal:balance-visible");
 
   const promise = (async () => {
     try {
@@ -43,6 +68,7 @@ sessionStorage.removeItem("customer-portal:balance-visible");
     // A late logout must not clear a newer login's credentials or OTP data.
     if (getAuthenticationGeneration() === generation) {
       clearTokens();
+
       // Only keys used by the Individual login and recovery flows.
       for (const key of [
         "challengeGroupId",
@@ -56,15 +82,20 @@ sessionStorage.removeItem("customer-portal:balance-visible");
       ]) {
         sessionStorage.removeItem(key);
       }
+
       return getAuthenticationGeneration();
     }
+
     return null;
   })().finally(() => {
-    if (logoutLock?.promise === promise) logoutLock = null;
+    if (logoutLock?.promise === promise) {
+      logoutLock = null;
+    }
   });
 
   // Invalidation increments the generation; subsequent clicks must join that value.
   logoutLock = { generation, promise };
+
   return promise;
 }
 
@@ -74,8 +105,12 @@ export function useIndividualLogout() {
 
   return useCallback(async () => {
     const completedGeneration = await logoutIndividualCustomer(dispatch);
+
     // A login can finish between cleanup and this caller's continuation.
-    if (completedGeneration !== null && getAuthenticationGeneration() === completedGeneration) {
+    if (
+      completedGeneration !== null &&
+      getAuthenticationGeneration() === completedGeneration
+    ) {
       await navigate("/login", { replace: true });
     }
   }, [dispatch, navigate]);

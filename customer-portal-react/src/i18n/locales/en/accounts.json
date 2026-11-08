@@ -1,3 +1,4 @@
+
 {
   "title": "My Accounts",
   "dashboard": "Dashboard",
@@ -44,11 +45,23 @@
   "copyFailed": "Copy failed",
   "copyFailedDescription": "Unable to copy. Please select the number manually.",
   "viewDetails": "View Details",
+  "transfer": "Transfer",
+  "statement": "Statement",
   "accountTypeSavings": "Savings",
   "accountTypeCurrent": "Current",
   "statusActive": "Active",
   "statusDormant": "Dormant",
   "statusFrozen": "Frozen",
   "statusClosed": "Closed",
-  "accountStatusLabel": "Account status: {{status}}"
+  "accountStatusLabel": "Account status: {{status}}",
+  "manageAccountsDescription": "Manage your linked bank accounts and view details.",
+  "accountsCount_one": "{{count}} Account",
+  "accountsCount_other": "{{count}} Accounts",
+  "breadcrumb": "Breadcrumb",
+  "totalLedgerBalance": "Total ledger balance",
+  "minimumReserve": "Minimum Reserve",
+  "lockedReserveAmount": "Locked reserve amount",
+  "makeTransfer": "Make a Transfer",
+  "accountStatement": "Account Statement",
+  "specificationsAndAttributes": "Specifications and attributes"
 }

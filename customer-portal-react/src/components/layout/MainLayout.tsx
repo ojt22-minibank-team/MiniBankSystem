@@ -15,10 +15,23 @@ import { useAppDispatch, useAppSelector } from "../../lib/redux";
 
 import {
   getAuthenticationGeneration,
+  getCurrentCustomerSubject,
   hasTokens,
   isAuthenticationGenerationCurrent,
   subscribeToAuthenticationChanges,
 } from "../../utils/tokenStorage";
+
+import { getStoredTheme } from "../../features/customer-account/settings/utils/ThemeStorage";
+import {
+  getStoredLanguage,
+  getStoredNotificationsEnabled,
+} from "../../features/customer-account/settings/utils/SettingsStorage";
+import {
+  setTheme,
+  setLanguage,
+  setNotificationsEnabled,
+} from "../../features/customer-account/settings/store/SettingsSlice";
+import i18n from "../../i18n";
 
 export default function MainLayout() {
   const dispatch = useAppDispatch();
@@ -30,6 +43,24 @@ export default function MainLayout() {
     subscribeToAuthenticationChanges,
     getAuthenticationGeneration,
   );
+
+  // Synchronize settings for the current authenticated user session.
+  useEffect(() => {
+    if (!hasTokens()) return;
+
+    const userId = getCurrentCustomerSubject();
+    const storedTheme = getStoredTheme(userId);
+    const storedLanguage = getStoredLanguage(userId);
+    const storedNotifications = getStoredNotificationsEnabled(userId);
+
+    dispatch(setTheme(storedTheme));
+    dispatch(setLanguage(storedLanguage));
+    dispatch(setNotificationsEnabled(storedNotifications));
+
+    if (i18n.language !== storedLanguage) {
+      void i18n.changeLanguage(storedLanguage);
+    }
+  }, [dispatch, authenticationGeneration]);
 
   // Load profile for the current authenticated session.
   useEffect(() => {

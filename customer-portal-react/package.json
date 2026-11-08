@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@hookform/resolvers": "^5.9.1",
+    "@hookform/resolvers": "^5.9.2",
     "@reduxjs/toolkit": "^2.13.0",
     "@tabler/icons-react": "^3.46.0",
     "@tailwindcss/vite": "^4.3.3",
@@ -24,12 +24,12 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-easy-crop": "^6.2.3",
-    "react-hook-form": "^7.88.0",
+    "react-hook-form": "^7.91.0",
     "react-i18next": "^17.0.21",
     "react-redux": "^9.3.0",
     "react-router-dom": "^7.18.4",
     "tailwindcss": "^4.3.3",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

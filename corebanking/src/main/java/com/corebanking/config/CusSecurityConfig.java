@@ -168,6 +168,9 @@ public class CusSecurityConfig {
 
         String envOrigins = System.getProperty("app.cors.allowed-origins");
         if (envOrigins == null) {
+            envOrigins = System.getProperty("CORS_ALLOWED_ORIGINS");
+        }
+        if (envOrigins == null) {
             envOrigins = System.getenv("CORS_ALLOWED_ORIGINS");
         }
         List<String> origins = (envOrigins != null && !envOrigins.isBlank())
@@ -177,12 +180,29 @@ public class CusSecurityConfig {
                         "http://127.0.0.1:8001",
                         "http://localhost:8002",
                         "http://127.0.0.1:8002",
+                        "http://localhost:8003",
+                        "http://127.0.0.1:8003",
+                        "http://localhost:8004",
+                        "http://127.0.0.1:8004",
+                        "http://localhost:8005",
+                        "http://127.0.0.1:8005",
                         "http://localhost:8006",
                         "http://127.0.0.1:8006",
+                        "http://localhost:4173",
+                        "http://127.0.0.1:4173",
                         "http://localhost:5173",
                         "http://127.0.0.1:5173",
                         "http://localhost:5174",
-                        "http://127.0.0.1:5174"
+                        "http://127.0.0.1:5174",
+                        "http://42.156.32.114:8001",
+                        "http://42.156.32.114:8002",
+                        "http://42.156.32.114:8003",
+                        "http://42.156.32.114:8004",
+                        "http://42.156.32.114:8005",
+                        "http://42.156.32.114:8006",
+                        "http://42.156.32.114:8092",
+                        "http://42.156.32.114:8093",
+                        "http://42.156.32.114:8094"
                 );
 
         configuration.setAllowedOrigins(origins);

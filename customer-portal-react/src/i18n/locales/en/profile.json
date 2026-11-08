@@ -1,5 +1,8 @@
+
 {
   "title": "Profile",
+  "breadcrumb": "Breadcrumb",
+  "dashboard": "Dashboard",
   "customerId": "Customer ID",
   "customer": "Customer",
   "company": "Company",

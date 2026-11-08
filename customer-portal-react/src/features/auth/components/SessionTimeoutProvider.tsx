@@ -12,6 +12,7 @@ import { resetCustomerState, useAppDispatch } from "../../../lib/redux";
 import { SESSION_TIMEOUT_EVENT, type SessionTimeoutDetail } from "../../../utils/sessionEvents";
 import SessionTimeoutModal from "./SessionTimeoutModal";
 import { isIndividualLogoutInProgress } from "../hooks/useIndividualLogout";
+import i18n from "../../../i18n";
 
 interface SessionTimeoutProviderProps {
   children: ReactNode;
@@ -80,6 +81,12 @@ function SessionTimeoutProvider({ children }: SessionTimeoutProviderProps) {
     clearTokens();
     owner.cleanupGeneration = getAuthenticationGeneration();
     dispatch(resetCustomerState());
+
+    // Reset DOM theme and language back to default for the unauthenticated state
+    document.documentElement.classList.remove("dark");
+    document.documentElement.style.colorScheme = "light";
+    void i18n.changeLanguage("en");
+
     setTimeoutMessage(message || DEFAULT_TIMEOUT_MESSAGE);
     setTimedOut(true);
   }, [cancelIdleTimer, dispatch]);

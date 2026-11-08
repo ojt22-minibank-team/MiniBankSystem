@@ -7,9 +7,10 @@
   "navigation": {
     "dashboard": "ပင်မစာမျက်နှာ",
     "accounts": "ကျွန်ုပ်၏ ဘဏ်အကောင့်များ",
-    "transfer": "ငွေလွှဲခြင်းနှင့် ငွေပေးချေမှုများ",
+    "transfer": "ငွေလွှဲခြင်း",
     "transactionHistory": "ငွေလွှဲမှတ်တမ်း",
     "beneficiaries": "ငွေလက်ခံသူများ",
+    "accountStatement": "အကောင့်ရှင်းတမ်း",
     "announcements": "ကြေညာချက်များ",
     "profile": "ကိုယ်ရေးအချက်အလက်",
     "settings": "ဆက်တင်များ",

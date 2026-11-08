@@ -1,3 +1,5 @@
+
+
 import { Link } from "react-router-dom";
 import { Settings2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -18,15 +20,24 @@ export default function SettingsPage() {
 
         <div className="min-w-0">
           {/* Breadcrumb Navigation */}
-          <nav aria-label="Breadcrumb" className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold">
+          <nav
+            aria-label={t("breadcrumb")}
+            className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold"
+          >
             <Link
               to="/dashboard"
               className="text-slate-500 transition-colors hover:text-[#00A3C4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00A3C4]"
             >
-              Dashboard
+              {t("dashboard")}
             </Link>
-            <span className="text-slate-300" aria-hidden="true">/</span>
-            <span className="text-[#00A3C4]" aria-current="page">Settings</span>
+
+            <span className="text-slate-300" aria-hidden="true">
+              /
+            </span>
+
+            <span className="text-[#00A3C4]" aria-current="page">
+              {t("title", { defaultValue: "Settings" })}
+            </span>
           </nav>
 
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">

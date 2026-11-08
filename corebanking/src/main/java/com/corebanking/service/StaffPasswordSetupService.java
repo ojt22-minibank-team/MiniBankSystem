@@ -46,7 +46,10 @@ public class StaffPasswordSetupService {
     @Value("${app.security.password-setup.expiration-minutes:30}")
     private int expirationMinutes;
 
-    @Value("${app.frontend.base-url}")
+    @Value("${app.staff.frontend.base-url:${STAFF_FRONTEND_URL:http://localhost:8002}}")
+    private String staffFrontendBaseUrl;
+
+    @Value("${app.frontend.base-url:${FRONTEND_URL:http://localhost:8002}}")
     private String frontendBaseUrl;
 
     /**
@@ -102,13 +105,21 @@ public class StaffPasswordSetupService {
 
         setupTokenRepository.saveAndFlush(setupToken);
 
-        String baseUrl = "http://localhost:8001";
-        if (frontendBaseUrl != null && !frontendBaseUrl.isBlank()) {
-            String firstUrl = frontendBaseUrl.split(",")[0].trim().replaceAll("/+$", "");
+        String baseUrl = "http://localhost:8002";
+        String candidateUrl = (staffFrontendBaseUrl != null && !staffFrontendBaseUrl.isBlank())
+                ? staffFrontendBaseUrl
+                : frontendBaseUrl;
+
+        if (candidateUrl != null && !candidateUrl.isBlank()) {
+            String firstUrl = candidateUrl.split(",")[0].trim().replaceAll("/+$", "");
             if (!firstUrl.startsWith("http://") && !firstUrl.startsWith("https://")) {
                 firstUrl = "http://" + firstUrl;
             }
             baseUrl = firstUrl;
+        }
+
+        if (baseUrl.contains(":8001") || baseUrl.contains(":8003") || baseUrl.contains(":5173") || baseUrl.contains(":5174")) {
+            baseUrl = baseUrl.replaceAll(":(8001|8003|5173|5174)", ":8002");
         }
         String setupLink = baseUrl
                 + "/set-password?token="

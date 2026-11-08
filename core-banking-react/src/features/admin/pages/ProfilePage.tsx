@@ -1,8 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import AdminLayout from '../../../components/layout/AdminLayout';
-import StaffEditModal from '../components/StaffEditModal';
 import StaffResetPasswordModal from '../components/StaffResetPasswordModal';
-import StaffChangePasswordModal from '../components/StaffChangePasswordModal';
 import { staffProfileApi } from '../../../services/apiClient';
 import type { StaffResponse } from '../../../types/api.types';
 import type { AxiosError } from 'axios';
@@ -27,9 +25,7 @@ export default function ProfilePage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Modals state
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
-  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
 
   // Inline Quick Edit state
   const [isInlineEditing, setIsInlineEditing] = useState(false);
@@ -122,28 +118,36 @@ export default function ProfilePage() {
   const validateInlineForm = () => {
     const errs: Record<string, string> = {};
     if (!inlineForm.fullName.trim()) errs.fullName = 'Full name is required.';
-    if (!inlineForm.email.trim()) {
+
+    // Email validation
+    const emailVal = inlineForm.email.trim();
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailVal) {
       errs.email = 'Email address is required.';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inlineForm.email.trim())) {
-      errs.email = 'Please enter a valid email address.';
+    } else if (!emailRegex.test(emailVal)) {
+      errs.email = 'Please enter a valid email address (e.g. user@domain.com).';
     }
-    if (!inlineForm.phone.trim()) {
+
+    // Phone validation (must be at least 11 digits)
+    const rawPhone = inlineForm.phone.trim();
+    if (!rawPhone) {
       errs.phone = 'Phone number is required.';
     } else {
-      const cleanPhone = inlineForm.phone.trim().replace(/[\s-]/g, '');
+      const cleanPhone = rawPhone.replace(/[\s-]/g, '');
       const normalized = cleanPhone.startsWith('+959')
         ? '09' + cleanPhone.slice(4)
         : cleanPhone.startsWith('959')
         ? '09' + cleanPhone.slice(3)
         : cleanPhone;
 
-      const digitsOnly = cleanPhone.replace(/\D/g, '');
-      if (digitsOnly.length < 9) {
-        errs.phone = 'Myanmar phone number must be at least 9 digits (e.g. 09xxxxxxxxx).';
-      } else if (!/^09\d{7,9}$/.test(normalized)) {
-        errs.phone = 'Please enter a valid Myanmar phone number starting with 09 (e.g. 09xxxxxxxxx).';
+      const digitsOnly = normalized.replace(/\D/g, '');
+      if (digitsOnly.length < 11) {
+        errs.phone = 'Phone number must be at least 11 digits (e.g. 09xxxxxxxxx).';
+      } else if (!/^09\d{9}$/.test(normalized)) {
+        errs.phone = 'Please enter a valid 11-digit Myanmar phone number starting with 09 (e.g. 09xxxxxxxxx).';
       }
     }
+
     setInlineErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -168,7 +172,13 @@ export default function ProfilePage() {
       handleShowSuccess('Profile information updated successfully.');
     } catch (err) {
       const axErr = err as AxiosError<{ message?: string }>;
-      setError(axErr.response?.data?.message || 'Failed to update profile.');
+      const msg = axErr.response?.data?.message || 'Failed to update profile.';
+      setError(msg);
+      if (msg.toLowerCase().includes('email')) {
+        setInlineErrors((prev) => ({ ...prev, email: msg }));
+      } else if (msg.toLowerCase().includes('phone')) {
+        setInlineErrors((prev) => ({ ...prev, phone: msg }));
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -205,18 +215,6 @@ export default function ProfilePage() {
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
-            <button
-              type="button"
-              disabled={!staff || isLoading}
-              onClick={() => setIsEditModalOpen(true)}
-              className="flex items-center gap-2 rounded-full border border-purple-950/20 bg-white/90 px-4.5 py-2 text-xs font-bold text-[#1E1B4B] hover:bg-[#1E1B4B] hover:text-white shadow-xs transition-all disabled:opacity-50 cursor-pointer"
-            >
-              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              <span>Edit Information</span>
-            </button>
-
             <button
               type="button"
               disabled={!staff || isLoading}
@@ -330,30 +328,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Quick Action Badges */}
-            <div className="flex items-center gap-2 self-stretch md:self-auto justify-end">
-              <button
-                type="button"
-                onClick={() => setIsInlineEditing((prev) => !prev)}
-                className="flex-1 md:flex-none flex items-center justify-center gap-1.5 rounded-xl border border-purple-950/15 bg-white/80 px-4 py-2.5 text-xs font-bold text-[#1E1B4B] hover:bg-white shadow-xs transition-all cursor-pointer"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                </svg>
-                <span>{isInlineEditing ? 'Close Form' : 'Quick Edit'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsChangePasswordModalOpen(true)}
-                className="flex-1 md:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-all cursor-pointer"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                <span>Change Password</span>
-              </button>
-            </div>
+            
           </div>
         </div>
 
@@ -461,6 +436,18 @@ export default function ProfilePage() {
                           setInlineForm({ ...inlineForm, email: e.target.value });
                           if (inlineErrors.email) setInlineErrors({ ...inlineErrors, email: '' });
                         }}
+                        onBlur={() => {
+                          const emailVal = inlineForm.email.trim();
+                          if (emailVal) {
+                            const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                            if (!emailRegex.test(emailVal)) {
+                              setInlineErrors((prev) => ({
+                                ...prev,
+                                email: 'Please enter a valid email address (e.g. user@domain.com).',
+                              }));
+                            }
+                          }
+                        }}
                         placeholder="admin@ekarajbank.com.mm"
                         className={`w-full rounded-xl border px-3.5 py-2.5 text-xs font-semibold text-slate-800 transition-all focus:outline-none focus:ring-2 ${
                           inlineErrors.email
@@ -484,7 +471,31 @@ export default function ProfilePage() {
                           setInlineForm({ ...inlineForm, phone: e.target.value });
                           if (inlineErrors.phone) setInlineErrors({ ...inlineErrors, phone: '' });
                         }}
-                        placeholder="0912345678"
+                        onBlur={() => {
+                          const rawPhone = inlineForm.phone.trim();
+                          if (rawPhone) {
+                            const cleanPhone = rawPhone.replace(/[\s-]/g, '');
+                            const normalized = cleanPhone.startsWith('+959')
+                              ? '09' + cleanPhone.slice(4)
+                              : cleanPhone.startsWith('959')
+                              ? '09' + cleanPhone.slice(3)
+                              : cleanPhone;
+
+                            const digitsOnly = normalized.replace(/\D/g, '');
+                            if (digitsOnly.length < 11) {
+                              setInlineErrors((prev) => ({
+                                ...prev,
+                                phone: 'Phone number must be at least 11 digits (e.g. 09xxxxxxxxx).',
+                              }));
+                            } else if (!/^09\d{9}$/.test(normalized)) {
+                              setInlineErrors((prev) => ({
+                                ...prev,
+                                phone: 'Please enter a valid 11-digit Myanmar phone number starting with 09 (e.g. 09xxxxxxxxx).',
+                              }));
+                            }
+                          }
+                        }}
+                        placeholder="09123456789"
                         className={`w-full rounded-xl border px-3.5 py-2.5 text-xs font-semibold text-slate-800 transition-all focus:outline-none focus:ring-2 ${
                           inlineErrors.phone
                             ? 'border-red-400 focus:ring-red-300 bg-red-50/20'
@@ -747,16 +758,6 @@ export default function ProfilePage() {
       </div>
 
       {/* ── Modals Reused from Staff Action Center ──────────────── */}
-      <StaffEditModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        staff={staff}
-        onSuccess={() => {
-          loadProfile();
-          handleShowSuccess('Staff information updated successfully.');
-        }}
-      />
-
       <StaffResetPasswordModal
         isOpen={isResetPasswordModalOpen}
         onClose={() => setIsResetPasswordModalOpen(false)}
@@ -766,11 +767,6 @@ export default function ProfilePage() {
           handleShowSuccess('Password reset link issued successfully.');
         }}
       />
-      <StaffChangePasswordModal
-        isOpen={isChangePasswordModalOpen}
-        onClose={() => setIsChangePasswordModalOpen(false)}
-        onSuccess={(msg) => handleShowSuccess(msg)}
-      />
-    </AdminLayout>
+      </AdminLayout>
   );
 }

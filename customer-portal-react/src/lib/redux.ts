@@ -42,6 +42,8 @@ const rootReducer = (
 
     return {
       ...resetState,
+
+      // Preserve user preferences after logout.
       settings: state?.settings ?? resetState.settings,
     };
   }

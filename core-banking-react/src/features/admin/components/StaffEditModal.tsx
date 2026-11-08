@@ -56,26 +56,33 @@ export default function StaffEditModal({
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
     if (!formData.fullName.trim()) errs.fullName = 'Full name is required.';
-    if (!formData.email.trim()) {
+
+    // Email validation
+    const emailVal = formData.email.trim();
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailVal) {
       errs.email = 'Email is required.';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
-      errs.email = 'Please enter a valid email address.';
+    } else if (!emailRegex.test(emailVal)) {
+      errs.email = 'Please enter a valid email address (e.g. user@domain.com).';
     }
-    if (!formData.phone.trim()) {
+
+    // Phone validation (must be at least 11 digits)
+    const rawPhone = formData.phone.trim();
+    if (!rawPhone) {
       errs.phone = 'Phone number is required.';
     } else {
-      const cleanPhone = formData.phone.trim().replace(/[\s-]/g, '');
+      const cleanPhone = rawPhone.replace(/[\s-]/g, '');
       const normalized = cleanPhone.startsWith('+959')
         ? '09' + cleanPhone.slice(4)
         : cleanPhone.startsWith('959')
         ? '09' + cleanPhone.slice(3)
         : cleanPhone;
 
-      const digitsOnly = cleanPhone.replace(/\D/g, '');
-      if (digitsOnly.length < 9) {
-        errs.phone = 'Myanmar phone number must be at least 9 digits (e.g. 09xxxxxxxxx).';
-      } else if (!/^09\d{7,9}$/.test(normalized)) {
-        errs.phone = 'Please enter a valid Myanmar phone number starting with 09 (e.g. 09xxxxxxxxx).';
+      const digitsOnly = normalized.replace(/\D/g, '');
+      if (digitsOnly.length < 11) {
+        errs.phone = 'Phone number must be at least 11 digits (e.g. 09xxxxxxxxx).';
+      } else if (!/^09\d{9}$/.test(normalized)) {
+        errs.phone = 'Please enter a valid 11-digit Myanmar phone number starting with 09 (e.g. 09xxxxxxxxx).';
       }
     }
 
