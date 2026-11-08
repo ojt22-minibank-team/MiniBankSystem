@@ -14,6 +14,14 @@ const memoryCache = new Map<string, CacheEntry<unknown>>();
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds cache TTL
 const STRICT_SLA_TIMEOUT_MS = 2800; // 2.8s guard to guarantee sub-3-second UI response
 
+/**
+ * Purges the entire in-memory SWR cache.
+ * Must be invoked on user logout or session termination to prevent cross-session data leakage.
+ */
+export function clearBankingMemoryCache(): void {
+  memoryCache.clear();
+}
+
 export interface PaginationParams {
   page?: number;
   size?: number;

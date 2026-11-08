@@ -4,7 +4,7 @@ import { auditApi } from '../../../services/auditService';
 import type { AuditLogItem, AuditSearchParams } from '../../../types/audit.types';
 import AuditLogDetailModal from '../components/AuditLogDetailModal';
 import AuditStatsCards from '../components/AuditStatsCards';
-import { formatDate } from '../../../utils/formatDate';
+import { formatDate, formatDateTime } from '../../../utils/formatDate';
 
 type TimeRangePreset = 'ALL' | 'TODAY' | 'YESTERDAY' | 'LAST_7_DAYS' | 'LAST_30_DAYS' | 'CUSTOM';
 type ScopeTab = 'ALL' | 'STAFF' | 'CUSTOMER' | 'SYSTEM';
@@ -172,7 +172,7 @@ export default function AuditLogsPage() {
 
     const rows = logs.map((log) => [
       log.auditId,
-      log.createdAt ? new Date(log.createdAt).toISOString() : '',
+      log.createdAt ? formatDateTime(log.createdAt) : '',
       log.actorType,
       log.actorStaffUsername || log.actorCustomerId || log.actorStaffId || log.actorType,
       log.actionCategory || '',

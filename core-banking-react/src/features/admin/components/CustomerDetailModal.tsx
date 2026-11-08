@@ -1,6 +1,7 @@
 import Modal from '../../../components/common/Modal';
 import Button from '../../../components/common/Button';
 import type { CustomerDetailResponse } from '../../../types/api.types';
+import { formatDate, formatDateTime } from '../../../utils/formatDate';
 
 export interface CustomerDetailModalProps {
   isOpen: boolean;
@@ -166,7 +167,7 @@ export default function CustomerDetailModal({
                   </div>
                   <div>
                     <span className="text-gray-500 text-xs block">Date of Birth</span>
-                    <span className="font-medium text-gray-800">{customer.dateOfBirth || '—'}</span>
+                    <span className="font-medium text-gray-800">{formatDate(customer.dateOfBirth)}</span>
                   </div>
                   <div>
                     <span className="text-gray-500 text-xs block">Occupation</span>
@@ -185,13 +186,13 @@ export default function CustomerDetailModal({
                 <div>
                   <span className="text-gray-500 text-xs block">Registration Date</span>
                   <span className="text-xs font-mono text-gray-700">
-                    {customer.createdAt ? new Date(customer.createdAt).toLocaleString() : '—'}
+                    {formatDateTime(customer.createdAt)}
                   </span>
                 </div>
                 <div>
                   <span className="text-gray-500 text-xs block">Last Updated Date</span>
                   <span className="text-xs font-mono text-gray-700">
-                    {customer.updatedAt ? new Date(customer.updatedAt).toLocaleString() : '—'}
+                    {formatDateTime(customer.updatedAt)}
                   </span>
                 </div>
               </div>

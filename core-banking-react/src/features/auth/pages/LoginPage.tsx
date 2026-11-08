@@ -1,5 +1,5 @@
 import { useState, type FormEvent, useEffect, useRef, type ClipboardEvent, type KeyboardEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { loginThunk, verifyOtpThunk, resendOtpApi } from '../authSlice';
 import ekarajCrown from '../../../assets/ekaraj-crown-transparent.png';
@@ -13,6 +13,7 @@ type LoginStep = 'CREDENTIALS' | 'OTP';
 export default function LoginPage() {
   const { login, verifyOtp, isLoading, error, isAuthenticated, isTeller, dismissError } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // Step state
   const [step, setStep] = useState<LoginStep>('CREDENTIALS');
@@ -60,6 +61,13 @@ export default function LoginPage() {
     setErrorMessage(null);
     if (error) dismissError();
   };
+
+  // Check for session timeout reason in query params
+  useEffect(() => {
+    if (searchParams.get('reason') === 'idle_timeout') {
+      setErrorMessage('Your session has expired due to inactivity. Please sign in again.');
+    }
+  }, [searchParams]);
 
   // If already authenticated, redirect to dashboard
   useEffect(() => {

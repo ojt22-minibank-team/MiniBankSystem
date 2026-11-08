@@ -46,7 +46,7 @@ public class StaffPasswordSetupService {
     @Value("${app.security.password-setup.expiration-minutes:30}")
     private int expirationMinutes;
 
-    @Value("${app.staff.frontend.base-url:${STAFF_FRONTEND_URL:http://localhost:8002}}")
+    @Value("${app.staff.frontend.base-url:${STAFF_FRONTEND_URL:}}")
     private String staffFrontendBaseUrl;
 
     @Value("${app.frontend.base-url:${FRONTEND_URL:http://localhost:8002}}")

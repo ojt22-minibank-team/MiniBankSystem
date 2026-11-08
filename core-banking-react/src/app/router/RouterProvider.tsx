@@ -15,11 +15,14 @@ import ReportingPage from '../../features/reporting/pages/ReportingPage';
 import AuditLogsPage from '../../features/audit-logs/pages/AuditLogsPage';
 import TransactionDetailsPage from '../../features/transactions/pages/TransactionDetailsPage';
 import ProtectedRoute from './ProtectedRoute';
+import UnauthorizedPage from '../../components/common/UnauthorizedPage';
+import SessionTimeoutProvider from '../providers/SessionTimeoutProvider';
 
 export default function RouterProvider() {
   return (
     <BrowserRouter>
-      <Routes>
+      <SessionTimeoutProvider>
+        <Routes>
         {/* ========================================================
             Public Authentication Routes
            ======================================================== */}
@@ -29,7 +32,7 @@ export default function RouterProvider() {
         <Route path="/setup-password" element={<SignupPage />} />
         <Route path="/set-password" element={<SignupPage />} />
         <Route path="/staff-setup" element={<StaffPasswordSetupPage />} />
-        <Route path="/unauthorized" element={<Navigate to="/login" replace />} />
+        <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
         {/* ========================================================
             Admin & Auditor Routes (/admin/*)
@@ -247,6 +250,7 @@ export default function RouterProvider() {
         {/* 404 fallback */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
+      </SessionTimeoutProvider>
     </BrowserRouter>
   );
 }

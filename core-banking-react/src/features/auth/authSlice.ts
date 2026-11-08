@@ -1,4 +1,4 @@
-﻿import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import type { AuthState, AuthUser } from '../../types/common.types';
 import type { LoginRequest, LoginResponse, CoreApiResponse, OtpResendResponse } from '../../types/api.types';
@@ -6,6 +6,7 @@ import { STORAGE_KEYS, API_BASE_URL } from '../../config/api.config';
 import axiosInstance from '../../lib/axios';
 import { API_ENDPOINTS } from '../../config/api.config';
 import type { AxiosError } from 'axios';
+import { clearBankingMemoryCache } from '../../hooks/useBankingData';
 
 // ============================================================
 // Helpers — sessionStorage persistence & role normalization
@@ -28,7 +29,8 @@ export function normalizeRoles(roles: string[] = []): string[] {
 function persistAuth(response: LoginResponse): void {
   const normalized = normalizeRoles(response.roles);
   sessionStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, response.accessToken);
-  sessionStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, response.refreshToken);
+  // HttpOnly cookie 'cb_refresh_token' is handled securely by the backend.
+  // Refresh token is NOT stored in sessionStorage to prevent XSS exfiltration.
   sessionStorage.setItem(STORAGE_KEYS.USERNAME, response.username);
   sessionStorage.setItem(STORAGE_KEYS.ROLES, JSON.stringify(normalized));
 }
@@ -54,6 +56,7 @@ function clearPersistedAuth(): void {
   sessionStorage.removeItem(STORAGE_KEYS.USERNAME);
   sessionStorage.removeItem(STORAGE_KEYS.ROLES);
   sessionStorage.removeItem(STORAGE_KEYS.STAFF_PROFILE);
+  clearBankingMemoryCache();
 }
 
 function loadAuthFromStorage(): {
@@ -62,7 +65,6 @@ function loadAuthFromStorage(): {
   user: AuthUser | null;
 } {
   const accessToken = sessionStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-  const refreshToken = sessionStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
   const username = sessionStorage.getItem(STORAGE_KEYS.USERNAME);
   const rolesRaw = sessionStorage.getItem(STORAGE_KEYS.ROLES);
 
@@ -79,7 +81,7 @@ function loadAuthFromStorage(): {
 
   return {
     accessToken,
-    refreshToken,
+    refreshToken: null,
     user: { username, roles, permissions: [] },
   };
 }
@@ -195,12 +197,18 @@ export const logoutThunk = createAsyncThunk<
 >('auth/logout', async (_, { rejectWithValue }) => {
   const refreshToken = sessionStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
   try {
-    await axiosInstance.post(API_ENDPOINTS.AUTH.LOGOUT, { refreshToken });
+    await axiosInstance.post(
+      API_ENDPOINTS.AUTH.LOGOUT,
+      refreshToken ? { refreshToken } : {},
+      { withCredentials: true }
+    );
   } catch (err) {
     const error = err as AxiosError;
     if (error.response?.status !== 401) {
       return rejectWithValue('Logout request failed, but session has been cleared locally.');
     }
+  } finally {
+    clearBankingMemoryCache();
   }
 });
 
@@ -237,15 +245,17 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.error = null;
       clearPersistedAuth();
+      clearBankingMemoryCache();
     },
     updateTokens(
       state,
-      action: PayloadAction<{ accessToken: string; refreshToken: string }>,
+      action: PayloadAction<{ accessToken: string; refreshToken?: string }>,
     ) {
       state.accessToken = action.payload.accessToken;
-      state.refreshToken = action.payload.refreshToken;
+      if (action.payload.refreshToken) {
+        state.refreshToken = action.payload.refreshToken;
+      }
       sessionStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, action.payload.accessToken);
-      sessionStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, action.payload.refreshToken);
     },
   },
   extraReducers: (builder) => {
@@ -281,6 +291,7 @@ const authSlice = createSlice({
       state.accessToken = null;
       state.refreshToken = null;
       state.error = action.payload ?? 'Login failed.';
+      clearBankingMemoryCache();
     });
 
     // ---- Verify OTP ----
@@ -310,6 +321,7 @@ const authSlice = createSlice({
       state.accessToken = null;
       state.refreshToken = null;
       state.error = action.payload ?? 'OTP verification failed.';
+      clearBankingMemoryCache();
     });
 
     // ---- Logout ----

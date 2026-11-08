@@ -7,6 +7,7 @@ import type { AxiosError } from 'axios';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { STORAGE_KEYS } from '../../../config/api.config';
 import ekarajCrown from '../../../assets/ekaraj-crown-transparent.png';
+import { formatDateTime } from '../../../utils/formatDate';
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -588,7 +589,7 @@ export default function ProfilePage() {
                       Account Registered On
                     </span>
                     <p className="text-xs font-medium text-zinc-600 mt-1 font-mono">
-                      {staff?.createdAt ? new Date(staff.createdAt).toLocaleString() : 'System Genesis'}
+                      {staff?.createdAt ? formatDateTime(staff.createdAt) : 'System Genesis'}
                     </p>
                   </div>
 
@@ -597,7 +598,7 @@ export default function ProfilePage() {
                       Last Updated
                     </span>
                     <p className="text-xs font-medium text-zinc-600 mt-1 font-mono">
-                      {staff?.updatedAt ? new Date(staff.updatedAt).toLocaleString() : 'Recently'}
+                      {staff?.updatedAt ? formatDateTime(staff.updatedAt) : 'Recently'}
                     </p>
                   </div>
                 </div>

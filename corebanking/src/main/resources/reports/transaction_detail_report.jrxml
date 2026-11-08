@@ -6,7 +6,8 @@
               orientation="Landscape"
               pageWidth="842" pageHeight="595"
               columnWidth="802" leftMargin="20" rightMargin="20"
-              topMargin="20" bottomMargin="20">
+              topMargin="20" bottomMargin="20"
+              whenNoDataType="AllSectionsNoDetail">
 
     <parameter name="StartDate" class="java.lang.String"/>
     <parameter name="EndDate" class="java.lang.String"/>
@@ -50,7 +51,7 @@
                 <textElement>
                     <font size="9"/>
                 </textElement>
-                <textFieldExpression><![CDATA["Period: " + $P{StartDate} + " to " + $P{EndDate} + " | Status: " + ($P{Status} != null ? $P{Status} : "ALL") + " | Type: " + ($P{Type} != null ? $P{Type} : "ALL") + " | Channel: " + ($P{Channel} != null ? $P{Channel} : "ALL")]]></textFieldExpression>
+                <textFieldExpression><![CDATA["Period: " + ($P{StartDate} != null ? $P{StartDate} : "ALL") + " to " + ($P{EndDate} != null ? $P{EndDate} : "ALL") + " | Status: " + ($P{Status} != null ? $P{Status} : "ALL") + " | Type: " + ($P{Type} != null ? $P{Type} : "ALL") + " | Channel: " + ($P{Channel} != null ? $P{Channel} : "ALL")]]></textFieldExpression>
             </textField>
         </band>
     </title>
@@ -138,7 +139,7 @@
                 <reportElement x="135" y="0" width="90" height="18"/>
                 <box leftPadding="3"><pen lineWidth="0.5" lineColor="#E2E8F0"/></box>
                 <textElement verticalAlignment="Middle"><font size="7"/></textElement>
-                <textFieldExpression><![CDATA[$F{date} != null ? $F{date}.toString() : ""]]></textFieldExpression>
+                <textFieldExpression><![CDATA[$F{date} != null ? $F{date}.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")) : ""]]></textFieldExpression>
             </textField>
             <textField pattern="#,##0.00">
                 <reportElement x="225" y="0" width="85" height="18"/>
@@ -185,31 +186,47 @@
         </band>
     </detail>
 
+    <pageFooter>
+        <band height="20">
+            <textField>
+                <reportElement x="627" y="0" width="175" height="20"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"><font size="8"/></textElement>
+                <textFieldExpression><![CDATA["Page " + $V{PAGE_NUMBER}]]></textFieldExpression>
+            </textField>
+        </band>
+    </pageFooter>
+
     <summary>
-        <band height="25">
+        <band height="24">
             <staticText>
-                <reportElement x="0" y="5" width="225" height="20"/>
+                <reportElement mode="Opaque" backcolor="#FEF3C7" x="0" y="0" width="225" height="24"/>
+                <box leftPadding="4"><pen lineWidth="0.5" lineColor="#F59E0B"/></box>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
                     <font size="8" isBold="true"/>
                 </textElement>
                 <text><![CDATA[Grand Total:]]></text>
             </staticText>
-            <textField pattern="#,##0.00">
-                <reportElement x="225" y="5" width="85" height="20"/>
-                <box rightPadding="4"/>
+            <textField evaluationTime="Report" pattern="#,##0.00">
+                <reportElement mode="Opaque" backcolor="#FEF3C7" x="225" y="0" width="85" height="24"/>
+                <box rightPadding="4"><pen lineWidth="0.5" lineColor="#F59E0B"/></box>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
                     <font size="8" isBold="true"/>
                 </textElement>
-                <textFieldExpression><![CDATA[$V{V_TOTAL_AMOUNT} != null ? $V{V_TOTAL_AMOUNT} : BigDecimal.ZERO]]></textFieldExpression>
+                <textFieldExpression><![CDATA[$V{V_TOTAL_AMOUNT}]]></textFieldExpression>
             </textField>
-            <textField pattern="#,##0.00">
-                <reportElement x="310" y="5" width="65" height="20"/>
-                <box rightPadding="4"/>
+            <textField evaluationTime="Report" pattern="#,##0.00">
+                <reportElement mode="Opaque" backcolor="#FEF3C7" x="310" y="0" width="65" height="24"/>
+                <box rightPadding="4"><pen lineWidth="0.5" lineColor="#F59E0B"/></box>
                 <textElement textAlignment="Right" verticalAlignment="Middle">
                     <font size="8" isBold="true"/>
                 </textElement>
-                <textFieldExpression><![CDATA[$V{V_TOTAL_FEE} != null ? $V{V_TOTAL_FEE} : BigDecimal.ZERO]]></textFieldExpression>
+                <textFieldExpression><![CDATA[$V{V_TOTAL_FEE}]]></textFieldExpression>
             </textField>
+            <staticText>
+                <reportElement mode="Opaque" backcolor="#FEF3C7" x="375" y="0" width="427" height="24"/>
+                <box><pen lineWidth="0.5" lineColor="#F59E0B"/></box>
+                <text><![CDATA[]]></text>
+            </staticText>
         </band>
     </summary>
 </jasperReport>

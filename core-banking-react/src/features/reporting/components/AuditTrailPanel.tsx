@@ -10,6 +10,7 @@ import ExportButtons from './ExportButtons';
 import MetricCard from './MetricCard';
 import { ExportNotificationBanner } from './ExportNotificationBanner';
 import { useAsyncExport } from '../hooks/useAsyncExport';
+import { formatDateTime } from '../../../utils/formatDate';
 
 interface Props {
   staffId: string;
@@ -120,7 +121,7 @@ const AuditTrailPanel: React.FC<Props> = ({
       label: 'Timestamp',
       render: (r: AuditTrailLog) => (
         <span className="text-[11px] text-slate-500 whitespace-nowrap">
-          {r.createdAt?.replace('T', ' ')}
+          {formatDateTime(r.createdAt)}
         </span>
       ),
     },
