@@ -20,8 +20,12 @@ export default function Sidebar({ isOpen = true }: SidebarProps) {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
+    const currentUsername =
+      user?.username || sessionStorage.getItem(STORAGE_KEYS.USERNAME) || '';
+    if (currentUsername) {
+      broadcastLogout(currentUsername);
+    }
     await logout();
-    broadcastLogout();
 
     navigate('/login', { replace: true });
   };

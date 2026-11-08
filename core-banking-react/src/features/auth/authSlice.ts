@@ -35,19 +35,85 @@ function persistAuth(response: LoginResponse): void {
   sessionStorage.setItem(STORAGE_KEYS.ROLES, JSON.stringify(normalized));
 }
 
-export function broadcastLogout(): void {
+export interface LogoutBroadcastMessage {
+  type: 'LOGOUT';
+  username: string;
+  reason?: string;
+  timestamp: number;
+}
+
+export function broadcastLogout(username?: string, reason?: string): void {
+  const targetUsername =
+    username ||
+    sessionStorage.getItem(STORAGE_KEYS.USERNAME) ||
+    '';
+
+  if (!targetUsername) {
+    return;
+  }
+
+  const payload: LogoutBroadcastMessage = {
+    type: 'LOGOUT',
+    username: targetUsername,
+    reason: reason || 'logout',
+    timestamp: Date.now(),
+  };
+
   try {
     const channel = new BroadcastChannel('staff_auth_sync');
-    channel.postMessage('LOGOUT');
+    channel.postMessage(payload);
     channel.close();
   } catch {
     // ignore
   }
   try {
-    localStorage.setItem('staff_auth_logout_trigger', Date.now().toString());
+    localStorage.setItem('staff_auth_logout_trigger', JSON.stringify(payload));
   } catch {
     // ignore
   }
+}
+
+export function getLogoutTargetInfo(data: unknown): {
+  targetUsername: string | null;
+  reason: string | null;
+} {
+  let targetUsername: string | null = null;
+  let reason: string | null = null;
+
+  if (typeof data === 'string') {
+    try {
+      const parsed = JSON.parse(data);
+      if (parsed && typeof parsed === 'object') {
+        targetUsername = parsed.username || null;
+        reason = parsed.reason || null;
+      }
+    } catch {
+      return { targetUsername: null, reason: null };
+    }
+  } else if (typeof data === 'object' && data !== null) {
+    const dataObj = data as { username?: string | null; reason?: string | null; type?: string };
+    targetUsername = dataObj.username || null;
+    reason = dataObj.reason || null;
+  }
+
+  return { targetUsername, reason };
+}
+
+export function isLogoutTargetingCurrentUser(
+  data: unknown,
+  currentUsername?: string | null,
+): boolean {
+  const myUsername = currentUsername || sessionStorage.getItem(STORAGE_KEYS.USERNAME);
+  if (!myUsername) {
+    return false;
+  }
+
+  const { targetUsername } = getLogoutTargetInfo(data);
+  if (!targetUsername) {
+    return false;
+  }
+
+  return targetUsername.trim().toLowerCase() === myUsername.trim().toLowerCase();
 }
 
 function clearPersistedAuth(): void {
@@ -194,7 +260,17 @@ export const logoutThunk = createAsyncThunk<
   void,
   void,
   { rejectValue: string }
->('auth/logout', async (_, { rejectWithValue }) => {
+>('auth/logout', async (_, { getState, rejectWithValue }) => {
+  const state = getState() as { auth?: { user?: { username?: string } } };
+  const currentUsername =
+    state?.auth?.user?.username ||
+    sessionStorage.getItem(STORAGE_KEYS.USERNAME) ||
+    '';
+
+  if (currentUsername) {
+    broadcastLogout(currentUsername);
+  }
+
   const refreshToken = sessionStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
   try {
     await axiosInstance.post(
