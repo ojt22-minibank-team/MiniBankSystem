@@ -1,6 +1,7 @@
 package com.corebanking.service;
 
 import com.corebanking.dto.NotificationResponseDto;
+import com.corebanking.entity.Accounts;
 import com.corebanking.entity.BankTransactions;
 import com.corebanking.entity.Notifications;
 import com.corebanking.repository.NotificationRepository;
@@ -13,6 +14,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 @Slf4j
 @Service
@@ -55,6 +57,39 @@ public class CusNotificationService {
         return notificationRepository.markAllAsRead(customerId, LocalDateTime.now());
     }
 
+    private Accounts safeGetAccount(Supplier<Accounts> supplier) {
+        try {
+            Accounts a = supplier.get();
+            if (a != null) {
+                // Access property to ensure lazy loading succeeds without throwing missing row error
+                a.getAccountNumber();
+            }
+            return a;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private UUID safeGetAccountCustomerId(Accounts acc) {
+        if (acc == null) return null;
+        try {
+            if (acc.getCustomer() != null) {
+                return acc.getCustomer().getCustomerId();
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private String safeGetAccountCustomerName(Accounts acc) {
+        if (acc == null) return null;
+        try {
+            if (acc.getCustomer() != null && acc.getCustomer().getFullName() != null) {
+                return acc.getCustomer().getFullName();
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
     private NotificationResponseDto safeMapToDto(Notifications n) {
         try {
             NotificationResponseDto.NotificationResponseDtoBuilder builder = NotificationResponseDto.builder()
@@ -78,11 +113,14 @@ public class CusNotificationService {
                         builder.currency(txn.getCurrency());
                     }
 
-                    if (txn.getSourceAccount() != null) {
-                        builder.sourceAccountNumber(txn.getSourceAccount().getAccountNumber());
+                    Accounts srcAcc = safeGetAccount(txn::getSourceAccount);
+                    Accounts destAcc = safeGetAccount(txn::getDestinationAccount);
+
+                    if (srcAcc != null) {
+                        builder.sourceAccountNumber(srcAcc.getAccountNumber());
                     }
-                    if (txn.getDestinationAccount() != null) {
-                        builder.destinationAccountNumber(txn.getDestinationAccount().getAccountNumber());
+                    if (destAcc != null) {
+                        builder.destinationAccountNumber(destAcc.getAccountNumber());
                     }
                     if (txn.getDescription() != null && !txn.getDescription().isBlank()) {
                         builder.description(txn.getDescription().trim());
@@ -97,19 +135,19 @@ public class CusNotificationService {
                         builder.counterpartyName("Bank Counter");
                         builder.counterpartyAccountNumber("BANK-OTC");
                         builder.transferDirection("RECEIVED");
-                        if (txn.getDestinationAccount() != null) {
-                            builder.destinationAccountNumber(txn.getDestinationAccount().getAccountNumber());
+                        if (destAcc != null) {
+                            builder.destinationAccountNumber(destAcc.getAccountNumber());
                         }
                     } else if (txn.getTransactionType() == com.corebanking.entity.enums.TransactionType.OTC_WITHDRAWAL) {
                         builder.counterpartyName("Bank Counter");
                         builder.counterpartyAccountNumber("BANK-OTC");
                         builder.transferDirection("SENT");
-                        if (txn.getSourceAccount() != null) {
-                            builder.sourceAccountNumber(txn.getSourceAccount().getAccountNumber());
+                        if (srcAcc != null) {
+                            builder.sourceAccountNumber(srcAcc.getAccountNumber());
                         }
-                    } else if (txn.getSourceAccount() != null && txn.getDestinationAccount() != null && currentCustomerId != null) {
-                        UUID sourceCustId = (txn.getSourceAccount().getCustomer() != null) ? txn.getSourceAccount().getCustomer().getCustomerId() : null;
-                        UUID destCustId = (txn.getDestinationAccount().getCustomer() != null) ? txn.getDestinationAccount().getCustomer().getCustomerId() : null;
+                    } else if (srcAcc != null && destAcc != null && currentCustomerId != null) {
+                        UUID sourceCustId = safeGetAccountCustomerId(srcAcc);
+                        UUID destCustId = safeGetAccountCustomerId(destAcc);
 
                         String titleLower = n.getTitle() != null ? n.getTitle().toLowerCase() : "";
                         boolean isReceivedNotification = titleLower.contains("received");
@@ -117,34 +155,30 @@ public class CusNotificationService {
 
                         if (isSelfTransfer) {
                             if (isReceivedNotification) {
-                                String srcName = (txn.getSourceAccount().getCustomer() != null && txn.getSourceAccount().getCustomer().getFullName() != null)
-                                        ? txn.getSourceAccount().getCustomer().getFullName()
-                                        : "Account " + txn.getSourceAccount().getAccountNumber();
+                                String srcName = safeGetAccountCustomerName(srcAcc);
+                                if (srcName == null) srcName = "Account " + srcAcc.getAccountNumber();
                                 builder.counterpartyName(srcName);
-                                builder.counterpartyAccountNumber(txn.getSourceAccount().getAccountNumber());
+                                builder.counterpartyAccountNumber(srcAcc.getAccountNumber());
                                 builder.transferDirection("RECEIVED");
                             } else {
-                                String destName = (txn.getDestinationAccount().getCustomer() != null && txn.getDestinationAccount().getCustomer().getFullName() != null)
-                                        ? txn.getDestinationAccount().getCustomer().getFullName()
-                                        : "Account " + txn.getDestinationAccount().getAccountNumber();
+                                String destName = safeGetAccountCustomerName(destAcc);
+                                if (destName == null) destName = "Account " + destAcc.getAccountNumber();
                                 builder.counterpartyName(destName);
-                                builder.counterpartyAccountNumber(txn.getDestinationAccount().getAccountNumber());
+                                builder.counterpartyAccountNumber(destAcc.getAccountNumber());
                                 builder.transferDirection("SENT");
                             }
                         } else {
                             if (currentCustomerId.equals(sourceCustId)) {
-                                String destName = (txn.getDestinationAccount().getCustomer() != null && txn.getDestinationAccount().getCustomer().getFullName() != null)
-                                        ? txn.getDestinationAccount().getCustomer().getFullName()
-                                        : "Account " + txn.getDestinationAccount().getAccountNumber();
+                                String destName = safeGetAccountCustomerName(destAcc);
+                                if (destName == null) destName = "Account " + destAcc.getAccountNumber();
                                 builder.counterpartyName(destName);
-                                builder.counterpartyAccountNumber(txn.getDestinationAccount().getAccountNumber());
+                                builder.counterpartyAccountNumber(destAcc.getAccountNumber());
                                 builder.transferDirection("SENT");
                             } else if (currentCustomerId.equals(destCustId)) {
-                                String srcName = (txn.getSourceAccount().getCustomer() != null && txn.getSourceAccount().getCustomer().getFullName() != null)
-                                        ? txn.getSourceAccount().getCustomer().getFullName()
-                                        : "Account " + txn.getSourceAccount().getAccountNumber();
+                                String srcName = safeGetAccountCustomerName(srcAcc);
+                                if (srcName == null) srcName = "Account " + srcAcc.getAccountNumber();
                                 builder.counterpartyName(srcName);
-                                builder.counterpartyAccountNumber(txn.getSourceAccount().getAccountNumber());
+                                builder.counterpartyAccountNumber(srcAcc.getAccountNumber());
                                 builder.transferDirection("RECEIVED");
                             }
                         }
@@ -156,7 +190,7 @@ public class CusNotificationService {
                     }
                 }
             } catch (Exception e) {
-                log.warn("Skipping associated transaction for notification id {}: {}", n.getNotificationId(), e.getMessage());
+                log.debug("Skipping associated transaction details for notification id {}: {}", n.getNotificationId(), e.getMessage());
             }
 
             // Fallback enrichment: Ensure details are never lost on HTTP fetch even if transaction entity is detached
