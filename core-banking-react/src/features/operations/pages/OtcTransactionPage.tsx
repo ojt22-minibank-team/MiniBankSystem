@@ -537,16 +537,17 @@ export default function OtcTransactionPage() {
 
           <div className="flex items-center gap-2.5">
             {/* Digital Security Verification QR Code (Always Masked Account Number) */}
-            <div className="flex flex-col items-center justify-center bg-white p-1 rounded-md border border-gray-200 shadow-2xs">
+            <div
+              className="flex items-center justify-center bg-white p-1 rounded-md border border-gray-200 shadow-2xs"
+              title="Scan to verify transaction"
+            >
               <QRCodeSVG
                 value={formatReceiptQrText(receipt)}
-                size={58}
-                level="M"
-                includeMargin={true}
+                size={72}
+                level="L"
+                includeMargin={false}
+                style={{ shapeRendering: 'crispEdges' }}
               />
-              <span className="text-[7.5px] font-mono font-bold text-gray-500 mt-0.5 uppercase tracking-wider">
-                Scan Verify
-              </span>
             </div>
 
             {/* Plain Unbordered/Uncolored Typography for Voucher & Receipt Labels */}
@@ -1046,7 +1047,7 @@ export default function OtcTransactionPage() {
                       {/* Customer Identity Info Grid */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3.5 text-xs flex-1 min-w-0 w-full">
                         <div className="min-w-0">
-                          <span className="text-gray-500 block text-[11px] font-medium">Account Holder</span>
+                          <span className="text-gray-500 block text-[11px] font-medium">Account Holder Name</span>
                           <span className="font-bold text-gray-900 text-sm block truncate mt-0.5">
                             {verifiedAccount.customerName}
                           </span>

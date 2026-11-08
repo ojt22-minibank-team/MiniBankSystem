@@ -416,7 +416,7 @@ export default function TransactionDetailContent({
   // Calculate Total Debited for outgoing completed transactions
   const isOutgoing = transaction.direction === "OUT";
   const serviceFeeNum = Number(transaction.serviceFee || 0);
-  const totalDebitedNum = isOutgoing && isCompleted ? Number(transaction.amount || 0) + serviceFeeNum : null;
+  const totalDebitedNum = isOutgoing && isCompleted ? Number(transaction.amount || 0) + (isExternalPayment ? 0 : serviceFeeNum) : null;
 
   // For COMPLETED EXTERNAL_PAYMENT, reuse the official PaymentReceipt
   if (isCompleted && isExternalPayment) {
@@ -461,7 +461,7 @@ export default function TransactionDetailContent({
       availBal != null
         ? isDeposit
           ? Math.max(0, availBal - Number(transaction.amount || 0))
-          : availBal + Number(transaction.amount || 0) + Number(transaction.serviceFee || 0)
+          : availBal + Number(transaction.amount || 0) + (isExternalPayment ? 0 : Number(transaction.serviceFee || 0))
         : null;
 
     const receiptData = mapHistoryItemToTransferReceiptData(transaction, {
@@ -1017,7 +1017,7 @@ export default function TransactionDetailContent({
             </div>
 
             {/* Service Fee: Only shown for sender / outgoing transactions, hidden for recipient */}
-            {transaction.direction !== "IN" && (
+            {transaction.direction !== "IN" && !isExternalPayment && (
               <div className="flex justify-between items-center py-1 border-b border-slate-100">
                 <span className="text-slate-500 font-medium">Service Fee</span>
                 <span className="font-medium text-slate-800 tabular-nums">

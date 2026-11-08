@@ -433,7 +433,9 @@ export default function TransactionDetailsPage() {
                         </span>
                         {tx.serviceFee > 0 && (
                           <span className="text-[10px] text-slate-500">
-                            Fee: +{formatCurrency(tx.serviceFee, tx.currency)}
+                            {tx.transactionType === 'EXTERNAL_PAYMENT'
+                              ? `Fee: ${formatCurrency(tx.serviceFee, tx.currency)} (Merchant)`
+                              : `Fee: +${formatCurrency(tx.serviceFee, tx.currency)}`}
                           </span>
                         )}
                       </td>
