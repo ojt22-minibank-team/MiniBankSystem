@@ -658,7 +658,7 @@ public class OtcTransactionService {
     private String generateTransactionRef(String prefix) {
         String dateStr = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
         int randomNum = ThreadLocalRandom.current().nextInt(10000, 99999);
-        return String.format("TXN-OTC-%s-%s-%d", prefix, dateStr, randomNum);
+        return String.format("EKB-OTC-%s-%s-%d", prefix, dateStr, randomNum);
     }
 
     private OtcTransactionResponseDto mapToResponseDto(BankTransactions txn, String personName,
