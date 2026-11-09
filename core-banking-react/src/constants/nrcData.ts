@@ -219,6 +219,7 @@ export const NRC_TOWNSHIPS: Record<string, string[]> = {
 ],
   '12': [
   'AHLANA',
+  'AHSANA',
   'BAMANA',
   'DAGANA',
   'DAGAYA',
@@ -228,7 +229,7 @@ export const NRC_TOWNSHIPS: Record<string, string[]> = {
   'KAKHAKA',
   'KAMAYA',
   'KHAYANA',
-  'MAMANA',
+  'MABANA',
   'MAYATA',
   'OUKAMA',
   'SAKHANA',

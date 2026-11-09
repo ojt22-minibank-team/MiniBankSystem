@@ -2,8 +2,9 @@ package com.corebanking.dto;
 
 import java.time.LocalDate;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
@@ -39,15 +40,27 @@ public class CustomerDTO {
     private String address;
     private String status;
 
-    // Personal Customer Fields
+    // Personal Customer Fields - dateOfBirth is only mandatory for PERSONAL accounts
     private String fullName;
     private String firstName;
     private String lastName;
     private String gender; // MALE, FEMALE, OTHER
 
-    @NotNull(message = "Date of birth is required")
     @Past(message = "Date of birth must be a past date")
     private LocalDate dateOfBirth;
+
+    @JsonIgnore
+    @AssertTrue(message = "Date of birth is required")
+    public boolean isDateOfBirthValid() {
+        boolean isCompany = (customerType != null &&
+                ("COMPANY".equalsIgnoreCase(customerType.trim()) || "CORPORATE".equalsIgnoreCase(customerType.trim())))
+                || (companyName != null && !companyName.isBlank())
+                || (registrationNumber != null && !registrationNumber.isBlank());
+        if (isCompany) {
+            return true;
+        }
+        return dateOfBirth != null;
+    }
 
     @Pattern(
         regexp = "^(1[0-4]|[1-9])/[A-Z0-9a-z]+\\([NPE]\\)[0-9]{6}$",

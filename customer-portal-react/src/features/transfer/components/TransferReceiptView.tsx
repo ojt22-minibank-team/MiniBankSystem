@@ -11,6 +11,7 @@ import {
   AlertOctagon,
 } from "lucide-react";
 import { QRCodeView } from "../../../components/common/QRCodeView";
+import { parseSafeDate } from "../../../utils/formatDate";
 import { EkarajCrown } from "../../../components/common/EkarajLogo";
 import type {
   TransferReceiptViewProps,
@@ -191,7 +192,7 @@ export default function TransferReceiptView({
 
   const completedDate = useMemo(() => {
     if (!data.completedAt) return "";
-    const d = new Date(data.completedAt);
+    const d = parseSafeDate(data.completedAt);
     if (isNaN(d.getTime())) return data.completedAt;
     const dateStr = d.toLocaleDateString("en-GB", {
       day: "2-digit",

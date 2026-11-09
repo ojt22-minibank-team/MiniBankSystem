@@ -6,10 +6,6 @@ import { toBlob } from "html-to-image";
 import {
   CheckCircle2,
   AlertCircle,
-  XCircle,
-  Clock,
-  RotateCcw,
-  Info,
   Copy,
   Check,
   Printer,
@@ -42,31 +38,11 @@ interface TransactionDetailContentProps {
 
 type DetailViewMode =
   | "SUCCESS_RECEIPT"
-  | "FAILED"
-  | "REJECTED"
-  | "CANCELLED"
-  | "REVERSED"
-  | "PROCESSING";
+  | "FAILED";
 
 function getViewMode(status?: string): DetailViewMode {
   const norm = (status || "").toUpperCase();
-  switch (norm) {
-    case "COMPLETED":
-      return "SUCCESS_RECEIPT";
-    case "FAILED":
-      return "FAILED";
-    case "REJECTED":
-      return "REJECTED";
-    case "CANCELLED":
-      return "CANCELLED";
-    case "REVERSED":
-      return "REVERSED";
-    case "INITIATED":
-    case "PENDING_AUTHORIZATION":
-    case "HELD":
-    default:
-      return "PROCESSING";
-  }
+  return norm === "COMPLETED" ? "SUCCESS_RECEIPT" : "FAILED";
 }
 
 function maskAccount(accNo?: string | null): string {
@@ -380,40 +356,10 @@ export default function TransactionDetailContent({
       statusIconWrapper = "bg-emerald-50 border-emerald-200";
       break;
     case "FAILED":
+    default:
       statusHeading = t("detailContent.status.failed");
       statusIcon = <AlertCircle className="h-6 w-6 text-rose-600" aria-hidden="true" />;
       statusIconWrapper = "bg-rose-50 border-rose-200";
-      break;
-    case "REJECTED":
-      statusHeading = t("detailContent.status.rejected");
-      statusIcon = <XCircle className="h-6 w-6 text-rose-600" aria-hidden="true" />;
-      statusIconWrapper = "bg-rose-50 border-rose-200";
-      break;
-    case "CANCELLED":
-      statusHeading = t("detailContent.status.cancelled");
-      statusIcon = <XCircle className="h-6 w-6 text-slate-500" aria-hidden="true" />;
-      statusIconWrapper = "bg-slate-100 border-slate-200";
-      break;
-    case "REVERSED":
-      statusHeading = t("detailContent.status.reversed");
-      statusIcon = <RotateCcw className="h-6 w-6 text-indigo-600" aria-hidden="true" />;
-      statusIconWrapper = "bg-indigo-50 border-indigo-200";
-      break;
-    case "PROCESSING":
-    default:
-      if (transaction.status === "PENDING_AUTHORIZATION") {
-        statusHeading = t("detailContent.status.pendingAuthorization");
-        statusIcon = <Clock className="h-6 w-6 text-amber-600" aria-hidden="true" />;
-        statusIconWrapper = "bg-amber-50 border-amber-200";
-      } else if (transaction.status === "HELD") {
-        statusHeading = t("detailContent.status.onHold");
-        statusIcon = <AlertCircle className="h-6 w-6 text-purple-600" aria-hidden="true" />;
-        statusIconWrapper = "bg-purple-50 border-purple-200";
-      } else {
-        statusHeading = t("detailContent.status.initiated");
-        statusIcon = <Clock className="h-6 w-6 text-blue-600" aria-hidden="true" />;
-        statusIconWrapper = "bg-blue-50 border-blue-200";
-      }
       break;
   }
 
@@ -774,26 +720,6 @@ export default function TransactionDetailContent({
         </div>
 
         <div className="p-6 space-y-5 flex-1">
-          {viewMode === "REVERSED" && (
-            <div className="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-800 space-y-1">
-              <div className="flex items-center gap-1.5 font-bold">
-                <RotateCcw className="w-4 h-4 shrink-0 text-indigo-600" />
-                <span>
-                  {transaction.failureMessage?.trim() ||
-                    t("detailContent.messages.reversed")}
-                </span>
-              </div>
-              <p className="text-[11px] text-indigo-700 pl-5">
-                {t("detailContent.messages.refunded")}
-              </p>
-              {transaction.failureCode?.trim() && (
-                <p className="text-[11px] font-mono text-indigo-700 pl-5">
-                  {t("detailContent.labels.reversalCode")}: {transaction.failureCode.trim()}
-                </p>
-              )}
-            </div>
-          )}
-
           {viewMode === "FAILED" && (
             <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 space-y-1">
               <div className="flex items-center gap-1.5 font-bold">
@@ -811,52 +737,7 @@ export default function TransactionDetailContent({
             </div>
           )}
 
-          {viewMode === "REJECTED" && (
-            <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 space-y-1">
-              <div className="flex items-center gap-1.5 font-bold">
-                <XCircle className="w-4 h-4 shrink-0 text-rose-600" />
-                <span>
-                  {transaction.failureMessage?.trim() ||
-                    t("detailContent.messages.rejected")}
-                </span>
-              </div>
-              {transaction.failureCode?.trim() && (
-                <p className="text-[11px] font-mono text-rose-700 pl-5">
-                  {t("detailContent.labels.reasonCode")}: {transaction.failureCode.trim()}
-                </p>
-              )}
-            </div>
-          )}
 
-          {viewMode === "CANCELLED" && (
-            <div className="p-3.5 rounded-2xl bg-slate-100 border border-slate-200 text-xs text-slate-700 space-y-1">
-              <div className="flex items-center gap-1.5 font-medium">
-                <Info className="w-4 h-4 shrink-0 text-slate-500" />
-                <span>
-                  {transaction.failureMessage?.trim() ||
-                    t("detailContent.messages.cancelled")}
-                </span>
-              </div>
-              {transaction.failureCode?.trim() && (
-                <p className="text-[11px] font-mono text-slate-600 pl-5">
-                  {t("detailContent.labels.cancellationCode")}: {transaction.failureCode.trim()}
-                </p>
-              )}
-            </div>
-          )}
-
-          {viewMode === "PROCESSING" && (
-            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-start gap-2">
-              <Clock className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
-              <span>
-                {transaction.status === "PENDING_AUTHORIZATION"
-                  ? t("detailContent.messages.pendingAuthorization")
-                  : transaction.status === "HELD"
-                    ? t("detailContent.messages.onHold")
-                    : t("detailContent.messages.processing")}
-              </span>
-            </div>
-          )}
 
           {isInternalTransfer && (
             <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">

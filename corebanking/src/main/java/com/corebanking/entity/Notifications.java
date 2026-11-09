@@ -10,6 +10,7 @@ import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
 
 @Entity
@@ -74,12 +75,13 @@ public class Notifications {
 
     @PrePersist
     protected void onCreate() {
-        if (createdAt == null) createdAt = LocalDateTime.now();
-        if (updatedAt == null) updatedAt = LocalDateTime.now();
+        ZoneId yangon = ZoneId.of("Asia/Yangon");
+        if (createdAt == null) createdAt = LocalDateTime.now(yangon);
+        if (updatedAt == null) updatedAt = LocalDateTime.now(yangon);
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now(ZoneId.of("Asia/Yangon"));
     }
 }

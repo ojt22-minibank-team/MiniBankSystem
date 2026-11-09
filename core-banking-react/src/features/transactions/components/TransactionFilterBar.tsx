@@ -27,13 +27,8 @@ interface Props {
 
 const STATUS_OPTIONS = [
   { value: 'ALL', label: 'All Statuses' },
-  { value: 'HELD', label: 'Held (Under Review / Suspicious)' },
-  { value: 'PENDING_AUTHORIZATION', label: 'Pending Authorization' },
   { value: 'COMPLETED', label: 'Completed' },
-  { value: 'REJECTED', label: 'Rejected' },
   { value: 'FAILED', label: 'Failed' },
-  { value: 'CANCELLED', label: 'Cancelled' },
-  { value: 'REVERSED', label: 'Reversed' },
 ];
 
 const TYPE_OPTIONS = [
