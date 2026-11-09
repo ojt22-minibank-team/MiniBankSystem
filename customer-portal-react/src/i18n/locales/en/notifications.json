@@ -13,20 +13,17 @@
   "emptyDescription": "We will notify you when transfers or transactions occur.",
   "showingLatest": "Showing latest 30 notifications",
   "encryptedAndLogged": "Encrypted & Logged",
-
   "justNow": "Just now",
   "minutesAgo": "{{count}}m ago",
   "hoursAgo": "{{count}}h ago",
   "yesterday": "Yesterday",
   "daysAgo": "{{count}}d ago",
-
   "transferSuccessful": "Transfer Successful",
   "moneyReceived": "Money Received",
   "depositSuccessful": "Deposit Successful",
   "withdrawalSuccessful": "Withdrawal Successful",
   "paymentSuccessful": "Payment Successful",
   "transactionFailed": "Transaction Failed",
-
   "to": "To:",
   "from": "From:",
   "creditedTo": "Credited to:",
@@ -34,7 +31,6 @@
   "myAccount": "My Account",
   "bankCounter": "Bank Counter",
   "failedBadge": "Failed",
-
   "transferSentMsg": "You have successfully transferred {{amount}} {{currency}}.",
   "transferSentGeneric": "You have successfully transferred funds.",
   "fundsReceivedMsg": "You have successfully received {{amount}} {{currency}}.",
@@ -44,5 +40,6 @@
   "depositGeneric": "Your cash deposit was successful.",
   "withdrawalMsgWithAcc": "Your cash withdrawal of {{amount}} {{currency}} from account {{account}} was successful.",
   "withdrawalMsg": "Your cash withdrawal of {{amount}} {{currency}} was successful.",
-  "withdrawalGeneric": "Your cash withdrawal was successful."
+  "withdrawalGeneric": "Your cash withdrawal was successful.",
+  "paymentReceived": "Payment Received"
 }

@@ -171,6 +171,7 @@ export const MerchantPaymentAuthorize: React.FC = () => {
       });
       clearPendingPaymentRedirect();
       setReceipt(receiptData);
+      window.dispatchEvent(new Event('new-notification-event'));
     } catch (err) {
       if (axios.isAxiosError(err)) {
         setErrorMessage(err.response?.data?.message || t('paymentFailed'));

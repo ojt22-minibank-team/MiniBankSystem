@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle2, LayoutDashboard, ShieldCheck, Printer, ReceiptText } from 'lucide-react';
 import { EkarajCrown } from '../../../components/common/EkarajLogo';
+import { parseSafeDate } from '../../../utils/formatDate';
 import type { PaymentReceipt as ReceiptType, PaymentDetails } from '../types/merchantPayment';
 
 interface Props {
@@ -73,7 +74,7 @@ export const PaymentReceipt: React.FC<Props> = ({ receipt, details, selectedAcco
           <div className="flex justify-between items-center pt-0.5">
             <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">{t('dateTime')}</span>
             <span className="text-xs text-slate-800 dark:text-slate-200">
-              {new Date(receipt.timestamp).toLocaleString('en-GB', { 
+              {parseSafeDate(receipt.timestamp).toLocaleString('en-GB', { 
                 day: '2-digit', 
                 month: 'short', 
                 year: 'numeric', 

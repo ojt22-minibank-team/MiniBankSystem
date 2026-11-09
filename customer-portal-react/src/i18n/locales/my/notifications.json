@@ -13,20 +13,17 @@
   "emptyDescription": "ငွေလွှဲခြင်း သို့မဟုတ် ငွေပေးငွေယူများ ရှိလာပါက အသိပေးပါမည်။",
   "showingLatest": "နောက်ဆုံး အသိပေးချက် ၃၀ ကို ပြသထားပါသည်",
   "encryptedAndLogged": "လုံခြုံစွာ သိမ်းဆည်းထားပါသည်",
-
   "justNow": "ယခုလေးတင်",
   "minutesAgo": "{{count}} မိနစ် အလိုက",
   "hoursAgo": "{{count}} နာရီ အလိုက",
   "yesterday": "မနေ့က",
   "daysAgo": "{{count}} ရက် အလိုက",
-
   "transferSuccessful": "ငွေလွှဲမှု အောင်မြင်သည်",
   "moneyReceived": "ငွေလက်ခံရရှိသည်",
   "depositSuccessful": "ငွေသွင်းမှု အောင်မြင်သည်",
   "withdrawalSuccessful": "ငွေထုတ်မှု အောင်မြင်သည်",
   "paymentSuccessful": "ငွေပေးချေမှု အောင်မြင်သည်",
   "transactionFailed": "ဆောင်ရွက်မှု မအောင်မြင်ပါ",
-
   "to": "ငွေလက်ခံသူ -",
   "from": "ငွေလွှဲသူ -",
   "creditedTo": "ငွေဝင်ရောက်သည့် အကောင့် -",
@@ -34,7 +31,6 @@
   "myAccount": "မိမိ အကောင့်",
   "bankCounter": "ဘဏ်ကောင်တာ",
   "failedBadge": "မအောင်မြင်ပါ",
-
   "transferSentMsg": "{{amount}} {{currency}} ကို အောင်မြင်စွာ လွှဲပြောင်းပေးပို့ပြီးပါပြီ။",
   "transferSentGeneric": "ငွေလွှဲပြောင်းမှု အောင်မြင်ပါသည်။",
   "fundsReceivedMsg": "{{amount}} {{currency}} ကို အောင်မြင်စွာ လက်ခံရရှိပြီးပါပြီ။",
@@ -44,5 +40,6 @@
   "depositGeneric": "ငွေသားသွင်းယူမှု အောင်မြင်ပါသည်။",
   "withdrawalMsgWithAcc": "အကောင့် {{account}} မှ ငွေသား {{amount}} {{currency}} ထုတ်ယူမှု အောင်မြင်ပါသည်။",
   "withdrawalMsg": "ငွေသား {{amount}} {{currency}} ထုတ်ယူမှု အောင်မြင်ပါသည်။",
-  "withdrawalGeneric": "ငွေသားထုတ်ယူမှု အောင်မြင်ပါသည်။"
+  "withdrawalGeneric": "ငွေသားထုတ်ယူမှု အောင်မြင်ပါသည်။",
+  "paymentReceived": "ငွေပေးချေမှု လက်ခံရရှိသည်"
 }

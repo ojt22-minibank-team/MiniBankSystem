@@ -98,14 +98,16 @@ export const resolveNotificationMeta = (item: NotificationMetaInput): Notificati
     displayTitle = i18n.t("depositSuccessful", { ns: "notifications", defaultValue: "Deposit Successful" });
   } else if (isWithdrawal) {
     displayTitle = i18n.t("withdrawalSuccessful", { ns: "notifications", defaultValue: "Withdrawal Successful" });
+  } else if (isFailed) {
+    displayTitle = i18n.t("transactionFailed", { ns: "notifications", defaultValue: "Transaction Failed" });
+  } else if (isPayment) {
+    displayTitle = isItemReceived
+      ? i18n.t("paymentReceived", { ns: "notifications", defaultValue: "Payment Received" })
+      : i18n.t("paymentSuccessful", { ns: "notifications", defaultValue: "Payment Successful" });
   } else if (isItemReceived) {
     displayTitle = i18n.t("moneyReceived", { ns: "notifications", defaultValue: "Money Received" });
   } else if (item.transferDirection === "SENT" || itemTitleLower.includes("sent")) {
     displayTitle = i18n.t("transferSuccessful", { ns: "notifications", defaultValue: "Transfer Successful" });
-  } else if (isFailed) {
-    displayTitle = i18n.t("transactionFailed", { ns: "notifications", defaultValue: "Transaction Failed" });
-  } else if (isPayment) {
-    displayTitle = i18n.t("paymentSuccessful", { ns: "notifications", defaultValue: "Payment Successful" });
   }
 
   // Account resolution for deposit/withdrawal
