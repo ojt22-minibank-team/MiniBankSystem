@@ -68,7 +68,7 @@ export default function TransactionDetailPage() {
 
   useEffect(() => {
     // If validation failed or we already have the initial transaction on first mount, skip network fetch
-    if (validationError || (initialTransaction && retryCount === 0)) {
+    if (validationError) {
       return;
     }
 
@@ -76,7 +76,9 @@ export default function TransactionDetailPage() {
 
     const fetchDetail = async () => {
       try {
-        setLoading(true);
+        if (!initialTransaction) {
+          setLoading(true);
+        }
         setApiError(null);
         const data = await getTransactionDetail(
           transactionRef!.trim(),

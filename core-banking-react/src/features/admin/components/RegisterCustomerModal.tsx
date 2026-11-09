@@ -345,6 +345,23 @@ export default function RegisterCustomerModal({
       onClose={handleClose}
       title={createdCustomer ? 'Customer Registered Successfully' : 'Register New Customer'}
       size="xl"
+      footer={
+        !createdCustomer ? (
+          <div className="flex w-full items-center justify-between">
+            <span className="text-xs text-slate-400 font-medium hidden sm:inline">
+              Fields marked with <span className="text-red-500 font-bold">*</span> are mandatory
+            </span>
+            <div className="flex items-center gap-3 ml-auto">
+              <Button type="button" variant="ghost" onClick={handleClose} disabled={isLoading}>
+                Cancel
+              </Button>
+              <Button type="submit" form="register-customer-form" variant="primary" isLoading={isLoading}>
+                Register Customer
+              </Button>
+            </div>
+          </div>
+        ) : undefined
+      }
     >
       {createdCustomer ? (
         <div className="space-y-6">
@@ -428,7 +445,7 @@ export default function RegisterCustomerModal({
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+        <form id="register-customer-form" onSubmit={handleSubmit} className="space-y-5" noValidate>
           {apiError && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {apiError}
@@ -445,31 +462,31 @@ export default function RegisterCustomerModal({
                 type="button"
                 onClick={() => handleSwitchCategory('PERSONAL')}
                 className={[
-                  'flex items-center justify-center gap-2 rounded-xl border p-3.5 text-sm font-semibold transition-all cursor-pointer',
+                  'flex items-center justify-center gap-2 rounded-xl border p-3 text-xs sm:text-sm font-semibold transition-all cursor-pointer text-center',
                   customerType === 'PERSONAL'
-                    ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm'
+                    ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-600/20'
                     : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
                 ].join(' ')}
               >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
-                Personal (Individual)
+                <span className="truncate">Personal (Individual)</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleSwitchCategory('COMPANY')}
                 className={[
-                  'flex items-center justify-center gap-2 rounded-xl border p-3.5 text-sm font-semibold transition-all cursor-pointer',
+                  'flex items-center justify-center gap-2 rounded-xl border p-3 text-xs sm:text-sm font-semibold transition-all cursor-pointer text-center',
                   customerType === 'COMPANY'
-                    ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm'
+                    ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-600/20'
                     : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
                 ].join(' ')}
               >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
-                Company (Corporate)
+                <span className="truncate">Company (Corporate)</span>
               </button>
             </div>
           </div>
@@ -502,75 +519,108 @@ export default function RegisterCustomerModal({
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
                   NRC Number (National Registration Card) <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-12 gap-2">
+                <div className="grid grid-cols-12 gap-2.5">
                   {/* 1. State Code dropdown */}
-                  <div className="col-span-3 sm:col-span-3">
-                    <select
-                      value={nrcState}
-                      onChange={(e) => handleNrcStateChange(e.target.value)}
-                      className={`w-full rounded-xl border px-2.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all cursor-pointer ${
-                        errors.nrc
-                          ? 'border-red-500 focus:border-red-500 bg-red-50/20'
-                          : 'border-slate-200 hover:border-slate-300 focus:border-sky-500'
-                      }`}
-                      title="State/Region Code"
-                    >
-                      {NRC_STATES.map((state) => (
-                        <option key={state.code} value={state.code}>
-                          {state.label} ({state.name})
-                        </option>
-                      ))}
-                    </select>
+                  <div className="col-span-6 sm:col-span-3">
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 mb-0.5 sm:hidden">
+                      State / Division
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={nrcState}
+                        onChange={(e) => handleNrcStateChange(e.target.value)}
+                        className={`w-full appearance-none rounded-xl border pl-3 pr-8 py-2.5 text-xs sm:text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all cursor-pointer truncate ${
+                          errors.nrc
+                            ? 'border-red-500 focus:border-red-500 bg-red-50/20'
+                            : 'border-slate-200 hover:border-slate-300 focus:border-sky-500'
+                        }`}
+                        title="State/Region Code"
+                      >
+                        {NRC_STATES.map((state) => (
+                          <option key={state.code} value={state.code}>
+                            {state.label} {state.name}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400">
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
 
                   {/* 2. Dynamic Township dropdown */}
-                  <div className="col-span-4 sm:col-span-3">
-                    <select
-                      value={nrcTownship}
-                      onChange={(e) => {
-                        setNrcTownship(e.target.value);
-                        clearError('nrc');
-                      }}
-                      className={`w-full rounded-xl border px-2.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all cursor-pointer ${
-                        errors.nrc
-                          ? 'border-red-500 focus:border-red-500 bg-red-50/20'
-                          : 'border-slate-200 hover:border-slate-300 focus:border-sky-500'
-                      }`}
-                      title="Township Code"
-                    >
-                      {(NRC_TOWNSHIPS[nrcState] || []).map((twp) => (
-                        <option key={twp} value={twp}>
-                          {twp}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="col-span-6 sm:col-span-4">
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 mb-0.5 sm:hidden">
+                      Township
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={nrcTownship}
+                        onChange={(e) => {
+                          setNrcTownship(e.target.value);
+                          clearError('nrc');
+                        }}
+                        className={`w-full appearance-none rounded-xl border pl-3 pr-8 py-2.5 text-xs sm:text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all cursor-pointer truncate ${
+                          errors.nrc
+                            ? 'border-red-500 focus:border-red-500 bg-red-50/20'
+                            : 'border-slate-200 hover:border-slate-300 focus:border-sky-500'
+                        }`}
+                        title="Township Code"
+                      >
+                        {(NRC_TOWNSHIPS[nrcState] || []).map((twp) => (
+                          <option key={twp} value={twp}>
+                            {twp}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400">
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
 
                   {/* 3. Citizen Type dropdown */}
-                  <div className="col-span-2 sm:col-span-2">
-                    <select
-                      value={nrcCitizenType}
-                      onChange={(e) => {
-                        setNrcCitizenType(e.target.value);
-                        clearError('nrc');
-                      }}
-                      className={`w-full rounded-xl border px-2.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all cursor-pointer ${
-                        errors.nrc
-                          ? 'border-red-500 focus:border-red-500 bg-red-50/20'
-                          : 'border-slate-200 hover:border-slate-300 focus:border-sky-500'
-                      }`}
-                      title="Citizen Type"
-                    >
-                      {NRC_CITIZEN_TYPES.map((type) => (
-                        <option key={type.code} value={type.code}>
-                          {type.code}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="col-span-4 sm:col-span-2">
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 mb-0.5 sm:hidden">
+                      Type
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={nrcCitizenType}
+                        onChange={(e) => {
+                          setNrcCitizenType(e.target.value);
+                          clearError('nrc');
+                        }}
+                        className={`w-full appearance-none rounded-xl border pl-2.5 pr-7 py-2.5 text-xs sm:text-sm font-medium text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all cursor-pointer text-center sm:text-left ${
+                          errors.nrc
+                            ? 'border-red-500 focus:border-red-500 bg-red-50/20'
+                            : 'border-slate-200 hover:border-slate-300 focus:border-sky-500'
+                        }`}
+                        title="Citizen Type"
+                      >
+                        {NRC_CITIZEN_TYPES.map((type) => (
+                          <option key={type.code} value={type.code}>
+                            {type.code}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-slate-400">
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
 
                   {/* 4. 6-digit numeric input field */}
-                  <div className="col-span-3 sm:col-span-4">
+                  <div className="col-span-8 sm:col-span-3">
+                    <label className="block text-[10px] uppercase font-bold text-slate-400 mb-0.5 sm:hidden">
+                      6-Digit Number
+                    </label>
                     <input
                       type="text"
                       inputMode="numeric"
@@ -582,7 +632,7 @@ export default function RegisterCustomerModal({
                         setNrcNumber(digits);
                         clearError('nrc');
                       }}
-                      className={`w-full rounded-xl border px-3 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all font-mono tracking-wider ${
+                      className={`w-full rounded-xl border px-3 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-sky-100 transition-all font-mono tracking-widest ${
                         errors.nrc
                           ? 'border-red-500 focus:border-red-500 bg-red-50/20'
                           : 'border-slate-200 hover:border-slate-300 focus:border-sky-500'
@@ -592,14 +642,14 @@ export default function RegisterCustomerModal({
                 </div>
 
                 {errors.nrc ? (
-                  <p role="alert" className="mt-1 text-xs text-red-500 font-medium">
+                  <p role="alert" className="mt-1.5 text-xs text-red-500 font-medium">
                     {errors.nrc}
                   </p>
                 ) : (
-                  <div className="mt-1 flex items-center justify-between text-[11px] text-gray-500">
-                    <span>Standard format: <code>State/Township(Type)Number</code></span>
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 border border-slate-200/80 px-3 py-1.5 text-[11px] text-slate-500">
+                    <span>Format: <code className="font-semibold text-slate-700">State/Township(Type)Number</code></span>
                     {nrcNumber && (
-                      <span className="font-semibold text-blue-700">
+                      <span className="font-bold text-sky-700 font-mono">
                         NRC: {nrcState}/{nrcTownship}{nrcCitizenType}{nrcNumber}
                       </span>
                     )}
@@ -610,15 +660,22 @@ export default function RegisterCustomerModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Gender</label>
-                  <select
-                    value={gender}
-                    onChange={(e) => setGender(e.target.value as 'MALE' | 'FEMALE' | 'OTHER')}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs sm:text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-100 bg-white transition-all cursor-pointer"
-                  >
-                    <option value="MALE">Male</option>
-                    <option value="FEMALE">Female</option>
-                    <option value="OTHER">Other</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={gender}
+                      onChange={(e) => setGender(e.target.value as 'MALE' | 'FEMALE' | 'OTHER')}
+                      className="w-full appearance-none rounded-xl border border-slate-200 pl-3.5 pr-8 py-2.5 text-xs sm:text-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-100 bg-white transition-all cursor-pointer"
+                    >
+                      <option value="MALE">Male</option>
+                      <option value="FEMALE">Female</option>
+                      <option value="OTHER">Other</option>
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Date of Birth: Mandatory for PERSONAL */}
@@ -758,19 +815,21 @@ export default function RegisterCustomerModal({
                     {errors.email}
                   </p>
                 ) : (
-                  <p className="mt-1 text-[11px] text-gray-500">
+                  <p className="mt-1 text-[11px] text-gray-400 font-medium">
                     Must be an active, reachable @gmail.com address.
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Phone Number <span className="text-red-500">*</span>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-gray-700">
+                    Phone Number <span className="text-red-500">*</span>
+                  </label>
                   {customerType === 'PERSONAL' && (
-                    <span className="text-[11px] text-gray-500 font-normal ml-1">(11 digits starting with 09)</span>
+                    <span className="text-[11px] text-gray-400 font-medium">09 + 9 digits</span>
                   )}
-                </label>
+                </div>
                 <Input
                   placeholder="09123456789"
                   value={phone}
@@ -801,16 +860,6 @@ export default function RegisterCustomerModal({
                 </p>
               )}
             </div>
-          </div>
-
-          {/* Modal Footer */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-            <Button type="button" variant="ghost" onClick={handleClose} disabled={isLoading}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary" isLoading={isLoading}>
-              Register Customer
-            </Button>
           </div>
         </form>
       )}
