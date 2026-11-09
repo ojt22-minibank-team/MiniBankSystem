@@ -1,0 +1,101 @@
+package com.corebanking.dto;
+
+import java.time.LocalDate;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.Pattern;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+/**
+ * Dedicated registration request DTO for PERSONAL bank accounts.
+ * Enforces mandatory Date of Birth (@NotNull, @Past) and individual customer attributes.
+ */
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class PersonalAccountRegisterRequest {
+
+    private String fullName;
+    private String firstName;
+    private String lastName;
+
+    @NotBlank(message = "Phone number is required")
+    @Pattern(
+        regexp = "^09\\d{9}$",
+        message = "Phone number must be exactly 11 digits starting with 09"
+    )
+    private String phone;
+
+    @NotBlank(message = "Email is required")
+    @Pattern(
+        regexp = "^[A-Za-z0-9._%+-]+@gmail\\.com$",
+        message = "Email must be a valid @gmail.com address"
+    )
+    private String email;
+
+    @NotBlank(message = "Address is required")
+    private String address;
+
+    private String gender; // MALE, FEMALE, OTHER
+
+    @NotNull(message = "Date of birth is required")
+    @Past(message = "Date of birth must be a past date")
+    private LocalDate dateOfBirth;
+
+    @Pattern(
+        regexp = "^(1[0-4]|[1-9])/[A-Z0-9a-z]+\\([NPE]\\)[0-9]{6}$",
+        message = "Invalid Myanmar NRC format (e.g., 12/DAGANA(N)123456)"
+    )
+    private String nrc;
+
+    private String occupation;
+
+    public String getFirstName() {
+        if (firstName != null && !firstName.isBlank()) {
+            return firstName;
+        }
+        if (fullName != null && !fullName.isBlank()) {
+            String[] parts = fullName.trim().split("\\s+", 2);
+            return parts[0];
+        }
+        return firstName;
+    }
+
+    public String getLastName() {
+        if (lastName != null && !lastName.isBlank()) {
+            return lastName;
+        }
+        if (fullName != null && !fullName.isBlank()) {
+            String[] parts = fullName.trim().split("\\s+", 2);
+            return parts.length > 1 ? parts[1] : "";
+        }
+        return lastName;
+    }
+
+    /**
+     * Converts to internal CustomerDTO for service processing.
+     */
+    public CustomerDTO toCustomerDTO() {
+        return CustomerDTO.builder()
+                .customerType("PERSONAL")
+                .fullName(this.fullName)
+                .firstName(getFirstName())
+                .lastName(getLastName())
+                .gender(this.gender)
+                .dateOfBirth(this.dateOfBirth)
+                .nrc(this.nrc)
+                .phone(this.phone)
+                .email(this.email)
+                .address(this.address)
+                .occupation(this.occupation)
+                .build();
+    }
+}

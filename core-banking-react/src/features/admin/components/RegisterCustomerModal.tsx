@@ -331,6 +331,10 @@ export default function RegisterCustomerModal({
 
   const handleSwitchCategory = (type: 'PERSONAL' | 'COMPANY') => {
     setCustomerType(type);
+    if (type === 'COMPANY') {
+      setDateOfBirth('');
+      clearError('dateOfBirth');
+    }
     setErrors({});
     setApiError(null);
   };

@@ -1,8 +1,10 @@
 package com.corebanking.service;
 
+import com.corebanking.dto.CompanyAccountRegisterRequest;
 import com.corebanking.dto.CustomerDTO;
 import com.corebanking.dto.CustomerResponseDTO;
 import com.corebanking.dto.CustomerUpdateDTO;
+import com.corebanking.dto.PersonalAccountRegisterRequest;
 import com.corebanking.entity.AuditLogs;
 import com.corebanking.entity.PersonalInfo;
 import com.corebanking.entity.enums.StaffUserStatus;
@@ -184,6 +186,104 @@ class CustomerServiceTest {
 		verify(customerCredentialsRepository, times(1)).saveAndFlush(any(CustomerCredentials.class));
 		verify(cusEmailService, times(1)).sendCustomerRegistrationCredentials(eq("info@acetech.com"),
 				eq("Ace Tech Co., Ltd"), anyString(), anyString());
+	}
+
+	@Test
+	@DisplayName("testRegisterCompanyCustomer_DateOfBirthOmitted_IgnoredAndNeverMapped: dateOfBirth is not mapped or required for COMPANY")
+	void testRegisterCompanyCustomer_DateOfBirthOmitted_IgnoredAndNeverMapped() {
+		// Even if dateOfBirth was set on a legacy DTO, COMPANY registration ignores it
+		CustomerDTO companyDtoWithDob = CustomerDTO.builder().companyName("Future Tech Co., Ltd")
+				.registrationNumber("REG-2026-7788").taxId("TAX-778899").businessType("FINTECH")
+				.email("info@futuretech.com").phone("09123456789").customerType("COMPANY")
+				.address("Tower B, Yangon")
+				.dateOfBirth(LocalDate.of(1990, 1, 1)) // Should be ignored
+				.build();
+
+		when(customerRepository.existsByPhoneAndCustomerType("09123456789", CustomerType.COMPANY)).thenReturn(false);
+		when(customerRepository.existsByEmailAndCustomerType("info@futuretech.com", CustomerType.COMPANY)).thenReturn(false);
+		when(companyInfoRepository.existsByRegistrationNumber("REG-2026-7788")).thenReturn(false);
+		when(companyInfoRepository.existsByTaxId("TAX-778899")).thenReturn(false);
+		when(customerRepository.existsByCustomerCode(anyString())).thenReturn(false);
+
+		when(customerRepository.saveAndFlush(any(Customers.class))).thenAnswer(invocation -> {
+			Customers saved = invocation.getArgument(0);
+			// Assert that personalInfo is null and dateOfBirth was never mapped
+			assertNull(saved.getPersonalInfo(), "Company accounts must not have PersonalInfo entity");
+			assertNotNull(saved.getCompanyInfo(), "Company accounts must have CompanyInfo entity");
+			return saved;
+		});
+		when(passwordEncoder.encode(anyString())).thenReturn("hashed_secure_password");
+		when(customerCredentialsRepository.saveAndFlush(any(CustomerCredentials.class)))
+				.thenAnswer(invocation -> invocation.getArgument(0));
+
+		CustomerResponseDTO response = customerService.createCustomer(companyDtoWithDob);
+
+		assertNotNull(response);
+		assertTrue(response.getCustomerCode().startsWith("COMP-"));
+		assertEquals("COMPANY", response.getCustomerType());
+	}
+
+	@Test
+	@DisplayName("testRegisterCompanyCustomer_DedicatedDto_Success: Dedicated CompanyAccountRegisterRequest succeeds without dateOfBirth")
+	void testRegisterCompanyCustomer_DedicatedDto_Success() {
+		CompanyAccountRegisterRequest request = CompanyAccountRegisterRequest.builder()
+				.companyName("Global Logistics Co., Ltd")
+				.registrationNumber("REG-2026-4455")
+				.taxId("TAX-445566")
+				.businessType("LOGISTICS")
+				.email("ops@globallogistics.com")
+				.phone("09123456789")
+				.address("Terminal 1, Yangon Port")
+				.build();
+
+		when(customerRepository.existsByPhoneAndCustomerType("09123456789", CustomerType.COMPANY)).thenReturn(false);
+		when(customerRepository.existsByEmailAndCustomerType("ops@globallogistics.com", CustomerType.COMPANY)).thenReturn(false);
+		when(companyInfoRepository.existsByRegistrationNumber("REG-2026-4455")).thenReturn(false);
+		when(companyInfoRepository.existsByTaxId("TAX-445566")).thenReturn(false);
+		when(customerRepository.existsByCustomerCode(anyString())).thenReturn(false);
+
+		when(customerRepository.saveAndFlush(any(Customers.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		when(passwordEncoder.encode(anyString())).thenReturn("hashed_secure_password");
+		when(customerCredentialsRepository.saveAndFlush(any(CustomerCredentials.class)))
+				.thenAnswer(invocation -> invocation.getArgument(0));
+
+		CustomerResponseDTO response = customerService.createCompanyCustomer(request);
+
+		assertNotNull(response);
+		assertTrue(response.getCustomerCode().startsWith("COMP-"));
+		assertEquals("Global Logistics Co., Ltd", response.getFullName());
+		assertEquals("COMPANY", response.getCustomerType());
+	}
+
+	@Test
+	@DisplayName("testRegisterPersonalCustomer_DedicatedDto_Success: Dedicated PersonalAccountRegisterRequest succeeds with dateOfBirth")
+	void testRegisterPersonalCustomer_DedicatedDto_Success() {
+		PersonalAccountRegisterRequest request = PersonalAccountRegisterRequest.builder()
+				.fullName("Ko Min Thu")
+				.nrc("12/DAGANA(N)123456")
+				.email("minthu@test.com")
+				.phone("09123456789")
+				.dateOfBirth(LocalDate.of(1994, 7, 10))
+				.address("No. 12, Inya Road, Yangon")
+				.occupation("Software Engineer")
+				.build();
+
+		when(customerRepository.existsByPhoneAndCustomerType("09123456789", CustomerType.PERSONAL)).thenReturn(false);
+		when(customerRepository.existsByEmailAndCustomerType("minthu@test.com", CustomerType.PERSONAL)).thenReturn(false);
+		when(personalInfoRepository.existsByNrc("12/DAGANA(N)123456")).thenReturn(false);
+		when(customerRepository.existsByCustomerCode(anyString())).thenReturn(false);
+
+		when(customerRepository.saveAndFlush(any(Customers.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		when(passwordEncoder.encode(anyString())).thenReturn("hashed_secure_password");
+		when(customerCredentialsRepository.saveAndFlush(any(CustomerCredentials.class)))
+				.thenAnswer(invocation -> invocation.getArgument(0));
+
+		CustomerResponseDTO response = customerService.createPersonalCustomer(request);
+
+		assertNotNull(response);
+		assertTrue(response.getCustomerCode().startsWith("CUST-"));
+		assertEquals("Ko Min Thu", response.getFullName());
+		assertEquals("PERSONAL", response.getCustomerType());
 	}
 
 	

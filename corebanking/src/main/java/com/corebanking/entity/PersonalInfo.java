@@ -36,7 +36,7 @@ public class PersonalInfo {
     @Column(name = "last_name", length = 100, nullable = false)
     private String lastName;
 
-    @Column(name = "date_of_birth")
+    @Column(name = "date_of_birth", nullable = true)
     private LocalDate dateOfBirth;
 
     @Enumerated(EnumType.STRING)

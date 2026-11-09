@@ -1,7 +1,9 @@
 package com.corebanking.controller;
 
+import com.corebanking.dto.CompanyAccountRegisterRequest;
 import com.corebanking.dto.CustomerDTO;
 import com.corebanking.dto.CustomerResponseDTO;
+import com.corebanking.dto.PersonalAccountRegisterRequest;
 import com.corebanking.exception.GlobalExceptionHandler;
 import com.corebanking.service.CustomerService;
 import com.corebanking.repository.StaffUsersRepository;
@@ -90,10 +92,48 @@ class CustomerControllerTest {
 
     
     @Test
-    @DisplayName("testCreateCompanyCustomer_ValidPayload_Returns201: POST /api/customers/company returns 201")
+    @DisplayName("testCreateCompanyCustomer_ValidPayload_Returns201: POST /api/customers/company without dateOfBirth returns 201")
     void testCreateCompanyCustomer_ValidPayload_Returns201() throws Exception {
         CustomerResponseDTO responseDto = CustomerResponseDTO.builder()
                 .customerCode("COMP-20261102-5001")
+                .customerType("COMPANY")
+                .fullName("Ace Tech Co., Ltd")
+                .email("info.acetech@gmail.com")
+                .phone("09123456789")
+                .status("ACTIVE")
+                .build();
+
+        when(customerService.createCustomer(any(CustomerDTO.class))).thenReturn(responseDto);
+
+        // dateOfBirth must NOT be required for COMPANY accounts and is completely removed
+        String jsonPayload = """
+                {
+                    "companyName": "Ace Tech Co., Ltd",
+                    "registrationNumber": "REG-2026-9988",
+                    "taxId": "TAX-998877",
+                    "businessType": "FINTECH",
+                    "email": "info.acetech@gmail.com",
+                    "phone": "09123456789",
+                    "address": "Tower A, Level 15, Hledan Centre, Yangon",
+                    "customerType": "COMPANY"
+                }
+                """;
+
+        mockMvc.perform(post("/api/customers/company")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.customerCode").value("COMP-20261102-5001"))
+                .andExpect(jsonPath("$.fullName").value("Ace Tech Co., Ltd"))
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.customerType").value("COMPANY"));
+    }
+
+    @Test
+    @DisplayName("testCreateCompanyCustomer_UnifiedEndpointWithoutDateOfBirth_Returns201: POST /api/customers without dateOfBirth returns 201")
+    void testCreateCompanyCustomer_UnifiedEndpointWithoutDateOfBirth_Returns201() throws Exception {
+        CustomerResponseDTO responseDto = CustomerResponseDTO.builder()
+                .customerCode("COMP-20261102-5002")
                 .customerType("COMPANY")
                 .fullName("Ace Tech Co., Ltd")
                 .email("info.acetech@gmail.com")
@@ -111,20 +151,91 @@ class CustomerControllerTest {
                     "businessType": "FINTECH",
                     "email": "info.acetech@gmail.com",
                     "phone": "09123456789",
-                    "dateOfBirth": "1995-05-20",
                     "address": "Tower A, Level 15, Hledan Centre, Yangon",
                     "customerType": "COMPANY"
                 }
                 """;
 
-        mockMvc.perform(post("/api/customers/company")
+        mockMvc.perform(post("/api/customers")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonPayload))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.customerCode").value("COMP-20261102-5001"))
+                .andExpect(jsonPath("$.customerCode").value("COMP-20261102-5002"))
                 .andExpect(jsonPath("$.fullName").value("Ace Tech Co., Ltd"))
                 .andExpect(jsonPath("$.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.customerType").value("COMPANY"));
+    }
+
+    @Test
+    @DisplayName("testRegisterCompanyCustomer_DedicatedDto_Returns201: POST /api/customers/register/company succeeds without dateOfBirth")
+    void testRegisterCompanyCustomer_DedicatedDto_Returns201() throws Exception {
+        CustomerResponseDTO responseDto = CustomerResponseDTO.builder()
+                .customerCode("COMP-20261102-5003")
+                .customerType("COMPANY")
+                .fullName("Future Systems Co., Ltd")
+                .email("futuresystems@gmail.com")
+                .phone("09123456789")
+                .status("ACTIVE")
+                .build();
+
+        when(customerService.createCompanyCustomer(any(CompanyAccountRegisterRequest.class))).thenReturn(responseDto);
+
+        String jsonPayload = """
+                {
+                    "companyName": "Future Systems Co., Ltd",
+                    "registrationNumber": "REG-2026-1122",
+                    "taxId": "TAX-112233",
+                    "businessType": "CLOUD_SOLUTIONS",
+                    "email": "futuresystems@gmail.com",
+                    "phone": "09123456789",
+                    "address": "Level 10, Junction City, Yangon"
+                }
+                """;
+
+        mockMvc.perform(post("/api/customers/register/company")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.customerCode").value("COMP-20261102-5003"))
+                .andExpect(jsonPath("$.fullName").value("Future Systems Co., Ltd"))
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.customerType").value("COMPANY"));
+    }
+
+    @Test
+    @DisplayName("testRegisterPersonalCustomer_DedicatedDto_Returns201: POST /api/customers/register/personal succeeds with mandatory dateOfBirth")
+    void testRegisterPersonalCustomer_DedicatedDto_Returns201() throws Exception {
+        CustomerResponseDTO responseDto = CustomerResponseDTO.builder()
+                .customerCode("CUST-20261102-1002")
+                .customerType("PERSONAL")
+                .fullName("U Aung Kyaw")
+                .email("aungkyaw@gmail.com")
+                .phone("09123456789")
+                .status("ACTIVE")
+                .build();
+
+        when(customerService.createPersonalCustomer(any(PersonalAccountRegisterRequest.class))).thenReturn(responseDto);
+
+        String jsonPayload = """
+                {
+                    "fullName": "U Aung Kyaw",
+                    "nrc": "12/DAGANA(N)123456",
+                    "email": "aungkyaw@gmail.com",
+                    "phone": "09123456789",
+                    "dateOfBirth": "1992-08-15",
+                    "address": "No. 45, Pyay Road, Yangon",
+                    "occupation": "Civil Engineer"
+                }
+                """;
+
+        mockMvc.perform(post("/api/customers/register/personal")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.customerCode").value("CUST-20261102-1002"))
+                .andExpect(jsonPath("$.fullName").value("U Aung Kyaw"))
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.customerType").value("PERSONAL"));
     }
 
    
