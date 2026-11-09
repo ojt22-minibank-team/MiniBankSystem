@@ -4,7 +4,6 @@ import {
   Activity,
   CheckCircle2,
   XCircle,
-  AlertTriangle,
 } from 'lucide-react';
 
 interface Props {
@@ -16,8 +15,8 @@ interface Props {
 export default React.memo(function TransactionStatsCards({ stats, isLoading, onFilterStatus }: Props) {
   if (isLoading || !stats) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
-        {[...Array(4)].map((_, i) => (
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-6">
+        {[...Array(3)].map((_, i) => (
           <div
             key={i}
             className="p-4 rounded-2xl liquid-glass animate-pulse border border-slate-200/50 bg-white/40 h-24 flex flex-col justify-between"
@@ -50,16 +49,7 @@ export default React.memo(function TransactionStatsCards({ stats, isLoading, onF
       status: 'COMPLETED',
     },
     {
-      label: 'Held & In Review',
-      value: stats.heldOrPendingCount.toLocaleString(),
-      tooltip: undefined,
-      icon: AlertTriangle,
-      textColor: 'text-amber-700',
-      badgeBg: 'bg-amber-50 text-amber-600 border border-amber-200/60',
-      status: 'HELD',
-    },
-    {
-      label: 'Failed / Rejected',
+      label: 'Failed',
       value: stats.failedCount.toLocaleString(),
       tooltip: undefined,
       icon: XCircle,
@@ -70,7 +60,7 @@ export default React.memo(function TransactionStatsCards({ stats, isLoading, onF
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-6">
       {cards.map((c) => {
         const Icon = c.icon;
         const isClickable = Boolean(onFilterStatus && c.status);

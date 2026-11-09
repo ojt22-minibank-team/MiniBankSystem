@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   XCircle,
-  Clock,
   ShieldCheck,
   CreditCard,
 } from 'lucide-react';
@@ -57,23 +56,7 @@ export default function TransactionDetailModal({
             COMPLETED
           </span>
         );
-      case 'HELD':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-            HELD (UNDER REVIEW)
-          </span>
-        );
-      case 'PENDING_AUTHORIZATION':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
-            <Clock className="w-3.5 h-3.5 text-blue-600" />
-            PENDING AUTHORIZATION
-          </span>
-        );
       case 'FAILED':
-      case 'REJECTED':
-      case 'CANCELLED':
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200">
             <XCircle className="w-3.5 h-3.5 text-rose-600" />
@@ -309,7 +292,7 @@ export default function TransactionDetailModal({
 
             {(transaction.failureCode || transaction.failureMessage) && (
               <div className="p-3.5 rounded-2xl border border-rose-200 bg-rose-50/60 text-xs text-rose-800">
-                <span className="font-bold block mb-1">Failure / Rejection Diagnostic:</span>
+                <span className="font-bold block mb-1">Failure Diagnostic:</span>
                 <div className="space-y-0.5 font-mono text-[11px]">
                   {transaction.failureCode && (
                     <div>
