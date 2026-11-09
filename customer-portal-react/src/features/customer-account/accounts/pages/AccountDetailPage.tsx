@@ -26,6 +26,7 @@ import type {
 import BankCard from "../../dashboard/components/BankCard";
 import { TransferLimitCard } from "../components/TransferLimitCard";
 import { useAppSelector } from "../../../../lib/redux";
+import { copyToClipboard } from "../../../../utils/clipboard";
 
 function formatLabel(value: string): string {
   return value
@@ -270,12 +271,10 @@ export default function AccountDetailPage({
     if (!account) return;
 
     setCopied(false);
-    try {
-      await navigator.clipboard.writeText(account.accountNumber);
+    const success = await copyToClipboard(account.accountNumber);
+    if (success) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch (err) {
-      console.error("Failed to copy account number:", err);
     }
   }
 

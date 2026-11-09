@@ -139,7 +139,7 @@ export default function TotalBalanceCard({
           </div>
 
           <div className="flex flex-wrap items-baseline gap-2 pt-0.5">
-            <span className="font-mono text-base sm:text-lg font-bold text-cyan-200">
+            <span className="font-mono text-lg sm:text-xl font-bold text-cyan-200">
               MMK
             </span>
 

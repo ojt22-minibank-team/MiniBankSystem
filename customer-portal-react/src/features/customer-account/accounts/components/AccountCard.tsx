@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 
 import type { CustomerAccount } from "../types/accountTypes";
 import BankCard from "../../dashboard/components/BankCard";
+import { copyToClipboard } from "../../../../utils/clipboard";
 
 interface AccountCardProps {
   account: CustomerAccount;
@@ -46,15 +47,8 @@ export default function AccountCard({
     e.preventDefault();
     e.stopPropagation();
 
-    try {
-      await navigator.clipboard.writeText(account.accountNumber);
-
-      setCopyStatus("success");
-    } catch (error) {
-      console.error("Failed to copy account number:", error);
-
-      setCopyStatus("error");
-    }
+    const success = await copyToClipboard(account.accountNumber);
+    setCopyStatus(success ? "success" : "error");
 
     setTimeout(() => {
       setCopyStatus(null);

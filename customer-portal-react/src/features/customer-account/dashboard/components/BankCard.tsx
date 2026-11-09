@@ -15,6 +15,7 @@ import {
 } from "../../../../components/common/EkarajLogo";
 
 import { useAppSelector, type RootState } from "../../../../lib/redux";
+import { copyToClipboard } from "../../../../utils/clipboard";
 
 interface BankCardProps {
   account: DashboardAccount;
@@ -267,23 +268,12 @@ export default function BankCard({
     e.preventDefault();
     e.stopPropagation();
 
-    try {
-      await navigator.clipboard.writeText(account.accountNumber);
+    const success = await copyToClipboard(account.accountNumber);
+    setCopyStatus(success ? "success" : "error");
 
-      setCopyStatus("success");
-
-      setTimeout(() => {
-        setCopyStatus(null);
-      }, 2000);
-    } catch (error) {
-      console.error("Failed to copy account number:", error);
-
-      setCopyStatus("error");
-
-      setTimeout(() => {
-        setCopyStatus(null);
-      }, 2000);
-    }
+    setTimeout(() => {
+      setCopyStatus(null);
+    }, 2000);
   };
 
   // Reuse the same AccountStatus component and exact design.
