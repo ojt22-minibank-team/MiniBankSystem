@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -167,7 +168,7 @@ public class AsyncNotificationService {
                             .title(savedSender.getTitle())
                             .message(savedSender.getMessage())
                             .isRead(false)
-                            .createdAt(savedSender.getCreatedAt() != null ? savedSender.getCreatedAt() : LocalDateTime.now())
+                            .createdAt(savedSender.getCreatedAt() != null ? savedSender.getCreatedAt() : LocalDateTime.now(ZoneId.of("Asia/Yangon")))
                             .transactionId(txnManaged.getTransactionId())
                             .transactionRef(txnRef)
                             .amount(amount)
@@ -214,7 +215,7 @@ public class AsyncNotificationService {
                             .title(savedReceiver.getTitle())
                             .message(savedReceiver.getMessage())
                             .isRead(false)
-                            .createdAt(savedReceiver.getCreatedAt() != null ? savedReceiver.getCreatedAt() : LocalDateTime.now())
+                            .createdAt(savedReceiver.getCreatedAt() != null ? savedReceiver.getCreatedAt() : LocalDateTime.now(ZoneId.of("Asia/Yangon")))
                             .transactionId(txnManaged.getTransactionId())
                             .transactionRef(txnRef)
                             .amount(amount)
@@ -268,7 +269,7 @@ public class AsyncNotificationService {
                         .title(saved.getTitle())
                         .message(saved.getMessage())
                         .isRead(false)
-                        .createdAt(saved.getCreatedAt() != null ? saved.getCreatedAt() : LocalDateTime.now())
+                        .createdAt(saved.getCreatedAt() != null ? saved.getCreatedAt() : LocalDateTime.now(ZoneId.of("Asia/Yangon")))
                         .amount(amount)
                         .currency(curr)
                         .build();
@@ -351,7 +352,7 @@ public class AsyncNotificationService {
                             .title(savedPayer.getTitle())
                             .message(savedPayer.getMessage())
                             .isRead(false)
-                            .createdAt(savedPayer.getCreatedAt() != null ? savedPayer.getCreatedAt() : LocalDateTime.now())
+                            .createdAt(savedPayer.getCreatedAt() != null ? savedPayer.getCreatedAt() : LocalDateTime.now(ZoneId.of("Asia/Yangon")))
                             .transactionId(txnManaged != null ? txnManaged.getTransactionId() : null)
                             .transactionRef(ref)
                             .amount(amount)
@@ -395,7 +396,7 @@ public class AsyncNotificationService {
                             .title(savedMerchant.getTitle())
                             .message(savedMerchant.getMessage())
                             .isRead(false)
-                            .createdAt(savedMerchant.getCreatedAt() != null ? savedMerchant.getCreatedAt() : LocalDateTime.now())
+                            .createdAt(savedMerchant.getCreatedAt() != null ? savedMerchant.getCreatedAt() : LocalDateTime.now(ZoneId.of("Asia/Yangon")))
                             .transactionId(txnManaged != null ? txnManaged.getTransactionId() : null)
                             .transactionRef(ref)
                             .amount(amount)
@@ -455,7 +456,7 @@ public class AsyncNotificationService {
                         .title(saved.getTitle())
                         .message(saved.getMessage())
                         .isRead(false)
-                        .createdAt(saved.getCreatedAt() != null ? saved.getCreatedAt() : LocalDateTime.now())
+                        .createdAt(saved.getCreatedAt() != null ? saved.getCreatedAt() : LocalDateTime.now(ZoneId.of("Asia/Yangon")))
                         .transactionId(transaction.getTransactionId())
                         .transactionRef(ref)
                         .amount(totalRefunded)
@@ -519,7 +520,7 @@ public class AsyncNotificationService {
                     .title(savedNotification.getTitle())
                     .message(savedNotification.getMessage())
                     .isRead(false)
-                    .createdAt(savedNotification.getCreatedAt() != null ? savedNotification.getCreatedAt() : LocalDateTime.now())
+                    .createdAt(savedNotification.getCreatedAt() != null ? savedNotification.getCreatedAt() : LocalDateTime.now(ZoneId.of("Asia/Yangon")))
                     .transactionId(txnManaged.getTransactionId())
                     .transactionRef(txnRef)
                     .amount(amount)
@@ -584,7 +585,7 @@ public class AsyncNotificationService {
                     .title(savedNotification.getTitle())
                     .message(savedNotification.getMessage())
                     .isRead(false)
-                    .createdAt(savedNotification.getCreatedAt() != null ? savedNotification.getCreatedAt() : LocalDateTime.now())
+                    .createdAt(savedNotification.getCreatedAt() != null ? savedNotification.getCreatedAt() : LocalDateTime.now(ZoneId.of("Asia/Yangon")))
                     .transactionId(txnManaged.getTransactionId())
                     .transactionRef(txnRef)
                     .amount(amount)

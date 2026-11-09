@@ -1,4 +1,5 @@
 import type { CustomerAccount } from "../../accounts/types/accountTypes";
+import { parseSafeDate } from "../../../../utils/formatDate";
 
 export interface CusTransactionHistoryItemDTO {
   transactionRef: string;
@@ -123,7 +124,7 @@ export function formatTypeLabel(type: string): string {
 export function formatTransactionDateTime(isoString: string): string {
   if (!isoString) return "-";
   try {
-    const d = new Date(isoString);
+    const d = parseSafeDate(isoString);
     if (Number.isNaN(d.getTime())) return isoString;
     const day = String(d.getDate()).padStart(2, "0");
     const months = [

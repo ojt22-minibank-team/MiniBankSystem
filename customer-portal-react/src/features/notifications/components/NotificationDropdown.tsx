@@ -38,6 +38,7 @@ import {
   subscribeToAuthenticationChanges,
 } from "../../../utils/tokenStorage";
 import { SESSION_TIMEOUT_EVENT, type SessionTimeoutDetail } from "../../../utils/sessionEvents";
+import { parseSafeDate } from "../../../utils/formatDate";
 
 interface NotificationRequestScope {
   generation: number;
@@ -97,7 +98,7 @@ export const NotificationDropdown: React.FC = () => {
   const formatTimeAgo = (dateStr: string) => {
     try {
       const now = new Date();
-      const date = new Date(dateStr);
+      const date = parseSafeDate(dateStr);
       const diffMs = now.getTime() - date.getTime();
       const diffSecs = Math.floor(diffMs / 1000);
       const diffMins = Math.floor(diffSecs / 60);
@@ -246,7 +247,7 @@ export const NotificationDropdown: React.FC = () => {
         if (!isCurrent(targetScope)) return;
         void fetchUnreadCount();
         void syncActiveNotifications(targetScope);
-      }, 7000);
+      }, 3500);
     };
     startPollingRef.current = () => startPolling();
 
@@ -298,6 +299,12 @@ export const NotificationDropdown: React.FC = () => {
     const handleCustomNotify = () => {
       if (!isCurrent(requestScopeRef.current)) return;
       void fetchUnreadCount();
+      void syncActiveNotifications();
+      window.setTimeout(() => {
+        if (!isCurrent(requestScopeRef.current)) return;
+        void fetchUnreadCount();
+        void syncActiveNotifications();
+      }, 500);
       if (isOpenRef.current) {
         void fetchNotifications();
       }
