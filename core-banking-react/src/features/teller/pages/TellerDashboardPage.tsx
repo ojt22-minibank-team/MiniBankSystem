@@ -183,7 +183,12 @@ export default function TellerDashboardPage() {
         }
 
         if (annRes.status === 'fulfilled') {
-          setAnnouncements(annRes.value.data ?? []);
+          const list = annRes.value.data ?? [];
+          // Filter announcements to only show bulletins for staff (STAFF or ALL)
+          const staffAnnouncements = list.filter(
+            (a) => a.audience === 'STAFF' || a.audience === 'ALL'
+          );
+          setAnnouncements(staffAnnouncements);
         }
       })
       .finally(() => {
