@@ -17,10 +17,10 @@ public class AnnouncementController {
 
     private final AnnouncementService announcementService;
 
-    // GET ACTIVE ANNOUNCEMENTS
+    // GET ACTIVE ANNOUNCEMENTS FOR STAFF
     @GetMapping
     public ResponseEntity<List<AnnouncementResponse>> getActiveAnnouncements() {
-        return ResponseEntity.ok(announcementService.getActiveAnnouncements());
+        return ResponseEntity.ok(announcementService.getAnnouncementsForStaff());
     }
     
 }

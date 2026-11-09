@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
 import AdminLayout from '../../../components/layout/AdminLayout';
@@ -156,7 +156,15 @@ export default function AdminDashboardPage() {
   }, []);
 
   const recentStaff = summary?.recentStaff ?? [];
-  const recentAnnouncements = summary?.recentAnnouncements ?? [];
+  const recentAnnouncementsRaw = summary?.recentAnnouncements ?? [];
+  const recentAnnouncements = useMemo(() => {
+    if (isAuditorView) {
+      return recentAnnouncementsRaw.filter(
+        (a: AnnouncementResponse) => a.audience === 'STAFF' || a.audience === 'ALL'
+      );
+    }
+    return recentAnnouncementsRaw;
+  }, [recentAnnouncementsRaw, isAuditorView]);
 
   const todayFee = summary?.todayFeeRevenue ?? 0;
   const allTimeFee = summary?.allTimeFeeRevenue ?? 0;
@@ -522,7 +530,9 @@ export default function AdminDashboardPage() {
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-slate-900 tracking-tight">Active Broadcast Notices</h3>
-                    <p className="text-[11px] text-slate-400 font-medium">Customer & staff announcements</p>
+                    <p className="text-[11px] text-slate-400 font-medium">
+                      {isAuditorView ? 'Headquarters bulletins for staff' : 'Customer & staff announcements'}
+                    </p>
                   </div>
                 </div>
                 {!isTeller && (
@@ -530,7 +540,7 @@ export default function AdminDashboardPage() {
                     onClick={() => navigate(`${baseRoute}/announcements`)}
                     className="text-xs font-bold text-purple-600 hover:text-purple-700 hover:underline flex items-center gap-1 cursor-pointer"
                   >
-                    <span>Manage</span>
+                    <span>{isAuditorView ? 'View All' : 'Manage'}</span>
                     <span>→</span>
                   </button>
                 )}

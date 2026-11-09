@@ -205,7 +205,7 @@ export interface FeeScheduleUpdateRequest {
 
 // --- Announcements DTOs ---
 
-export type AnnouncementAudience = 'ALL' | 'CUSTOMER' | 'STAFF';
+export type AnnouncementAudience = 'ALL' | 'CUSTOMER' | 'CUSTOMERS' | 'STAFF';
 
 export interface AnnouncementResponse {
   announcementId: number;
