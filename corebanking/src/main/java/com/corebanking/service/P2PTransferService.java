@@ -393,7 +393,7 @@ public class P2PTransferService {
     private String generateTransactionRef() {
         String dateStr = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
         int randomNum = ThreadLocalRandom.current().nextInt(1000, 9999);
-        return String.format("TXN-P2P-%s-%d", dateStr, randomNum);
+        return String.format("EKB-P2P-%s-%d", dateStr, randomNum);
     }
 
     public P2PTransferResponseDto mapToResponseDto(BankTransactions txn) {

@@ -14,7 +14,8 @@
     <parameter name="Status" class="java.lang.String"/>
     <parameter name="Type" class="java.lang.String"/>
     <parameter name="Channel" class="java.lang.String"/>
-    <parameter name="LogoPath" class="java.io.InputStream" isForPrompting="false"/>
+    <parameter name="LogoPath" class="java.lang.Object" isForPrompting="false"/>
+    <parameter name="LOGO" class="java.lang.Object" isForPrompting="false"/>
 
     <field name="ref" class="java.lang.String"/>
     <field name="date" class="java.time.LocalDateTime"/>
@@ -27,17 +28,17 @@
     <field name="currency" class="java.lang.String"/>
 
     <variable name="V_TOTAL_AMOUNT" class="java.math.BigDecimal" calculation="Sum">
-        <variableExpression><![CDATA[$F{amount}]]></variableExpression>
+        <variableExpression><![CDATA[$F{amount} != null ? $F{amount} : java.math.BigDecimal.ZERO]]></variableExpression>
     </variable>
     <variable name="V_TOTAL_FEE" class="java.math.BigDecimal" calculation="Sum">
-        <variableExpression><![CDATA[$F{fee}]]></variableExpression>
+        <variableExpression><![CDATA[$F{fee} != null ? $F{fee} : java.math.BigDecimal.ZERO]]></variableExpression>
     </variable>
 
     <title>
         <band height="65">
             <image onErrorType="Blank">
                 <reportElement x="0" y="5" width="45" height="45"/>
-                <imageExpression><![CDATA[$P{LogoPath}]]></imageExpression>
+                <imageExpression><![CDATA[$P{LogoPath} != null ? $P{LogoPath} : $P{LOGO}]]></imageExpression>
             </image>
             <staticText>
                 <reportElement x="55" y="5" width="450" height="24"/>
@@ -212,7 +213,7 @@
                 <textElement textAlignment="Right" verticalAlignment="Middle">
                     <font size="8" isBold="true"/>
                 </textElement>
-                <textFieldExpression><![CDATA[$V{V_TOTAL_AMOUNT}]]></textFieldExpression>
+                <textFieldExpression><![CDATA[$V{V_TOTAL_AMOUNT} != null ? $V{V_TOTAL_AMOUNT} : java.math.BigDecimal.ZERO]]></textFieldExpression>
             </textField>
             <textField evaluationTime="Report" pattern="#,##0.00">
                 <reportElement mode="Opaque" backcolor="#FEF3C7" x="310" y="0" width="65" height="24"/>
@@ -220,7 +221,7 @@
                 <textElement textAlignment="Right" verticalAlignment="Middle">
                     <font size="8" isBold="true"/>
                 </textElement>
-                <textFieldExpression><![CDATA[$V{V_TOTAL_FEE}]]></textFieldExpression>
+                <textFieldExpression><![CDATA[$V{V_TOTAL_FEE} != null ? $V{V_TOTAL_FEE} : java.math.BigDecimal.ZERO]]></textFieldExpression>
             </textField>
             <staticText>
                 <reportElement mode="Opaque" backcolor="#FEF3C7" x="375" y="0" width="427" height="24"/>

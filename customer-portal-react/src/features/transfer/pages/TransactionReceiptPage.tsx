@@ -288,7 +288,7 @@ export default function TransactionReceiptPage() {
         }
 
         // If not found in latest notifications, construct generic receipt if ref looks valid
-        if (targetRef && targetRef.startsWith("TXN-")) {
+        if (targetRef && (targetRef.startsWith("EKB-") || targetRef.startsWith("TXN-"))) {
           setReceiptData({
             transactionRef: targetRef,
             amount: 0,
