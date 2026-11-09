@@ -73,7 +73,9 @@ function getAnnouncementStatus(a: AnnouncementResponse): { label: string; classN
 }
 
 export default function AnnouncementsPage() {
-  const { isTeller, isAdmin } = useAuth();
+  const { isTeller, isAuditor, isAdmin } = useAuth();
+  const isStaffUser = isTeller || isAuditor || !isAdmin; // Teller & Auditor are staff viewers
+
   const [announcements, setAnnouncements] = useState<AnnouncementResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,7 +104,7 @@ export default function AnnouncementsPage() {
   const loadAnnouncements = () => {
     setIsLoading(true);
     setError(null);
-    const fetch = isTeller ? announcementsApi.getActive() : announcementsApi.getAll();
+    const fetch = isStaffUser ? announcementsApi.getActive() : announcementsApi.getAll();
     fetch
       .then((res) => setAnnouncements(res.data))
       .catch((err: AxiosError) => {
@@ -117,17 +119,25 @@ export default function AnnouncementsPage() {
 
   useEffect(() => {
     loadAnnouncements();
-  }, [isTeller]);
+  }, [isStaffUser]);
+
+  // For Teller and Auditor, only show announcements intended for Staff (STAFF or ALL)
+  const visibleAnnouncements = useMemo(() => {
+    if (!isStaffUser) return announcements;
+    return announcements.filter(
+      (a) => a.audience === 'STAFF' || a.audience === 'ALL'
+    );
+  }, [announcements, isStaffUser]);
 
   const filtered = useMemo(() => {
-    let list = announcements;
+    let list = visibleAnnouncements;
     if (statusView === 'EXPIRED') {
-      list = announcements.filter((a) => !isAnnouncementActive(a));
+      list = visibleAnnouncements.filter((a) => !isAnnouncementActive(a));
     }
     return [...list].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-  }, [announcements, statusView]);
+  }, [visibleAnnouncements, statusView]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
 
@@ -141,13 +151,13 @@ export default function AnnouncementsPage() {
   );
 
   const activeCount = useMemo(
-    () => announcements.filter((a) => isAnnouncementActive(a)).length,
-    [announcements],
+    () => visibleAnnouncements.filter((a) => isAnnouncementActive(a)).length,
+    [visibleAnnouncements],
   );
 
   const expiredCount = useMemo(
-    () => announcements.filter((a) => !isAnnouncementActive(a)).length,
-    [announcements],
+    () => visibleAnnouncements.filter((a) => !isAnnouncementActive(a)).length,
+    [visibleAnnouncements],
   );
 
   const handleCreate = async () => {
@@ -299,7 +309,7 @@ export default function AnnouncementsPage() {
             </span>
             <div className="flex items-baseline justify-between mt-3">
               <span className="text-2xl sm:text-[28px] font-bold text-slate-900 font-mono tabular-nums">
-                {announcements.length}
+                {visibleAnnouncements.length}
               </span>
               <span className="status-pill-emerald text-[11px]">
                 Audit Retained
@@ -344,7 +354,7 @@ export default function AnnouncementsPage() {
         )}
 
         {/* ── Filter Toolbar ────────────────────────────────────────────── */}
-        {!isLoading && announcements.length > 0 && (
+        {!isLoading && visibleAnnouncements.length > 0 && (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <select
               value={statusView}
@@ -368,12 +378,14 @@ export default function AnnouncementsPage() {
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
           </div>
-        ) : announcements.length === 0 ? (
+        ) : visibleAnnouncements.length === 0 ? (
           <div className="glass-panel p-16 text-center space-y-3">
             <div className="flex h-12 w-12 mx-auto items-center justify-center rounded-2xl bg-purple-100 text-[#1E1B4B] text-xl">
-              ðŸ“¢
+              📢
             </div>
-            <p className="text-sm font-bold text-zinc-700">No announcements published yet.</p>
+            <p className="text-sm font-bold text-zinc-700">
+              {isStaffUser ? 'No staff announcements published yet.' : 'No announcements published yet.'}
+            </p>
             {isAdmin && (
               <button
                 onClick={() => setShowCreateModal(true)}

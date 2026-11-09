@@ -61,7 +61,7 @@ class AnnouncementControllerTest {
                 LocalDateTime.now()
         );
 
-        when(announcementService.getActiveAnnouncements()).thenReturn(List.of(response));
+        when(announcementService.getAnnouncementsForStaff()).thenReturn(List.of(response));
 
         mockMvc.perform(get(BASE_URL))
                 .andExpect(status().isOk())
@@ -69,6 +69,6 @@ class AnnouncementControllerTest {
                 .andExpect(jsonPath("$[0].title", is("Public Holiday Notice")))
                 .andExpect(jsonPath("$[0].active", is(true)));
 
-        verify(announcementService).getActiveAnnouncements();
+        verify(announcementService).getAnnouncementsForStaff();
     }
 }
