@@ -20,6 +20,7 @@ import {
 import TransferReceiptView from "./TransferReceiptView";
 import TransferFailedSlip from "./TransferFailedSlip";
 import { mapP2PResponseToReceiptData } from "../types/transferReceiptTypes";
+import { safeRandomUUID } from "../../../utils/uuid";
 import { toBlob } from "html-to-image";
 import {
   Loader2,
@@ -1975,7 +1976,7 @@ export const P2PTransferForm = () => {
       currency: "MMK",
       transactionPin: pin,
       description: description || undefined,
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: safeRandomUUID(),
     };
 
     try {

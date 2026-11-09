@@ -91,7 +91,22 @@ export const useNotificationWebSocket = ({
     };
 
     function connect(expected: Authentication) {
-      if (!stillCurrent(expected) || socket || blockedToken === expected.token) return;
+      if (!stillCurrent(expected) || socket || blockedToken === expected.token || policyBlocked) return;
+
+      // 1. Check if WebSocket is explicitly disabled via environment variable
+      const wsEnabledEnv = typeof import.meta !== "undefined" ? import.meta.env?.VITE_WS_ENABLED : undefined;
+      if (wsEnabledEnv === "false" || wsEnabledEnv === false) {
+        policyBlocked = true;
+        return;
+      }
+
+      // 2. Check if connecting via IIS ARR Reverse Proxy on port 8092 which lacks RFC 6455 Sec-WebSocket-Key translation
+      const currentApiBase = typeof import.meta !== "undefined" ? (import.meta.env?.VITE_API_BASE_URL || "") : "";
+      const hasCustomWsUrl = typeof import.meta !== "undefined" && Boolean(import.meta.env?.VITE_WS_URL);
+      if (!hasCustomWsUrl && currentApiBase.includes(":8092") && wsEnabledEnv !== "true") {
+        policyBlocked = true;
+        return;
+      }
       attempts++;
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host = window.location.hostname || "localhost";
@@ -139,6 +154,11 @@ export const useNotificationWebSocket = ({
           if (!stillCurrent(expected)) return;
           if (event.code === 1008 || event.code === 1000) {
             blockedToken = expected.token;
+            policyBlocked = true;
+            return;
+          }
+          // Handshake failed (e.g. code 1006 / reverse proxy error): stop retrying to avoid console spam
+          if (event.code === 1006 && attempts >= 1) {
             policyBlocked = true;
             return;
           }
