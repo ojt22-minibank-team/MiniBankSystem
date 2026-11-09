@@ -9,6 +9,25 @@ import { getMyNotifications } from "../../notifications/services/notificationSer
 import { useAppSelector, useAppDispatch } from "../../../lib/redux";
 import { fetchMyAccounts } from "../../customer-account/accounts/stores/accountsSlice";
 
+/**
+ * Extracts the standardized Order Reference (e.g., ORD-2026-XXXX) from
+ * a notification item. Safely parses the formatted notification message text
+ * if the direct orderId property is not explicitly populated by the backend DTO.
+ */
+const extractOrderId = (item?: NotificationItem, fallbackRef: string = ""): string => {
+  if (!item) return fallbackRef;
+  if ((item as any).orderId && typeof (item as any).orderId === "string" && (item as any).orderId.trim() !== "") {
+    return (item as any).orderId.trim();
+  }
+  if (item.message) {
+    const match = item.message.match(/for Order #([^\s,;.]+)/i);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+  }
+  return fallbackRef;
+};
+
 export const MerchantPaymentReceiptPage: React.FC = () => {
   const { t } = useTranslation("payment");
   const { transactionRef } = useParams<{ transactionRef: string }>();
@@ -55,7 +74,7 @@ export const MerchantPaymentReceiptPage: React.FC = () => {
         },
         details: {
           merchantName: merchant,
-          orderId: (stateNoti as any).orderId || ref,
+          orderId: extractOrderId(stateNoti, ref),
           amount,
           currency,
           status: "SUCCESS",
@@ -110,7 +129,7 @@ export const MerchantPaymentReceiptPage: React.FC = () => {
             },
             details: {
               merchantName: merchant,
-              orderId: (match as any).orderId || ref,
+              orderId: extractOrderId(match, ref),
               amount,
               currency,
               status: "SUCCESS",
