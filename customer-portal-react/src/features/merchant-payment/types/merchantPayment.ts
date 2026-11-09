@@ -1,4 +1,4 @@
-﻿export interface PaymentDetails {
+export interface PaymentDetails {
     merchantName: string;
     orderId: string;
     amount: number;
@@ -20,6 +20,8 @@ export interface PaymentReceipt {
     message: string;
     paymentToken: string;
     coreLedgerReference: string;
+    orderId?: string;
+    merchantName?: string;
     amount: number;
     currency: string;
     timestamp: string;

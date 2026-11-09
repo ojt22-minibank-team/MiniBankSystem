@@ -67,7 +67,11 @@ public class GatewayIntegrationAdapter implements GatewayOutboundPort {
             );
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                return response.getBody();
+                PaymentDetailsResponse details = response.getBody();
+                if (details.getOrderId() != null) {
+                    details.setOrderId(PaymentDetailsResponse.formatOrderId(details.getOrderId()));
+                }
+                return details;
             } else {
                 throw new TransactionException("Failed to fetch payment details from Group 3.");
             }

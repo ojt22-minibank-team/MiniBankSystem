@@ -16,6 +16,8 @@ public class PaymentReceiptResponse {
     private String message;
     private String paymentToken;
     private String coreLedgerReference;
+    private String orderId;
+    private String merchantName;
     private BigDecimal amount;
     private String currency;
     private LocalDateTime timestamp;

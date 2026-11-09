@@ -101,7 +101,6 @@ public class MerchantAuthorizationEngine {
                     "Authorized merchant payment of " + realAmount + " MMK from account " + request.getAccountId());
 
             // 4. Asynchronous real-time notification dispatch to both Payer and Merchant
-
             try {
                 if (asyncNotificationService != null) {
                     asyncNotificationService.sendMerchantPaymentNotificationAsync(
@@ -119,12 +118,13 @@ public class MerchantAuthorizationEngine {
                 log.warn("Could not dispatch merchant payment notification for token {}: {}", token, notiEx.getMessage());
             }
 
-
             return PaymentReceiptResponse.builder()
                     .success(true)
                     .message("Payment authorized successfully")
                     .paymentToken(token)
                     .coreLedgerReference(ledgerReference)
+                    .orderId(realDetails.getOrderId())
+                    .merchantName(realDetails.getMerchantName())
                     .amount(realAmount)
                     .currency(realDetails.getCurrency() != null ? realDetails.getCurrency() : "MMK")
                     .timestamp(LocalDateTime.now())
