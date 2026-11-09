@@ -11,6 +11,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { EkarajCrown } from "../../../components/common/EkarajLogo";
+import { parseSafeDate } from "../../../utils/formatDate";
 
 export interface TransferFailedSlipProps {
   amount: number;
@@ -115,7 +116,7 @@ export default function TransferFailedSlip({
   }, [errorReason, errorCode]);
 
   const displayTime = useMemo(() => {
-    const d = timestamp ? new Date(timestamp) : new Date();
+    const d = timestamp ? parseSafeDate(timestamp) : new Date();
     return isNaN(d.getTime()) ? new Date().toLocaleString() : d.toLocaleString();
   }, [timestamp]);
 
