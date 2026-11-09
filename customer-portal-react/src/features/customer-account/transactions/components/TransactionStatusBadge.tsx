@@ -1,5 +1,6 @@
 
 import { useTranslation } from "react-i18next";
+import { formatStatusLabel } from "../types/transactionHistoryTypes";
 
 interface TransactionStatusBadgeProps {
   status: string;
@@ -24,24 +25,36 @@ const STATUS_STYLES: Record<string, string> = {
     "bg-slate-100 text-slate-600 ring-slate-500/20 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700/50",
 };
 
+const STATUS_I18N_KEYS: Record<string, string> = {
+  COMPLETED: "completed",
+  FAILED: "failed",
+  REJECTED: "rejected",
+  CANCELLED: "cancelled",
+  REVERSED: "reversed",
+  PENDING_AUTHORIZATION: "pendingAuthorization",
+  INITIATED: "initiated",
+  HELD: "held",
+};
+
 export default function TransactionStatusBadge({
   status,
 }: TransactionStatusBadgeProps) {
   const { t } = useTranslation("transaction");
 
-  const normalizedStatus = (status || "").toUpperCase();
+  const normalizedStatus = (status || "").trim().toUpperCase();
   const badgeClass =
     STATUS_STYLES[normalizedStatus] ||
     "bg-slate-50 text-slate-700 ring-slate-400/20 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700/50";
 
-  const displayLabel = t(
-    `detailContent.status.${normalizedStatus}`,
-    {
-      defaultValue: t("detailContent.status.unknown", {
+  const i18nKey = STATUS_I18N_KEYS[normalizedStatus];
+  const displayLabel = i18nKey
+    ? t(`detailContent.status.${i18nKey}`, {
+        defaultValue: formatStatusLabel(status),
+      })
+    : formatStatusLabel(status) ||
+      t("detailContent.status.unknown", {
         defaultValue: "Unknown",
-      }),
-    },
-  );
+      });
 
   return (
     <span
