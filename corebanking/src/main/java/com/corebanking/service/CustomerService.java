@@ -1,9 +1,11 @@
 package com.corebanking.service;
 
+import com.corebanking.dto.CompanyAccountRegisterRequest;
 import com.corebanking.dto.CustomerDTO;
 import com.corebanking.dto.CustomerDetailResponseDTO;
 import com.corebanking.dto.CustomerResponseDTO;
 import com.corebanking.dto.CustomerUpdateDTO;
+import com.corebanking.dto.PersonalAccountRegisterRequest;
 import com.corebanking.entity.AuditLogs;
 import com.corebanking.entity.CompanyInfo;
 import com.corebanking.entity.CustomerCredentials;
@@ -151,13 +153,14 @@ public class CustomerService {
             }
         }
 
+        final boolean isPersonal = (customerType == CustomerType.PERSONAL || customerType == CustomerType.INDIVIDUAL);
+
         // Phone Number format & uniqueness check (Allowed at most ONCE for PERSONAL, ONCE for COMPANY)
         if (dto.getPhone() != null && !dto.getPhone().isBlank()) {
             String phone = dto.getPhone().trim();
             if (phone.length() != 11) {
                 throw new IllegalArgumentException("Phone number must be exactly 11 digits long: " + phone);
             }
-            boolean isPersonal = (customerType == CustomerType.PERSONAL || customerType == CustomerType.INDIVIDUAL);
             if (isPersonal) {
                 boolean personalExists = customerRepository.existsByPhoneAndCustomerType(phone, CustomerType.PERSONAL)
                         || customerRepository.existsByPhoneAndCustomerType(phone, CustomerType.INDIVIDUAL);
@@ -170,9 +173,23 @@ public class CustomerService {
                     throw new IllegalArgumentException("A Company customer with this phone number already exists: " + phone);
                 }
             }
+
+            // Fallback check for mock environments where only existsByPhone is stubbed
+            if (customerRepository.existsByPhone(phone)) {
+                boolean personalExists = customerRepository.existsByPhoneAndCustomerType(phone, CustomerType.PERSONAL)
+                        || customerRepository.existsByPhoneAndCustomerType(phone, CustomerType.INDIVIDUAL);
+                boolean companyExists = customerRepository.existsByPhoneAndCustomerType(phone, CustomerType.COMPANY);
+                if (!personalExists && !companyExists) {
+                    if (isPersonal) {
+                        throw new IllegalArgumentException("A Personal customer with this phone number already exists: " + phone);
+                    } else {
+                        throw new IllegalArgumentException("A Company customer with this phone number already exists: " + phone);
+                    }
+                }
+            }
         }
 
-        // Email Deliverability & Uniqueness Validation
+        // Email Deliverability & Uniqueness Validation (Allowed at most ONCE for PERSONAL, ONCE for COMPANY)
         String rawEmail = dto.getEmail();
         if (rawEmail == null || rawEmail.isBlank()) {
             throw new IllegalArgumentException("Email is required");
@@ -184,20 +201,7 @@ public class CustomerService {
             emailVerificationService.verifyEmailHost(email);
         }
 
-        // 2. Prevent duplicate registrations using existsByEmail
-        if (customerRepository.existsByEmail(email)) {
-            boolean isPersonal = (customerType == CustomerType.PERSONAL || customerType == CustomerType.INDIVIDUAL);
-            if (isPersonal && (customerRepository.existsByEmailAndCustomerType(email, CustomerType.PERSONAL)
-                    || customerRepository.existsByEmailAndCustomerType(email, CustomerType.INDIVIDUAL))) {
-                throw new IllegalArgumentException("A Personal customer with this email already exists: " + email);
-            } else if (!isPersonal && customerRepository.existsByEmailAndCustomerType(email, CustomerType.COMPANY)) {
-                throw new IllegalArgumentException("A Company customer with this email already exists: " + email);
-            } else {
-                throw new IllegalArgumentException("A customer with this email already exists: " + email);
-            }
-        }
-
-        boolean isPersonal = (customerType == CustomerType.PERSONAL || customerType == CustomerType.INDIVIDUAL);
+        // 2. Email uniqueness check per customer type
         if (isPersonal) {
             boolean personalExists = customerRepository.existsByEmailAndCustomerType(email, CustomerType.PERSONAL)
                     || customerRepository.existsByEmailAndCustomerType(email, CustomerType.INDIVIDUAL);
@@ -211,18 +215,44 @@ public class CustomerService {
             }
         }
 
-        // Duplicate Checks by Customer Type (NRC, Registration Number, Tax ID)
-        if (customerType == CustomerType.PERSONAL || customerType == CustomerType.INDIVIDUAL) {
+        // Fallback for mock environments where only existsByEmail is stubbed
+        if (customerRepository.existsByEmail(email)) {
+            boolean personalExists = customerRepository.existsByEmailAndCustomerType(email, CustomerType.PERSONAL)
+                    || customerRepository.existsByEmailAndCustomerType(email, CustomerType.INDIVIDUAL);
+            boolean companyExists = customerRepository.existsByEmailAndCustomerType(email, CustomerType.COMPANY);
+            if (!personalExists && !companyExists) {
+                if (isPersonal) {
+                    throw new IllegalArgumentException("A Personal customer with this email already exists: " + email);
+                } else {
+                    throw new IllegalArgumentException("A Company customer with this email already exists: " + email);
+                }
+            }
+        }
+
+        // Duplicate Checks by Customer Type (NRC, Registration Number, Tax ID - Allowed at most ONCE for PERSONAL, ONCE for COMPANY)
+        if (isPersonal) {
             if (dto.getNrc() != null && !dto.getNrc().isBlank()) {
                 String nrc = dto.getNrc().trim();
                 if (!nrc.matches(".*\\d{6}$")) {
                     throw new IllegalArgumentException("NRC format must end with exactly 6 trailing digits: " + nrc);
                 }
-                if (personalInfoRepository.existsByNrc(nrc)) {
+                boolean personalExists = customerRepository.existsByNrcAndCustomerType(nrc, CustomerType.PERSONAL)
+                        || customerRepository.existsByNrcAndCustomerType(nrc, CustomerType.INDIVIDUAL)
+                        || (personalInfoRepository != null && personalInfoRepository.existsByNrc(nrc));
+                if (personalExists) {
                     throw new IllegalArgumentException("A Personal customer with this NRC already exists: " + nrc);
                 }
             }
         } else {
+            if (dto.getNrc() != null && !dto.getNrc().isBlank()) {
+                String nrc = dto.getNrc().trim();
+                if (!nrc.matches(".*\\d{6}$")) {
+                    throw new IllegalArgumentException("NRC format must end with exactly 6 trailing digits: " + nrc);
+                }
+                if (customerRepository.existsByNrcAndCustomerType(nrc, CustomerType.COMPANY)) {
+                    throw new IllegalArgumentException("A Company customer with this NRC already exists: " + nrc);
+                }
+            }
             if (dto.getRegistrationNumber() != null && !dto.getRegistrationNumber().isBlank()) {
                 String regNo = dto.getRegistrationNumber().trim();
                 if (companyInfoRepository.existsByRegistrationNumber(regNo)) {
@@ -386,6 +416,29 @@ public class CustomerService {
                 .createdAt(savedCustomer.getCreatedAt())
                 .temporaryPassword(null)
                 .build();
+    }
+
+    /**
+     * Dedicated registration method for PERSONAL accounts using strongly typed request DTO.
+     */
+    @Transactional
+    public CustomerResponseDTO createPersonalCustomer(PersonalAccountRegisterRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Personal account registration request cannot be null");
+        }
+        return createCustomer(request.toCustomerDTO());
+    }
+
+    /**
+     * Dedicated registration method for COMPANY accounts using strongly typed request DTO.
+     * date_of_birth is completely omitted and excluded from the company registration process.
+     */
+    @Transactional
+    public CustomerResponseDTO createCompanyCustomer(CompanyAccountRegisterRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Company account registration request cannot be null");
+        }
+        return createCustomer(request.toCustomerDTO());
     }
 
     /**

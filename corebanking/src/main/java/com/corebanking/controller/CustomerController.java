@@ -1,6 +1,8 @@
 package com.corebanking.controller;
 
+import com.corebanking.dto.CompanyAccountRegisterRequest;
 import com.corebanking.dto.CustomerDTO;
+import com.corebanking.dto.PersonalAccountRegisterRequest;
 import com.corebanking.dto.CustomerDetailResponseDTO;
 import com.corebanking.dto.CustomerResponseDTO;
 import com.corebanking.dto.CustomerUpdateDTO;
@@ -50,6 +52,17 @@ public class CustomerController {
             customerDto.setCustomerType("COMPANY");
         }
         CustomerResponseDTO response = customerService.createCustomer(customerDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+    @PostMapping("/register/personal")
+    public ResponseEntity<CustomerResponseDTO> registerPersonalCustomer(@Valid @RequestBody PersonalAccountRegisterRequest request) {
+        CustomerResponseDTO response = customerService.createPersonalCustomer(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/register/company")
+    public ResponseEntity<CustomerResponseDTO> registerCompanyCustomer(@Valid @RequestBody CompanyAccountRegisterRequest request) {
+        CustomerResponseDTO response = customerService.createCompanyCustomer(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
