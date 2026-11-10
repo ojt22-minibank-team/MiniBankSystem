@@ -15,13 +15,13 @@ import SessionTimeoutModal from '../../components/common/SessionTimeoutModal';
 
 interface SessionTimeoutProviderProps {
   children: ReactNode;
-  /** Total idle timeout before automatic forced logout (default: 10 minutes) */
+  /** Total idle timeout before automatic forced logout (default: 60 minutes for presentation stability) */
   timeoutMs?: number;
   /** Time window before logout during which the warning modal is shown (default: 2 minutes) */
   warningMs?: number;
 }
 
-const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const DEFAULT_TIMEOUT_MS = 60 * 60 * 1000; // 60 minutes (Presentation stability)
 const DEFAULT_WARNING_MS = 2 * 60 * 1000; // 2 minutes warning countdown
 const THROTTLE_ACTIVITY_MS = 1000; // 1 second activity throttle
 

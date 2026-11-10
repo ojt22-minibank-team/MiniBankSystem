@@ -123,7 +123,7 @@ axiosInstance.interceptors.response.use(
           sessionStorage.removeItem(STORAGE_KEYS.USERNAME);
           sessionStorage.removeItem(STORAGE_KEYS.ROLES);
         }
-        const pendingReason = sessionStorage.getItem('cb_logout_reason') || 'role_changed';
+        const pendingReason = sessionStorage.getItem('cb_logout_reason') || 'session_expired';
         window.location.href = `/login?reason=${encodeURIComponent(pendingReason)}`;
         return Promise.reject(refreshError);
       } finally {
