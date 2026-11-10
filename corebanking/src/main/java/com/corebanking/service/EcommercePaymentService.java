@@ -303,7 +303,7 @@ public class EcommercePaymentService {
     private String generateTransactionRef() {
         String dateStr = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
         int randomNum = ThreadLocalRandom.current().nextInt(100000, 999999);
-        return String.format("TXN-ECOM-%s-%d", dateStr, randomNum);
+        return String.format("EKB-ECOM-%s-%d", dateStr, randomNum);
     }
 
     private EcommercePaymentResponseDto mapToResponseDto(BankTransactions txn, String message) {

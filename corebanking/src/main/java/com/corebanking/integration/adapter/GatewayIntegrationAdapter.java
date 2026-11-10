@@ -3,6 +3,8 @@ package com.corebanking.integration.adapter;
 import com.corebanking.dto.PaymentDetailsResponse;
 import com.corebanking.exception.TransactionException;
 import com.corebanking.integration.port.GatewayOutboundPort;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,19 +29,29 @@ import java.util.Map;
 public class GatewayIntegrationAdapter implements GatewayOutboundPort {
 
     private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Value("${group3.gateway.base-url:http://localhost:8004}")
+    @Value("${group3.gateway.base-url:http://42.156.32.114:8093}")
     private String gatewayBaseUrl;
 
     @Value("${group3.gateway.internal-key:MMSPG-SEC-KEY-2026}")
     private String internalApiKey;
+
+    private String getNormalizedGatewayUrl(String endpoint) {
+        String base = gatewayBaseUrl != null ? gatewayBaseUrl.trim() : "http://42.156.32.114:8093";
+        base = base.replaceAll("/+$", "");
+        if (base.endsWith("/api/v1")) {
+            base = base.substring(0, base.length() - "/api/v1".length());
+        }
+        return base + endpoint;
+    }
 
     @Override
     public PaymentDetailsResponse fetchPaymentDetails(String paymentToken) {
         log.info("Fetching real payment details from Group 3 Gateway for token: {}", paymentToken);
 
         try {
-            String url = gatewayBaseUrl + "/api/v1/payments/checkout-info/{token}";
+            String url = getNormalizedGatewayUrl("/api/v1/payments/checkout-info/{token}");
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-Internal-Service-Key", internalApiKey);
@@ -60,10 +72,32 @@ public class GatewayIntegrationAdapter implements GatewayOutboundPort {
                 throw new TransactionException("Failed to fetch payment details from Group 3.");
             }
         } catch (HttpStatusCodeException httpEx) {
-            log.warn("Group 3 rejected checkout-info for token {}. Status: {}", paymentToken, httpEx.getStatusCode());
+            log.error("Group 3 rejected checkout-info for token {}. Status: {}, ResponseBody: {}",
+                    paymentToken, httpEx.getStatusCode(), httpEx.getResponseBodyAsString());
+
             if (httpEx.getStatusCode() == HttpStatus.NOT_FOUND || httpEx.getStatusCode() == HttpStatus.GONE) {
                 throw new TransactionException("This payment link is invalid or has expired.");
+            } else if (httpEx.getStatusCode().is5xxServerError()) {
+                throw new TransactionException("Payment Gateway is currently experiencing internal errors. Please try again later.");
+            } else if (httpEx.getStatusCode() == HttpStatus.UNAUTHORIZED || httpEx.getStatusCode() == HttpStatus.FORBIDDEN) {
+                throw new TransactionException("Payment Gateway access denied. Invalid internal service key.");
             }
+
+            String responseBody = httpEx.getResponseBodyAsString();
+            if (responseBody != null && !responseBody.isBlank()) {
+                try {
+                    JsonNode node = objectMapper.readTree(responseBody);
+                    if (node.has("error") && !node.get("error").asText().isBlank()) {
+                        throw new TransactionException(node.get("error").asText());
+                    } else if (node.has("message") && !node.get("message").asText().isBlank()) {
+                        throw new TransactionException(node.get("message").asText());
+                    }
+                } catch (TransactionException te) {
+                    throw te;
+                } catch (Exception ignored) {
+                }
+            }
+
             throw new TransactionException("This transaction has already been processed or the payment link is invalid.");
         } catch (ResourceAccessException raEx) {
             log.error("Group 3 Gateway connection failed or timed out for token {}: {}", paymentToken, raEx.getMessage());
@@ -87,10 +121,8 @@ public class GatewayIntegrationAdapter implements GatewayOutboundPort {
         log.info("Sending Authorization to Group 3 Gateway for token: {} with status: {}", paymentToken, transactionStatus);
 
         try {
-            String url = gatewayBaseUrl + "/api/v1/payments/authorize";
+            String url = getNormalizedGatewayUrl("/api/v1/payments/authorize");
 
-            // Strictly conform to Group 3's required payload contract:
-            // paymentToken, status, sourceAccountNumber, errorCode, errorMessage
             Map<String, String> request = new HashMap<>();
             request.put("paymentToken", paymentToken);
             request.put("status", transactionStatus);
@@ -136,8 +168,22 @@ public class GatewayIntegrationAdapter implements GatewayOutboundPort {
             return "AUTH-SUCCESS-" + paymentToken;
 
         } catch (HttpStatusCodeException httpEx) {
-            log.warn("Gateway rejected the payment (Likely expired). Status: {}", httpEx.getStatusCode());
-            throw new TransactionException("Payment was rejected by Gateway. The payment link may have expired.");
+            log.error("Gateway rejected payment authorization. Status: {}, Body: {}", httpEx.getStatusCode(), httpEx.getResponseBodyAsString());
+            String responseBody = httpEx.getResponseBodyAsString();
+            if (responseBody != null && !responseBody.isBlank()) {
+                try {
+                    JsonNode node = objectMapper.readTree(responseBody);
+                    if (node.has("error") && !node.get("error").asText().isBlank()) {
+                        throw new TransactionException(node.get("error").asText());
+                    } else if (node.has("message") && !node.get("message").asText().isBlank()) {
+                        throw new TransactionException(node.get("message").asText());
+                    }
+                } catch (TransactionException te) {
+                    throw te;
+                } catch (Exception ignored) {
+                }
+            }
+            throw new TransactionException("Payment was rejected by Gateway. The payment link may have expired or is invalid.");
         } catch (ResourceAccessException raEx) {
             log.error("Group 3 Gateway connection failed or timed out during authorization for token {}: {}", paymentToken, raEx.getMessage());
             throw new TransactionException("Gateway is currently unreachable. Payment could not be authorized.");

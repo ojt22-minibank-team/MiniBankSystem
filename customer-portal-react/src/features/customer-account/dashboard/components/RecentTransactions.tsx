@@ -66,6 +66,7 @@ export default function RecentTransactions({
     return (
       normType === "INTERNAL_TRANSFER" ||
       normType.includes("TRANSFER") ||
+      ref.startsWith("EKB-P2P") ||
       ref.startsWith("TXN-P2P") ||
       ref.startsWith("TXN-TRANSFER")
     );
