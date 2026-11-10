@@ -29,6 +29,8 @@ export function normalizeRoles(roles: string[] = []): string[] {
 function persistAuth(response: LoginResponse): void {
   const normalized = normalizeRoles(response.roles);
   sessionStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, response.accessToken);
+  localStorage.setItem('cb_shared_access_token', response.accessToken);
+  localStorage.setItem('cb_shared_token_time', Date.now().toString());
   // HttpOnly cookie 'cb_refresh_token' is handled securely by the backend.
   // Refresh token is NOT stored in sessionStorage to prevent XSS exfiltration.
   sessionStorage.setItem(STORAGE_KEYS.USERNAME, response.username);
@@ -122,6 +124,8 @@ function clearPersistedAuth(): void {
   sessionStorage.removeItem(STORAGE_KEYS.USERNAME);
   sessionStorage.removeItem(STORAGE_KEYS.ROLES);
   sessionStorage.removeItem(STORAGE_KEYS.STAFF_PROFILE);
+  localStorage.removeItem('cb_shared_access_token');
+  localStorage.removeItem('cb_shared_token_time');
   clearBankingMemoryCache();
 }
 

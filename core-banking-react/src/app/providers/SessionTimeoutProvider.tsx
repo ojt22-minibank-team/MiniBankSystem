@@ -134,9 +134,9 @@ export default function SessionTimeoutProvider({
     };
   }, [isAuthenticated, timeoutMs, warningMs, recordActivity, handleLogout]);
 
-  // Periodic heartbeat to detect role updates or revoked sessions from backend
+  // Fetch staff profile once upon mount or when username changes
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !currentUser?.username) return;
 
     let isMounted = true;
     const checkRoleAndSession = async () => {
@@ -164,12 +164,12 @@ export default function SessionTimeoutProvider({
       }
     };
 
-    const intervalId = window.setInterval(checkRoleAndSession, 10000);
+    checkRoleAndSession();
+
     return () => {
       isMounted = false;
-      window.clearInterval(intervalId);
     };
-  }, [isAuthenticated, currentUser?.username, currentUser?.roles, dispatch, navigate]);
+  }, [isAuthenticated, currentUser?.username, dispatch, navigate]);
 
   return (
     <>
