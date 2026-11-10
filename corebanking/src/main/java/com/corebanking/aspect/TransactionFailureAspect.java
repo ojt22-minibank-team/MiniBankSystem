@@ -63,18 +63,35 @@ public class TransactionFailureAspect {
     }
 
     private String resolveEligibleFailureCode(Throwable ex) {
+        if (ex instanceof com.corebanking.exception.InvalidPinException) {
+            return null;
+        }
         if (ex instanceof InsufficientFundsException) {
             return "INSUFFICIENT_FUNDS";
+        }
+        if (ex instanceof org.springframework.dao.CannotAcquireLockException
+                || ex instanceof org.springframework.dao.PessimisticLockingFailureException) {
+            return "DEADLOCK_DETECTED";
         }
         if (ex instanceof TransactionException) {
             String msg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
             if (msg.contains("daily limit")) {
                 return "DAILY_LIMIT_EXCEEDED";
             }
+            if (msg.contains("one-time") || msg.contains("limit")) {
+                return "TRANSFER_LIMIT_EXCEEDED";
+            }
             if (msg.contains("not active") || msg.contains("frozen")) {
                 return "ACCOUNT_NOT_ACTIVE";
             }
+            if (msg.contains("locked")) {
+                return "ACCOUNT_LOCKED";
+            }
+            return "TRANSACTION_FAILED";
         }
-        return null;
+        if (ex instanceof org.springframework.dao.DataAccessException) {
+            return "DATABASE_ERROR";
+        }
+        return "SYSTEM_ERROR";
     }
 }

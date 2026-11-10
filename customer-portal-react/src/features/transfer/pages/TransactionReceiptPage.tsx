@@ -13,6 +13,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import TransferReceiptView from "../components/TransferReceiptView";
+import TransferFailedSlip from "../components/TransferFailedSlip";
 import type { TransferReceiptData } from "../types/transferReceiptTypes";
 import type { NotificationItem } from "../../notifications/types/notificationTypes";
 import { getMyNotifications } from "../../notifications/services/notificationService";
@@ -159,6 +160,128 @@ function mapNotificationItemToReceipt(
   };
 }
 
+export interface FailedSlipDetails {
+  amount: number;
+  currency?: string;
+  sourceAccountNumber?: string;
+  sourceDisplayName?: string;
+  destinationAccountNumber?: string;
+  destinationDisplayName?: string;
+  errorReason: string;
+  errorCode?: string;
+  referenceId?: string;
+  timestamp?: string;
+  description?: string;
+}
+
+export function isFailedNotification(noti: any): boolean {
+  if (!noti) return false;
+  const title = String(noti.title || "").toLowerCase();
+  const msg = String(noti.message || "").toLowerCase();
+  const status = String(noti.status || "").toLowerCase();
+  const ref = String(noti.transactionRef || "").toLowerCase();
+  return (
+    title.includes("fail") ||
+    title.includes("reject") ||
+    title.includes("decline") ||
+    status === "failed" ||
+    status === "rejected" ||
+    ref.includes("fail") ||
+    msg.includes("failed:") ||
+    msg.includes("transaction rejected") ||
+    msg.includes("transfer failed")
+  );
+}
+
+export function parseFailedNotificationDetails(
+  noti: NotificationItem | { [key: string]: unknown },
+  fallbackAccountNumber?: string,
+  fallbackDisplayName?: string
+): FailedSlipDetails {
+  const msg = typeof noti.message === "string" ? noti.message : "";
+  const title = typeof noti.title === "string" ? noti.title : "";
+
+  let parsedAmount = Number((noti as any).amount || 0);
+  let parsedCurrency = typeof (noti as any).currency === "string" ? (noti as any).currency : "MMK";
+  let parsedDest = typeof (noti as any).destinationAccountNumber === "string" ? (noti as any).destinationAccountNumber : "";
+  let parsedReason = "";
+
+  // Pattern: "Transfer of 50000.0000 MMK to account 2006382479 failed: Insufficient available funds..."
+  const match = msg.match(/Transfer\s+(?:of\s+)?([0-9,.]+)\s*([A-Za-z]+)?\s+to\s+(?:account\s+)?([0-9*]+)?\s*failed(?::\s*(.*))?/i);
+  if (match) {
+    if (!parsedAmount && match[1]) {
+      parsedAmount = parseFloat(match[1].replace(/,/g, ""));
+    }
+    if ((!parsedCurrency || parsedCurrency === "MMK") && match[2]) {
+      parsedCurrency = match[2];
+    }
+    if (!parsedDest && match[3]) {
+      parsedDest = match[3];
+    }
+    if (match[4]) {
+      parsedReason = match[4].trim();
+    }
+  }
+
+  if (!parsedReason) {
+    const colonIdx = msg.toLowerCase().indexOf("failed:");
+    if (colonIdx !== -1) {
+      parsedReason = msg.substring(colonIdx + 7).trim();
+    } else {
+      parsedReason = msg || title || "Transaction could not be processed.";
+    }
+  }
+
+  let errorCode = "TRANSACTION_FAILED";
+  const upperReason = parsedReason.toUpperCase();
+  if (upperReason.includes("INSUFFICIENT")) {
+    errorCode = "INSUFFICIENT_FUNDS";
+  } else if (upperReason.includes("TIMEOUT")) {
+    errorCode = "ERR_NETWORK_TIMEOUT";
+  } else if (upperReason.includes("LIMIT")) {
+    errorCode = "LIMIT_EXCEEDED";
+  } else if (upperReason.includes("FROZEN")) {
+    errorCode = "ACCOUNT_FROZEN";
+  } else if (upperReason.includes("PIN")) {
+    errorCode = "INVALID_PIN";
+  }
+
+  const refId =
+    (typeof (noti as any).transactionRef === "string" && (noti as any).transactionRef) ||
+    `TXN-FAIL-${(noti as any).notificationId || Date.now()}`;
+
+  const destName =
+    (typeof (noti as any).counterpartyName === "string" && (noti as any).counterpartyName) ||
+    "Recipient";
+
+  const sourceAcc =
+    (typeof (noti as any).sourceAccountNumber === "string" && (noti as any).sourceAccountNumber) ||
+    fallbackAccountNumber ||
+    "My Account";
+
+  const destAcc =
+    parsedDest ||
+    (typeof (noti as any).counterpartyAccountNumber === "string" && (noti as any).counterpartyAccountNumber) ||
+    "-";
+
+  const createdAt =
+    typeof (noti as any).createdAt === "string" ? (noti as any).createdAt : new Date().toISOString();
+
+  return {
+    amount: parsedAmount || 0,
+    currency: parsedCurrency || "MMK",
+    sourceAccountNumber: sourceAcc,
+    sourceDisplayName: fallbackDisplayName || "My Account",
+    destinationAccountNumber: destAcc,
+    destinationDisplayName: destName,
+    errorReason: parsedReason,
+    errorCode,
+    referenceId: refId,
+    timestamp: createdAt,
+    description: (typeof (noti as any).description === "string" && (noti as any).description) || "Internal Transfer",
+  };
+}
+
 export default function TransactionReceiptPage() {
   const { transactionRef } = useParams<{ transactionRef: string }>();
   const navigate = useNavigate();
@@ -180,13 +303,25 @@ export default function TransactionReceiptPage() {
     }
   }, [dispatch, userAccounts]);
 
+  const [failedData, setFailedData] = useState<FailedSlipDetails | null>(() => {
+    if (location.state?.failedData) {
+      return location.state.failedData as FailedSlipDetails;
+    }
+    const noti = location.state?.notification;
+    if (noti && isFailedNotification(noti)) {
+      return parseFailedNotificationDetails(noti, myAccountNumber, myDisplayName);
+    }
+    return null;
+  });
+
   const [receiptData, setReceiptData] = useState<TransferReceiptData | null>(() => {
     if (location.state?.receiptData) {
       return location.state.receiptData as TransferReceiptData;
     }
-    if (location.state?.notification) {
+    const noti = location.state?.notification;
+    if (noti && !isFailedNotification(noti)) {
       return mapNotificationItemToReceipt(
-        location.state.notification,
+        noti,
         myAccountNumber,
         myDisplayName
       );
@@ -224,7 +359,7 @@ export default function TransactionReceiptPage() {
     });
   }, [myAccountNumber]);
 
-  const [loading, setLoading] = useState<boolean>(!receiptData);
+  const [loading, setLoading] = useState<boolean>(!receiptData && !failedData);
   const [error, setError] = useState<string | null>(null);
 
   // Action states
@@ -242,6 +377,16 @@ export default function TransactionReceiptPage() {
     const stateReceipt = location.state?.receiptData as TransferReceiptData | undefined;
     if (stateReceipt && (!transactionRef || stateReceipt.transactionRef === transactionRef)) {
       setReceiptData(stateReceipt);
+      setFailedData(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    const stateFailed = location.state?.failedData as FailedSlipDetails | undefined;
+    if (stateFailed && (!transactionRef || stateFailed.referenceId === transactionRef)) {
+      setFailedData(stateFailed);
+      setReceiptData(null);
       setLoading(false);
       setError(null);
       return;
@@ -255,7 +400,13 @@ export default function TransactionReceiptPage() {
         String(stateNoti.notificationId) === transactionRef ||
         `NOTI-${stateNoti.notificationId}` === transactionRef)
     ) {
-      setReceiptData(mapNotificationItemToReceipt(stateNoti, myAccountNumber, myDisplayName));
+      if (isFailedNotification(stateNoti)) {
+        setFailedData(parseFailedNotificationDetails(stateNoti, myAccountNumber, myDisplayName));
+        setReceiptData(null);
+      } else {
+        setReceiptData(mapNotificationItemToReceipt(stateNoti, myAccountNumber, myDisplayName));
+        setFailedData(null);
+      }
       setLoading(false);
       setError(null);
       return;
@@ -283,7 +434,13 @@ export default function TransactionReceiptPage() {
         );
 
         if (match) {
-          setReceiptData(mapNotificationItemToReceipt(match, myAccountNumber, myDisplayName));
+          if (isFailedNotification(match)) {
+            setFailedData(parseFailedNotificationDetails(match, myAccountNumber, myDisplayName));
+            setReceiptData(null);
+          } else {
+            setReceiptData(mapNotificationItemToReceipt(match, myAccountNumber, myDisplayName));
+            setFailedData(null);
+          }
           return;
         }
 
@@ -563,8 +720,28 @@ export default function TransactionReceiptPage() {
           </div>
         )}
 
+        {/* Failed Transaction Slip View */}
+        {!loading && failedData && (
+          <TransferFailedSlip
+            amount={failedData.amount}
+            currency={failedData.currency}
+            sourceAccountNumber={failedData.sourceAccountNumber}
+            sourceDisplayName={failedData.sourceDisplayName}
+            destinationAccountNumber={failedData.destinationAccountNumber}
+            destinationDisplayName={failedData.destinationDisplayName}
+            errorReason={failedData.errorReason}
+            errorCode={failedData.errorCode}
+            referenceId={failedData.referenceId}
+            timestamp={failedData.timestamp}
+            description={failedData.description}
+            onTryAgain={() => navigate("/transfer")}
+            onGoDashboard={() => navigate("/dashboard")}
+            onClose={handleBack}
+          />
+        )}
+
         {/* Main Official Receipt View */}
-        {!loading && receiptData && (
+        {!loading && !failedData && receiptData && (
           <>
             <TransferReceiptView
               data={receiptData}
