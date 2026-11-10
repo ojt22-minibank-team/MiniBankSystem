@@ -1839,6 +1839,11 @@ export const P2PTransferForm = () => {
         const res = await lookupDestinationAccount(acc);
         if (isCancelled) return;
         if (res && res.accountName) {
+          if (res.status && res.status !== "ACTIVE") {
+            setRecipientName("");
+            setLookupError(`Recipient account is ${res.status}. Transfers to this account are not allowed.`);
+            return;
+          }
           setRecipientName(res.accountName);
           lookupCacheRef.current.set(acc, res.accountName);
           setLookupError("");
