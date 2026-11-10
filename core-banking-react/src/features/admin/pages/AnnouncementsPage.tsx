@@ -45,6 +45,32 @@ function getCurrentMMLocalDateTime(): string {
   return formatter.format(new Date()).replace(' ', 'T');
 }
 
+function toApiLocalDateTime(dtLocal: string): string {
+  if (!dtLocal) return '';
+  return dtLocal.length === 16 ? `${dtLocal}:00` : dtLocal;
+}
+
+function addMinutesToDateTimeLocal(baseStr: string, minutesToAdd: number): string {
+  const base = baseStr ? new Date(baseStr) : new Date();
+  base.setMinutes(base.getMinutes() + minutesToAdd);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const yyyy = base.getFullYear();
+  const mm = pad(base.getMonth() + 1);
+  const dd = pad(base.getDate());
+  const hh = pad(base.getHours());
+  const mi = pad(base.getMinutes());
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+}
+
+function getTodayEndDateTimeLocal(baseStr?: string): string {
+  const base = baseStr ? new Date(baseStr) : new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const yyyy = base.getFullYear();
+  const mm = pad(base.getMonth() + 1);
+  const dd = pad(base.getDate());
+  return `${yyyy}-${mm}-${dd}T23:59`;
+}
+
 function isAnnouncementActive(a: AnnouncementResponse): boolean {
   const isExplicitlyActive = a.isActive !== undefined ? a.isActive : a.active !== undefined ? a.active : true;
   if (!isExplicitlyActive) return false;
@@ -99,7 +125,6 @@ export default function AnnouncementsPage() {
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  const minDateTime = getCurrentMMLocalDateTime();
 
   const loadAnnouncements = () => {
     setIsLoading(true);
@@ -178,8 +203,8 @@ export default function AnnouncementsPage() {
         title: createTitle.trim(),
         message: createMessage.trim(),
         audience: createAudience,
-        startsAt: new Date(createStartsAt).toISOString(),
-        endsAt: new Date(createEndsAt).toISOString(),
+        startsAt: toApiLocalDateTime(createStartsAt),
+        endsAt: toApiLocalDateTime(createEndsAt),
       };
 
       await announcementsApi.create(payload);
@@ -599,6 +624,54 @@ export default function AnnouncementsPage() {
               </select>
             </div>
 
+            {/* Quick Time Slot Presets (အချိန်ပိုင်း ရွေးချယ်မှုများ) */}
+            <div className="rounded-xl border border-amber-200/80 bg-amber-50/70 p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
+                  ⏱️ Quick Time Slots
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const now = getCurrentMMLocalDateTime();
+                    setCreateStartsAt(now);
+                    setCreateEndsAt(addMinutesToDateTimeLocal(now, 60));
+                  }}
+                  className="text-[11px] font-bold text-amber-800 hover:text-amber-950 underline cursor-pointer"
+                >
+                  
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { label: '30 minutes ', mins: 30 },
+                  { label: '1 hour ', mins: 60 },
+                  { label: '2 hours ', mins: 120 },
+                  { label: '4 hours ', mins: 240 },
+                  { label: 'End of today (23:59)', type: 'today' },
+                  { label: '1 day ', mins: 1440 },
+                  { label: '3 days ', mins: 4320 },
+                ].map((preset) => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => {
+                      const start = createStartsAt || getCurrentMMLocalDateTime();
+                      if (!createStartsAt) setCreateStartsAt(start);
+                      if (preset.type === 'today') {
+                        setCreateEndsAt(getTodayEndDateTimeLocal(start));
+                      } else if (preset.mins) {
+                        setCreateEndsAt(addMinutesToDateTimeLocal(start, preset.mins));
+                      }
+                    }}
+                    className="rounded-lg border border-amber-300/80 bg-white px-2.5 py-1 text-[11px] font-semibold text-amber-900 hover:bg-amber-100/80 hover:border-amber-400 transition-all cursor-pointer shadow-2xs active:scale-95"
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="block text-xs font-bold text-[#1E1B4B] uppercase tracking-wider mb-1.5">
@@ -610,7 +683,6 @@ export default function AnnouncementsPage() {
                   value={createStartsAt}
                   onChange={(e) => setCreateStartsAt(e.target.value)}
                   disabled={createLoading}
-                  min={minDateTime}
                 />
               </div>
               <div>
@@ -623,7 +695,7 @@ export default function AnnouncementsPage() {
                   value={createEndsAt}
                   onChange={(e) => setCreateEndsAt(e.target.value)}
                   disabled={createLoading}
-                  min={createStartsAt || minDateTime}
+                  min={createStartsAt || undefined}
                 />
               </div>
             </div>

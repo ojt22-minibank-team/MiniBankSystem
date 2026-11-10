@@ -2,7 +2,6 @@ import { useState, type FormEvent, useEffect, useRef, type ClipboardEvent, type 
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { loginThunk, verifyOtpThunk, resendOtpApi } from '../authSlice';
-import { validatePasswordPolicy } from '../../../utils/validation';
 import ekarajCrown from '../../../assets/ekaraj-crown-transparent.png';
 import ekarajShowcase from '../../../assets/ekaraj-showcase-full.png';
 
@@ -138,13 +137,24 @@ export default function LoginPage() {
 
   const validateCredentials = (): boolean => {
     const errors: { username?: string; password?: string } = {};
-    if (!username.trim()) {
+    const trimmedUser = username.trim();
+
+    // 1. Username Validation
+    if (!trimmedUser) {
       errors.username = 'User Name is required.';
+    } else if (trimmedUser.length < 3 || trimmedUser.length > 64) {
+      errors.username = 'User Name must be between 3 and 64 characters.';
+    } else if (!/^[a-zA-Z0-9._-]+$/.test(trimmedUser)) {
+      errors.username = 'User Name can only contain letters, numbers, dots, underscores, and hyphens.';
     }
-    const pwdError = validatePasswordPolicy(password, { username: username.trim() });
-    if (pwdError) {
-      errors.password = pwdError;
+
+    // 2. Password Validation (supports !, @, and all special characters)
+    if (!password) {
+      errors.password = 'Password is required.';
+    } else if (password.length < 6) {
+      errors.password = 'Password must be at least 6 characters.';
     }
+
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
