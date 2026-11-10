@@ -83,7 +83,8 @@ export default function LoginPage() {
         msg = 'Your session has ended. Please sign in again.';
       }
       setReasonNotice(msg);
-      setErrorMessage(msg);
+      setErrorMessage(null);
+      if (error) dismissError();
     }
   }, [searchParams]);
 
@@ -459,7 +460,7 @@ export default function LoginPage() {
             )}
 
             {/* Error Message Banner */}
-            {displayError && displayError !== reasonNotice && (
+            {displayError && !reasonNotice && (
               <div className="mt-5 rounded-xl border border-red-200 bg-red-50/90 p-3.5 flex items-start justify-between gap-3 animate-in fade-in duration-200 shadow-xs">
                 <div className="flex items-start gap-2.5">
                   <svg className="h-4 w-4 text-red-600 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
