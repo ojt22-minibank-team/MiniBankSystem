@@ -131,7 +131,7 @@ public class JasperReportService {
             } catch (Exception e) {
                 log.error("Failed to compile JasperReport template: {}", jrxmlPath, e);
                 throw new IllegalStateException("Could not load report template: " + name, e);
-            }
+            }   
         });
     }
 

@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+<meta charset="utf-8">
+<title>Core Banking System — Deep Dive Code &amp; Stored Procedures Technical Guide (Ye Lin Kyaw)</title>
+<style>
+  @page {
+    size: A4;
+    margin: 14mm 14mm 16mm 14mm;
+    @bottom-right {
+      content: "Page " counter(page) " of " counter(pages);
+      font-size: 8pt;
+      color: #64748b;
+    }
+    @bottom-left {
+      content: "Core Banking Code & Stored Procedures Deep Dive | Ye Lin Kyaw";
+      font-size: 8pt;
+      color: #64748b;
+    }
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Segoe UI', 'Myanmar Text', 'Pyidaungsu', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #1e293b;
+    background-color: #ffffff;
+    line-height: 1.55;
+    font-size: 9pt;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Header Cover / Hero */
+  .hero-banner {
+    background: linear-gradient(135deg, #090d16 0%, #1e1b4b 40%, #1e3a8a 75%, #0284c7 100%);
+    color: #ffffff;
+    padding: 24px 28px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.2);
+  }
+
+  .hero-title {
+    font-size: 19pt;
+    font-weight: 800;
+    margin: 0 0 6px 0;
+    letter-spacing: -0.5px;
+    color: #ffffff;
+  }
+
+  .hero-subtitle {
+    font-size: 10.5pt;
+    color: #38bdf8;
+    margin: 0 0 14px 0;
+    font-weight: 500;
+  }
+
+  .hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+    font-size: 8.5pt;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    padding-top: 12px;
+  }
+
+  .hero-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .hero-meta-label {
+    color: #bae6fd;
+    text-transform: uppercase;
+    font-size: 7.5pt;
+    letter-spacing: 0.5px;
+  }
+
+  .hero-meta-value {
+    font-weight: 700;
+    color: #ffffff;
+  }
+
+  /* Section Styling */
+  .section {
+    margin-bottom: 22px;
+    page-break-inside: auto;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 2px solid #0284c7;
+    padding-bottom: 6px;
+    margin-bottom: 14px;
+    page-break-after: avoid;
+  }
+
+  .section-number {
+    background: #0284c7;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 8.5pt;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .section-title {
+    font-size: 12.5pt;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+  }
+
+  .section-tagline {
+    font-size: 8pt;
+    color: #64748b;
+    margin-left: auto;
+    font-style: italic;
+  }
+
+  /* Code Cards */
+  .code-card {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    page-break-inside: avoid;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+  }
+
+  .code-card-header {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 9px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .code-badge {
+    background: #0f172a;
+    color: #38bdf8;
+    font-family: Consolas, monospace;
+    font-weight: 700;
+    font-size: 8pt;
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+
+  .code-card-title {
+    font-weight: 700;
+    font-size: 9.5pt;
+    color: #0f172a;
+    margin: 0;
+  }
+
+  .code-card-body {
+    padding: 12px 14px;
+  }
+
+  .code-desc {
+    color: #334155;
+    font-size: 8.5pt;
+    line-height: 1.55;
+    margin-bottom: 10px;
+  }
+
+  .code-desc strong {
+    color: #0f172a;
+  }
+
+  .code-block {
+    background: #090d16;
+    color: #f8fafc;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 7.8pt;
+    line-height: 1.45;
+    overflow-x: auto;
+    margin: 8px 0;
+    border-left: 3px solid #0284c7;
+  }
+
+  .sql-kw { color: #f43f5e; font-weight: bold; }
+  .sql-func { color: #38bdf8; font-weight: bold; }
+  .sql-str { color: #a3e635; }
+  .sql-comment { color: #64748b; font-style: italic; }
+  .java-ann { color: #fbbf24; font-weight: bold; }
+  .java-kw { color: #c084fc; font-weight: bold; }
+  .java-type { color: #38bdf8; }
+  .java-str { color: #4ade80; }
+
+  /* Explanation Callouts */
+  .callout {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-left: 4px solid #16a34a;
+    border-radius: 5px;
+    padding: 8px 12px;
+    margin-top: 8px;
+    font-size: 8.5pt;
+    color: #14532d;
+  }
+
+  .callout.warning {
+    background: #fffbeb;
+    border-color: #fef08a;
+    border-left-color: #d97706;
+    color: #78350f;
+  }
+
+  .callout.info {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    border-left-color: #2563eb;
+    color: #1e3a8a;
+  }
+
+  .callout-title {
+    font-weight: 700;
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 2px;
+  }
+
+  /* Interview Q&A Cards */
+  .qa-card {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    page-break-inside: avoid;
+    overflow: hidden;
+  }
+
+  .qa-header {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 9px 13px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .qa-q-badge {
+    background: #0284c7;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 8pt;
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+
+  .qa-question {
+    font-weight: 700;
+    font-size: 9.5pt;
+    color: #0f172a;
+    margin: 0;
+  }
+
+  .qa-body {
+    padding: 12px 14px;
+    font-size: 8.5pt;
+  }
+
+  .qa-answer {
+    color: #334155;
+    line-height: 1.55;
+  }
+
+  .code-font {
+    font-family: Consolas, monospace;
+    font-size: 8pt;
+    background: #f1f5f9;
+    padding: 1px 4px;
+    border-radius: 3px;
+    color: #0f172a;
+  }
+
+  .page-break {
+    page-break-before: always;
+  }
+</style>
+</head>
+<body>
+
+  <!-- HERO BANNER -->
+  <div class="hero-banner">
+    <div class="hero-title">Core Banking System — Deep Dive Code &amp; Stored Procedures</div>
+    <div class="hero-subtitle">Code Implementation, Stored Procedure Logic, "Create New" Workflow &amp; Advanced Interview Q&amp;A</div>
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">Engineer:</span>
+        <span class="hero-meta-value">Ye Lin Kyaw (Ye Lin)</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">Project:</span>
+        <span class="hero-meta-value">Core Banking System (Batch-114, Group-2)</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">Specialty:</span>
+        <span class="hero-meta-value">MySQL Stored Procedures, Streaming Exports, Async Jobs, Gateway Security</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">Language:</span>
+        <span class="hero-meta-value">မြန်မာဘာသာဖြင့် အသေးစိတ် ရှင်းလင်းချက် (Myanmar Language)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 1: STORED PROCEDURES DEEP DIVE -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-number">1</span>
+      <h2 class="section-title">MySQL Stored Procedures များ အသေးစိတ် ရှင်းလင်းချက် (DB Layer Deep Dive)</h2>
+      <span class="section-tagline">High-Performance Database Engine Logic</span>
+    </div>
+
+    <p style="margin-top: 0; font-size: 8.5pt;">
+      ဘဏ်စနစ်တွင် ငွေလွှဲ Transaction ပေါင်း သန်းနှင့်ချီရှိသဖြင့် Java / Hibernate မှ Entity များအားလုံးကို ဆွဲတင်၍ Memory ပေါ်တွင် တွက်ချက်ပါက အလွန် နှေးကွေးစေပြီး CPU/RAM စားသုံးမှု မြင့်မားစေသည်။
+      ထို့ကြောင့် Ye Lin Kyaw သည် အရေးကြီး Aggregate Query များကို <strong>MySQL Stored Procedures</strong> ဖြင့် Database Engine ပေါ်တွင် တိုက်ရိုက်တွက်စေကာ <span class="code-font">CallableStatement</span> ဖြင့် မြန်ဆန်စွာ လှမ်းခေါ်ယူခဲ့သည်။
+    </p>
+
+    <!-- SP 1 -->
+    <div class="code-card">
+      <div class="code-card-header">
+        <span class="code-badge">STORED PROCEDURE 1</span>
+        <h4 class="code-card-title">sp_get_daily_ledger_summary — နေ့စဉ် Debit/Credit Ledger အချုပ် တွက်ချက်ခြင်း</h4>
+      </div>
+      <div class="code-card-body">
+        <div class="code-desc">
+          <strong>ရည်ရွယ်ချက်နှင့် အလုပ်လုပ်ပုံ:</strong><br>
+          ရက်စွဲအပိုင်းအခြား (<span class="code-font">p_start_date</span> မှ <span class="code-font">p_end_date</span>) အတွင်း ဖြစ်ပွားခဲ့သော Transaction များကို ရက်စွဲအလိုက်၊ Transaction Type အလိုက်၊ ငွေကြေးအမျိုးအစား (Currency) အလိုက် Group ဖွဲ့ပြီး စုစုပေါင်း အရေအတွက် (<span class="code-font">COUNT</span>)၊ စုစုပေါင်း ပမာဏ (<span class="code-font">SUM(amount)</span>) နှင့် ဝန်ဆောင်ခ (<span class="code-font">SUM(service_fee)</span>) များကို တစ်ပြိုင်နက်တည်း တွက်ထုတ်ပေးသည်။
+        </div>
+        <div class="code-block">
+<span class="sql-kw">CREATE PROCEDURE</span> sp_get_daily_ledger_summary(
+    <span class="sql-kw">IN</span> p_start_date <span class="sql-type">DATE</span>,
+    <span class="sql-kw">IN</span> p_end_date   <span class="sql-type">DATE</span>,
+    <span class="sql-kw">IN</span> p_status     <span class="sql-type">VARCHAR(25)</span>
+)
+<span class="sql-kw">BEGIN</span>
+    <span class="sql-kw">SELECT</span> 
+        <span class="sql-func">DATE</span>(bt.completed_at)                          <span class="sql-kw">AS</span> report_date,
+        bt.transaction_type                            <span class="sql-kw">AS</span> transaction_type,
+        <span class="sql-func">COUNT</span>(bt.transaction_id)                       <span class="sql-kw">AS</span> transaction_count,
+        <span class="sql-func">COALESCE</span>(<span class="sql-func">SUM</span>(bt.amount), 0.0000)               <span class="sql-kw">AS</span> total_amount,
+        <span class="sql-func">COALESCE</span>(<span class="sql-func">SUM</span>(bt.service_fee), 0.0000)          <span class="sql-kw">AS</span> total_fee,
+        bt.currency                                    <span class="sql-kw">AS</span> currency
+    <span class="sql-kw">FROM</span> bank_transactions bt
+    <span class="sql-kw">WHERE</span> bt.completed_at >= <span class="sql-func">CAST</span>(<span class="sql-func">CONCAT</span>(p_start_date, <span class="sql-str">' 00:00:00'</span>) <span class="sql-kw">AS</span> <span class="sql-type">DATETIME</span>)
+      <span class="sql-kw">AND</span> bt.completed_at <= <span class="sql-func">CAST</span>(<span class="sql-func">CONCAT</span>(p_end_date, <span class="sql-str">' 23:59:59'</span>) <span class="sql-kw">AS</span> <span class="sql-type">DATETIME</span>)
+      <span class="sql-kw">AND</span> (p_status <span class="sql-kw">IS NULL OR</span> p_status = <span class="sql-str">''</span> <span class="sql-kw">OR</span> bt.status = p_status)
+    <span class="sql-kw">GROUP BY</span> <span class="sql-func">DATE</span>(bt.completed_at), bt.transaction_type, bt.currency
+    <span class="sql-kw">ORDER BY</span> report_date <span class="sql-kw">DESC</span>, total_amount <span class="sql-kw">DESC</span>;
+<span class="sql-kw">END</span> //
+        </div>
+        <div class="callout info">
+          <div class="callout-title">💡 Performance Optimization Note:</div>
+          <span class="code-font">idx_bt_reporting_perf</span> Covering Index ရှိသည့်အတွက် Table Full Scan မလုပ်ဘဲ Index Range Scan ဖြင့် မီလီစက္ကန့်ပိုင်းအတွင်း သန်းချီသော ဒေတာမှ ချက်ချင်း တွက်ထုတ်ပေးနိုင်သည်။
+        </div>
+      </div>
+    </div>
+
+    <!-- SP 2 -->
+    <div class="code-card">
+      <div class="code-card-header">
+        <span class="code-badge">STORED PROCEDURE 2</span>
+        <h4 class="code-card-title">sp_get_customer_account_status_summary — Multi-Result Sets (အကောင့်အခြေအနေနှင့် Balance Brackets)</h4>
+      </div>
+      <div class="code-card-body">
+        <div class="code-desc">
+          <strong>ရည်ရွယ်ချက်နှင့် အလုပ်လုပ်ပုံ:</strong><br>
+          အကောင့်များ၏ အခြေအနေ (Active, Inactive, Suspended, Frozen) အလိုက် စာရင်းအင်းများနှင့် ငွေပမာဏအပိုင်းအခြား (Balance Brackets: 0-100K, 100K-1M, 1M-10M, 10M+) များကို Result Set ၂ ခု ပြိုင်တူ ထုတ်ပေးသည်။
+        </div>
+        <div class="code-block">
+<span class="sql-kw">CREATE PROCEDURE</span> sp_get_customer_account_status_summary(
+    <span class="sql-kw">IN</span> p_start_date     <span class="sql-type">DATE</span>,
+    <span class="sql-kw">IN</span> p_end_date       <span class="sql-type">DATE</span>,
+    <span class="sql-kw">IN</span> p_account_status <span class="sql-type">VARCHAR(20)</span>
+)
+<span class="sql-kw">BEGIN</span>
+    <span class="sql-comment">-- Result Set 1: Account Status Distribution (Avg, Min, Max, New Accounts)</span>
+    <span class="sql-kw">SELECT</span> 
+        a.status                                       <span class="sql-kw">AS</span> account_status,
+        <span class="sql-func">COUNT</span>(a.account_id)                            <span class="sql-kw">AS</span> account_count,
+        <span class="sql-func">SUM</span>(<span class="sql-kw">CASE</span> 
+            <span class="sql-kw">WHEN</span> a.created_at >= <span class="sql-func">CAST</span>(<span class="sql-func">CONCAT</span>(p_start_date, <span class="sql-str">' 00:00:00'</span>) <span class="sql-kw">AS</span> <span class="sql-type">DATETIME</span>)
+             <span class="sql-kw">AND</span> a.created_at <= <span class="sql-func">CAST</span>(<span class="sql-func">CONCAT</span>(p_end_date, <span class="sql-str">' 23:59:59'</span>) <span class="sql-kw">AS</span> <span class="sql-type">DATETIME</span>) 
+            <span class="sql-kw">THEN</span> 1 <span class="sql-kw">ELSE</span> 0 
+        <span class="sql-kw">END</span>)                                           <span class="sql-kw">AS</span> new_accounts_in_range,
+        <span class="sql-func">COALESCE</span>(<span class="sql-func">AVG</span>(a.current_balance), 0.0000)       <span class="sql-kw">AS</span> avg_balance,
+        <span class="sql-func">COALESCE</span>(<span class="sql-func">MIN</span>(a.current_balance), 0.0000)       <span class="sql-kw">AS</span> min_balance,
+        <span class="sql-func">COALESCE</span>(<span class="sql-func">MAX</span>(a.current_balance), 0.0000)       <span class="sql-kw">AS</span> max_balance
+    <span class="sql-kw">FROM</span> accounts a
+    <span class="sql-kw">WHERE</span> (p_account_status <span class="sql-kw">IS NULL OR</span> p_account_status = <span class="sql-str">''</span> <span class="sql-kw">OR</span> a.status = p_account_status)
+    <span class="sql-kw">GROUP BY</span> a.status;
+
+    <span class="sql-comment">-- Result Set 2: Balance Bracket Distribution via CASE WHEN</span>
+    <span class="sql-kw">SELECT</span> 
+        <span class="sql-kw">CASE</span> 
+            <span class="sql-kw">WHEN</span> a.current_balance < 100000            <span class="sql-kw">THEN</span> <span class="sql-str">'0 - 100K'</span>
+            <span class="sql-kw">WHEN</span> a.current_balance < 1000000           <span class="sql-kw">THEN</span> <span class="sql-str">'100K - 1M'</span>
+            <span class="sql-kw">WHEN</span> a.current_balance < 10000000          <span class="sql-kw">THEN</span> <span class="sql-str">'1M - 10M'</span>
+            <span class="sql-kw">ELSE</span> <span class="sql-str">'10M+'</span>
+        <span class="sql-kw">END</span>                                            <span class="sql-kw">AS</span> balance_bracket,
+        a.status                                       <span class="sql-kw">AS</span> account_status,
+        <span class="sql-func">COUNT</span>(a.account_id)                            <span class="sql-kw">AS</span> bracket_count,
+        <span class="sql-func">COALESCE</span>(<span class="sql-func">SUM</span>(a.current_balance), 0.0000)       <span class="sql-kw">AS</span> bracket_total_balance
+    <span class="sql-kw">FROM</span> accounts a
+    <span class="sql-kw">WHERE</span> (p_account_status <span class="sql-kw">IS NULL OR</span> p_account_status = <span class="sql-str">''</span> <span class="sql-kw">OR</span> a.status = p_account_status)
+    <span class="sql-kw">GROUP BY</span> balance_bracket, a.status
+    <span class="sql-kw">ORDER BY</span> <span class="sql-func">MIN</span>(a.current_balance) <span class="sql-kw">ASC</span>;
+<span class="sql-kw">END</span> //
+        </div>
+      </div>
+    </div>
+
+    <!-- SP 3 -->
+    <div class="code-card">
+      <div class="code-card-header">
+        <span class="code-badge">STORED PROCEDURE 3</span>
+        <h4 class="code-card-title">sp_large_transaction_aml_report_paged — AML စောင့်ကြည့်ရေး စနစ်သစ်</h4>
+      </div>
+      <div class="code-card-body">
+        <div class="code-desc">
+          <strong>အင်ဂျင်နီယာဆိုင်ရာ ဗိသုကာထူးခြားချက် (Architectural Highlight):</strong><br>
+          Pagination ပြုလုပ်ရာတွင် <span class="code-font">COUNT(*) OVER()</span> သို့မဟုတ် Subquery သုံးပါက Table ကြီး ၄ ခု (<span class="code-font">bank_transactions, accounts, customers</span>) ကို Join ပြီးမှ Count လုပ်သဖြင့် အလွန် ကြန့်ကြာစေသည်။<br>
+          ကျနော်သည် <strong>Result Set ၂ ခု ခွဲထုတ်သည့် နည်းပညာ</strong> ကို တီထွင်ခဲ့သည်:<br>
+          • <strong>RS1 (Summary Scanning):</strong> Join မပါဘဲ Covering Index သာ သုံး၍ စုစုပေါင်း Flagged Count, စုစုပေါင်း ပမာဏ, High Risk Count (&gt;= 2x threshold), Medium Risk Count များကို <strong>0.03 စက္ကန့်အတွင်း</strong> တွက်ထုတ်သည်။<br>
+          • <strong>RS2 (Paginated Rows):</strong> အသုံးပြုသူ ကြည့်လိုသော ၃၀ Row ကိုသာ Accounts/Customers ဇယားများနှင့် Left Join တွဲ၍ အမည်နှင့် အကောင့်နံပါတ်များ ထုတ်ပေးသည်။
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- SECTION 2: HOW JAVA CALLS STORED PROCEDURES -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-number">2</span>
+      <h2 class="section-title">Spring Boot / Java မှ Stored Procedures များကို မည်သို့ ခေါ်ယူအသုံးပြုသလဲ?</h2>
+      <span class="section-tagline">Java JDBC Template &amp; CallableStatement Mastery</span>
+    </div>
+
+    <p style="margin-top: 0; font-size: 8.5pt;">
+      Stored Procedure မှ Result Set တစ်ခုထက်ပို၍ ပြန်ပေးသည့်အခါ Spring Data JPA repository မိတ်ဆွေများ မကိုင်တွယ်နိုင်ပါ။
+      ကျနော့်ရဲ့ <span class="code-font">ReportRepository.java</span> တွင် <span class="code-font">JdbcTemplate</span> နှင့် <span class="code-font">CallableStatement</span> ကို သုံး၍ Multi-Result Sets များကို အောက်ပါအတိုင်း ပြီးပြည့်စုံစွာ ဆွဲယူထားပါသည်:
+    </p>
+
+    <div class="code-card">
+      <div class="code-card-header">
+        <span class="code-badge">JAVA REPOSITORY</span>
+        <h4 class="code-card-title">ReportRepository.java — Multi-Result Set Extraction Logic</h4>
+      </div>
+      <div class="code-card-body">
+        <div class="code-block">
+<span class="java-ann">@Repository</span>
+<span class="java-kw">public class</span> <span class="java-type">ReportRepository</span> {
+
+    <span class="java-kw">private final</span> <span class="java-type">JdbcTemplate</span> jdbcTemplate;
+
+    <span class="java-kw">public</span> <span class="java-type">AccountStatusReportDTO</span> getAccountStatusSummary(
+            <span class="java-type">LocalDate</span> startDate, <span class="java-type">LocalDate</span> endDate, <span class="java-type">String</span> accountStatus) {
+
+        <span class="java-kw">return</span> jdbcTemplate.execute((<span class="java-type">Connection</span> con) -> {
+            <span class="java-comment">// 1. Stored Procedure ခေါ်ယူရန် CallableStatement ပြင်ဆင်ခြင်း</span>
+            <span class="java-type">CallableStatement</span> cs = con.prepareCall(<span class="java-str">"{CALL sp_get_customer_account_status_summary(?, ?, ?)}"</span>);
+            cs.setObject(1, startDate);
+            cs.setObject(2, endDate);
+            cs.setString(3, (accountStatus == <span class="java-kw">null</span> || accountStatus.isBlank()) ? <span class="java-kw">null</span> : accountStatus);
+            <span class="java-kw">return</span> cs;
+        }, (<span class="java-type">CallableStatement</span> cs) -> {
+            <span class="java-type">List</span>&lt;<span class="java-type">AccountStatusSummaryDTO</span>&gt; statuses = <span class="java-kw">new</span> <span class="java-type">ArrayList</span>&lt;&gt;();
+            <span class="java-type">List</span>&lt;<span class="java-type">BalanceBracketDTO</span>&gt; brackets = <span class="java-kw">new</span> <span class="java-type">ArrayList</span>&lt;&gt;();
+
+            <span class="java-comment">// 2. Execution စတင်ပြီး ပထမ Result Set (RS1) ဖတ်ယူခြင်း</span>
+            <span class="java-type">boolean</span> hasRs = cs.execute();
+
+            <span class="java-kw">if</span> (hasRs) {
+                <span class="java-kw">try</span> (<span class="java-type">ResultSet</span> rs = cs.getResultSet()) {
+                    <span class="java-kw">while</span> (rs.next()) {
+                        statuses.add(<span class="java-type">AccountStatusSummaryDTO</span>.builder()
+                                .accountStatus(rs.getString(<span class="java-str">"account_status"</span>))
+                                .accountCount(rs.getLong(<span class="java-str">"account_count"</span>))
+                                .newAccountsInRange(rs.getLong(<span class="java-str">"new_accounts_in_range"</span>))
+                                .avgBalance(rs.getBigDecimal(<span class="java-str">"avg_balance"</span>))
+                                .minBalance(rs.getBigDecimal(<span class="java-str">"min_balance"</span>))
+                                .maxBalance(rs.getBigDecimal(<span class="java-str">"max_balance"</span>))
+                                .build());
+                    }
+                }
+                <span class="java-comment">// 3. ဒုတိယ Result Set (RS2) ရှိမရှိ စစ်ဆေးပြီး ရွှေ့ပြောင်းခြင်း</span>
+                hasRs = cs.getMoreResults();
+            }
+
+            <span class="java-comment">// 4. ဒုတိယ Result Set (RS2: Balance Brackets) ဖတ်ယူခြင်း</span>
+            <span class="java-kw">if</span> (hasRs) {
+                <span class="java-kw">try</span> (<span class="java-type">ResultSet</span> rs = cs.getResultSet()) {
+                    <span class="java-kw">while</span> (rs.next()) {
+                        brackets.add(<span class="java-type">BalanceBracketDTO</span>.builder()
+                                .balanceBracket(rs.getString(<span class="java-str">"balance_bracket"</span>))
+                                .bracketCount(rs.getLong(<span class="java-str">"bracket_count"</span>))
+                                .bracketTotalBalance(rs.getBigDecimal(<span class="java-str">"bracket_total_balance"</span>))
+                                .accountStatus(rs.getString(<span class="java-str">"account_status"</span>))
+                                .build());
+                    }
+                }
+            }
+
+            <span class="java-comment">// 5. Result Set ၂ ခုလုံးကို DTO တစ်ခုတည်းအဖြစ် ပေါင်းစပ်၍ Return ပေးခြင်း</span>
+            <span class="java-kw">return</span> <span class="java-type">AccountStatusReportDTO</span>.builder()
+                    .statusSummaries(statuses)
+                    .bracketDistribution(brackets)
+                    .build();
+        });
+    }
+}
+        </div>
+        <div class="callout">
+          <div class="callout-title">✔ အင်တာဗျူးတွင် အထူးပြောပြရန် အချက်:</div>
+          <span class="code-font">cs.getMoreResults()</span> သည် Stored Procedure မှ နောက်ထပ် ResultSet ရှိပါက True ပြန်ပေးပြီး Cursor ကို နောက် Result Set သို့ ရွှေ့ပေးသည်။ JDBC Connection Resource Leak မဖြစ်စေရန် <span class="code-font">try (ResultSet rs = cs.getResultSet())</span> ဖြင့် Try-with-resources သုံးထားသည်။
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- SECTION 3: CREATE NEW ASYNC EXPORT WORKFLOW -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-number">3</span>
+      <h2 class="section-title">"Create New" Flow — Background Export Job အသစ် ဖန်တီးပုံ အဆင့်ဆင့်</h2>
+      <span class="section-tagline">Producer-Consumer Asynchronous Job Architecture</span>
+    </div>
+
+    <p style="margin-top: 0; font-size: 8.5pt;">
+      အသုံးပြုသူသည် Report အကြီးကြီးများကို Export ထုတ်ရန် နှိပ်လိုက်သည့်အခါ စနစ်အတွင်း အောက်ပါအတိုင်း <strong>အသစ်ဖန်တီးခြင်း (Job Creation)</strong> နှင့် <strong>နောက်ကွယ်မှ ဆောင်ရွက်ခြင်း (Async Worker)</strong> တို့ အလုပ်လုပ်ပါသည်:
+    </p>
+
+    <!-- Step by Step Flow -->
+    <div class="code-card">
+      <div class="code-card-header">
+        <span class="code-badge">STEP-BY-STEP</span>
+        <h4 class="code-card-title">Background Export Job Creation &amp; Download Lifecycle</h4>
+      </div>
+      <div class="code-card-body">
+        
+        <div style="display: grid; grid-template-columns: 120px 1fr; gap: 10px; margin-bottom: 12px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px;">
+          <div style="font-weight: 700; color: #0284c7;">အဆင့် (၁) Submit:</div>
+          <div>
+            Client မှ <span class="code-font">POST /api/v1/reports/export-async?reportType=...&amp;format=xlsx</span> သို့ တောင်းဆိုမှု ရောက်ရှိလာသည်။
+            <span class="code-font">ReportExportJobService.submitExportJob()</span> က UUID ဖြင့် Job ID အသစ် ဖန်တီးသည် (ဥပမာ <span class="code-font">exp_7a8b9c0d1e2f</span>)။
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 120px 1fr; gap: 10px; margin-bottom: 12px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px;">
+          <div style="font-weight: 700; color: #0284c7;">အဆင့် (၂) Accepted:</div>
+          <div>
+            Status ကို <span class="code-font">PENDING</span> ဟု သတ်မှတ်ပြီး Thread-safe ဖြစ်သော <span class="code-font">ConcurrentHashMap&lt;String, JobRecord&gt;</span> ထဲသို့ သိမ်းဆည်းသည်။
+            Web Thread ပိတ်ဆို့မှု မရှိစေရန် Client သို့ <strong>HTTP 202 (Accepted)</strong> ဖြင့် Job DTO ကို မီလီစက္ကန့် ၂၀၀ အတွင်း ချက်ချင်း ပြန်ပို့ပေးသည်။
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 120px 1fr; gap: 10px; margin-bottom: 12px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px;">
+          <div style="font-weight: 700; color: #0284c7;">အဆင့် (၃) Background:</div>
+          <div>
+            Spring Thread Pool Executor တွင် <span class="code-font">executeAsyncJob()</span> စတင် Run ပါသည်။
+            Job State သည် <span class="code-font">PROCESSING</span> သို့ ကူးပြောင်းပြီး Stored Procedure မှ ဒေတာများကို ဖတ်ယူကာ JasperReports သို့မဟုတ် POI SXSSF ဖြင့် Binary Bytes များ ထုတ်လုပ်သည်။
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 120px 1fr; gap: 10px; margin-bottom: 12px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px;">
+          <div style="font-weight: 700; color: #0284c7;">အဆင့် (၄) Write to Disk:</div>
+          <div>
+            ထုတ်လုပ်ပြီးသော File Bytes များကို Server RAM ပေါ်တွင် မထားဘဲ OS ၏ Temp Folder ထဲရှိ <span class="code-font">cb-report-exports/</span> Directory ထဲသို့ ရေးချသိမ်းဆည်းလိုက်သည်။
+            Job Status ကို <span class="code-font">COMPLETED</span> သို့ ပြောင်းလဲပေးသည်။
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 120px 1fr; gap: 10px; margin-bottom: 8px;">
+          <div style="font-weight: 700; color: #0284c7;">အဆင့် (၅) Polling &amp; DL:</div>
+          <div>
+            React Custom Hook (<span class="code-font">useAsyncExport</span>) က ၁.၅ စက္ကန့်ခြား <span class="code-font">GET /api/v1/reports/export-jobs/{jobId}</span> ကို လှမ်းစစ်နေပြီး <span class="code-font">COMPLETED</span> ဖြစ်သည်နှင့် <span class="code-font">/download</span> endpoint မှတစ်ဆင့် File Blob ကို Browser သို့ အလိုအလျောက် Download ဆွဲပေးသည်။
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Code of submitExportJob -->
+    <div class="code-card">
+      <div class="code-card-header">
+        <span class="code-badge">JAVA SERVICE</span>
+        <h4 class="code-card-title">ReportExportJobService.java — submitExportJob() &amp; executeAsyncJob()</h4>
+      </div>
+      <div class="code-card-body">
+        <div class="code-block">
+<span class="java-kw">public</span> <span class="java-type">ExportJobResponseDTO</span> submitExportJob(
+        <span class="java-type">String</span> reportType, <span class="java-type">String</span> format, <span class="java-type">Map</span>&lt;<span class="java-type">String</span>, <span class="java-type">String</span>&gt; allParams) {
+
+    <span class="java-comment">// 1. Unique Job ID ထုတ်လုပ်ခြင်း</span>
+    <span class="java-type">String</span> jobId = <span class="java-str">"exp_"</span> + <span class="java-type">UUID</span>.randomUUID().toString().replace(<span class="java-str">"-"</span>, <span class="java-str">""</span>).substring(0, 12);
+    <span class="java-type">String</span> ext = format.equalsIgnoreCase(<span class="java-str">"excel"</span>) ? <span class="java-str">"xlsx"</span> : format.equalsIgnoreCase(<span class="java-str">"pdf"</span>) ? <span class="java-str">"pdf"</span> : <span class="java-str">"csv"</span>;
+
+    <span class="java-comment">// 2. Path Traversal ကာကွယ်ရန် Filename Sanitization စစ်ဆေးခြင်း</span>
+    <span class="java-type">String</span> rawDatePrefix = allParams.getOrDefault(<span class="java-str">"startDate"</span>, <span class="java-type">LocalDate</span>.now().toString());
+    <span class="java-type">String</span> datePrefix = rawDatePrefix.replaceAll(<span class="java-str">"[:\\/*?"&lt;&gt;|]"</span>, <span class="java-str">"_"</span>);
+    <span class="java-type">String</span> fileName = reportType.toLowerCase() + <span class="java-str">"_"</span> + datePrefix + <span class="java-str">"."</span> + ext;
+
+    <span class="java-type">JobRecord</span> record = <span class="java-type">JobRecord</span>.builder()
+            .jobId(jobId).reportType(reportType).format(ext)
+            .status(<span class="java-type">ExportJobStatus</span>.PENDING).fileName(fileName)
+            .params(allParams).createdAt(<span class="java-type">LocalDateTime</span>.now()).build();
+
+    jobStore.put(jobId, record);
+
+    <span class="java-comment">// 3. Background Worker သို့ အလုပ်လွှဲပြောင်းပေးခြင်း (Fire &amp; Forget async)</span>
+    <span class="java-type">CompletableFuture</span>.runAsync(() -> executeAsyncJob(jobId));
+
+    <span class="java-kw">return</span> toResponse(record);
+}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- SECTION 4: JASPERREPORTS & STREAMING CODE -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-number">4</span>
+      <h2 class="section-title">JasperReports &amp; Streaming Multi-Format Code အသေးစိတ် ရှင်းလင်းချက်</h2>
+      <span class="section-tagline">Bytecode Compilation &amp; Document Generation</span>
+    </div>
+
+    <p style="margin-top: 0; font-size: 8.5pt;">
+      JasperReports 6.x ကို Spring Boot တွင် Production-grade ဖြစ်စေရန် ရေးသားထားသော <span class="code-font">JasperReportService.java</span> ၏ အတွင်းပိုင်း အလုပ်လုပ်ပုံ ဖြစ်ပါသည်:
+    </p>
+
+    <div class="code-card">
+      <div class="code-card-header">
+        <span class="code-badge">JASPER SERVICE</span>
+        <h4 class="code-card-title">JasperReportService.java — Startup Precompilation &amp; Multi-Format Rendering</h4>
+      </div>
+      <div class="code-card-body">
+        <div class="code-block">
+<span class="java-ann">@Slf4j</span>
+<span class="java-ann">@Service</span>
+<span class="java-kw">public class</span> <span class="java-type">JasperReportService</span> {
+
+    <span class="java-kw">private final</span> <span class="java-type">Map</span>&lt;<span class="java-type">String</span>, <span class="java-type">JasperReport</span>&gt; reportCache = <span class="java-kw">new</span> <span class="java-type">ConcurrentHashMap</span>&lt;&gt;();
+    <span class="java-kw">private volatile byte</span>[] cachedLogoBytes;
+
+    <span class="java-ann">@PostConstruct</span>
+    <span class="java-kw">public void</span> init() {
+        loadAndCacheLogo();   <span class="java-comment">// Classpath မှ brand logo ကို memory သို့ တစ်ကြိမ်တည်း load လုပ်ခြင်း</span>
+        precompileReports();  <span class="java-comment">// Template 8 ခုလုံးကို Application startup တွင် ကြိုတင် compile ထားခြင်း</span>
+    }
+
+    <span class="java-kw">public</span> <span class="java-type">JasperReport</span> getCompiledReport(<span class="java-type">String</span> reportName) {
+        <span class="java-kw">return</span> reportCache.computeIfAbsent(reportName, name -> {
+            <span class="java-comment">// 1. ကြိုတင် compile ပြီးသား .jasper binary ရှိမရှိ အရင်ရှာသည်</span>
+            <span class="java-type">String</span> jasperPath = <span class="java-str">"reports/"</span> + name + <span class="java-str">".jasper"</span>;
+            <span class="java-kw">try</span> {
+                <span class="java-type">ClassPathResource</span> res = <span class="java-kw">new</span> <span class="java-type">ClassPathResource</span>(jasperPath);
+                <span class="java-kw">if</span> (res.exists()) {
+                    <span class="java-kw">return</span> (<span class="java-type">JasperReport</span>) <span class="java-type">JRLoader</span>.loadObject(res.getInputStream());
+                }
+            } <span class="java-kw">catch</span> (<span class="java-type">Exception</span> e) { <span class="java-comment">/* fallback */</span> }
+
+            <span class="java-comment">// 2. မရှိပါက .jrxml XML ဖိုင်မှ Compile လုပ်ပြီး Cache ထဲ ထည့်သည်</span>
+            <span class="java-type">String</span> jrxmlPath = <span class="java-str">"reports/"</span> + name + <span class="java-str">".jrxml"</span>;
+            <span class="java-kw">try</span> (<span class="java-type">InputStream</span> in = <span class="java-kw">new</span> <span class="java-type">ClassPathResource</span>(jrxmlPath).getInputStream()) {
+                <span class="java-kw">return</span> <span class="java-type">JasperCompileManager</span>.compileReport(in);
+            } <span class="java-kw">catch</span> (<span class="java-type">Exception</span> e) {
+                <span class="java-kw">throw new</span> <span class="java-type">RuntimeException</span>(<span class="java-str">"Failed to compile report: "</span> + name, e);
+            }
+        });
+    }
+
+    <span class="java-comment">// Multi-Format Exporters</span>
+    <span class="java-kw">public byte</span>[] exportToPdf(<span class="java-type">JasperPrint</span> jasperPrint) <span class="java-kw">throws</span> <span class="java-type">JRException</span> {
+        <span class="java-kw">return</span> <span class="java-type">JasperExportManager</span>.exportReportToPdf(jasperPrint);
+    }
+
+    <span class="java-kw">public byte</span>[] exportToXlsx(<span class="java-type">JasperPrint</span> jasperPrint) <span class="java-kw">throws</span> <span class="java-type">JRException</span> {
+        <span class="java-kw">try</span> (<span class="java-type">ByteArrayOutputStream</span> out = <span class="java-kw">new</span> <span class="java-type">ByteArrayOutputStream</span>()) {
+            <span class="java-type">JRXlsxExporter</span> exporter = <span class="java-kw">new</span> <span class="java-type">JRXlsxExporter</span>();
+            exporter.setExporterInput(<span class="java-kw">new</span> <span class="java-type">SimpleExporterInput</span>(jasperPrint));
+            exporter.setExporterOutput(<span class="java-kw">new</span> <span class="java-type">SimpleOutputStreamExporterOutput</span>(out));
+            <span class="java-type">SimpleXlsxReportConfiguration</span> config = <span class="java-kw">new</span> <span class="java-type">SimpleXlsxReportConfiguration</span>();
+            config.setDetectCellType(<span class="java-kw">true</span>);           <span class="java-comment">// နံပါတ်များကို Excel Number စစ်စစ်အဖြစ် သိရှိစေခြင်း</span>
+            config.setRemoveEmptySpaceBetweenRows(<span class="java-kw">true</span>);
+            exporter.setConfiguration(config);
+            exporter.exportReport();
+            <span class="java-kw">return</span> out.toByteArray();
+        }
+    }
+}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- SECTION 5: ADVANCED INTERVIEW QUESTIONS & MODEL ANSWERS -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-number">5</span>
+      <h2 class="section-title">နောက်ထပ် မေးနိုင်သော အဆင့်မြင့် Interview မေးခွန်းများနှင့် စံနမူနာ အဖြေများ</h2>
+      <span class="section-tagline">Advanced Architectural &amp; Practical Interview Scenarios</span>
+    </div>
+
+    <!-- Advanced Q1 -->
+    <div class="qa-card">
+      <div class="qa-header">
+        <span class="qa-q-badge">AQ 1</span>
+        <h4 class="qa-question">"Database မှာ Stored Procedure သုံးတာနဲ့ Spring Data JPA Specification သုံးတာ ဘာကွာလဲ? ဘယ်နေရာမှာ ဘာကို ရွေးသုံးခဲ့လဲ?"</h4>
+      </div>
+      <div class="qa-body">
+        <div class="qa-answer">
+          <strong>စံနမူနာ အဖြေ (Model Answer):</strong><br>
+          "ကျနော်တို့ စနစ်မှာ Query အမျိုးအစားပေါ် မူတည်ပြီး ၂ မျိုးလုံးကို သင့်လျော်သလို နေရာခွဲသုံးခဲ့ပါတယ်:<br>
+          ၁) <strong>Stored Procedures:</strong> သန်းချီသော ဒေတာများကို <span class="code-font">GROUP BY, SUM, COUNT, AVG</span> စသည့် Heavy Aggregations တွက်ထုတ်ရသော <strong>Daily Ledger Summary, Account Status, AML Large Transactions</strong> တို့တွင် သုံးခဲ့ပါတယ်။ Database Engine တွင်း တိုက်ရိုက် run သောကြောင့် Network ပေါ်သို့ Row အများအပြား သယ်စရာမလိုဘဲ Index Covering Scan ဖြင့် 0.05 စက္ကန့်အတွင်း အဖြေထွက်ပါတယ်။<br>
+          ၂) <strong>JPA Criteria Specification:</strong> Dynamic Filter အကွက်ပေါင်းများစွာ (ဥပမာ Staff ID, IP address, Action Category, Date range, Account No စသည်ဖြင့်) ပါဝင်သော <strong>Audit Trail Logs</strong> နှင့် <strong>Transaction Details Search</strong> တွင် သုံးခဲ့ပါတယ်။ Dynamic Criteria များသည် Java Code ထဲတွင် Type-safe ဖြစ်စွာ Query တည်ဆောက်နိုင်သောကြောင့် ဖြစ်ပါတယ်ခင်ဗျာ။"
+        </div>
+      </div>
+    </div>
+
+    <!-- Advanced Q2 -->
+    <div class="qa-card">
+      <div class="qa-header">
+        <span class="qa-q-badge">AQ 2</span>
+        <h4 class="qa-question">"Multiple Result Sets ပြန်ပေးတဲ့ Stored Procedure ကို Spring Boot မှာ ဘယ်လို လက်ခံယူသလဲ?"</h4>
+      </div>
+      <div class="qa-body">
+        <div class="qa-answer">
+          <strong>စံနမူနာ အဖြေ:</strong><br>
+          "Standard Spring Data JPA Interface တွေဟာ Multiple Result Sets တွေကို တိုက်ရိုက် မထောက်ပံ့ပါဘူး။ ဒါကြောင့် ကျနော်သည် <span class="code-font">JdbcTemplate</span> ကို အောက်ခြေ Connection အဆင့်ထိ သုံးပြီး <span class="code-font">CallableStatement</span> ဖြင့် ကိုင်တွယ်ခဲ့ပါတယ်။<br>
+          ပထမဦးစွာ <span class="code-font">cs.execute()</span> ကို ခေါ်ပြီး <span class="code-font">cs.getResultSet()</span> ဖြင့် Result Set 1 (Account Status Count/Avg Balance) ကို ဖတ်ပါတယ်။ ထို့နောက် <span class="code-font">cs.getMoreResults()</span> ကို ခေါ်၍ Cursor ကို ဒုတိယ Result Set သို့ ရွှေ့ကာ Result Set 2 (Balance Bracket Distribution) ကို ထပ်မံ ဖတ်ယူပြီး DTO တစ်ခုတည်းအဖြစ် ပေါင်းစပ်ကာ Return ပြန်ပေးခဲ့ပါတယ်ခင်ဗျာ။"
+        </div>
+      </div>
+    </div>
+
+    <!-- Advanced Q3 -->
+    <div class="qa-card">
+      <div class="qa-header">
+        <span class="qa-q-badge">AQ 3</span>
+        <h4 class="qa-question">"Reporting စနစ် မြန်ဆန်စေရန် Database Indexing ကို ဘယ်လို Design လုပ်ခဲ့လဲ? Covering Index ဆိုတာဘာလဲ?"</h4>
+      </div>
+      <div class="qa-body">
+        <div class="qa-answer">
+          <strong>စံနမူနာ အဖြေ:</strong><br>
+          "ကျနော်တို့သည် <span class="code-font">idx_bt_reporting_perf</span> အမည်ရှိ <strong>Covering Index</strong> ကို <span class="code-font">bank_transactions</span> ဇယားပေါ်တွင် တည်ဆောက်ခဲ့ပါတယ်။<br>
+          Covering Index ဆိုသည်မှာ Query ၏ <span class="code-font">WHERE</span> အကွက်များ (completed_at, status, amount) သာမက <span class="code-font">SELECT</span> လုပ်မည့် အကွက်များ (transaction_type, service_fee, currency) ပါ Index Tree ထဲတွင် တစ်ပါတည်း ထည့်သွင်းထားခြင်း ဖြစ်ပါတယ်။<br>
+          ဒီလို လုပ်ထားတဲ့အတွက် Database Engine သည် Hard Disk ပေါ်ရှိ တကယ့် Table Data Pages များကို သွားရောက် ဖတ်ရှုစရာ မလိုတော့ဘဲ (Zero Table Lookup) RAM ပေါ်ရှိ B-Tree Index ထဲမှတင် အချက်အလက် အကုန်လုံးကို တိုက်ရိုက် ဆွဲထုတ်နိုင်သဖြင့် Query Speed ကို အဆ ၅၀ ကျော် မြန်ဆန်စေခဲ့ပါတယ်ခင်ဗျာ။"
+        </div>
+      </div>
+    </div>
+
+    <!-- Advanced Q4 -->
+    <div class="qa-card">
+      <div class="qa-header">
+        <span class="qa-q-badge">AQ 4</span>
+        <h4 class="qa-question">"REST API မှာ File Download ပေးတဲ့အခါ HTTP Response Header တွေကို ဘယ်လို စနစ်တကျ သတ်မှတ်ရသလဲ?"</h4>
+      </div>
+      <div class="qa-body">
+        <div class="qa-answer">
+          <strong>စံနမူနာ အဖြေ:</strong><br>
+          "ကျနော့်ရဲ့ <span class="code-font">ReportController</span> မှာ <span class="code-font">buildResponse(byte[] body, String filename, String mediaType)</span> helper method ကို ရေးသားထားပြီး အဓိက Header ၃ မျိုးကို တိကျစွာ သတ်မှတ်ပေးထားပါတယ်:<br>
+          ၁) <span class="code-font">HttpHeaders.setContentType()</span>: Format အလိုက် မှန်ကန်သော MIME Type (ဥပမာ Excel အတွက် <span class="code-font">application/vnd.openxmlformats-officedocument.spreadsheetml.sheet</span>, PDF အတွက် <span class="code-font">application/pdf</span>) ကို သတ်မှတ်ခြင်း။<br>
+          ၂) <span class="code-font">HttpHeaders.setContentDisposition()</span>: Browser မှ တိုက်ရိုက် Save/Download box ပေါ်စေရန် <span class="code-font">ContentDisposition.attachment().filename(filename).build()</span> သတ်မှတ်ခြင်း။<br>
+          ၃) <span class="code-font">HttpHeaders.setContentLength()</span>: Client ဘက်တွင် Download Progress Bar တိကျစွာ ပြသနိုင်စေရန် Binary Byte Array ၏ အလျား (<span class="code-font">body.length</span>) ကို ပို့ပေးထားပါတယ်ခင်ဗျာ။"
+        </div>
+      </div>
+    </div>
+
+    <!-- Advanced Q5 -->
+    <div class="qa-card">
+      <div class="qa-header">
+        <span class="qa-q-badge">AQ 5</span>
+        <h4 class="qa-question">"အကယ်၍ Multi-Instance (Load Balanced) Production Environment ဖြစ်သွားပါက မင်းရဲ့ In-Memory ConcurrentHashMap JobStore ကို ဘယ်လို Upgrade လုပ်မလဲ?"</h4>
+      </div>
+      <div class="qa-body">
+        <div class="qa-answer">
+          <strong>စံနမူနာ အဖြေ (Senior Architecture Perspective):</strong><br>
+          "လက်ရှိ Single Instance အတွက် <span class="code-font">ConcurrentHashMap</span> သည် အလွန် မြန်ဆန်ပြီး Thread-safe ဖြစ်ပါတယ်။ သို့သော် Kubernetes သို့မဟုတ် Multiple Server Nodes များနှင့် Production Deployment ပြုလုပ်မည်ဆိုပါက Server A တွင် တင်ထားသော Job ကို Server B မှ မသိရှိနိုင်သည့် Split-state ပြဿနာ ရှိလာနိုင်ပါတယ်။<br>
+          ဒီအတွက် Production Solution အနေဖြင့် <strong>Shared State Architecture</strong> သို့ ပြောင်းလဲရပါမည်: Job Metadata များကို <strong>Redis Cluster</strong> သို့မဟုတ် Database ရှိ <span class="code-font">report_export_jobs</span> ဇယားထဲတွင် သိမ်းဆည်းမည်ဖြစ်ပြီး၊ Background Jobs များကို <strong>RabbitMQ / Kafka</strong> Message Queue သို့မဟုတ် Distributed Scheduler (ဥပမာ Quartz / Spring Batch) ဖြင့် Node များဆီသို့ မျှဝေခွဲတမ်းချ ဆောင်ရွက်စေရပါမည်ခင်ဗျာ။"
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <div style="border-top: 1px solid #cbd5e1; padding-top: 12px; margin-top: 24px; text-align: center; color: #64748b; font-size: 8pt;">
+    Core Banking System — Deep Dive Code &amp; Stored Procedures Technical Guide | Candidate: <strong>Ye Lin Kyaw</strong> | Batch-114 Group-2
+  </div>
+
+</body>
+</html>

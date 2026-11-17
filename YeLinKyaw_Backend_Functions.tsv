@@ -1,0 +1,51 @@
+No.	Name	Features	Method Name	Description
+47	Ye Lin Kyaw	Daily Ledger Summary API	ReportController.getDailyLedgerSummary()	Exposes REST endpoint returning daily ledger debit/credit totals and balance reconciliations.
+48	Ye Lin Kyaw	Daily Ledger Export API	ReportController.exportDailyLedgerSummary()	Streams generated daily ledger reports in CSV, Excel, or PDF formats.
+49	Ye Lin Kyaw	Account Status Summary API	ReportController.getAccountStatusSummary()	Exposes REST endpoint aggregating accounts by lifecycle status (Active, Inactive, Suspended, Frozen).
+50	Ye Lin Kyaw	Account Status Export API	ReportController.exportAccountStatusSummary()	Generates and downloads account status distribution reports in CSV, Excel, or PDF.
+51	Ye Lin Kyaw	Audit Trail Logs API	ReportController.getAuditTrailLogs()	Exposes REST endpoint providing paginated audit trail logs with staff, action, and date filters.
+52	Ye Lin Kyaw	Audit Trail Export API	ReportController.exportAuditTrailLogs()	Streams comprehensive regulatory compliance audit logs to CSV, Excel, or PDF.
+53	Ye Lin Kyaw	Large Transactions API	ReportController.getLargeTransactions()	Exposes REST endpoint returning high-value transactions exceeding AML compliance thresholds.
+54	Ye Lin Kyaw	Large Transactions Export API	ReportController.exportLargeTransactions()	Streams high-value transaction watchlist reports in CSV, Excel, or PDF.
+55	Ye Lin Kyaw	Fee Revenue Summary API	ReportController.getFeeRevenueSummary()	Exposes REST endpoint calculating gross fees earned across transaction channels.
+56	Ye Lin Kyaw	Fee Revenue Export API	ReportController.exportFeeRevenueSummary()	Generates fee revenue summary reports formatted for managerial and auditor review.
+57	Ye Lin Kyaw	Transaction Details API	ReportController.getTransactionDetails()	Exposes REST endpoint delivering paginated multi-criteria transaction detail records.
+58	Ye Lin Kyaw	Transaction Details Export API	ReportController.exportTransactionDetails()	Handles asynchronous streaming export for heavy transaction detail queries.
+59	Ye Lin Kyaw	Submit Async Export Job API	ReportController.submitExportJob()	Submits large report export requests to background thread pool and returns job UUID.
+60	Ye Lin Kyaw	Query Export Job Status API	ReportController.getExportJobStatus()	Returns real-time processing status (PENDING, PROCESSING, COMPLETED, FAILED) of async export jobs.
+61	Ye Lin Kyaw	Download Export Job Artifact API	ReportController.downloadExportJob()	Streams completed report binary file bytes from disk to client browser for a given job ID.
+62	Ye Lin Kyaw	Daily Ledger Calculation Logic	ReportService.getDailyLedgerSummary()	Queries double-entry transactions and computes daily credit, debit, and net balances.
+63	Ye Lin Kyaw	Daily Ledger CSV Exporter	ReportService.exportDailyLedgerCsv()	Formats daily ledger summary records into RFC-compliant CSV byte stream.
+64	Ye Lin Kyaw	Daily Ledger Excel Exporter	ReportService.exportDailyLedgerExcel()	Formats daily ledger summary records into styled Microsoft Excel (XLSX) workbook bytes.
+65	Ye Lin Kyaw	Daily Ledger PDF Exporter	ReportService.exportDailyLedgerPdf()	Compiles and renders JasperReports daily ledger PDF with official headers.
+66	Ye Lin Kyaw	Account Status Logic	ReportService.getAccountStatusSummary()	Analyzes customer account repository to count statuses and calculate growth rates.
+67	Ye Lin Kyaw	Account Status CSV Exporter	ReportService.exportAccountStatusCsv()	Formats account lifecycle status counts into downloadable CSV stream.
+68	Ye Lin Kyaw	Account Status Excel Exporter	ReportService.exportAccountStatusExcel()	Generates multi-tab Excel spreadsheet showing account status counts and percentages.
+69	Ye Lin Kyaw	Account Status PDF Exporter	ReportService.exportAccountStatusPdf()	Compiles JasperReports PDF report illustrating account status distributions.
+70	Ye Lin Kyaw	Audit Trail Paged Logic	ReportService.getAuditTrailLog()	Queries audit entity records and parses JSON before/after state diffs for review.
+71	Ye Lin Kyaw	Audit Trail CSV Exporter	ReportService.exportAuditTrailCsv()	Formats audit trail events into structured CSV byte stream for regulatory submission.
+72	Ye Lin Kyaw	Audit Trail Excel Exporter	ReportService.exportAuditTrailExcel()	Generates audit log spreadsheet with timestamp, operator ID, and change categories.
+73	Ye Lin Kyaw	Audit Trail PDF Exporter	ReportService.exportAuditTrailPdf()	Renders official bank audit trail compliance log report via JasperReports engine.
+74	Ye Lin Kyaw	Large Transaction Logic	ReportService.getLargeTransactionSummaryPaged()	Filters transactions matching threshold ceilings with pagination and sorting.
+75	Ye Lin Kyaw	Large Transaction CSV Exporter	ReportService.exportLargeTransactionCsv()	Generates CSV export containing all transactions flagged above AML monetary thresholds.
+76	Ye Lin Kyaw	Large Transaction Excel Exporter	ReportService.exportLargeTransactionExcel()	Generates Excel report of high-value transactions with customer names and accounts.
+77	Ye Lin Kyaw	Large Transaction PDF Exporter	ReportService.exportLargeTransactionPdf()	Compiles JasperReports PDF document for AML regulatory transaction disclosures.
+78	Ye Lin Kyaw	Fee Revenue Logic	ReportService.getFeeRevenueSummary()	Groups transactions by channel and calculates aggregated fee revenue and waiver metrics.
+79	Ye Lin Kyaw	Fee Revenue CSV Exporter	ReportService.exportFeeRevenueCsv()	Formats channel-by-channel fee collections into downloadable CSV records.
+80	Ye Lin Kyaw	Fee Revenue Excel Exporter	ReportService.exportFeeRevenueExcel()	Generates styled Excel report showing fee income across OTC, P2P, and PG channels.
+81	Ye Lin Kyaw	Fee Revenue PDF Exporter	ReportService.exportFeeRevenuePdf()	Compiles fee revenue summary PDF with channel breakdowns and net revenue calculations.
+82	Ye Lin Kyaw	Transaction Details Paged Logic	ReportService.getTransactionDetailsPaged()	Executes multi-column dynamic criteria queries for comprehensive transaction searches.
+83	Ye Lin Kyaw	Transaction Details CSV Exporter	ReportService.exportTransactionDetailsCsv()	Streams paginated transaction details into CSV file bytes.
+84	Ye Lin Kyaw	Transaction Details Excel Exporter	ReportService.exportTransactionDetailsExcel()	Generates full transaction detail spreadsheet with ledger legs and account numbers.
+85	Ye Lin Kyaw	Transaction Details PDF Exporter	ReportService.exportTransactionDetailsPdf()	Compiles detailed transaction ledger report using JasperReports framework.
+86	Ye Lin Kyaw	Jasper Template Precompiler	JasperReportService.precompileReports()	Compiles all .jrxml templates into .jasper bytecode at application startup for sub-millisecond execution.
+87	Ye Lin Kyaw	Bank Logo Caching Engine	JasperReportService.loadAndCacheLogo()	Loads and caches official bank branding logo images in memory for high-speed report rendering.
+88	Ye Lin Kyaw	Jasper PDF Generator	JasperReportService.exportToPdf()	Core JasperReports exporter utility converting JasperPrint objects into PDF byte streams.
+89	Ye Lin Kyaw	Jasper Excel Generator	JasperReportService.exportToXlsx()	Core JasperReports exporter utility converting JasperPrint objects into XLSX byte streams.
+90	Ye Lin Kyaw	Jasper CSV Generator	JasperReportService.exportToCsv()	Core JasperReports exporter utility converting JasperPrint objects into CSV byte streams.
+91	Ye Lin Kyaw	RFC CSV Streaming Writer	CsvExportUtil.writeCsv()	Encodes data rows into RFC 4180 compliant CSV bytes with quotation escaping and UTF-8 BOM.
+92	Ye Lin Kyaw	Async Report Job Creation	ReportExportJobService.createJob()	Registers a new asynchronous report generation task with unique UUID and PENDING state.
+93	Ye Lin Kyaw	Async Background Worker	ReportExportJobService.executeAsyncJob()	Executes heavy report database queries and binary writing in an asynchronous background thread pool.
+94	Ye Lin Kyaw	Async Job Status Updater	ReportExportJobService.updateJobStatus()	Thread-safe state transition updating job progress, completion timestamps, and file disk paths.
+95	Ye Lin Kyaw	Customer Account Gateway Verifier	GatewayAccountVerificationService.verifyAccountForGateway()	Validates customer account eligibility, freeze state, and balance sufficiency for Merchant Gateway API.
+96	Ye Lin Kyaw	Customer Portal History Service	CustomerAccountService.getCustomerTransactionHistory()	Queries and returns chronological transaction histories for authenticated retail customer portal users.

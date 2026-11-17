@@ -1,0 +1,39 @@
+No.	Name	Features	Method Name	Description
+90	Ye Lin Kyaw	Financial Reporting Dashboard UI	ReportingPage.tsx	Main administrative analytics dashboard providing high-level metrics and tabbed report navigation.
+91	Ye Lin Kyaw	Reporting Master Tab Container	ReportingView.tsx	Master view managing active report sub-modules, date range filters, and global query dispatches.
+92	Ye Lin Kyaw	Daily Ledger Report Panel	DailyLedgerPanel.tsx	Specialized reporting panel displaying double-entry debits, credits, balance reconciliation, and settlement status.
+93	Ye Lin Kyaw	Load Daily Ledger Data	loadDailyLedger()	Queries core banking double-entry balance summaries with date-range parameters and calculates running balances.
+94	Ye Lin Kyaw	Daily Ledger Date Filtering	handleLedgerDateFilter()	Updates start and end date bounds for daily ledger reconciliation queries.
+95	Ye Lin Kyaw	Fee Revenue Analytics Panel	FeeRevenuePanel.tsx	Interactive breakdown displaying income collected across transaction channels (OTC, P2P, Merchant Gateway).
+96	Ye Lin Kyaw	Load Fee Revenue Summary	loadFeeRevenue()	Fetches total fees, waiver counts, channel distributions, and percentage growths across specified fiscal periods.
+97	Ye Lin Kyaw	Fee Revenue Channel Filter	handleChannelSelect()	Filters fee revenue reports by specific operational channels (OTC_TELLER, CUSTOMER_P2P, MERCHANT_PG).
+98	Ye Lin Kyaw	Large Transaction Watchlist	LargeTransactionPanel.tsx	High-value transaction monitoring interface flagging transfers exceeding regulatory AML compliance thresholds.
+99	Ye Lin Kyaw	Load Large Transactions	loadLargeTransactions()	Retrieves paginated records of high-value cash deposits and wire transfers with dynamic threshold filtering.
+100	Ye Lin Kyaw	AML Threshold Configuration	handleThresholdChange()	Adjusts monetary trigger ceiling (e.g. >= 5,000,000 MMK) dynamically to filter high-risk banking transactions.
+101	Ye Lin Kyaw	Large Transaction Pagination	handlePageChange() (Large Tx)	Handles client-side and server-side page navigation across high-value transfer records.
+102	Ye Lin Kyaw	Account Status Distribution	AccountStatusPanel.tsx	Visual summary panel reporting account distributions across Active, Inactive, Suspended, and Frozen states.
+103	Ye Lin Kyaw	Load Account Status Metrics	loadAccountStatus()	Aggregates real-time customer account states and computes operational activation and dormancy ratios.
+104	Ye Lin Kyaw	Account Status Filter Dropdown	handleStatusSelect()	Filters account distribution metrics by individual account lifecycle states.
+105	Ye Lin Kyaw	Transaction Audit Trail Panel	AuditTrailPanel.tsx	Audit log inspection interface rendering staff administrative actions, IP addresses, and before/after diffs.
+106	Ye Lin Kyaw	Load Audit Trail Logs	loadAuditLogs()	Queries paginated system change events filtered by staff operator, action category, and date boundaries.
+107	Ye Lin Kyaw	Audit Trail Detail View	handleViewDiff()	Opens JSON diff inspector comparing database state snapshots before and after administrative modifications.
+108	Ye Lin Kyaw	Comprehensive Filter Bar UI	ReportFilterBar.tsx	Dynamic multi-field filter bar allowing date picker inputs, channel selection, status pills, and search triggers.
+109	Ye Lin Kyaw	Execute Report Query	handleSearch()	Validates selected date ranges, formats ISO date strings, and triggers synchronized table refreshes.
+110	Ye Lin Kyaw	Reset Reporting Filters	handleReset()	Clears active date bounds and custom filters, restoring default current-month reporting parameters.
+111	Ye Lin Kyaw	Report Export Action Bar	ExportButtons.tsx	Action button group triggering direct downloads for PDF, Excel (XLSX), and CSV formatted reports.
+112	Ye Lin Kyaw	Synchronous Report Download	handleDirectExport()	Dispatches direct stream download requests for smaller dataset queries across PDF, XLSX, and CSV.
+113	Ye Lin Kyaw	Asynchronous Export Banner	ExportNotificationBanner.tsx	Toast notification banner reporting progress and download links for background-generated large reports.
+114	Ye Lin Kyaw	Asynchronous Export Hook	useAsyncExport.ts	Custom React hook polling job status for large asynchronous report generation and handling auto-download.
+115	Ye Lin Kyaw	Trigger Background Job	triggerExport()	Dispatches asynchronous export request to backend job queue and initiates non-blocking background polling.
+116	Ye Lin Kyaw	Polling Timer Management	clearAllTimers()	Safely clears polling intervals and prevents memory leaks upon component unmount or navigation.
+117	Ye Lin Kyaw	Dismiss Export Notification	clearNotice()	Manually closes the export status toast once file download has commenced or completed.
+118	Ye Lin Kyaw	KPI Summary Metric Card	MetricCard.tsx	Visual summary card presenting financial metrics, percentage changes, and status badge indicators.
+119	Ye Lin Kyaw	Reporting Data Table Component	DataTable.tsx (Reporting)	High-performance reusable data grid featuring column sorting, zebra striping, and empty-state placeholders.
+120	Ye Lin Kyaw	Customer Transaction History UI	TransactionHistoryPage.tsx	Customer portal page displaying chronological personal transaction history with status filters.
+121	Ye Lin Kyaw	Customer Transaction Table	TransactionTable.tsx	Interactive table rendering transaction reference IDs, beneficiary details, amount colors, and receipt links.
+122	Ye Lin Kyaw	Customer Transaction Filters	TransactionFilters.tsx	Dropdown and date filter component allowing retail customers to filter transactions by type and status.
+123	Ye Lin Kyaw	Customer Transaction Detail UI	TransactionDetailPage.tsx	Deep-dive customer portal page displaying receipt details, fees, channel, and printable confirmation.
+124	Ye Lin Kyaw	Digital Receipt Card Layout	TransactionDetailContent.tsx	Formatted visual receipt card displaying timestamp, sender/recipient accounts, and official bank seal.
+125	Ye Lin Kyaw	Transaction Status Pill	TransactionStatusBadge.tsx	Accessible badge component rendering color-coded indicators for COMPLETED, PENDING, HELD, and FAILED.
+126	Ye Lin Kyaw	Core Reporting Client API	reportingService.ts	Axios service handling HTTP requests for daily ledger, account status, large transfers, and fee summaries.
+127	Ye Lin Kyaw	Customer Transaction API Client	transactionHistoryService.ts	Client API fetching paginated customer transaction history and downloading digital receipt slips.

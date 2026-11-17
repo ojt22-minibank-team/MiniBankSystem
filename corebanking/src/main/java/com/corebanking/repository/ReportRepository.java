@@ -115,7 +115,7 @@ public class ReportRepository {
                                 .build());
                     }
                 }
-                hasRs = cs.getMoreResults();
+                hasRs = cs.getMoreResults();    
             }
 
             // RS2: bracket distribution

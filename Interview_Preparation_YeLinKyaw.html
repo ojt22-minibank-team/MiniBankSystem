@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+<meta charset="utf-8">
+<title>Core Banking System — Interview Technical Preparation Guide (Ye Lin Kyaw)</title>
+<style>
+  @page {
+    size: A4;
+    margin: 14mm 14mm 16mm 14mm;
+    @bottom-right {
+      content: "Page " counter(page) " of " counter(pages);
+      font-size: 8pt;
+      color: #64748b;
+    }
+    @bottom-left {
+      content: "Core Banking Interview Guide | Ye Lin Kyaw (Group-2)";
+      font-size: 8pt;
+      color: #64748b;
+    }
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Segoe UI', 'Myanmar Text', 'Pyidaungsu', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #1e293b;
+    background-color: #ffffff;
+    line-height: 1.55;
+    font-size: 9.5pt;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Header Cover / Hero */
+  .hero-banner {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #2563eb 100%);
+    color: #ffffff;
+    padding: 24px 28px;
+    border-radius: 10px;
+    margin-bottom: 22px;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.15);
+  }
+
+  .hero-title {
+    font-size: 20pt;
+    font-weight: 800;
+    margin: 0 0 6px 0;
+    letter-spacing: -0.5px;
+    color: #ffffff;
+  }
+
+  .hero-subtitle {
+    font-size: 11pt;
+    color: #93c5fd;
+    margin: 0 0 14px 0;
+    font-weight: 500;
+  }
+
+  .hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+    font-size: 8.5pt;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    padding-top: 12px;
+  }
+
+  .hero-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .hero-meta-label {
+    color: #bfdbfe;
+    text-transform: uppercase;
+    font-size: 7.5pt;
+    letter-spacing: 0.5px;
+  }
+
+  .hero-meta-value {
+    font-weight: 700;
+    color: #ffffff;
+  }
+
+  /* Stat Badges */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+
+  .stat-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #2563eb;
+    border-radius: 6px;
+    padding: 10px 14px;
+  }
+
+  .stat-number {
+    font-size: 14pt;
+    font-weight: 800;
+    color: #1e3a8a;
+    line-height: 1.2;
+  }
+
+  .stat-label {
+    font-size: 8pt;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  /* Section Styling */
+  .section {
+    margin-bottom: 24px;
+    page-break-inside: auto;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 2px solid #2563eb;
+    padding-bottom: 6px;
+    margin-bottom: 14px;
+    page-break-after: avoid;
+  }
+
+  .section-number {
+    background: #2563eb;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 9pt;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .section-title {
+    font-size: 13pt;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+  }
+
+  .section-tagline {
+    font-size: 8.5pt;
+    color: #64748b;
+    margin-left: auto;
+    font-style: italic;
+  }
+
+  /* Flow Steps */
+  .flow-container {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .flow-step-box {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 14px;
+    padding: 10px 0;
+    border-bottom: 1px dashed #cbd5e1;
+  }
+
+  .flow-step-box:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .flow-step-badge {
+    background: #1e3a8a;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 8pt;
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-align: center;
+    height: fit-content;
+  }
+
+  .flow-step-title {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 10pt;
+    margin-bottom: 2px;
+  }
+
+  .flow-step-desc {
+    color: #334155;
+    font-size: 8.5pt;
+  }
+
+  .flow-step-highlight {
+    background: #e0e7ff;
+    border-left: 3px solid #4338ca;
+    padding: 6px 10px;
+    border-radius: 0 4px 4px 0;
+    margin-top: 6px;
+    font-size: 8.5pt;
+    color: #312e81;
+  }
+
+  /* Technical Badges */
+  .tech-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 8px 0;
+  }
+
+  .tech-pill {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #0f172a;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 8pt;
+    font-weight: 600;
+    font-family: Consolas, monospace;
+  }
+
+  .tech-pill.primary {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    color: #1e40af;
+  }
+
+  .tech-pill.accent {
+    background: #dcfce7;
+    border-color: #86efac;
+    color: #166534;
+  }
+
+  .tech-pill.warning {
+    background: #fef3c7;
+    border-color: #fde047;
+    color: #854d0e;
+  }
+
+  /* Tables */
+  table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 18px 0;
+    font-size: 8.5pt;
+    page-break-inside: auto;
+  }
+
+  table.data-table th {
+    background: #0f172a;
+    color: #ffffff;
+    text-align: left;
+    padding: 7px 10px;
+    font-weight: 600;
+    font-size: 8pt;
+    letter-spacing: 0.3px;
+    border: 1px solid #0f172a;
+  }
+
+  table.data-table td {
+    padding: 6px 10px;
+    border: 1px solid #e2e8f0;
+    vertical-align: top;
+    color: #1e293b;
+  }
+
+  table.data-table tr:nth-child(even) {
+    background: #f8fafc;
+  }
+
+  table.data-table tr {
+    page-break-inside: avoid;
+  }
+
+  .code-font {
+    font-family: Consolas, monospace;
+    font-size: 8pt;
+    background: #f1f5f9;
+    padding: 1px 4px;
+    border-radius: 3px;
+    color: #0f172a;
+    word-break: break-all;
+  }
+
+  /* Validation Card / Alert Box */
+  .validation-box {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #059669;
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    page-break-inside: avoid;
+  }
+
+  .validation-box.security {
+    border-left-color: #dc2626;
+    background: #fffafa;
+  }
+
+  .validation-box.perf {
+    border-left-color: #d97706;
+    background: #fffdfa;
+  }
+
+  .val-title {
+    font-weight: 700;
+    font-size: 9.5pt;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .val-desc {
+    font-size: 8.5pt;
+    color: #334155;
+    margin-bottom: 6px;
+  }
+
+  .val-code {
+    background: #0f172a;
+    color: #f8fafc;
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 8pt;
+    overflow-x: auto;
+    margin: 4px 0 6px 0;
+    line-height: 1.4;
+  }
+
+  /* Interview Q&A Cards */
+  .qa-card {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    page-break-inside: avoid;
+    overflow: hidden;
+  }
+
+  .qa-header {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .qa-q-badge {
+    background: #2563eb;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 8pt;
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+
+  .qa-question {
+    font-weight: 700;
+    font-size: 9.5pt;
+    color: #0f172a;
+    margin: 0;
+  }
+
+  .qa-body {
+    padding: 12px 14px;
+    font-size: 8.5pt;
+  }
+
+  .qa-key-points {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+  }
+
+  .qa-key-points-title {
+    font-weight: 700;
+    font-size: 8pt;
+    color: #1e40af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+
+  .qa-key-points ul {
+    margin: 0;
+    padding-left: 18px;
+    color: #1e3a8a;
+  }
+
+  .qa-key-points li {
+    margin-bottom: 2px;
+  }
+
+  .qa-answer {
+    color: #334155;
+    line-height: 1.55;
+  }
+
+  .page-break {
+    page-break-before: always;
+  }
+
+  .text-bold { font-weight: 700; }
+  .text-primary { color: #2563eb; }
+  .text-accent { color: #059669; }
+  .text-danger { color: #dc2626; }
+</style>
+</head>
+<body>
+
+  <!-- HERO BANNER -->
+  <div class="hero-banner">
+    <div class="hero-title">Core Banking System — Technical Interview Guide</div>
+    <div class="hero-subtitle">Senior / Mid-Level Full-Stack & Financial Backend Engineer Interview Preparation</div>
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">Candidate:</span>
+        <span class="hero-meta-value">Ye Lin Kyaw (Ye Lin)</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">Project:</span>
+        <span class="hero-meta-value">Ekaraj Core Banking System (Group-2, Batch-114)</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">Domain:</span>
+        <span class="hero-meta-value">Banking Ledger, JasperReports, Async Exports, Gateway Security</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">Total Functions Owned:</span>
+        <span class="hero-meta-value">64 Core Methods (38 Frontend + 26 Backend)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS OVERVIEW -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-number">64 Functions</div>
+      <div class="stat-label">Full-Stack Scope</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">6 Major Modules</div>
+      <div class="stat-label">Financial Reports</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">3 Export Formats</div>
+      <div class="stat-label">Jasper PDF, XLSX, RFC CSV</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">100% Async</div>
+      <div class="stat-label">Background Polling Worker</div>
+    </div>
+  </div>
+
+  <!-- SECTION 1: PROJECT FLOW & CANDIDATE'S ROLE -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-number">1</span>
+      <h2 class="section-title">Project Flow &amp; ကိုယ်လုပ်ခဲ့တဲ့ အပိုင်း (Overall Ecosystem &amp; Role)</h2>
+      <span class="section-tagline">Architectural Overview &amp; Responsibility</span>
+    </div>
+
+    <p style="margin-top: 0; font-size: 8.5pt;">
+      ကျနော်တို့ တည်ဆောက်ထားတဲ့ စနစ်သည် <strong>3-Tier Financial Ecosystem</strong> (Core Banking System + Merchant Payment Gateway (MMSPG) + E-Commerce Platform) ဖြစ်ပါသည်။
+      အဓိက Core Banking System ထဲတွင် Retail Customer Portal, Staff Admin Portal, General Ledger (GL) Double-entry Bookkeeping နှင့် Reporting Subsystem တို့ ပါဝင်ပါသည်။
+    </p>
+
+    <div class="flow-container">
+      <div class="flow-step-box">
+        <div class="flow-step-badge">Phase 1</div>
+        <div>
+          <div class="flow-step-title">Customer &amp; Merchant Transaction Trigger (ငွေလွှဲ/ငွေချေ လုပ်ဆောင်မှုများ)</div>
+          <div class="flow-step-desc">
+            1) Retail Customer များ P2P Fund Transfer ပြုလုပ်ခြင်း၊ 2) Teller ဝန်ထမ်းများ OTC Deposit/Withdrawal ပြုလုပ်ခြင်း၊ 3) E-Commerce မှ ဈေးဝယ်သူများ Merchant Payment Gateway (MMSPG) မှတစ်ဆင့် ငွေချေခြင်း။
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-step-box">
+        <div class="flow-step-badge" style="background:#059669;">Phase 2 ★</div>
+        <div>
+          <div class="flow-step-title">Merchant Gateway Corporate Verification (ကိုယ်လုပ်ခဲ့တဲ့ အပိုင်း)</div>
+          <div class="flow-step-desc">
+            MMSPG မှ Core Banking ဆီသို့ ကုန်သည် (Merchant) Account စစ်ဆေးရန် API ခေါ်ယူသောအခါ ကျနော် ရေးသားထားသော <span class="code-font">GatewayAccountVerificationService</span> မှ အကောင့်သည် Corporate Category ဖြစ်မဖြစ်၊ ကုမ္ပဏီအချက်အလက် စုံလင်မှုရှိမရှိနှင့် Account Status သည် <span class="code-font">ACTIVE</span> ဖြစ်မဖြစ်ကို စစ်ဆေးအတည်ပြုပေးပါသည်။
+          </div>
+          <div class="flow-step-highlight">
+            ✔ <strong>Ye Lin Kyaw's Role:</strong> Core Banking နှင့် Payment Gateway ချိတ်ဆက်ရာတွင် လုံခြုံရေးတံခါးပေါက်အဖြစ် Corporate Account Eligibility &amp; Freeze Checking ကို တာဝန်ယူခဲ့ခြင်း။
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-step-box">
+        <div class="flow-step-badge">Phase 3</div>
+        <div>
+          <div class="flow-step-title">General Ledger (GL) &amp; Double-Entry Settlement (စာရင်းသွင်းခြင်း)</div>
+          <div class="flow-step-desc">
+            လုပ်ဆောင်ပြီးသော ငွေလွှဲ/ငွေချေမှုတိုင်းသည် Debit / Credit တွဲဖက်စာရင်းသွင်းမှုအဖြစ် General Ledger ဇယားများတွင် ချက်ချင်း အတည်ပြုပြီး အမြဲတမ်းမှတ်တမ်း (Immutable Audit Trail) အဖြစ် ကျန်ရှိစေပါသည်။
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-step-box">
+        <div class="flow-step-badge" style="background:#2563eb;">Phase 4 ★</div>
+        <div>
+          <div class="flow-step-title">Financial Reporting &amp; Regulatory Compliance Engine (ကိုယ်လုပ်ခဲ့တဲ့ အဓိကအပိုင်း)</div>
+          <div class="flow-step-desc">
+            ဘဏ်၏ အုပ်ချုပ်မှုပိုင်း (Admin), စာရင်းစစ် (Auditor) နှင့် ငွေကြေးခဝါချမှုတိုက်ဖျက်ရေး အရာရှိ (AML Compliance Officer) တို့အတွက် နေ့စဉ် Ledger ရှင်းတမ်း၊ အကောင့်အခြေအနေပြန့်ကျဲမှု၊ ကော်မရှင်ခရငွေ (Fee Revenue)၊ သံသယဖြစ်ဖွယ် ပမာဏကြီးမားသော ငွေလွှဲများ (Large Transactions) နှင့် ဝန်ထမ်းလုပ်ဆောင်ချက် မှတ်တမ်း (Audit Trail Logs) များကို စုစည်းတွက်ချက်ပြသပေးခြင်း။
+          </div>
+          <div class="flow-step-highlight">
+            ✔ <strong>Ye Lin Kyaw's Role:</strong> Reporting Subsystem တစ်ခုလုံး၏ Backend Architecture (JasperReports, Apache POI, MySQL Stored Procedures, ThreadPool Job Queue) နှင့် Admin React Frontend တစ်ခုလုံးကို တာဝန်ယူ တည်ဆောက်ခဲ့ခြင်း။
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-step-box">
+        <div class="flow-step-badge" style="background:#7c3aed;">Phase 5 ★</div>
+        <div>
+          <div class="flow-step-title">Retail Customer Portal - Transaction History &amp; E-Receipts (ကိုယ်လုပ်ခဲ့တဲ့ အပိုင်း)</div>
+          <div class="flow-step-desc">
+            Retail ဘဏ်သုံးစွဲသူများ မိမိတို့၏ ငွေလွှဲမှတ်တမ်းများကို စစ်ဆေးရှာဖွေနိုင်ခြင်း၊ Status အလိုက် စစ်ထုတ်ခြင်း (COMPLETED, HELD, PENDING)၊ အသေးစိတ် E-Receipt နှင့် ဘဏ်တံဆိပ်ခေါင်းပါ Printable Confirmation ကို ကြည့်ရှုထုတ်ယူနိုင်ခြင်း။
+          </div>
+          <div class="flow-step-highlight">
+            ✔ <strong>Ye Lin Kyaw's Role:</strong> Customer Portal Transaction History UI, Status Badges, Dynamic Filters, Pagination နှင့် Transaction Detail Receipt Card Layout တို့ကို ရေးသားခဲ့ခြင်း။
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: TECH STACK -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-number">2</span>
+      <h2 class="section-title">ဘာတွေ သုံးထားလဲ (Technology Stack &amp; Architectural Tools)</h2>
+      <span class="section-tagline">Comprehensive Technical Arsenal</span>
+    </div>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width: 22%;">Layer / Category</th>
+          <th style="width: 38%;">Technologies &amp; Libraries Used</th>
+          <th style="width: 40%;">Why Used? (အသုံးပြုရခြင်း အကြောင်းရင်း &amp; Role)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Backend Core</strong></td>
+          <td>
+            <div class="tech-pills">
+              <span class="tech-pill primary">Java 21 (LTS)</span>
+              <span class="tech-pill primary">Spring Boot 3.3.x</span>
+              <span class="tech-pill">Spring Web MVC</span>
+            </div>
+          </td>
+          <td>Modern LTS Java syntax (Records, Pattern Matching, Virtual Threads readiness) နှင့် Enterprise REST API infrastructure အတွက် အသုံးပြုထားသည်။</td>
+        </tr>
+        <tr>
+          <td><strong>Persistence &amp; DB</strong></td>
+          <td>
+            <div class="tech-pills">
+              <span class="tech-pill primary">Spring Data JPA</span>
+              <span class="tech-pill primary">Hibernate 6</span>
+              <span class="tech-pill accent">MySQL Stored Procedures</span>
+              <span class="tech-pill accent">JdbcTemplate</span>
+            </div>
+          </td>
+          <td>သန်းနှင့်ချီသော Ledger စာရင်းများကို အမြန်ဆုံး Aggregation တွက်ထုတ်နိုင်ရန် MySQL Stored Procedures &amp; CallableStatement ကို သုံးပြီး ရှာဖွေမှုများအတွက် Criteria Specification ကို သုံးသည်။</td>
+        </tr>
+        <tr>
+          <td><strong>Reporting &amp; Export</strong></td>
+          <td>
+            <div class="tech-pills">
+              <span class="tech-pill warning">JasperReports 6.21</span>
+              <span class="tech-pill warning">Apache POI 5.2 (SXSSF)</span>
+              <span class="tech-pill primary">RFC-4180 CSV Engine</span>
+            </div>
+          </td>
+          <td>တရားဝင် ဘဏ်ခေါင်းစီးပါ PDF များအတွက် JasperReports ကို သုံးသည်။ သောင်းနှင့်ချီသော Excel data များ Memory Out of Memory မဖြစ်စေရန် Apache POI SXSSF (Streaming Window = 100) ကို သုံးထားသည်။</td>
+        </tr>
+        <tr>
+          <td><strong>Concurrency &amp; Jobs</strong></td>
+          <td>
+            <div class="tech-pills">
+              <span class="tech-pill primary">CompletableFuture</span>
+              <span class="tech-pill primary">@Async ThreadPool</span>
+              <span class="tech-pill accent">ConcurrentHashMap</span>
+              <span class="tech-pill">@Scheduled Cleanup</span>
+            </div>
+          </td>
+          <td>အစီရင်ခံစာ Export အကြီးများကို Background Thread Pool တွင် ထုတ်လုပ်ပြီး Client ဘက်သို့ UUID ပြန်ပေးကာ Polling စနစ်ဖြင့် ဆွဲယူနိုင်အောင် တည်ဆောက်ထားသည်။</td>
+        </tr>
+        <tr>
+          <td><strong>Frontend (Admin &amp; Customer)</strong></td>
+          <td>
+            <div class="tech-pills">
+              <span class="tech-pill primary">React 18</span>
+              <span class="tech-pill primary">TypeScript</span>
+              <span class="tech-pill accent">Tailwind CSS</span>
+              <span class="tech-pill">Lucide React</span>
+              <span class="tech-pill">Axios Interceptors</span>
+            </div>
+          </td>
+          <td>Type-safe UI components, responsive dashboards, data grids, status pills နှင့် Custom Hook (<span class="code-font">useAsyncExport</span>) တို့ဖြင့် Dynamic Filter &amp; Non-blocking UX ကို ဖန်တီးထားသည်။</td>
+        </tr>
+        <tr>
+          <td><strong>Security &amp; Compliance</strong></td>
+          <td>
+            <div class="tech-pills">
+              <span class="tech-pill warning">Spring Security 6</span>
+              <span class="tech-pill warning">RBAC @PreAuthorize</span>
+              <span class="tech-pill accent">CWE-1236 Defense</span>
+              <span class="tech-pill primary">DataMaskingUtil (PII)</span>
+            </div>
+          </td>
+          <td>Role-based Access Control (ADMIN, AUDITOR, TELLER), CSV Formula Injection ကာကွယ်မှု, Path Traversal စစ်ဆေးမှုနှင့် ဘဏ်ဖောက်သည်များ၏ NRC, ဖုန်း, အကောင့်နံပါတ် Masking ပြုလုပ်ခြင်း။</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- SECTION 3: CODE VALIDATIONS & DEFENSIVE CHECKS -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-number">3</span>
+      <h2 class="section-title">Code အပိုင်းမှာ ဘယ်လိုတွေ စစ်ထားလဲ (Checks, Validations &amp; Security)</h2>
+      <span class="section-tagline">Defensive Programming &amp; Production Hardening</span>
+    </div>
+
+    <p style="margin-top: 0; font-size: 8.5pt;">
+      ဘဏ်စနစ်တစ်ခုဖြစ်သည့်အတွက် Data Integrity, Security, Memory Safety နှင့် Exception Handling တို့ကို အလွှာအလိုက် တင်းကြပ်စွာ စစ်ဆေးထားပါသည်။
+    </p>
+
+    <!-- Check 1: CSV Formula Injection -->
+    <div class="validation-box security">
+      <div class="val-title">
+        <span>🛡 1. CSV Formula Injection (CWE-1236) Mitigation — <span class="code-font">CsvExportUtil.java</span></span>
+      </div>
+      <div class="val-desc">
+        <strong>ဘာကို စစ်ထားတာလဲ?</strong> အသုံးပြုသူများ နာမည် သို့မဟုတ် ငွေလွှဲမှတ်ချက်ထဲတွင် Excel Formula အစပြုသင်္ကေတများ (<span class="code-font">=, +, -, @, 	, </span>) ရိုက်ထည့်ထားပါက Excel ဖွင့်ကြည့်သည့်အခါ Malicious Code အဖြစ် အလိုအလျောက် Run သွားနိုင်သည့် အန္တရာယ် (Formula Injection) ကို ကာကွယ်ထားသည်။
+      </div>
+      <div class="val-code">
+// CsvExportUtil.java — CWE-1236 Prevention
+if (s.startsWith("=") || s.startsWith("+") || s.startsWith("@") || s.startsWith("	") || s.startsWith("")) {
+    s = "'" + s; // Apostrophe ဖြင့် ရှေ့မှ prefix ထည့်၍ text အဖြစ် ပြောင်းလဲ
+} else if (s.startsWith("-") && !isNumeric(s)) {
+    s = "'" + s;
+}
+// RFC-4180 standard quotation & double quotes escaping
+if (s.contains(",") || s.contains(""") || s.contains("
+") || s.contains("")) {
+    return """ + s.replace(""", """") + """;
+}
+      </div>
+    </div>
+
+    <!-- Check 2: Gateway Account Verification -->
+    <div class="validation-box">
+      <div class="val-title">
+        <span>🏢 2. Corporate Merchant Account Verification — <span class="code-font">GatewayAccountVerificationService.java</span></span>
+      </div>
+      <div class="val-desc">
+        <strong>ဘာကို စစ်ထားတာလဲ?</strong> Payment Gateway မှ ကုန်သည်အကောင့် အတည်ပြုရန် တောင်းဆိုသည့်အခါ ၄ ချက် တိကျစွာ စစ်ဆေးပါသည်:
+        1) Null / Blank အကောင့်နံပါတ် ဟုတ်မဟုတ်၊ 2) ဘဏ် Database ထဲတွင် အကောင့် တကယ်ရှိမရှိ၊ 3) Corporate / Company Account အစစ်အမှန် ဟုတ်မဟုတ်၊ 4) အကောင့်သည် <span class="code-font">ACTIVE</span> ဖြစ်ပြီး <span class="code-font">FROZEN / SUSPENDED / CLOSED</span> မဖြစ်စေရန် စစ်ဆေးခြင်း။
+      </div>
+      <div class="val-code">
+boolean isCorporateCategory = account.getAccountCategory() == AccountCategory.CORPORATE;
+boolean isCompanyCustomer = customer != null && customer.getCustomerType() == CustomerType.COMPANY;
+boolean hasCompanyInfo = companyInfo != null && companyInfo.getCompanyName() != null && !companyInfo.getCompanyName().isBlank();
+boolean isCorporate = isCorporateCategory || isCompanyCustomer || hasCompanyInfo;
+
+boolean isActive = account.getStatus() == AccountStatus.ACTIVE;
+boolean verified = isCorporate && isActive; // Corporate ဖြစ်ပြီး Active ဖြစ်မှသာ verified = true
+      </div>
+    </div>
+
+    <!-- Check 3: SXSSF Memory Streaming -->
+    <div class="validation-box perf">
+      <div class="val-title">
+        <span>⚡ 3. Memory Safety &amp; OutOfMemory (OOM) Protection — <span class="code-font">ReportService.java</span></span>
+      </div>
+      <div class="val-desc">
+        <strong>ဘာကို စစ်ထားတာလဲ?</strong> ဘဏ်၏ Transaction Records သောင်းနှင့်ချီ Excel ထုတ်ပေးသည့်အခါ Standard POI <span class="code-font">XSSFWorkbook</span> သည် RAM ပေါ်တွင် DOM အပြည့် တည်ဆောက်သဖြင့် Server Memory Crash (OOM) ဖြစ်စေသည်။ ကျနော်တို့သည် Streaming Flusher <span class="code-font">SXSSFWorkbook(100)</span> ကို သုံး၍ Row ၁၀၀ ကျော်တိုင်း Disk Temp File သို့ အလိုအလျောက် Flush လုပ်ကာ RAM အသုံးပြုမှုကို အမြဲ အနိမ့်ဆုံး ထိန်းထားသည်။
+      </div>
+      <div class="val-code">
+// SXSSFWorkbook with row window of 100 to flush records to temporary disk storage
+try (SXSSFWorkbook wb = new SXSSFWorkbook(100); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+    Sheet sheet = wb.createSheet("Daily Ledger Summary");
+    // Row များ ထည့်သွင်းပြီး out.toByteArray() သို့ streaming binary byte stream ပြန်ပေး
+}
+      </div>
+    </div>
+
+    <!-- Check 4: Precompilation & Brand Logo Caching -->
+    <div class="validation-box">
+      <div class="val-title">
+        <span>🚀 4. JasperReports Template Precompilation &amp; Logo Caching — <span class="code-font">JasperReportService.java</span></span>
+      </div>
+      <div class="val-desc">
+        <strong>ဘာကို စစ်ထားတာလဲ?</strong> JasperReports သည် JRXML ဖိုင်များကို Runtime တွင်မှ Compile လုပ်ပါက ပထမဆုံး Request တွင် ၂ စက္ကန့်မှ ၃ စက္ကန့်အထိ ကြန့်ကြာစေသည်။ ထို့ကြောင့် Application စတင်ချိန် (<span class="code-font">@PostConstruct</span>) တွင် Report Template ၈ ခုလုံးကို Memory ပေါ်တွင် ကြိုတင် Compile လုပ်ထားပြီး Official Brand Logo ကိုလည်း <span class="code-font">volatile byte[]</span> ဖြင့် Cache ပြုလုပ်ထားသဖြင့် Sub-millisecond Rendering Speed ရရှိစေသည်။
+      </div>
+      <div class="val-code">
+@PostConstruct
+public void init() {
+    loadAndCacheLogo();   // Classpath မှ brand logo ကို memory ပေါ် ကြိုတင် load လုပ်ခြင်း
+    precompileReports();  // Report templates 8 ခုလုံးကို startup တွင် precompile လုပ်၍ cache ထားခြင်း
+}
+      </div>
+    </div>
+
+    <!-- Check 5: Async Hook & Polling Memory Leak Prevention -->
+    <div class="validation-box">
+      <div class="val-title">
+        <span>⏱ 5. Frontend Polling &amp; Memory Leak Prevention — <span class="code-font">useAsyncExport.ts</span></span>
+      </div>
+      <div class="val-desc">
+        <strong>ဘာကို စစ်ထားတာလဲ?</strong> User သည် အစီရင်ခံစာ Export လုပ်နေစဉ် အခြား Page သို့ ပြောင်းသွားပါက Background Interval Polling ဆက်လက် Run နေပြီး Memory Leak မဖြစ်စေရန် <span class="code-font">useEffect cleanup</span> ဖြင့် Timer များကို Clear လုပ်ထားသည်။ ထို့အပြင် Job မပြီးဆုံးဘဲ Infinite Loop ဖြစ်မသွားစေရန် <span class="code-font">MAX_ATTEMPTS = 120</span> (၁၈၀ စက္ကန့် Timeout Limit) ဖြင့် တင်းကြပ်စွာ စစ်ထားသည်။
+      </div>
+      <div class="val-code">
+// React Custom Hook Cleanup
+useEffect(() => {
+    return () => { clearAllTimers(); }; // Component unmount ဖြစ်လျှင် interval နှင့် timeout အကုန် ရှင်းလင်း
+}, [clearAllTimers]);
+      </div>
+    </div>
+
+    <!-- Check 6: PII Masking -->
+    <div class="validation-box security">
+      <div class="val-title">
+        <span>🔒 6. Sensitive Data Masking &amp; PII Protection — <span class="code-font">DataMaskingUtil.java</span></span>
+      </div>
+      <div class="val-desc">
+        <strong>ဘာကို စစ်ထားတာလဲ?</strong> ဖောက်သည်များ၏ ဘဏ်အကောင့်နံပါတ်၊ မှတ်ပုံတင် (NRC)၊ ဖုန်းနံပါတ်နှင့် အီးမေးလ်များကို Log ဖိုင်များနှင့် Frontend မျက်နှာပြင်များတွင် ပေါ်လွင်မနေစေရန် Masking စနစ်ဖြင့် ကာကွယ်ထားသည်။ (ဥပမာ - Account No: <span class="code-font">******6543</span>, NRC: <span class="code-font">12/OUKAMA(N)**3456</span>)။
+      </div>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- SECTION 4: FILE INVENTORY -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-number">4</span>
+      <h2 class="section-title">ဖိုင်များ စာရင်းနှင့် တည်နေရာ၊ ရည်ရွယ်ချက်၊ Core Functions (File Inventory)</h2>
+      <span class="section-tagline">Complete Mapping of Ye Lin Kyaw's Files</span>
+    </div>
+
+    <p style="margin-top: 0; font-size: 8.5pt;">
+      အောက်ပါတို့သည် Ye Lin Kyaw ကိုယ်တိုင် ရေးသားတည်ဆောက်ခဲ့သော Backend နှင့် Frontend ဖိုင်များ၏ အတိအကျတည်နေရာ၊ ဗိသုကာဆိုင်ရာ ရည်ရွယ်ချက်နှင့် Core Methods များ ဖြစ်ကြပါသည်။
+    </p>
+
+    <!-- Sub-table 1: Backend Controllers & Services -->
+    <h3 style="font-size: 10pt; color: #1e3a8a; margin: 12px 0 6px 0;">1. Backend Controllers &amp; Business Services (<span class="code-font">corebanking/...</span>)</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width: 25%;">File Name &amp; Location</th>
+          <th style="width: 20%;">Architectural Role</th>
+          <th style="width: 25%;">Core Purpose</th>
+          <th style="width: 30%;">Core Methods / Functions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="code-font">ReportController.java</span><br><small>corebanking/src/main/java/com/corebanking/controller/</small></td>
+          <td>REST Controller Layer</td>
+          <td>Reporting Subsystem ၏ အဓိက REST API Endpoints များကို စီမံခန့်ခွဲခြင်း (Summary ဒေတာနှင့် Sync/Async Export များ)။</td>
+          <td>
+            • <span class="code-font">getDailyLedgerSummary()</span><br>
+            • <span class="code-font">exportDailyLedgerSummary()</span><br>
+            • <span class="code-font">getAccountStatusSummary()</span><br>
+            • <span class="code-font">getAuditTrailLogs()</span><br>
+            • <span class="code-font">getLargeTransactions()</span><br>
+            • <span class="code-font">getFeeRevenueSummary()</span><br>
+            • <span class="code-font">getTransactionDetails()</span><br>
+            • <span class="code-font">submitExportJob()</span><br>
+            • <span class="code-font">getExportJobStatus()</span><br>
+            • <span class="code-font">downloadExportJob()</span>
+          </td>
+        </tr>
+        <tr>
+          <td><span class="code-font">ReportService.java</span><br><small>corebanking/src/main/java/com/corebanking/service/</small></td>
+          <td>Core Business Service</td>
+          <td>အစီရင်ခံစာများ၏ ဒေတာတွက်ချက်မှု၊ CSV, POI SXSSF Excel နှင့် Jasper PDF Stream များ ဖန်တီးပေးခြင်း။</td>
+          <td>
+            • <span class="code-font">getDailyLedgerSummary()</span><br>
+            • <span class="code-font">exportDailyLedgerCsv/Excel/Pdf()</span><br>
+            • <span class="code-font">getAccountStatusSummary()</span><br>
+            • <span class="code-font">exportAccountStatusCsv/Excel/Pdf()</span><br>
+            • <span class="code-font">getAuditTrailLog()</span><br>
+            • <span class="code-font">exportAuditTrailCsv/Excel/Pdf()</span><br>
+            • <span class="code-font">getLargeTransactionSummaryPaged()</span><br>
+            • <span class="code-font">getFeeRevenueSummary()</span><br>
+            • <span class="code-font">getTransactionDetailsPaged()</span>
+          </td>
+        </tr>
+        <tr>
+          <td><span class="code-font">JasperReportService.java</span><br><small>corebanking/src/main/java/com/corebanking/service/</small></td>
+          <td>Reporting Engine Adapter</td>
+          <td>JasperReports 6.x engine ဖြင့် JRXML compile လုပ်ခြင်း၊ Logo cache လုပ်ခြင်းနှင့် JasperPrint မှ Multi-format byte[] ထုတ်ခြင်း။</td>
+          <td>
+            • <span class="code-font">precompileReports()</span><br>
+            • <span class="code-font">loadAndCacheLogo()</span><br>
+            • <span class="code-font">getCompiledReport()</span><br>
+            • <span class="code-font">fillDailyLedgerReport()</span><br>
+            • <span class="code-font">fillAccountStatusReport()</span><br>
+            • <span class="code-font">fillAuditTrailReport()</span><br>
+            • <span class="code-font">exportToPdf()</span><br>
+            • <span class="code-font">exportToXlsx()</span><br>
+            • <span class="code-font">exportToCsv()</span>
+          </td>
+        </tr>
+        <tr>
+          <td><span class="code-font">ReportExportJobService.java</span><br><small>corebanking/src/main/java/com/corebanking/service/</small></td>
+          <td>Async Background Worker</td>
+          <td>အရွယ်အစားကြီးမားသော Export များကို Background Worker Thread Pool ဖြင့် လုပ်ဆောင်ပေးပြီး UUID ဖြင့် Job State စီမံခြင်း။</td>
+          <td>
+            • <span class="code-font">submitExportJob()</span><br>
+            • <span class="code-font">executeAsyncJob()</span><br>
+            • <span class="code-font">getJobStatus()</span><br>
+            • <span class="code-font">getJobFile()</span><br>
+            • <span class="code-font">cleanupOldExports() (@Scheduled)</span>
+          </td>
+        </tr>
+        <tr>
+          <td><span class="code-font">GatewayAccountVerificationService.java</span><br><small>corebanking/src/main/java/com/corebanking/service/</small></td>
+          <td>Security &amp; Integration Service</td>
+          <td>Merchant Payment Gateway (MMSPG) အတွက် Corporate Bank Account တရားဝင်မှု၊ အခြေအနေနှင့် ကုမ္ပဏီအချက်အလက် စစ်ဆေးပေးခြင်း။</td>
+          <td>
+            • <span class="code-font">verifyCorporateAccount(accountNumber)</span><br>
+            • Active status, Company Info, Corporate category စစ်ဆေးခြင်း
+          </td>
+        </tr>
+        <tr>
+          <td><span class="code-font">CusTransactionController.java</span> &amp; <span class="code-font">CusTransactionService.java</span><br><small>corebanking/src/main/java/com/corebanking/...</small></td>
+          <td>Retail Customer Transaction API</td>
+          <td>Retail Customer များအတွက် မိမိ Account ၏ ငွေလွှဲမှတ်တမ်း၊ Type/Status အလိုက် Filter စစ်ထုတ်မှုနှင့် အသေးစိတ် Receipt ဒေတာ ထုတ်ပေးခြင်း။</td>
+          <td>
+            • <span class="code-font">getTransactionHistory()</span><br>
+            • <span class="code-font">getTransactionDetail()</span><br>
+            • Authentication &amp; Ownership Verification<br>
+            • Stored Procedure Invocation
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Sub-table 2: Backend Utilities, Repositories & DTOs -->
+    <h3 style="font-size: 10pt; color: #1e3a8a; margin: 12px 0 6px 0;">2. Backend Repositories, Utilities &amp; DTOs (<span class="code-font">corebanking/...</span>)</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width: 25%;">File Name &amp; Location</th>
+          <th style="width: 20%;">Architectural Role</th>
+          <th style="width: 25%;">Core Purpose</th>
+          <th style="width: 30%;">Core Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="code-font">CsvExportUtil.java</span><br><small>corebanking/src/main/java/com/corebanking/util/</small></td>
+          <td>Security / Export Utility</td>
+          <td>RFC-4180 စံနှုန်းနှင့်အညီ CSV format ချပေးခြင်းနှင့် Excel Formula Injection (CWE-1236) ကို ကာကွယ်ခြင်း။</td>
+          <td>
+            • <span class="code-font">escapeCsvField()</span> (=, +, -, @ escaping)<br>
+            • <span class="code-font">appendCsvRow()</span><br>
+            • Null-safe, Date &amp; Number formatting
+          </td>
+        </tr>
+        <tr>
+          <td><span class="code-font">DataMaskingUtil.java</span><br><small>corebanking/src/main/java/com/corebanking/util/</small></td>
+          <td>Data Privacy Utility</td>
+          <td>PII data များ (NRC, Bank Account, Phone, Email) ကို လုံခြုံစွာ Mask ပြုလုပ်ပေးခြင်း။</td>
+          <td>
+            • <span class="code-font">maskAccountNumber()</span> (******6543)<br>
+            • <span class="code-font">maskNrc()</span><br>
+            • <span class="code-font">maskPhone()</span><br>
+            • <span class="code-font">maskEmail()</span>
+          </td>
+        </tr>
+        <tr>
+          <td><span class="code-font">ReportRepository.java</span><br><small>corebanking/src/main/java/com/corebanking/repository/</small></td>
+          <td>Database Access Layer</td>
+          <td>MySQL Stored Procedures (Ledger, Account Status) နှင့် Immutable AuditLogs Entity ရှာဖွေမှုများ လုပ်ဆောင်ခြင်း။</td>
+          <td>
+            • CallableStatement execution<br>
+            • Dynamic Criteria Specification<br>
+            • High-performance aggregated summaries
+          </td>
+        </tr>
+        <tr>
+          <td><span class="code-font">DTO Models</span><br><small>corebanking/src/main/java/com/corebanking/dto/</small></td>
+          <td>Data Transfer Objects</td>
+          <td>Type-safe data binding အတွက် ရေးသားထားသော DTO များ။</td>
+          <td>
+            • <span class="code-font">DailyLedgerSummaryDTO</span><br>
+            • <span class="code-font">AccountStatusReportDTO</span><br>
+            • <span class="code-font">AuditTrailPageDTO</span><br>
+            • <span class="code-font">LargeTransactionReportDTO</span><br>
+            • <span class="code-font">FeeRevenueReportDTO</span><br>
+            • <span class="code-font">ExportJobResponseDTO</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="page-break"></div>
+
+    <!-- Sub-table 3: Admin React Frontend -->
+    <h3 style="font-size: 10pt; color: #1e3a8a; margin: 12px 0 6px 0;">3. Admin Portal Frontend (<span class="code-font">core-banking-react/src/...</span>)</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width: 28%;">File Name &amp; Location</th>
+          <th style="width: 22%;">Component Type</th>
+          <th style="width: 25%;">UI / Functional Role</th>
+          <th style="width: 25%;">Core Logic &amp; Features</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="code-font">ReportingPage.tsx</span> &amp; <span class="code-font">ReportingView.tsx</span><br><small>core-banking-react/src/features/reporting/</small></td>
+          <td>Master View / Route Container</td>
+          <td>အုပ်ချုပ်ရေး analytics dashboard ၏ အဓိက Tab Container ဖြစ်ပြီး Report sub-modules ၆ ခုကို စီမံခြင်း။</td>
+          <td>Active Tab switching, Date range state sync, Global filter dispatching, responsive layout.</td>
+        </tr>
+        <tr>
+          <td><span class="code-font">DailyLedgerPanel.tsx</span><br><small>core-banking-react/src/features/reporting/components/</small></td>
+          <td>Report Analytics View</td>
+          <td>ဘဏ်၏ နေ့စဉ် Debit, Credit, Running Balance နှင့် စာရင်းကိုက်မှု (Reconciliation) ကို ပြသခြင်း။</td>
+          <td>Running balance calculation, Currency formatting, summary totals cards.</td>
+        </tr>
+        <tr>
+          <td><span class="code-font">FeeRevenuePanel.tsx</span><br><small>core-banking-react/src/features/reporting/components/</small></td>
+          <td>Revenue Analytics View</td>
+          <td>လုပ်ငန်း Channel အလိုက် (OTC Teller, Customer P2P, Merchant PG) ရရှိသော ကော်မရှင်ခများကို ခွဲခြမ်းပြသခြင်း။</td>
+          <td>Channel dropdown selection, fee waiver metrics, revenue growth percentage cards.</td>
+        </tr>
+        <tr>
+          <td><span class="code-font">LargeTransactionPanel.tsx</span><br><small>core-banking-react/src/features/reporting/components/</small></td>
+          <td>AML Compliance View</td>
+          <td>ငွေကြေးခဝါချမှု တိုက်ဖျက်ရေး စည်းမျဉ်းအရ သတ်မှတ်ထားသော Threshold (ဥပမာ &gt;= 5,000,000 MMK) ကျော်လွန်သော ငွေလွှဲများကို စောင့်ကြည့်ခြင်း။</td>
+          <td>Dynamic threshold input slider/box, AML watchlist sorting, paginated table.</td>
+        </tr>
+        <tr>
+          <td><span class="code-font">AccountStatusPanel.tsx</span><br><small>core-banking-react/src/features/reporting/components/</small></td>
+          <td>Customer Lifecycle View</td>
+          <td>Active, Inactive, Suspended, Frozen အကောင့်များ၏ ပျံ့နှံ့မှုနှင့် Balance Bracket ခွဲခြမ်းမှုကို ပြသခြင်း။</td>
+          <td>Account status distribution cards, balance bracket sub-tables.</td>
+        </tr>
+        <tr>
+          <td><span class="code-font">AuditTrailPanel.tsx</span><br><small>core-banking-react/src/features/reporting/components/</small></td>
+          <td>Security &amp; Audit Log View</td>
+          <td>ဘဏ်ဝန်ထမ်းများ၏ စနစ်တွင်း လုပ်ဆောင်ချက်များ၊ IP လိပ်စာများနှင့် ပြောင်းလဲမှု မတိုင်မီ/နောက် နှိုင်းယှဉ်ချက်များကို စစ်ဆေးခြင်း။</td>
+          <td>Staff operator filter, action category filter, JSON before/after state diff inspector modal.</td>
+        </tr>
+        <tr>
+          <td><span class="code-font">ReportFilterBar.tsx</span> &amp; <span class="code-font">ExportButtons.tsx</span><br><small>core-banking-react/src/features/reporting/components/</small></td>
+          <td>Interactive Control Bars</td>
+          <td>ရက်စွဲရွေးချယ်မှု၊ Channel/Status filter များနှင့် PDF, Excel, CSV Export ခလုတ်များ စုစည်းထားသော Bar။</td>
+          <td>ISO date string validation, handleSearch(), handleReset(), direct &amp; async export dispatch.</td>
+        </tr>
+        <tr>
+          <td><span class="code-font">useAsyncExport.ts</span><br><small>core-banking-react/src/features/reporting/hooks/</small></td>
+          <td>Custom React Hook</td>
+          <td>Background Export အလုပ်များ၏ အခြေအနေကို Polling ပြုလုပ်ပြီး ပြီးစီးပါက Auto-download ဆွဲပေးသော Hook။</td>
+          <td>State machine (PENDING, PROCESSING, COMPLETED, FAILED), timer cleanup, auto-blob download.</td>
+        </tr>
+        <tr>
+          <td><span class="code-font">reportingService.ts</span><br><small>core-banking-react/src/services/</small></td>
+          <td>Axios Client API Service</td>
+          <td>Backend REST Endpoints များဆီသို့ HTTP GET/POST တောင်းဆိုမှုများကို Type-safe ဖြစ်စွာ ပို့ဆောင်ပေးခြင်း။</td>
+          <td>Axios instance with bearer auth token, query parameter serialization, blob response handlers.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Sub-table 4: Customer Portal Frontend -->
+    <h3 style="font-size: 10pt; color: #1e3a8a; margin: 12px 0 6px 0;">4. Customer Portal Frontend (<span class="code-font">customer-portal-react/src/...</span>)</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width: 28%;">File Name &amp; Location</th>
+          <th style="width: 22%;">Component Type</th>
+          <th style="width: 25%;">UI / Functional Role</th>
+          <th style="width: 25%;">Core Logic &amp; Features</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="code-font">TransactionHistoryPage.tsx</span><br><small>customer-portal-react/.../transactions/pages/</small></td>
+          <td>Retail Customer Main Page</td>
+          <td>Retail ဘဏ်ဖောက်သည်များ မိမိအကောင့်၏ ငွေအဝင်/အထွက် မှတ်တမ်းများကို ရက်စွဲအလိုက် စစ်ဆေးနိုင်သော မျက်နှာပြင်။</td>
+          <td>Pagination controls, date range picking, status and type filtering, real-time loading states.</td>
+        </tr>
+        <tr>
+          <td><span class="code-font">TransactionTable.tsx</span><br><small>customer-portal-react/.../transactions/components/</small></td>
+          <td>Interactive Data Grid</td>
+          <td>Transaction Reference ID, Counterparty, ပမာဏ (အဝင်အစိမ်း/အထွက်အနီ) နှင့် အသေးစိတ် ကြည့်နိုင်သော Link များ။</td>
+          <td>Accessible responsive table, formatted currency, masked counterparty account display.</td>
+        </tr>
+        <tr>
+          <td><span class="code-font">TransactionDetailPage.tsx</span> &amp; <span class="code-font">TransactionDetailContent.tsx</span><br><small>customer-portal-react/.../transactions/...</small></td>
+          <td>Digital Receipt / Confirmation</td>
+          <td>ငွေလွှဲတစ်ခုချင်းစီ၏ တရားဝင် Digital Receipt ဖြစ်ပြီး ဘဏ်တံဆိပ်ခေါင်းနှင့် Printable Layout ပါဝင်သည်။</td>
+          <td>Official bank watermark/seal, printable layout styling, fee and channel breakdown.</td>
+        </tr>
+        <tr>
+          <td><span class="code-font">TransactionStatusBadge.tsx</span><br><small>customer-portal-react/.../transactions/components/</small></td>
+          <td>Status Indicator Badge</td>
+          <td>ငွေလွှဲမှု အခြေအနေများကို အရောင်အလိုက် ရှင်းလင်းစွာ ခွဲခြားပြသပေးသော Badge Component။</td>
+          <td>COMPLETED (Green), PENDING (Yellow), HELD (Orange), FAILED (Red) status pills.</td>
+        </tr>
+        <tr>
+          <td><span class="code-font">transactionHistoryService.ts</span><br><small>customer-portal-react/.../transactions/services/</small></td>
+          <td>Axios Client API Service</td>
+          <td>Customer transactions အတွက် Backend REST APIs များဆီသို့ HTTP call များ ပို့ဆောင်ပေးခြင်း။</td>
+          <td><span class="code-font">getTransactions()</span>, <span class="code-font">getTransactionDetail()</span>, <span class="code-font">getTransactionStatuses()</span>.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- SECTION 5: INTERVIEW QUESTIONS & MODEL ANSWERS -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-number">5</span>
+      <h2 class="section-title">Interview မေးခွန်းများနှင့် စံနမူနာ အဖြေများ (High-Impact Q&amp;A Cheatsheet)</h2>
+      <span class="section-tagline">Confident Technical Responses for Tomorrow</span>
+    </div>
+
+    <!-- Q1 -->
+    <div class="qa-card">
+      <div class="qa-header">
+        <span class="qa-q-badge">Q1</span>
+        <h4 class="qa-question">"ဒီ Core Banking Project မှာ မင်း ဘယ်အပိုင်းကို အဓိက တာဝန်ယူ လုပ်ဆောင်ခဲ့လဲ?"</h4>
+      </div>
+      <div class="qa-body">
+        <div class="qa-key-points">
+          <div class="qa-key-points-title">Key Talking Points (အဓိက အချက်များ)</div>
+          <ul>
+            <li>Financial Reporting &amp; Regulatory Compliance Engine (6 Modules: Ledger, Account Status, Audit Trail, Large Tx AML, Fee Revenue, Tx Details).</li>
+            <li>JasperReports 6.x &amp; Apache POI SXSSF Streaming Architecture (Multi-format PDF, Excel, CSV).</li>
+            <li>Enterprise Asynchronous Export System (Thread Pool Job Queue, UUID tracking, Polling).</li>
+            <li>Merchant Payment Gateway Corporate Account Verification Service (MMSPG Security Gate).</li>
+            <li>Customer Retail Portal Transaction History &amp; Official Digital Receipt Subsystem.</li>
+          </ul>
+        </div>
+        <div class="qa-answer">
+          <strong>စံနမူနာ အဖြေ (Burmese &amp; English):</strong><br>
+          "ကျနော် ဒီ Core Banking Project (Group-2) မှာ အဓိက <strong>Reporting &amp; Compliance Subsystem</strong> နှင့် <strong>External Gateway Integration</strong> အပိုင်းကို Lead အနေဖြင့် Full-Stack တာဝန်ယူခဲ့ပါတယ်။<br>
+          ဘဏ်ရဲ့ စာရင်းကိုင်နှင့် စာရင်းစစ်ပိုင်းအတွက် Daily Ledger Reconciliation, Fee Revenue, AML Large Transactions စတဲ့ အရေးကြီး အစီရင်ခံစာ မော်ဂျူး ၆ ခုကို JasperReports, Apache POI SXSSF နှင့် RFC-4180 CSV Engine တို့ဖြင့် PDF, Excel, CSV သုံးမျိုးလုံး ထုတ်ပေးနိုင်အောင် တည်ဆောက်ခဲ့ပါတယ်။ ဒေတာအလွန်များသည့်အခါ Server Memory မကျစေရန် Background Asynchronous Thread Pool Job စနစ်ကို ရေးဆွဲခဲ့ပါတယ်။<br>
+          ဒါ့အပြင် Merchant Payment Gateway (MMSPG) မှ ကုန်သည်အကောင့် အတည်ပြုရန် လာရောက်ခေါ်ယူသည့် <span class="code-font">GatewayAccountVerificationService</span> လုံခြုံရေး Gate နှင့် Retail Customer များအတွက် Transaction History &amp; Official Digital Receipt စနစ်တို့ကို Backend ကော Frontend ပါ ပြီးပြည့်စုံအောင် တာဝန်ယူ ရေးသားခဲ့ပါတယ်ခင်ဗျာ။"
+        </div>
+      </div>
+    </div>
+
+    <!-- Q2 -->
+    <div class="qa-card">
+      <div class="qa-header">
+        <span class="qa-q-badge">Q2</span>
+        <h4 class="qa-question">"Reporting စနစ်မှာ Real-time Query နဲ့ Background Async Export ကို ဘာကြောင့် ခွဲပြီး သုံးခဲ့တာလဲ? ဘယ်လို အလုပ်လုပ်လဲ?"</h4>
+      </div>
+      <div class="qa-body">
+        <div class="qa-key-points">
+          <div class="qa-key-points-title">Key Talking Points (အဓိက အချက်များ)</div>
+          <ul>
+            <li>Web Request Thread Starvation &amp; HTTP Gateway 504 Timeout ကာကွယ်ခြင်း။</li>
+            <li>Synchronous သည် ဒေတာနည်းသော Real-time Table View များအတွက် သုံးသည်။</li>
+            <li>Asynchronous သည် လပေါင်းများစွာသော Transaction သောင်းချီ File Export အတွက် Producer-Consumer Job Queue ပုံစံ သုံးသည်။</li>
+            <li>UUID ဖြင့် Job ဖန်တီးပြီး Client ဘက်က Non-blocking အနေဖြင့် ဆက်လက် အသုံးပြုနိုင်သည်။</li>
+          </ul>
+        </div>
+        <div class="qa-answer">
+          <strong>စံနမူနာ အဖြေ:</strong><br>
+          "ဘဏ်စနစ်မှာ ရက်စွဲအနည်းငယ်စာ Table ပေါ် ကြည့်ရှုခြင်းမျိုးကို Synchronous REST call ဖြင့် စက္ကန့်ပိုင်းအတွင်း တိုက်ရိုက် ပြသပေးပါတယ်။ သို့သော် လပေါင်းများစွာ သို့မဟုတ် တစ်နှစ်စာ Transaction အချက်အလက် သောင်းနှင့်ချီသော Report များကို တိုက်ရိုက် Synchronous HTTP call ဖြင့် PDF/Excel ထုတ်ပါက HTTP Connection Timeout (504 Gateway Timeout) ဖြစ်နိုင်သလို Tomcat Web Thread များကို ပိတ်ဆို့ (Thread Starvation) စေနိုင်ပါတယ်။<br>
+          ထို့ကြောင့် ကျနော်တို့သည် <strong>Asynchronous Job Queue Architecture</strong> ကို သုံးခဲ့ပါတယ်။ အသုံးပြုသူ Export ခလုတ် နှိပ်လိုက်သည်နှင့် Controller မှ <span class="code-font">UUID</span> ပါသော <span class="code-font">ExportJobResponseDTO</span> (Status: PENDING) ကို ၂၀၀ မီလီစက္ကန့်အတွင်း ချက်ချင်း တုံ့ပြန်ပေးပြီး Background Thread Pool တွင် Database query နှင့် Binary file generation ကို လုပ်ဆောင်စေပါတယ်။ React Frontend ဘက်တွင် Custom Hook (<span class="code-font">useAsyncExport</span>) က ၁.၅ စက္ကန့်ခြား Status စစ်ဆေးပေးပြီး Job ပြီးဆုံးချိန်တွင် File ကို အလိုအလျောက် Download ဆွဲပေးပါတယ်။ ဒါကြောင့် User သည် Export စောင့်နေစဉ်အတွင်း စနစ်တွင်း အခြားစာမျက်နှာများကို လွတ်လပ်စွာ ဆက်လက် အသုံးပြုနိုင်ပါတယ်ခင်ဗျာ။"
+        </div>
+      </div>
+    </div>
+
+    <!-- Q3 -->
+    <div class="qa-card">
+      <div class="qa-header">
+        <span class="qa-q-badge">Q3</span>
+        <h4 class="qa-question">"JasperReports ကို Spring Boot မှာ သုံးတဲ့အခါ ဘာ Challenge တွေ တွေ့ခဲ့လဲ? Performance ကို ဘယ်လို Optimize လုပ်ခဲ့လဲ?"</h4>
+      </div>
+      <div class="qa-body">
+        <div class="qa-key-points">
+          <div class="qa-key-points-title">Key Talking Points (အဓိက အချက်များ)</div>
+          <ul>
+            <li>JRXML Compilation Latency (Cold Start 2-3 seconds per report).</li>
+            <li>Classpath Asset I/O Bottleneck (Bank Logo disk reading on every generation).</li>
+            <li>Solution 1: <span class="code-font">@PostConstruct</span> Startup Pre-compilation to Memory Cache (<span class="code-font">ConcurrentHashMap</span>).</li>
+            <li>Solution 2: Volatile byte array Brand Logo in-memory caching.</li>
+          </ul>
+        </div>
+        <div class="qa-answer">
+          <strong>စံနမူနာ အဖြေ:</strong><br>
+          "JasperReports ရဲ့ အဓိက Challenge က JRXML XML template များကို Runtime မှာ Compile လုပ်ပါက ပထမဆုံး Request မှာ ၂ စက္ကန့်မှ ၃ စက္ကန့်အထိ CPU နှင့် Time ယူသွားခြင်း (Cold Start Delay) ဖြစ်ပါတယ်။ ဒုတိယ Challenge က Report တိုင်းမှာ ဘဏ် Logo ပါဝင်သည့်အတွက် Request တိုင်း Classpath ထဲက Disk I/O ဖတ်နေရပါက Performance ကျဆင်းစေပါတယ်။<br>
+          ဒီပြဿနာကို ဖြေရှင်းဖို့ ကျနော့်ရဲ့ <span class="code-font">JasperReportService</span> မှာ <span class="code-font">@PostConstruct</span> နည်းပညာကို သုံးပြီး Application စတက်ချိန် Bootstrapping မှာတင် Report Template ၈ ခုလုံးကို <span class="code-font">ConcurrentHashMap</span> ထဲ ကြိုတင် Compile လုပ်ထားစေခဲ့ပါတယ်။ ဒါ့အပြင် ဘဏ် Logo ကိုလည်း Memory ပေါ်တွင် <span class="code-font">volatile byte[]</span> ဖြင့် တစ်ကြိမ်တည်း Cache လုပ်ထားသဖြင့် အစီရင်ခံစာ ထုတ်ယူသည့်အခါ မီလီစက္ကန့်ပိုင်းအတွင်း ချက်ချင်း Render ဖြစ်စေပြီး Production-grade Performance ကို ရရှိစေခဲ့ပါတယ်ခင်ဗျာ။"
+        </div>
+      </div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- Q4 -->
+    <div class="qa-card">
+      <div class="qa-header">
+        <span class="qa-q-badge">Q4</span>
+        <h4 class="qa-question">"Excel ဒါမှမဟုတ် CSV export အကြီးကြီးတွေ ထုတ်တဲ့အခါ Server Memory Out Of Memory (OOM) မဖြစ်အောင် ဘယ်လို ကာကွယ်ခဲ့လဲ?"</h4>
+      </div>
+      <div class="qa-body">
+        <div class="qa-key-points">
+          <div class="qa-key-points-title">Key Talking Points (အဓိက အချက်များ)</div>
+          <ul>
+            <li>Apache POI Standard XSSFWorkbook vs SXSSFWorkbook (Streaming POI).</li>
+            <li>Row Window = 100 Flusher: Disk Temp File သို့ အလိုအလျောက် ရေးထုတ်ခြင်း။</li>
+            <li>Temporary file storage directory &amp; Scheduled cleanup task (@Scheduled).</li>
+          </ul>
+        </div>
+        <div class="qa-answer">
+          <strong>စံနမူနာ အဖြေ:</strong><br>
+          "Standard Apache POI ရဲ့ <span class="code-font">XSSFWorkbook</span> ဟာ Excel ရဲ့ XML tree တစ်ခုလုံးကို Java Heap Memory ပေါ်မှာ တည်ဆောက်တဲ့အတွက် Record ပေါင်း ၅ သောင်း သို့မဟုတ် ၁ သိန်းကျော်ပါက Heap Space ကုန်ပြီး <span class="code-font">java.lang.OutOfMemoryError: Java heap space</span> ဖြစ်စေပါတယ်။<br>
+          ကျနော် ဒါကို ကာကွယ်ဖို့အတွက် <strong>SXSSFWorkbook (Streaming POI)</strong> ကို သုံးခဲ့ပါတယ်။ Memory ပေါ်တွင် Row ပေါင်း ၁၀၀ သာ ထိန်းသိမ်းထားပြီး Row ၁၀၀ ကျော်လွန်သွားသော Record အဟောင်းများကို Hard Disk ပေါ်ရှိ Temporary File သို့ အလိုအလျောက် Flush လုပ်စေပါတယ်။ ဒါကြောင့် Record ပမာဏ မည်မျှပင် ကြီးမားစေကာမူ Server Heap Memory ကို MB အနည်းငယ်သာ အသုံးပြုစေပြီး Server Crash မဖြစ်အောင် အပြည့်အဝ ကာကွယ်ပေးထားပါတယ်ခင်ဗျာ။"
+        </div>
+      </div>
+    </div>
+
+    <!-- Q5 -->
+    <div class="qa-card">
+      <div class="qa-header">
+        <span class="qa-q-badge">Q5</span>
+        <h4 class="qa-question">"Code အပိုင်းမှာ Security နဲ့ Data Validation ဘာတွေ စစ်ဆေးခဲ့လဲ?"</h4>
+      </div>
+      <div class="qa-body">
+        <div class="qa-key-points">
+          <div class="qa-key-points-title">Key Talking Points (အဓိက အချက်များ)</div>
+          <ul>
+            <li><strong>CWE-1236 (CSV Formula Injection)</strong> Defense in <span class="code-font">CsvExportUtil</span>.</li>
+            <li><strong>Path Traversal Defense:</strong> Filename regex sanitization.</li>
+            <li><strong>RBAC &amp; PreAuthorize:</strong> Role checks (ADMIN, AUDITOR, TELLER).</li>
+            <li><strong>PII Masking:</strong> Bank Account, NRC, Phone, Email masking for logs.</li>
+            <li><strong>Account Ownership Validation:</strong> Logged-in JWT customer vs Target Account.</li>
+          </ul>
+        </div>
+        <div class="qa-answer">
+          <strong>စံနမူနာ အဖြေ:</strong><br>
+          "လုံခြုံရေးပိုင်းမှာ အဓိက အချက် ၅ ချက်ကို စနစ်တကျ စစ်ဆေးထားပါတယ်:<br>
+          ၁) <strong>CSV Formula Injection (CWE-1236):</strong> Data များထဲတွင် Excel Formula စတင်သင်္ကေတများ (<span class="code-font">=, +, -, @</span>) ပါလာပါက Apostrophe (<span class="code-font">'</span>) ဖြင့် Prefix ထည့်ပြီး Plain text အဖြစ် ပြောင်းလဲထားပါတယ်။<br>
+          ၂) <strong>Path Traversal Prevention:</strong> Async Export ဖိုင်နာမည်များတွင် User Input ကြောင့် Directory Traversal မဖြစ်စေရန် Regex (<span class="code-font">replaceAll("[:\\/*?"<>|]", "_")</span>) ဖြင့် သန့်စင်ထားပါတယ်။<br>
+          ၃) <strong>Role-Based Access Control:</strong> အရေးကြီး အစီရင်ခံစာများကို ADMIN နှင့် AUDITOR သာ ကြည့်ရှုခွင့်ရစေရန် Spring Security <span class="code-font">@PreAuthorize</span> ဖြင့် ကာကွယ်ထားပါတယ်။<br>
+          ၄) <strong>Data Privacy &amp; PII Masking:</strong> ဘဏ်ဖောက်သည်များ၏ Account No ကို <span class="code-font">******6543</span> ပုံစံ၊ NRC နှင့် ဖုန်းနံပါတ်များကို Mask လုပ်ပေးသည့် <span class="code-font">DataMaskingUtil</span> ကို အသုံးပြုထားပါတယ်။<br>
+          ၅) <strong>Customer Ownership Check:</strong> Customer Portal တွင် အခြားသူ၏ Account သို့ တောင်းဆို၍ မရစေရန် JWT Token ထဲမှ <span class="code-font">customerId</span> နှင့် Account ပိုင်ရှင်ကို တိုက်ဆိုင်စစ်ဆေးထားပါတယ်ခင်ဗျာ။"
+        </div>
+      </div>
+    </div>
+
+    <!-- Q6 -->
+    <div class="qa-card">
+      <div class="qa-header">
+        <span class="qa-q-badge">Q6</span>
+        <h4 class="qa-question">"Merchant Payment Gateway (MMSPG) နဲ့ Core Banking ချိတ်ဆက်တဲ့အခါ မင်းရဲ့ Account Verification Service က ဘယ်လို အလုပ်လုပ်လဲ?"</h4>
+      </div>
+      <div class="qa-body">
+        <div class="qa-key-points">
+          <div class="qa-key-points-title">Key Talking Points (အဓိက အချက်များ)</div>
+          <ul>
+            <li>External MMSPG REST Endpoint: Corporate Merchant Account Eligibility Checking.</li>
+            <li>Verification Rules: 1) Non-blank input, 2) DB existence, 3) Corporate/Company criteria, 4) ACTIVE status.</li>
+            <li>Rejects Suspended/Frozen accounts immediately with descriptive error responses.</li>
+          </ul>
+        </div>
+        <div class="qa-answer">
+          <strong>စံနမူနာ အဖြေ:</strong><br>
+          "MMSPG Payment Gateway မှ E-Commerce ကုန်သည်များ၏ ငွေလက်ခံအကောင့် သို့မဟုတ် Checkout အကောင့်ကို စစ်ဆေးရန် ခေါ်ယူသည့်အခါ ကျနော် ရေးသားထားသော <span class="code-font">GatewayAccountVerificationService</span> က တာဝန်ယူ စစ်ဆေးပေးပါတယ်။<br>
+          ပထမဆုံး Account Number Blank ဖြစ်မဖြစ် စစ်ဆေးပြီး Database မှ Account, Customer နှင့် CompanyInfo ဇယားများကို Join ဆွဲယူပါတယ်။ ထို့နောက် အကောင့်သည် တရားဝင် <strong>Corporate Account</strong> ဖြစ်မဖြစ် (Account Category သည် CORPORATE ဖြစ်ခြင်း သို့မဟုတ် Customer Type သည် COMPANY ဖြစ်ခြင်း သို့မဟုတ် Company Registration No ရှိခြင်း) ကို စစ်ဆေးပါတယ်။ နောက်ဆုံးအချက်အဖြစ် အကောင့်သည် <span class="code-font">AccountStatus.ACTIVE</span> အခြေအနေတွင် ရှိမှသာ <span class="code-font">verified = true</span> ပြန်ပေးပါတယ်။ အကယ်၍ အကောင့်သည် Frozen, Suspended သို့မဟုတ် Personal Account ဖြစ်နေပါက အတိအကျ အကြောင်းပြချက် Message ဖြင့် ငြင်းပယ်ပေးသည့် လုံခြုံရေးတံခါးပေါက် ဖြစ်ပါတယ်ခင်ဗျာ။"
+        </div>
+      </div>
+    </div>
+
+    <!-- Q7 -->
+    <div class="qa-card">
+      <div class="qa-header">
+        <span class="qa-q-badge">Q7</span>
+        <h4 class="qa-question">"React Frontend မှာ Asynchronous Export အတွက် useAsyncExport Custom Hook ကို ဘာကြောင့် ရေးခဲ့တာလဲ? ဘယ်လို အလုပ်လုပ်လဲ?"</h4>
+      </div>
+      <div class="qa-body">
+        <div class="qa-key-points">
+          <div class="qa-key-points-title">Key Talking Points (အဓိက အချက်များ)</div>
+          <ul>
+            <li>Reusability across all 6 Report panels (DRY principle).</li>
+            <li>State Machine: Loading state, Progress Notice, Auto-downloading, Error alerting.</li>
+            <li>Memory Leak Safety: Clearing intervals and timeouts in <span class="code-font">useEffect</span> cleanup.</li>
+            <li>Polling Timeout: 120 attempts * 1.5s = 180s fail-safe boundary.</li>
+          </ul>
+        </div>
+        <div class="qa-answer">
+          <strong>စံနမူနာ အဖြေ:</strong><br>
+          "ကျနော်တို့ Reporting Subsystem မှာ Daily Ledger, Fee Revenue, Audit Trail စတဲ့ Report Panel ၆ ခုလုံးမှာ Export PDF, Excel, CSV ခလုတ်များ ပါဝင်ပါတယ်။ Component တိုင်းမှာ Polling logic, state တွေ ထပ်ခါထပ်ခါ မရေးရအောင် (DRY Principle) <span class="code-font">useAsyncExport</span> Custom Hook ကို သီးသန့် ရေးသားခဲ့ပါတယ်။<br>
+          ဒီ Hook ထဲမှာ Background Job စတင်ခြင်း၊ Backend ထံမှ Status (PENDING, PROCESSING, COMPLETED, FAILED) ကို ၁.၅ စက္ကန့်ခြား တစ်ကြိမ် Polling ပြုလုပ်ခြင်း၊ အောင်မြင်သွားပါက File Blob ကို ချက်ချင်း Browser Download Trigger လုပ်ပေးခြင်းနှင့် Banner Alert ပိတ်ပေးခြင်းတို့ကို ဗဟိုပြု စီမံထားပါတယ်။ အရေးကြီးဆုံးအချက်အနေဖြင့် User သည် အခြား Tab သို့ ကူးသွားလျှင် Timer များ ပျောက်မသွားဘဲ Memory Leak မဖြစ်စေရန် <span class="code-font">useEffect cleanup</span> ဖြင့် <span class="code-font">clearInterval</span> လုပ်ပေးထားပြီး အများဆုံး ၁၈၀ စက္ကန့်အတွင်း Job မပြီးပါက Timeout Error ဖြင့် ရပ်တန့်ပေးသည့် Fail-safe logic ပါ ထည့်သွင်းထားပါတယ်ခင်ဗျာ။"
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <div style="border-top: 1px solid #cbd5e1; padding-top: 12px; margin-top: 24px; text-align: center; color: #64748b; font-size: 8pt;">
+    Core Banking System (Batch-114 Group-2) — Technical Interview Preparation Dossier | Candidate: <strong>Ye Lin Kyaw</strong> | Designed for Tomorrow's Interview
+  </div>
+
+</body>
+</html>
