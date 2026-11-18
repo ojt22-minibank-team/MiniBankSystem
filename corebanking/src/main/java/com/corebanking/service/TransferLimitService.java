@@ -69,6 +69,7 @@ public class TransferLimitService {
     public static final String KEY_ECOMMERCE_DAILY_LIMIT_ALT = "ECOMMERCE_DAILY_LIMIT";
     public static final String KEY_MINIMUM_BALANCE = "MINIMUM_BALANCE";
     public static final String KEY_MINIMUM_BALANCE_SAVINGS = "MINIMUM_BALANCE_SAVINGS";
+    public static final String KEY_LIMIT_COOLING_OFF_MINUTES = "LIMIT_INCREASE_COOLING_OFF_MINUTES";
 
     // Retail Limits (Fallback Defaults)
     public static final BigDecimal DEFAULT_SAVINGS_ONETIME = new BigDecimal("2000000.00");
@@ -78,6 +79,7 @@ public class TransferLimitService {
     public static final BigDecimal DEFAULT_DAILY_LIMIT = new BigDecimal("10000000.00");
     public static final BigDecimal DEFAULT_ECOMMERCE_DAILY_LIMIT = new BigDecimal("5000000.00");
     public static final BigDecimal DEFAULT_MINIMUM_BALANCE = new BigDecimal("10000.00");
+    public static final int DEFAULT_COOLING_OFF_MINUTES = 30;
 
     // Corporate / Company Account Limits
     public static final BigDecimal CORPORATE_MAX_ONETIME = new BigDecimal("50000000.00");
@@ -545,10 +547,20 @@ public class TransferLimitService {
                 && request.getCustomDailyLimit().compareTo(currentDaily) > 0;
 
         LocalDateTime now = LocalDateTime.now();
+        int coolingMinutes = DEFAULT_COOLING_OFF_MINUTES;
+        var coolingParam = systemParametersRepository.findByParameterKeyIgnoreCase(KEY_LIMIT_COOLING_OFF_MINUTES);
+        if (coolingParam.isPresent()) {
+            try {
+                coolingMinutes = Integer.parseInt(coolingParam.get().getParameterValue().trim());
+            } catch (Exception ignored) {}
+        }
         if (isOneTimeIncreased || isDailyIncreased) {
             if (limits.getLastLimitIncreasedAt() != null
-                    && limits.getLastLimitIncreasedAt().isAfter(now.minusHours(24))) {
-                throw new TransactionException("Transfer limit can only be increased once every 24 hours (Cooling-off period active).");
+                    && limits.getLastLimitIncreasedAt().isAfter(now.minusMinutes(coolingMinutes))) {
+                String durationLabel = coolingMinutes >= 60 && coolingMinutes % 60 == 0
+                        ? (coolingMinutes / 60) + " hours"
+                        : coolingMinutes + " minutes";
+                throw new TransactionException(String.format("Transfer limit can only be increased once every %s (Cooling-off period active).", durationLabel));
             }
             limits.setLastLimitIncreasedAt(now);
         }

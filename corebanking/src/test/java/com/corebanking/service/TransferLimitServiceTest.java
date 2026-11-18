@@ -400,7 +400,7 @@ class TransferLimitServiceTest {
                 .customer(customer)
                 .customDailyLimit(new BigDecimal("3000000.0000"))
                 .customOneTimeLimit(new BigDecimal("1000000.0000"))
-                .lastLimitIncreasedAt(LocalDateTime.now().minusHours(2)) // Increased 2 hours ago (< 24 hrs)
+                .lastLimitIncreasedAt(LocalDateTime.now().minusMinutes(10)) // Increased 10 mins ago (< 30 mins)
                 .build();
 
         when(accountTransferLimitsRepository.findByAccount(sourceSavingsAccount)).thenReturn(Optional.of(existingLimits));

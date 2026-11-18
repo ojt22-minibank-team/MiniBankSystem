@@ -50,6 +50,11 @@ export const AddBeneficiaryModal: React.FC<AddBeneficiaryModalProps> = ({
         setLookupError("");
         const res = await lookupDestinationAccount(acc);
         if (res && res.accountName) {
+          if (res.status && res.status !== "ACTIVE") {
+            setVerifiedName("");
+            setLookupError(`Recipient account is ${res.status}. Cannot add inactive account.`);
+            return;
+          }
           setVerifiedName(res.accountName);
         } else {
           setLookupError(t("accountNotFound", "Account not found or inactive"));
